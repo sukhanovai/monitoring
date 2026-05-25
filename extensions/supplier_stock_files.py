@@ -14,26 +14,26 @@ Supplier stock files downloader
 from __future__ import annotations
 
 import base64
-import http.client
 import csv
 import ftplib
+import http.client
 import json
-import os
 import logging
 import math
+import os
 import re
 import shutil
 import ssl
 import subprocess
 import tarfile
-import threading
 import tempfile
+import threading
 import zipfile
-from http import cookiejar
 from datetime import datetime, timedelta, timezone
+from fnmatch import fnmatch
+from http import cookiejar
 from pathlib import Path, PureWindowsPath
 from typing import Any, Dict, Iterable, List
-from fnmatch import fnmatch
 from urllib.error import HTTPError
 from urllib.parse import urljoin, urlparse
 from urllib.request import (
@@ -134,13 +134,15 @@ def parse_supplier_stock_schedule_times(schedule_time: Any) -> list[str]:
             continue
         if not re.fullmatch(r"\d{1,2}:\d{2}", value):
             return []
-        hours, minutes = [int(part) for part in value.split(":", 1)]
+        hours, minutes = (int(part) for part in value.split(":", 1))
         if not (0 <= hours <= 23 and 0 <= minutes <= 59):
             return []
         normalized = f"{hours:02d}:{minutes:02d}"
         if normalized not in points:
             points.append(normalized)
     return points
+
+
 _smbclient_missing_logged = False
 
 
@@ -211,7 +213,9 @@ def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, 
         for rule in processing_rules:
             if isinstance(rule, dict):
                 rule.setdefault("enabled", True)
-                rule["requires_processing"] = _normalize_requires_processing(rule.get("requires_processing", True))
+                rule["requires_processing"] = _normalize_requires_processing(
+                    rule.get("requires_processing", True)
+                )
     reporting = merged.get("reporting", {})
     if not isinstance(reporting, dict):
         reporting = {}
@@ -309,6 +313,7 @@ def _render_template(value: str, now: datetime, extra_context: Dict[str, Any] | 
     }
     if extra_context:
         context.update(extra_context)
+
     def _replace_date(match: re.Match[str]) -> str:
         fmt = match.group("format") or ""
         fmt = fmt.replace("\\'", "'")
@@ -521,7 +526,7 @@ def _download_http(
             "📦 Остатки поставщиков HTTP download ok (%s): bytes=%s, chunks=%s, output=%s",
             source_id,
             len(data),
-            chunk_count if 'chunk_count' in locals() else 0,
+            chunk_count if "chunk_count" in locals() else 0,
             output_path,
         )
         return {
@@ -665,6 +670,7 @@ def _load_supplier_stock_reports() -> List[Dict[str, Any]]:
                 continue
     return entries
 
+
 def _parse_report_timestamp(entry: Dict[str, Any]) -> datetime | None:
     raw = entry.get("timestamp")
     if not raw:
@@ -692,12 +698,16 @@ def _filter_supplier_stock_reports(
     if source_id:
         filtered = [entry for entry in filtered if str(entry.get("source_id")) == str(source_id)]
     if source_kind:
-        filtered = [entry for entry in filtered if str(entry.get("source_kind")) == str(source_kind)]
+        filtered = [
+            entry for entry in filtered if str(entry.get("source_kind")) == str(source_kind)
+        ]
     if period_days and period_days > 0:
         cutoff = datetime.now(timezone.utc) - timedelta(days=period_days)
         filtered = [
-            entry for entry in filtered
-            if (_parse_report_timestamp(entry) or datetime.min.replace(tzinfo=timezone.utc)) >= cutoff
+            entry
+            for entry in filtered
+            if (_parse_report_timestamp(entry) or datetime.min.replace(tzinfo=timezone.utc))
+            >= cutoff
         ]
     return filtered
 
@@ -768,7 +778,9 @@ def _extract_transfer_status(processing: Dict[str, Any] | None) -> str | None:
     return str(status) if status else None
 
 
-def summarize_supplier_stock_reports(period_days: int | None = None) -> Dict[str, List[Dict[str, Any]]]:
+def summarize_supplier_stock_reports(
+    period_days: int | None = None,
+) -> Dict[str, List[Dict[str, Any]]]:
     entries = get_supplier_stock_reports(limit=None, period_days=period_days)
     grouped: Dict[str, Dict[str, Dict[str, Any]]] = {
         "download": {},
@@ -883,14 +895,19 @@ def process_supplier_stock_file(
 def run_supplier_stock_fetch() -> Dict[str, Any]:
     config = get_supplier_stock_config()
     download_config = config.get("download", {})
-    temp_dir = Path(download_config.get("temp_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["temp_dir"]))
+    temp_dir = Path(
+        download_config.get("temp_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["temp_dir"])
+    )
     temp_dir.mkdir(parents=True, exist_ok=True)
-    archive_dir = Path(download_config.get("archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["archive_dir"]))
+    archive_dir = Path(
+        download_config.get("archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["archive_dir"])
+    )
     archive_dir.mkdir(parents=True, exist_ok=True)
 
     sources = download_config.get("sources", [])
     now = datetime.now()
     results: List[Dict[str, Any]] = []
+
     def _log(message: str, *args: object) -> None:
         try:
             _monitor_logger.info(message, *args)
@@ -951,7 +968,11 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                         entry["path"] = str(unpacked_path)
                         entry["unpacked_path"] = str(unpacked_path)
                         output_path = unpacked_path
-                        _log("📦 Остатки поставщиков: %s распакован в %s", entry["source_id"], unpacked_path)
+                        _log(
+                            "📦 Остатки поставщиков: %s распакован в %s",
+                            entry["source_id"],
+                            unpacked_path,
+                        )
                 if source.get("processing_mode") == "iek_json":
                     processing_result = _process_iek_json_file(
                         output_path,
@@ -1020,8 +1041,7 @@ def _should_run_schedule(schedule: Dict[str, Any], now: datetime) -> bool:
         return False
 
     _last_run_markers = {
-        existing for existing in _last_run_markers
-        if existing.startswith(f"{current_date}|")
+        existing for existing in _last_run_markers if existing.startswith(f"{current_date}|")
     }
     _last_run_markers.add(marker)
     return True
@@ -1064,7 +1084,9 @@ def _archive_original_file(source_path: Path, archive_dir: Path, now: datetime) 
         return None
 
 
-def archive_supplier_stock_original(source_path: Path, archive_dir: Path, now: datetime) -> Path | None:
+def archive_supplier_stock_original(
+    source_path: Path, archive_dir: Path, now: datetime
+) -> Path | None:
     return _archive_original_file(source_path, archive_dir, now)
 
 
@@ -1106,8 +1128,12 @@ def cleanup_supplier_stock_archives(
     errors = 0
 
     archive_dirs = [
-        config.get("download", {}).get("archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["archive_dir"]),
-        config.get("mail", {}).get("archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["mail"]["archive_dir"]),
+        config.get("download", {}).get(
+            "archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["archive_dir"]
+        ),
+        config.get("mail", {}).get(
+            "archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["mail"]["archive_dir"]
+        ),
     ]
 
     for archive_dir in archive_dirs:
@@ -1189,12 +1215,14 @@ def _process_supplier_stock_file(
     candidate_rules = [rule for rule in rules if isinstance(rule, dict)]
     if source_id:
         candidate_rules = [
-            rule for rule in candidate_rules
+            rule
+            for rule in candidate_rules
             if not rule.get("source_id") or str(rule.get("source_id")) == str(source_id)
         ]
     if source_kind:
         candidate_rules = [
-            rule for rule in candidate_rules
+            rule
+            for rule in candidate_rules
             if _processing_rule_matches_kind(rule, source_kind, config)
         ]
     active_rules = [rule for rule in candidate_rules if rule.get("active")]
@@ -1215,7 +1243,9 @@ def _process_supplier_stock_file(
             file_path.name,
         )
         try:
-            result = _run_processing_rule(file_path, rule, processing, now, input_index, source_name)
+            result = _run_processing_rule(
+                file_path, rule, processing, now, input_index, source_name
+            )
             _log_processing(
                 "🧩 Остатки поставщиков: результат правила %s для %s -> %s",
                 rule_label,
@@ -1324,10 +1354,12 @@ def _process_iek_json_file(
         sku = str(row.get("sku") or "").strip()
         if not sku:
             continue
-        orig_rows.append([
-            sku,
-            *[str(_get_residue(row, key)) for key in store_keys],
-        ])
+        orig_rows.append(
+            [
+                sku,
+                *[str(_get_residue(row, key)) for key in store_keys],
+            ]
+        )
 
         msk_value = sum(_get_residue(row, key) for key in msk_keys)
         if msk_value > 0:
@@ -1354,7 +1386,9 @@ def _process_iek_json_file(
     output_names = iek_settings.get("outputs", {})
     orig_output = _render_iek_output_template(str(output_names.get("orig", "")), now, source_id)
     if orig_output:
-        output_path = _resolve_output_path(file_path.parent, orig_output, _detect_output_format(orig_output))
+        output_path = _resolve_output_path(
+            file_path.parent, orig_output, _detect_output_format(orig_output)
+        )
         _write_output_file(
             output_path,
             output_path.suffix.lstrip(".").lower(),
@@ -1365,7 +1399,9 @@ def _process_iek_json_file(
 
     msk_output = _render_iek_output_template(str(output_names.get("msk", "")), now, source_id)
     if msk_output:
-        output_path = _resolve_output_path(file_path.parent, msk_output, _detect_output_format(msk_output))
+        output_path = _resolve_output_path(
+            file_path.parent, msk_output, _detect_output_format(msk_output)
+        )
         _write_output_file(
             output_path,
             output_path.suffix.lstrip(".").lower(),
@@ -1376,7 +1412,9 @@ def _process_iek_json_file(
 
     nsk_output = _render_iek_output_template(str(output_names.get("nsk", "")), now, source_id)
     if nsk_output:
-        output_path = _resolve_output_path(file_path.parent, nsk_output, _detect_output_format(nsk_output))
+        output_path = _resolve_output_path(
+            file_path.parent, nsk_output, _detect_output_format(nsk_output)
+        )
         _write_output_file(
             output_path,
             output_path.suffix.lstrip(".").lower(),
@@ -1387,7 +1425,9 @@ def _process_iek_json_file(
 
     orc_output = _render_iek_output_template(str(output_names.get("orc", "")), now, source_id)
     if orc_output:
-        output_path = _resolve_output_path(file_path.parent, orc_output, _detect_output_format(orc_output))
+        output_path = _resolve_output_path(
+            file_path.parent, orc_output, _detect_output_format(orc_output)
+        )
         _write_output_file(
             output_path,
             output_path.suffix.lstrip(".").lower(),
@@ -1767,7 +1807,9 @@ def _transfer_files_to_targets(
                 relative_subdir = _normalize_subdir(str(file_path.parent.relative_to(base_dir)))
             except ValueError:
                 relative_subdir = ""
-        combined_subdir = _normalize_subdir("/".join(filter(None, [effective_subdir, relative_subdir])))
+        combined_subdir = _normalize_subdir(
+            "/".join(filter(None, [effective_subdir, relative_subdir]))
+        )
         for target in targets:
             unc_path = target.get("unc_path") or ""
             target_name = target.get("name") or target.get("id") or "resource"
@@ -1788,7 +1830,9 @@ def _transfer_files_to_targets(
                 local_unc_path = _resolve_local_path_from_unc(unc_path)
                 if local_unc_path:
                     cleaned_subdir = str(combined_subdir or "").strip().lstrip("/\\")
-                    target_dir = local_unc_path / cleaned_subdir if cleaned_subdir else local_unc_path
+                    target_dir = (
+                        local_unc_path / cleaned_subdir if cleaned_subdir else local_unc_path
+                    )
                     target_results.append(_copy_file_to_target_dir(file_path, target_dir))
                     continue
                 _log_processing(
@@ -1820,7 +1864,9 @@ def _transfer_files_to_targets(
                 )
                 continue
             target_results.append(_copy_file_to_target_dir(file_path, target_dir))
-        success = bool(target_results) and all(item["status"] == "success" for item in target_results)
+        success = bool(target_results) and all(
+            item["status"] == "success" for item in target_results
+        )
         status_map[str(file_path)] = success
         transfer_entries.append(
             {
@@ -1834,9 +1880,17 @@ def _transfer_files_to_targets(
 
 def _resolve_transfer_base_dir(config: Dict[str, Any], source_kind: str | None) -> Path | None:
     if source_kind == "download":
-        return Path(config.get("download", {}).get("temp_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["temp_dir"]))
+        return Path(
+            config.get("download", {}).get(
+                "temp_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["temp_dir"]
+            )
+        )
     if source_kind == "mail":
-        return Path(config.get("mail", {}).get("temp_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["mail"]["temp_dir"]))
+        return Path(
+            config.get("mail", {}).get(
+                "temp_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["mail"]["temp_dir"]
+            )
+        )
     return None
 
 
@@ -1901,12 +1955,17 @@ def _resolve_source_entry(
 
 def _resolve_archive_dir(config: Dict[str, Any], source_kind: str | None) -> Path | None:
     if source_kind == "download":
-        archive_dir = config.get("download", {}).get("archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["archive_dir"])
+        archive_dir = config.get("download", {}).get(
+            "archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["archive_dir"]
+        )
     elif source_kind == "mail":
-        archive_dir = config.get("mail", {}).get("archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["mail"]["archive_dir"])
+        archive_dir = config.get("mail", {}).get(
+            "archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["mail"]["archive_dir"]
+        )
     else:
         return None
     return Path(archive_dir)
+
 
 def _parse_bool_config(value: Any, default: bool) -> bool:
     if value is None:
@@ -1921,16 +1980,21 @@ def _parse_bool_config(value: Any, default: bool) -> bool:
             return False
     return bool(value)
 
+
 def _is_passive_mode_denied_error(exc: Exception) -> bool:
     message = str(exc).lower()
     return "passive mode denied" in message or "pasv" in message or message.startswith("451 ")
+
 
 def _upload_file_to_ftp(ftp: ftplib.FTP, orc_path: Path, remote_name: str | None = None) -> None:
     target_name = remote_name or orc_path.name
     with orc_path.open("rb") as handle:
         ftp.storbinary(f"STOR {target_name}", handle)
 
-def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, Any]) -> Dict[str, Any]:
+
+def _upload_orc_outputs_to_ftp(
+    orc_outputs: list[Path], ftp_config: Dict[str, Any]
+) -> Dict[str, Any]:
     if not orc_outputs:
         _log_processing("🧩 FTP ОРК: выгрузка пропущена (нет файлов)")
         return {"status": "skipped", "reason": "no_orc_files", "items": []}
@@ -1940,7 +2004,9 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
         return {"status": "skipped", "reason": "no_host", "items": []}
     host, port, base_dir = _parse_ftp_host(host_raw)
     login = str(ftp_config.get("login") or "").strip() or None
-    password = str(ftp_config.get("password") or "") if ftp_config.get("password") is not None else ""
+    password = (
+        str(ftp_config.get("password") or "") if ftp_config.get("password") is not None else ""
+    )
     passive = _parse_bool_config(ftp_config.get("passive"), True)
     results: list[Dict[str, Any]] = []
     try:
@@ -1959,13 +2025,17 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
                     return {"status": "error", "error": str(exc), "items": results}
             for orc_path in orc_outputs:
                 if not orc_path.exists():
-                    results.append({"file": str(orc_path), "status": "error", "error": "file_not_found"})
+                    results.append(
+                        {"file": str(orc_path), "status": "error", "error": "file_not_found"}
+                    )
                     continue
                 remote_name = "iek.csv" if orc_path.name == "iek_4ork.csv" else orc_path.name
                 try:
                     _upload_file_to_ftp(ftp, orc_path, remote_name)
                     _log_processing("🧩 Выгружен ОРК файл %s на FTP %s", remote_name, host)
-                    results.append({"file": str(orc_path), "status": "success", "remote_name": remote_name})
+                    results.append(
+                        {"file": str(orc_path), "status": "success", "remote_name": remote_name}
+                    )
                 except Exception as exc:
                     if passive and _is_passive_mode_denied_error(exc):
                         _log_processing(
@@ -1981,13 +2051,25 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
                                 remote_name,
                                 host,
                             )
-                            results.append({"file": str(orc_path), "status": "success", "remote_name": remote_name})
+                            results.append(
+                                {
+                                    "file": str(orc_path),
+                                    "status": "success",
+                                    "remote_name": remote_name,
+                                }
+                            )
                         except Exception as retry_exc:
-                            _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", remote_name, retry_exc)
-                            results.append({"file": str(orc_path), "status": "error", "error": str(retry_exc)})
+                            _log_processing(
+                                "🧩 Ошибка выгрузки ОРК %s по FTP: %s", remote_name, retry_exc
+                            )
+                            results.append(
+                                {"file": str(orc_path), "status": "error", "error": str(retry_exc)}
+                            )
                     else:
                         _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", remote_name, exc)
-                        results.append({"file": str(orc_path), "status": "error", "error": str(exc)})
+                        results.append(
+                            {"file": str(orc_path), "status": "error", "error": str(exc)}
+                        )
     except Exception as exc:
         _log_processing("🧩 Ошибка подключения к FTP ОРК: %s", exc)
         return {"status": "error", "error": str(exc), "items": results}
@@ -2223,7 +2305,9 @@ def _run_processing_rule(
     source_name: str | None = None,
 ) -> Dict[str, Any]:
     if not _normalize_requires_processing(rule.get("requires_processing", True)):
-        _logger.info("🧩 Обработка не требуется для %s (%s)", file_path, rule.get("name") or rule.get("id"))
+        _logger.info(
+            "🧩 Обработка не требуется для %s (%s)", file_path, rule.get("name") or rule.get("id")
+        )
         return {"status": "skipped", "reason": "processing_disabled", "rule_id": rule.get("id")}
 
     table = _read_supplier_table(file_path)
@@ -2322,7 +2406,9 @@ def _read_xls_table(file_path: Path) -> list[list[str]]:
     sheet = workbook.sheet_by_index(0)
     rows: list[list[str]] = []
     for row_index in range(sheet.nrows):
-        rows.append([_normalize_cell(sheet.cell_value(row_index, col)) for col in range(sheet.ncols)])
+        rows.append(
+            [_normalize_cell(sheet.cell_value(row_index, col)) for col in range(sheet.ncols)]
+        )
     return rows
 
 
@@ -2375,8 +2461,10 @@ def _process_variant(
         use_article_filter = bool(article_filter)
     use_article_filter_columns = list(variant.get("use_article_filter_columns", []))
     if len(use_article_filter_columns) < len(data_columns):
-        use_article_filter_columns.extend([True] * (len(data_columns) - len(use_article_filter_columns)))
-    use_article_filter_columns = use_article_filter_columns[:len(data_columns)]
+        use_article_filter_columns.extend(
+            [True] * (len(data_columns) - len(use_article_filter_columns))
+        )
+    use_article_filter_columns = use_article_filter_columns[: len(data_columns)]
     article_prefix = _normalize_spacing_tokens(variant.get("article_prefix") or "")
     article_postfix = variant.get("article_postfix") or ""
     article_transform = variant.get("article_transform") or {}
@@ -2423,7 +2511,7 @@ def _process_variant(
         except re.error as exc:
             return {"status": "error", "error": f"invalid_article_transform: {exc}"}
 
-    rows = table[data_row - 1:] if data_row > 1 else table
+    rows = table[data_row - 1 :] if data_row > 1 else table
     outputs: list[Dict[str, Any]] = []
     orc_output_written = False
     for idx, (column_index, output_name) in enumerate(zip(data_columns, output_names)):
@@ -2469,7 +2557,11 @@ def _process_variant(
             article_trimmed = article_transformed.strip()
             if not article_trimmed:
                 continue
-            if compiled_filter and use_filter_for_column and not compiled_filter.search(article_trimmed):
+            if (
+                compiled_filter
+                and use_filter_for_column
+                and not compiled_filter.search(article_trimmed)
+            ):
                 continue
             if compiled_extra_filter:
                 extra_value = _get_cell(row, extra_filter_col, preserve_whitespace=True).strip()
@@ -2479,7 +2571,9 @@ def _process_variant(
             quant_value = _parse_quantity(quant_raw)
             if quant_value is None:
                 continue
-            article_value = _apply_article_postfix(f"{article_prefix}{article_transformed}", article_postfix)
+            article_value = _apply_article_postfix(
+                f"{article_prefix}{article_transformed}", article_postfix
+            )
             items.append([article_value, quant_value])
             if orc_active:
                 orc_prefix = _normalize_spacing_tokens(orc_config.get("prefix", ""))
@@ -2490,7 +2584,9 @@ def _process_variant(
                 if orc_quant_value is None:
                     continue
                 date_text = now.strftime(processing.get("date_format", "%Y-%m-%d %H:%M"))
-                orc_items.append([f"{orc_prefix}{article_transformed}", stor, orc_quant_value, date_text])
+                orc_items.append(
+                    [f"{orc_prefix}{article_transformed}", stor, orc_quant_value, date_text]
+                )
 
         output_path = _resolve_output_path(file_path.parent, rendered_output_name, output_format)
         output_path = _write_output_file(output_path, output_format, ["Art.", "Quant."], items)
@@ -2628,7 +2724,7 @@ def _match_template_filename(template: str, filename: str) -> Dict[str, str]:
     pattern_parts = []
     last_index = 0
     for match in re.finditer(placeholder_pattern, template):
-        pattern_parts.append(re.escape(template[last_index:match.start()]))
+        pattern_parts.append(re.escape(template[last_index : match.start()]))
         pattern_parts.append(_group_for_placeholder(match))
         last_index = match.end()
     pattern_parts.append(re.escape(template[last_index:]))
@@ -2695,7 +2791,9 @@ def _render_output_name_template(
 ) -> str:
     if not template:
         return template
-    values = _resolve_output_name_values(template, file_path, input_index, input_template, extra_values)
+    values = _resolve_output_name_values(
+        template, file_path, input_index, input_template, extra_values
+    )
     try:
         return template.format(**values)
     except Exception:
@@ -2787,7 +2885,9 @@ def _strip_archive_suffix(path: Path) -> str:
 
 
 def _is_archive_name(name: str) -> bool:
-    return name.endswith((".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".zip", ".tar", ".gz", ".bz2", ".xz"))
+    return name.endswith(
+        (".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".zip", ".tar", ".gz", ".bz2", ".xz")
+    )
 
 
 def unpack_archive_file(archive_path: Path) -> Path | None:

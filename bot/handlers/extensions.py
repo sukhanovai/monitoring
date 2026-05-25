@@ -11,9 +11,10 @@ UI handlers for managing extensions
 UI-обработчики управления расширениями
 """
 
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-from extensions.extension_manager import extension_manager, AVAILABLE_EXTENSIONS
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
 from bot.handlers.base import check_access, deny_access
+from extensions.extension_manager import AVAILABLE_EXTENSIONS, extension_manager
 from lib.logging import debug_log
 
 
@@ -30,8 +31,8 @@ def show_extensions_menu(update, context):
     keyboard = []
 
     for ext_id, status_info in extensions_status.items():
-        enabled = status_info['enabled']
-        ext_info = status_info['info']
+        enabled = status_info["enabled"]
+        ext_info = status_info["info"]
 
         status_icon = "🟢" if enabled else "🔴"
         toggle_text = "🔴 Выключить" if enabled else "🟢 Включить"
@@ -40,36 +41,31 @@ def show_extensions_menu(update, context):
         message += f"   {ext_info['description']}\n"
         message += f"   Статус: {'Включено' if enabled else 'Отключено'}\n\n"
 
-        keyboard.append([
-            InlineKeyboardButton(
-                f"{toggle_text} {ext_info['name']}",
-                callback_data=f'ext_toggle_{ext_id}'
-            )
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{toggle_text} {ext_info['name']}", callback_data=f"ext_toggle_{ext_id}"
+                )
+            ]
+        )
 
-    keyboard.extend([
-        [InlineKeyboardButton("📊 Включить все", callback_data='ext_enable_all')],
-        [InlineKeyboardButton("📋 Отключить все", callback_data='ext_disable_all')],
+    keyboard.extend(
         [
-            InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            [InlineKeyboardButton("📊 Включить все", callback_data="ext_enable_all")],
+            [InlineKeyboardButton("📋 Отключить все", callback_data="ext_disable_all")],
+            [
+                InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
         ]
-    ])
+    )
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if query:
-        query.edit_message_text(
-            text=message,
-            parse_mode='Markdown',
-            reply_markup=reply_markup
-        )
+        query.edit_message_text(text=message, parse_mode="Markdown", reply_markup=reply_markup)
     else:
-        update.message.reply_text(
-            text=message,
-            parse_mode='Markdown',
-            reply_markup=reply_markup
-        )
+        update.message.reply_text(text=message, parse_mode="Markdown", reply_markup=reply_markup)
 
 
 def extensions_callback_handler(update, context):
@@ -78,16 +74,16 @@ def extensions_callback_handler(update, context):
     data = query.data
     query.answer()
 
-    if data == 'ext_enable_all':
+    if data == "ext_enable_all":
         _enable_all_extensions(query)
         show_extensions_menu(update, context)
 
-    elif data == 'ext_disable_all':
+    elif data == "ext_disable_all":
         _disable_all_extensions(query)
         show_extensions_menu(update, context)
 
-    elif data.startswith('ext_toggle_'):
-        extension_id = data.replace('ext_toggle_', '')
+    elif data.startswith("ext_toggle_"):
+        extension_id = data.replace("ext_toggle_", "")
         success, message = extension_manager.toggle_extension(extension_id)
         if success:
             query.answer(message)

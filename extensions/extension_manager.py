@@ -15,6 +15,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
 from config.settings import DATA_DIR
 
 # Путь к каталогу конфигурации расширений
@@ -26,88 +27,88 @@ LEGACY_EXTENSIONS_CONFIG_FILE = Path(DATA_DIR) / "extensions_config.json"
 
 # Список всех доступных расширений
 AVAILABLE_EXTENSIONS = {
-    'backup_monitor': {
-        'name': '📊 Мониторинг бэкапов Proxmox',
-        'description': 'Отслеживание статуса бэкапов Proxmox из почтовых уведомлений',
-        'commands': ['/backup', '/backup_search', '/backup_help'],
-        'handlers': ['backup_'],
-        'enabled_by_default': True,
-        'package': 'extensions.backup_monitor'
+    "backup_monitor": {
+        "name": "📊 Мониторинг бэкапов Proxmox",
+        "description": "Отслеживание статуса бэкапов Proxmox из почтовых уведомлений",
+        "commands": ["/backup", "/backup_search", "/backup_help"],
+        "handlers": ["backup_"],
+        "enabled_by_default": True,
+        "package": "extensions.backup_monitor",
     },
-    'database_backup_monitor': {
-        'name': '🗃️ Мониторинг бэкапов БД',
-        'description': 'Отслеживание статуса бэкапов баз данных',
-        'commands': ['/db_backups'],
-        'handlers': ['db_backups_'],
-        'enabled_by_default': True,
-        'package': 'extensions.server_checks'
+    "database_backup_monitor": {
+        "name": "🗃️ Мониторинг бэкапов БД",
+        "description": "Отслеживание статуса бэкапов баз данных",
+        "commands": ["/db_backups"],
+        "handlers": ["db_backups_"],
+        "enabled_by_default": True,
+        "package": "extensions.server_checks",
     },
-    'zfs_monitor': {
-        'name': '🧊 Мониторинг ZFS',
-        'description': 'Отслеживание статуса ZFS массивов по почтовым уведомлениям',
-        'commands': [],
-        'handlers': [],
-        'enabled_by_default': True
+    "zfs_monitor": {
+        "name": "🧊 Мониторинг ZFS",
+        "description": "Отслеживание статуса ZFS массивов по почтовым уведомлениям",
+        "commands": [],
+        "handlers": [],
+        "enabled_by_default": True,
     },
-
-    'snapshot_transfer_monitor': {
-        'name': '📸 Передачи ZFS-снэпшотов',
-        'description': 'Отслеживание STARTED/SUCCESS/SKIPPED/ERROR/BUSY для отправки снэпшотов',
-        'commands': [],
-        'handlers': [],
-        'enabled_by_default': True
+    "snapshot_transfer_monitor": {
+        "name": "📸 Передачи ZFS-снэпшотов",
+        "description": "Отслеживание STARTED/SUCCESS/SKIPPED/ERROR/BUSY для отправки снэпшотов",
+        "commands": [],
+        "handlers": [],
+        "enabled_by_default": True,
     },
-    'zfs_pool_free_space_monitor': {
-        'name': '💽 Свободное место ZFS пулов',
-        'description': 'Мониторинг свободного места ZFS-пулов по SSH',
-        'commands': [],
-        'handlers': [],
-        'enabled_by_default': True
+    "zfs_pool_free_space_monitor": {
+        "name": "💽 Свободное место ZFS пулов",
+        "description": "Мониторинг свободного места ZFS-пулов по SSH",
+        "commands": [],
+        "handlers": [],
+        "enabled_by_default": True,
     },
-    'mail_backup_monitor': {
-        'name': '📬 Мониторинг бэкапов почтового сервера',
-        'description': 'Отслеживание результата бэкапов Zimbra по почтовым уведомлениям',
-        'commands': [],
-        'handlers': [],
-        'enabled_by_default': True
+    "mail_backup_monitor": {
+        "name": "📬 Мониторинг бэкапов почтового сервера",
+        "description": "Отслеживание результата бэкапов Zimbra по почтовым уведомлениям",
+        "commands": [],
+        "handlers": [],
+        "enabled_by_default": True,
     },
-    'stock_load_monitor': {
-        'name': '📦 Мониторинг загрузки остатков 1С',
-        'description': 'Разбор логов загрузки остатков товаров из почтовых уведомлений',
-        'commands': [],
-        'handlers': [],
-        'enabled_by_default': True
+    "stock_load_monitor": {
+        "name": "📦 Мониторинг загрузки остатков 1С",
+        "description": "Разбор логов загрузки остатков товаров из почтовых уведомлений",
+        "commands": [],
+        "handlers": [],
+        "enabled_by_default": True,
     },
-    'supplier_stock_files': {
-        'name': '📦 Остатки поставщиков',
-        'description': 'Получение файлов остатков поставщиков и формирование отчетов',
-        'commands': [],
-        'handlers': [],
-        'enabled_by_default': True
+    "supplier_stock_files": {
+        "name": "📦 Остатки поставщиков",
+        "description": "Получение файлов остатков поставщиков и формирование отчетов",
+        "commands": [],
+        "handlers": [],
+        "enabled_by_default": True,
     },
-    'resource_monitor': {
-        'name': '💻 Мониторинг ресурсов',
-        'description': 'Проверка загрузки CPU, RAM и дискового пространства',
-        'commands': ['check_resources', 'check_cpu', 'check_ram', 'check_disk'],
-        'handlers': ['check_'],
-        'enabled_by_default': True,
-        'package': 'extensions.web_interface'
+    "resource_monitor": {
+        "name": "💻 Мониторинг ресурсов",
+        "description": "Проверка загрузки CPU, RAM и дискового пространства",
+        "commands": ["check_resources", "check_cpu", "check_ram", "check_disk"],
+        "handlers": ["check_"],
+        "enabled_by_default": True,
+        "package": "extensions.web_interface",
     },
-    'web_interface': {
-        'name': '🌐 Веб-интерфейс',
-        'description': 'Веб-панель управления по адресу http://192.168.20.2:5000',
-        'commands': [],
-        'handlers': [],
-        'enabled_by_default': True
+    "web_interface": {
+        "name": "🌐 Веб-интерфейс",
+        "description": "Веб-панель управления по адресу http://192.168.20.2:5000",
+        "commands": [],
+        "handlers": [],
+        "enabled_by_default": True,
     },
-    'email_processor': {
-        'name': '📧 Обработка почты',
-        'description': 'Автоматическая обработка писем с отчетами о бэкапах',
-        'commands': [],
-        'handlers': [],
-        'enabled_by_default': True
-    }
+    "email_processor": {
+        "name": "📧 Обработка почты",
+        "description": "Автоматическая обработка писем с отчетами о бэкапах",
+        "commands": [],
+        "handlers": [],
+        "enabled_by_default": True,
+    },
 }
+
 
 class ExtensionManager:
     def __init__(self):
@@ -123,12 +124,12 @@ class ExtensionManager:
         """Формирует конфигурацию по умолчанию для всех доступных расширений"""
         return {
             ext_id: {
-                'enabled': ext_info.get('enabled_by_default', False),
-                'last_modified': datetime.now().isoformat()
+                "enabled": ext_info.get("enabled_by_default", False),
+                "last_modified": datetime.now().isoformat(),
             }
             for ext_id, ext_info in AVAILABLE_EXTENSIONS.items()
         }
-    
+
     def load_config(self) -> Dict[str, Dict[str, Any]]:
         """Загружает конфигурацию расширений из файла"""
         self._ensure_config_dir()
@@ -152,8 +153,8 @@ class ExtensionManager:
                 for ext_id, ext_info in AVAILABLE_EXTENSIONS.items():
                     if ext_id not in config:
                         config[ext_id] = {
-                            'enabled': ext_info.get('enabled_by_default', False),
-                            'last_modified': datetime.now().isoformat()
+                            "enabled": ext_info.get("enabled_by_default", False),
+                            "last_modified": datetime.now().isoformat(),
                         }
                         changed = True
 
@@ -169,13 +170,13 @@ class ExtensionManager:
         except Exception as e:
             print(f"❌ Ошибка загрузки конфигурации расширений: {e}")
             return {}
-    
+
     def save_config(self, config: Optional[Dict[str, Dict[str, Any]]] = None) -> bool:
         """Сохраняет конфигурацию расширений в файл"""
         try:
             if config is None:
                 config = self.extensions_config
-            
+
             self._ensure_config_dir()
             self.config_file.write_text(
                 json.dumps(config, ensure_ascii=False, indent=2),
@@ -185,14 +186,14 @@ class ExtensionManager:
         except Exception as e:
             print(f"❌ Ошибка сохранения конфигурации расширений: {e}")
             return False
-    
+
     def get_extension_config_path(self, extension_id: str) -> Path:
         """Возвращает путь к файлу конфига конкретного расширения"""
         return Path(self.config_dir) / f"{extension_id}.json"
 
     def load_extension_config(self, extension_id: str) -> Dict[str, Any]:
         """Загружает конфиг конкретного расширения из его файла"""
-        default_config = AVAILABLE_EXTENSIONS.get(extension_id, {}).get('default_config', {})
+        default_config = AVAILABLE_EXTENSIONS.get(extension_id, {}).get("default_config", {})
         path = self.get_extension_config_path(extension_id)
 
         try:
@@ -216,68 +217,68 @@ class ExtensionManager:
             return True, f"✅ Конфиг {extension_id} сохранен"
         except Exception as e:
             return False, f"❌ Ошибка сохранения конфига {extension_id}: {e}"
-    
+
     def is_extension_enabled(self, extension_id: str) -> bool:
         """Проверяет, включено ли расширение"""
         if extension_id not in self.extensions_config:
             # Если расширения нет в конфиге, используем значение по умолчанию
-            return AVAILABLE_EXTENSIONS.get(extension_id, {}).get('enabled_by_default', False)
-        
-        return self.extensions_config[extension_id].get('enabled', False)
-    
+            return AVAILABLE_EXTENSIONS.get(extension_id, {}).get("enabled_by_default", False)
+
+        return self.extensions_config[extension_id].get("enabled", False)
+
     def enable_extension(self, extension_id: str) -> Tuple[bool, str]:
         """Включает расширение"""
         if extension_id not in AVAILABLE_EXTENSIONS:
             return False, f"❌ Расширение '{extension_id}' не найдено"
-        
+
         if extension_id not in self.extensions_config:
             self.extensions_config[extension_id] = {}
-        
-        self.extensions_config[extension_id]['enabled'] = True
-        self.extensions_config[extension_id]['last_modified'] = datetime.now().isoformat()
-        
+
+        self.extensions_config[extension_id]["enabled"] = True
+        self.extensions_config[extension_id]["last_modified"] = datetime.now().isoformat()
+
         if self.save_config():
             return True, f"✅ Расширение '{AVAILABLE_EXTENSIONS[extension_id]['name']}' включено"
         else:
-            return False, f"❌ Ошибка сохранения конфигурации"
-    
+            return False, "❌ Ошибка сохранения конфигурации"
+
     def disable_extension(self, extension_id: str) -> Tuple[bool, str]:
         """Отключает расширение"""
         if extension_id not in AVAILABLE_EXTENSIONS:
             return False, f"❌ Расширение '{extension_id}' не найдено"
-        
+
         if extension_id not in self.extensions_config:
             self.extensions_config[extension_id] = {}
-        
-        self.extensions_config[extension_id]['enabled'] = False
-        self.extensions_config[extension_id]['last_modified'] = datetime.now().isoformat()
-        
+
+        self.extensions_config[extension_id]["enabled"] = False
+        self.extensions_config[extension_id]["last_modified"] = datetime.now().isoformat()
+
         if self.save_config():
             return True, f"✅ Расширение '{AVAILABLE_EXTENSIONS[extension_id]['name']}' отключено"
         else:
-            return False, f"❌ Ошибка сохранения конфигурации"
-    
+            return False, "❌ Ошибка сохранения конфигурации"
+
     def toggle_extension(self, extension_id: str) -> Tuple[bool, str]:
         """Переключает состояние расширения"""
         if self.is_extension_enabled(extension_id):
             return self.disable_extension(extension_id)
         else:
             return self.enable_extension(extension_id)
-    
+
     def get_extensions_status(self) -> Dict[str, Dict[str, Any]]:
         """Возвращает статус всех расширений"""
         status = {}
         for ext_id in AVAILABLE_EXTENSIONS:
             status[ext_id] = {
-                'enabled': self.is_extension_enabled(ext_id),
-                'info': AVAILABLE_EXTENSIONS[ext_id]
+                "enabled": self.is_extension_enabled(ext_id),
+                "info": AVAILABLE_EXTENSIONS[ext_id],
             }
         return status
-    
+
     def get_enabled_extensions(self) -> List[str]:
         """Возвращает список включенных расширений"""
         return [ext_id for ext_id in AVAILABLE_EXTENSIONS if self.is_extension_enabled(ext_id)]
-    
+
     def get_disabled_extensions(self) -> List[str]:
         """Возвращает список отключенных расширений"""
         return [ext_id for ext_id in AVAILABLE_EXTENSIONS if not self.is_extension_enabled(ext_id)]
@@ -285,14 +286,14 @@ class ExtensionManager:
     def is_command_available(self, command: str) -> bool:
         """Проверяет, доступна ли команда с учетом включенных расширений"""
         for ext_id, ext_info in AVAILABLE_EXTENSIONS.items():
-            if command in ext_info.get('commands', []) and not self.is_extension_enabled(ext_id):
+            if command in ext_info.get("commands", []) and not self.is_extension_enabled(ext_id):
                 return False
         return True
 
     def is_handler_available(self, handler_pattern: str) -> bool:
         """Проверяет, доступен ли обработчик с учетом включенных расширений"""
         for ext_id, ext_info in AVAILABLE_EXTENSIONS.items():
-            for pattern in ext_info.get('handlers', []):
+            for pattern in ext_info.get("handlers", []):
                 if handler_pattern.startswith(pattern) and not self.is_extension_enabled(ext_id):
                     return False
         return True
@@ -303,17 +304,20 @@ class ExtensionManager:
 
     def should_include_backup_data(self):
         """Проверяет, нужно ли включать данные о бэкапах в отчеты"""
-        return self.is_extension_enabled('backup_monitor')
+        return self.is_extension_enabled("backup_monitor")
 
     def is_web_interface_enabled(self):
         """Проверяет, включен ли веб-интерфейс"""
-        return self.is_extension_enabled('web_interface')
+        return self.is_extension_enabled("web_interface")
+
 
 # Глобальный экземпляр менеджера расширений
 extension_manager = ExtensionManager()
 
+
 def get_enabled_extensions() -> List[str]:
     return extension_manager.get_enabled_extensions()
+
 
 def register_enabled_extensions(dispatcher: Any) -> None:
     """
@@ -326,6 +330,7 @@ def register_enabled_extensions(dispatcher: Any) -> None:
         try:
             if ext_id == "backup_monitor":
                 from extensions.backup_monitor.bot_handler import register_handlers as reg
+
                 reg(dispatcher)
 
             # На будущее:
@@ -336,4 +341,5 @@ def register_enabled_extensions(dispatcher: Any) -> None:
         except Exception as e:
             # не валим весь бот из-за одного расширения
             from lib.logging import debug_log
+
             debug_log(f"❌ Ошибка регистрации расширения {ext_id}: {e}")

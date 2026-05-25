@@ -14,7 +14,7 @@ Application settings - default values
 import os
 from datetime import time as dt_time
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 from lib.utils import is_proxmox_server
 
@@ -45,9 +45,7 @@ ANDROID_APK_DOWNLOAD_URL = os.environ.get(
 
 # === БАЗОВЫЕ ПУТИ ===
 _DEFAULT_BASE = Path(__file__).resolve().parents[1]
-BASE_DIR = Path(
-    os.environ.get("MONITORING_BASE_DIR", _DEFAULT_BASE)
-).resolve()
+BASE_DIR = Path(os.environ.get("MONITORING_BASE_DIR", _DEFAULT_BASE)).resolve()
 DATA_DIR = BASE_DIR / "data"
 LOG_DIR = BASE_DIR / "logs"
 
@@ -55,9 +53,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Каталог persistent crypto-store matrix-nio (Olm/Megolm-ключи бота)
-MATRIX_STORE_PATH = os.environ.get(
-    "MATRIX_STORE_PATH", str(DATA_DIR / "matrix_store")
-)
+MATRIX_STORE_PATH = os.environ.get("MATRIX_STORE_PATH", str(DATA_DIR / "matrix_store"))
 
 # === НАСТРОЙКИ ЛОГИРОВАНИЯ ===
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -90,7 +86,7 @@ MAX_FAIL_TIME = 900  # секунды (15 минут)
 
 # === ВРЕМЕННЫЕ НАСТРОЙКИ ===
 SILENT_START = 20  # 20:00
-SILENT_END = 9     # 09:00
+SILENT_END = 9  # 09:00
 DATA_COLLECTION_TIME = dt_time(8, 30)  # 08:30
 
 # === НАСТРОЙКИ РЕСУРСОВ ===
@@ -103,14 +99,14 @@ RESOURCE_THRESHOLDS = {
     "ram_warning": 85,
     "ram_critical": 95,
     "disk_warning": 80,
-    "disk_critical": 90
+    "disk_critical": 90,
 }
 
 RESOURCE_ALERT_THRESHOLDS = {
     "cpu_alert": 99,
     "ram_alert": 99,
     "disk_alert": 95,
-    "check_consecutive": 2
+    "check_consecutive": 2,
 }
 
 # === АУТЕНТИФИКАЦИЯ ===
@@ -120,8 +116,8 @@ SSH_USERNAME = "root"
 # === КОНФИГУРАЦИЯ СЕРВЕРОВ ===
 SERVER_CONFIG = {
     "windows_servers": {},  # заполняется из БД
-    "linux_servers": {},    # заполняется из БД
-    "ping_servers": {}      # заполняется из БД
+    "linux_servers": {},  # заполняется из БД
+    "ping_servers": {},  # заполняется из БД
 }
 
 # Учетные данные Windows по умолчанию
@@ -131,22 +127,13 @@ WINDOWS_CREDENTIALS = [
 
 # Конфигурация Windows серверов
 WINDOWS_SERVER_CREDENTIALS = {
-    "windows_2025": {
-        "servers": ["192.0.2.10", "192.0.2.11"],
-        "credentials": WINDOWS_CREDENTIALS
-    },
-    "domain_servers": {
-        "servers": ["192.0.2.20"],
-        "credentials": WINDOWS_CREDENTIALS
-    },
-    "admin_servers": {
-        "servers": ["192.0.2.30"],
-        "credentials": WINDOWS_CREDENTIALS
-    },
+    "windows_2025": {"servers": ["192.0.2.10", "192.0.2.11"], "credentials": WINDOWS_CREDENTIALS},
+    "domain_servers": {"servers": ["192.0.2.20"], "credentials": WINDOWS_CREDENTIALS},
+    "admin_servers": {"servers": ["192.0.2.30"], "credentials": WINDOWS_CREDENTIALS},
     "standard_windows": {
         "servers": ["192.0.2.40", "192.0.2.41"],
-        "credentials": WINDOWS_CREDENTIALS
-    }
+        "credentials": WINDOWS_CREDENTIALS,
+    },
 }
 
 # Обратная совместимость
@@ -161,12 +148,12 @@ SERVER_TIMEOUTS = {
     "linux": 15,
     "ping": 10,
     "port_check": 5,
-    "ssh": 15
+    "ssh": 15,
 }
 
 # === ВЕБ-ИНТЕРФЕЙС ===
 WEB_PORT = 5000
-WEB_HOST = '0.0.0.0'
+WEB_HOST = "0.0.0.0"
 MONITOR_SERVER_IP = "192.0.2.1"
 
 # === ФАЙЛЫ ДАННЫХ ===
@@ -194,21 +181,15 @@ BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {
         ]
     },
     "stock_load": {
-        "subject": [
-            r"^Логи\s+загрузки\s+файлов\s+в\s+рабочую\s+базу(?:\s+\d{2}:\d{2}:\d{2,3})?$"
-        ],
-        "attachment": [
-            r"LogiLogistam\.txt$"
-        ],
+        "subject": [r"^Логи\s+загрузки\s+файлов\s+в\s+рабочую\s+базу(?:\s+\d{2}:\d{2}:\d{2,3})?$"],
+        "attachment": [r"LogiLogistam\.txt$"],
         "file_entry": [
             (
                 r"^\d{2}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}:\s+"
                 r"(?P<supplier>.+?)\s{2,}(?P<path>(?:[A-Za-z]:\\|\\\\[^\\]+\\).+)$"
             )
         ],
-        "success": [
-            r"\*{3}Остатки загружены!\*{3}\s+строк\s+(?P<rows>\d+)"
-        ],
+        "success": [r"\*{3}Остатки загружены!\*{3}\s+строк\s+(?P<rows>\d+)"],
         "sources": [
             {
                 "name": "Основное предприятие",
@@ -221,81 +202,76 @@ BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {
                 "subject": [
                     r"^Логи\s+загрузки\s+файлов\s+в\s+рабочую\s+базу\s+\(Барнаул\)(?:\s+\d{2}:\d{2}:\d{2,3})?$"
                 ],
-            }
+            },
         ],
-        "ignore": [
-            r"Внимание!\s*Ошибка.*строка файла =\s*\d+"
-        ],
-        "failure": [
-            r"---\s*неудача!!!.*",
-            r"Внимание!\s*Ошибка.*",
-            r"Ошибка.*"
-        ]
-    }
+        "ignore": [r"Внимание!\s*Ошибка.*строка файла =\s*\d+"],
+        "failure": [r"---\s*неудача!!!.*", r"Внимание!\s*Ошибка.*", r"Ошибка.*"],
+    },
 }
 ZFS_SERVERS: Dict[str, Dict[str, Any]] = {}
 BACKUP_STATUS_MAP = {
-    'backup successful': 'success',
-    'successful': 'success',
-    'ok': 'success',
-    'completed': 'success',
-    'finished': 'success',
-    'backup failed': 'failed',
-    'failed': 'failed',
-    'error': 'failed',
-    'errors': 'failed',
-    'warning': 'warning',
-    'partial': 'partial'
+    "backup successful": "success",
+    "successful": "success",
+    "ok": "success",
+    "completed": "success",
+    "finished": "success",
+    "backup failed": "failed",
+    "failed": "failed",
+    "error": "failed",
+    "errors": "failed",
+    "warning": "warning",
+    "partial": "partial",
 }
 
 DATABASE_CONFIG: Dict[str, Any] = {}
 
 # Обратная совместимость
-BACKUP_DATABASE_CONFIG = {
-    "backups_db": BACKUP_DB_FILE,
-    "max_backup_age_days": 90
-}
+BACKUP_DATABASE_CONFIG = {"backups_db": BACKUP_DB_FILE, "max_backup_age_days": 90}
 
 DATABASE_BACKUP_CONFIG = DATABASE_CONFIG
 
 # === УТИЛИТЫ КОНФИГУРАЦИИ ===
 
+
 def get_windows_servers_by_type(server_type: str) -> List[str]:
     """
     Получить серверы Windows по типу
-    
+
     Args:
         server_type: Тип сервера
-        
+
     Returns:
         Список IP адресов
     """
-    return WINDOWS_SERVER_CREDENTIALS.get(server_type, {}).get('servers', [])
+    return WINDOWS_SERVER_CREDENTIALS.get(server_type, {}).get("servers", [])
+
 
 def get_all_windows_servers() -> List[str]:
     """
     Получить все Windows серверы
-    
+
     Returns:
         Список всех IP адресов Windows серверов
     """
     all_servers = []
     for config in WINDOWS_SERVER_CREDENTIALS.values():
-        all_servers.extend(config.get('servers', []))
+        all_servers.extend(config.get("servers", []))
     return list(set(all_servers))
+
 
 def get_server_timeout(server_type: str, default: int = 15) -> int:
     """
     Получить таймаут для типа сервера
-    
+
     Args:
         server_type: Тип сервера
         default: Таймаут по умолчанию
-        
+
     Returns:
         Таймаут в секундах
     """
     return SERVER_TIMEOUTS.get(server_type, default)
+
 
 # Автоматически создаем список IP для обратной совместимости
 def _generate_ip_lists() -> tuple:
@@ -303,17 +279,18 @@ def _generate_ip_lists() -> tuple:
     rdp_servers = []
     ssh_servers = []
     ping_servers = []
-    
+
     for ip, _ in SERVER_CONFIG["windows_servers"].items():
         rdp_servers.append(ip)
-    
+
     for ip, _ in SERVER_CONFIG["linux_servers"].items():
         ssh_servers.append(ip)
-    
+
     for ip, _ in SERVER_CONFIG["ping_servers"].items():
         ping_servers.append(ip)
-    
+
     return rdp_servers, ssh_servers, ping_servers
+
 
 # Глобальные переменные для обратной совместимости
 RDP_SERVERS, SSH_SERVERS, PING_SERVERS = _generate_ip_lists()

@@ -11,11 +11,29 @@ Web interface
 Веб-интерфейс
 """
 
+import ast
+import base64
+import hashlib
+import hmac
+import json
+import os
+import re
+import secrets
+import sqlite3
+import subprocess
+import sys
+import threading
+import time
+import uuid
+from datetime import datetime
+from urllib.parse import quote, unquote
+
 from flask import Flask, jsonify, render_template_string, request
-from config.db_settings import WEB_PORT, WEB_HOST
+
+from config.db_settings import WEB_HOST, WEB_PORT
 from config.settings import STATS_FILE
 from extensions.extension_manager import extension_manager
-from extensions.server_checks import initialize_servers, check_server_availability
+from extensions.server_checks import check_server_availability, initialize_servers
 from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
     build_supplier_stock_source_stats,
@@ -28,22 +46,6 @@ from extensions.supplier_stock_files import (
     summarize_supplier_stock_reports,
     summarize_supplier_stock_sources,
 )
-import threading
-from datetime import datetime
-import json
-import ast
-import re
-import os
-import sqlite3
-import hmac
-import hashlib
-import base64
-import secrets
-import subprocess
-import sys
-import time
-import uuid
-from urllib.parse import quote, unquote
 
 app = Flask(__name__)
 
@@ -1076,11 +1078,12 @@ HTML_TEMPLATE = """
 </html>
 """
 
+
 def get_resource_class(value, resource_type):
     """Определяет класс для окрашивания ресурсов"""
     if not value or value == 0:
         return "normal"
-    
+
     if resource_type == "cpu":
         if value >= 90:
             return "critical"
@@ -1104,6 +1107,7 @@ def get_resource_class(value, resource_type):
             return "normal"
     return "normal"
 
+
 def get_monitoring_stats():
     """Получает статистику мониторинга"""
     try:
@@ -1111,37 +1115,42 @@ def get_monitoring_stats():
         stats_data = {}
         if STATS_FILE.exists():
             stats_data = json.loads(STATS_FILE.read_text(encoding="utf-8"))
-        
+
         # Получаем текущий статус серверов
-        from core.monitor_core import get_current_server_status, monitoring_active, last_check_time
-        from core.monitor_core import is_silent_time, resource_history
+        from core.monitor_core import (
+            get_current_server_status,
+            is_silent_time,
+            last_check_time,
+            monitoring_active,
+            resource_history,
+        )
         from extensions.server_checks import initialize_servers
-        
+
         current_status = get_current_server_status()
         servers_list = initialize_servers()
-        
+
         # Формируем список серверов для отображения
         servers_display = []
-        
+
         for server in servers_list:
             is_up = any(s["ip"] == server["ip"] for s in current_status["ok"])
             is_down = any(s["ip"] == server["ip"] for s in current_status["failed"])
-            
+
             status = "up" if is_up else "down"
             status_display = "✅ Доступен" if is_up else "❌ Недоступен"
-            
+
             # Получаем информацию о ресурсах
             resources_data = None
             os_info = "Unknown"
             if server["ip"] in resource_history and resource_history[server["ip"]]:
                 latest_resources = resource_history[server["ip"]][-1]
                 os_info = latest_resources.get("os", "Unknown")
-                
+
                 # Форматируем ресурсы с классами для окрашивания
                 cpu_value = latest_resources.get("cpu", 0)
                 ram_value = latest_resources.get("ram", 0)
                 disk_value = latest_resources.get("disk", 0)
-                
+
                 resources_data = {
                     "cpu": cpu_value,
                     "ram": ram_value,
@@ -1150,14 +1159,14 @@ def get_monitoring_stats():
                     "uptime": latest_resources.get("uptime", "N/A"),
                     "cpu_class": get_resource_class(cpu_value, "cpu"),
                     "ram_class": get_resource_class(ram_value, "ram"),
-                    "disk_class": get_resource_class(disk_value, "disk")
+                    "disk_class": get_resource_class(disk_value, "disk"),
                 }
-                
+
                 # Проверяем на проблемы с ресурсами для статуса
                 if resources_data and (cpu_value > 80 or ram_value > 85 or disk_value > 80):
                     status = "warning"
                     status_display = "⚠️ Высокая нагрузка"
-            
+
             server_data = {
                 "name": server["name"],
                 "ip": server["ip"],
@@ -1165,34 +1174,41 @@ def get_monitoring_stats():
                 "os": os_info,
                 "status": status,
                 "status_display": status_display,
-                "resources": resources_data
+                "resources": resources_data,
             }
-            
+
             servers_display.append(server_data)
-        
+
         # Сортируем серверы: сначала проблемные, потом доступные
-        servers_display.sort(key=lambda x: (0 if x["status"] == "down" else 1 if x["status"] == "warning" else 2))
-        
+        servers_display.sort(
+            key=lambda x: (0 if x["status"] == "down" else 1 if x["status"] == "warning" else 2)
+        )
+
         # Рассчитываем статистику
         total_servers = len(servers_list)
         servers_up = len(current_status["ok"])
         servers_down = len(current_status["failed"])
-        availability_percentage = round((servers_up / total_servers) * 100, 1) if total_servers > 0 else 0
-        
+        availability_percentage = (
+            round((servers_up / total_servers) * 100, 1) if total_servers > 0 else 0
+        )
+
         # Получаем настройки из конфига
         from config.db_settings import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
+
         resource_check_minutes = RESOURCE_CHECK_INTERVAL // 60
-        
+
         # Считаем проблемы с ресурсами
         resource_alerts_count = 0
         for history in resource_history.values():
             if history:
                 last_resource = history[-1]
-                if (last_resource.get("cpu", 0) >= 90 or 
-                    last_resource.get("ram", 0) >= 95 or 
-                    last_resource.get("disk", 0) >= 90):
+                if (
+                    last_resource.get("cpu", 0) >= 90
+                    or last_resource.get("ram", 0) >= 95
+                    or last_resource.get("disk", 0) >= 90
+                ):
                     resource_alerts_count += 1
-        
+
         stats = {
             "total_servers": total_servers,
             "servers_up": servers_up,
@@ -1202,14 +1218,16 @@ def get_monitoring_stats():
             "check_interval": CHECK_INTERVAL,
             "monitoring_mode": "🟢 Активен" if monitoring_active else "🔴 Приостановлен",
             "silent_mode": "🔇 Включен" if is_silent_time() else "🔊 Выключен",
-            "resource_check_status": "🟢 Работает" if monitoring_active and not is_silent_time() else "⏸️ Приостановлен",
+            "resource_check_status": (
+                "🟢 Работает" if monitoring_active and not is_silent_time() else "⏸️ Приостановлен"
+            ),
             "resource_check_interval": resource_check_minutes,
             "resource_alerts": resource_alerts_count,
-            "uptime": stats_data.get("uptime", "N/A")
+            "uptime": stats_data.get("uptime", "N/A"),
         }
-        
+
         return stats, servers_display
-        
+
     except Exception as e:
         print(f"❌ Ошибка получения статистики: {e}")
         # Возвращаем данные по умолчанию при ошибке
@@ -1225,9 +1243,8 @@ def get_monitoring_stats():
             "resource_check_status": "❌ Ошибка",
             "resource_check_interval": 0,
             "resource_alerts": 0,
-            "uptime": "N/A"
+            "uptime": "N/A",
         }, []
-
 
 
 # --- Minimal mobile BFF auth/session layer (in-memory) ---
@@ -1296,6 +1313,7 @@ def _mobile_token_hash(token: str) -> str:
 
 def _get_mobile_tokens_conn():
     from config.db_settings_app import settings_manager
+
     conn = settings_manager.get_connection()
     conn.row_factory = None
     return conn
@@ -1305,7 +1323,8 @@ def _ensure_mobile_tokens_table():
     conn = _get_mobile_tokens_conn()
     try:
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS mobile_api_tokens (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 token_hash TEXT UNIQUE NOT NULL,
@@ -1319,18 +1338,27 @@ def _ensure_mobile_tokens_table():
                 last_used_at INTEGER,
                 issued_via TEXT DEFAULT 'default_token'
             )
-        ''')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_mobile_api_tokens_subject ON mobile_api_tokens(subject)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_mobile_api_tokens_device_id ON mobile_api_tokens(device_id)')
+        """
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_mobile_api_tokens_subject ON mobile_api_tokens(subject)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_mobile_api_tokens_device_id ON mobile_api_tokens(device_id)"
+        )
         conn.commit()
     finally:
         conn.close()
 
 
-def _issue_persistent_mobile_token(subject: str, device_id: str | None = None, reissue: bool = False):
+def _issue_persistent_mobile_token(
+    subject: str, device_id: str | None = None, reissue: bool = False
+):
     _ensure_mobile_tokens_table()
     now_ts = int(time.time())
-    expires_at = None if _MOBILE_SESSION_TOKEN_TTL_SEC == 0 else now_ts + _MOBILE_SESSION_TOKEN_TTL_SEC
+    expires_at = (
+        None if _MOBILE_SESSION_TOKEN_TTL_SEC == 0 else now_ts + _MOBILE_SESSION_TOKEN_TTL_SEC
+    )
     raw_token = secrets.token_urlsafe(48)
     token_hash = _mobile_token_hash(raw_token)
     token_mask = _mask_token(raw_token)
@@ -1340,19 +1368,19 @@ def _issue_persistent_mobile_token(subject: str, device_id: str | None = None, r
         cursor = conn.cursor()
         if reissue and device_id:
             cursor.execute(
-                '''
+                """
                 UPDATE mobile_api_tokens
                 SET revoked = 1, revoked_at = ?
                 WHERE device_id = ? AND revoked = 0
-                ''',
+                """,
                 (now_ts, device_id),
             )
         cursor.execute(
-            '''
+            """
             INSERT INTO mobile_api_tokens (
                 token_hash, token_mask, subject, device_id, created_at, expires_at, revoked, last_used_at, issued_via
             ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, 'default_token')
-            ''',
+            """,
             (token_hash, token_mask, subject, device_id, now_ts, expires_at, now_ts),
         )
         conn.commit()
@@ -1371,12 +1399,12 @@ def _validate_persistent_mobile_token(token: str):
     try:
         cursor = conn.cursor()
         cursor.execute(
-            '''
+            """
             SELECT id, subject, device_id, expires_at, revoked
             FROM mobile_api_tokens
             WHERE token_hash = ?
             LIMIT 1
-            ''',
+            """,
             (token_hash,),
         )
         row = cursor.fetchone()
@@ -1389,7 +1417,9 @@ def _validate_persistent_mobile_token(token: str):
         if expires_at is not None and int(expires_at) < now_ts:
             return False, "expired"
 
-        cursor.execute('UPDATE mobile_api_tokens SET last_used_at = ? WHERE id = ?', (now_ts, token_id))
+        cursor.execute(
+            "UPDATE mobile_api_tokens SET last_used_at = ? WHERE id = ?", (now_ts, token_id)
+        )
         conn.commit()
         return True, {
             "sub": subject,
@@ -1490,8 +1520,8 @@ def _map_mobile_action_to_legacy(action: str) -> str | None:
         "pause_monitoring": "toggle_monitoring",  # legacy fallback
         "resume_monitoring": "toggle_monitoring",  # legacy fallback
         "send_morning_report": "morning_report",
-        "force_quiet": "toggle_silent",           # legacy fallback
-        "force_loud": "toggle_silent",            # legacy fallback
+        "force_quiet": "toggle_silent",  # legacy fallback
+        "force_loud": "toggle_silent",  # legacy fallback
     }
     return mapping.get(action)
 
@@ -1534,10 +1564,12 @@ def _execute_mobile_control_action(action: str):
         setting_key, setting_title = threshold_meta
         value_raw = raw_value.strip()
         if not value_raw:
-            return False, (
-                f"Для «{setting_title}» передай значение 0-100: "
-                f"`{action_name}|<число>`"
-            ), "failed", None
+            return (
+                False,
+                (f"Для «{setting_title}» передай значение 0-100: " f"`{action_name}|<число>`"),
+                "failed",
+                None,
+            )
 
         try:
             threshold_value = int(value_raw)
@@ -1549,32 +1581,37 @@ def _execute_mobile_control_action(action: str):
 
         settings_manager.set_setting(setting_key, threshold_value, "monitoring")
 
-        cpu_warning = settings_manager.get_setting('CPU_WARNING', 80)
-        cpu_critical = settings_manager.get_setting('CPU_CRITICAL', 90)
-        ram_warning = settings_manager.get_setting('RAM_WARNING', 85)
-        ram_critical = settings_manager.get_setting('RAM_CRITICAL', 95)
-        disk_warning = settings_manager.get_setting('DISK_WARNING', 80)
-        disk_critical = settings_manager.get_setting('DISK_CRITICAL', 90)
+        cpu_warning = settings_manager.get_setting("CPU_WARNING", 80)
+        cpu_critical = settings_manager.get_setting("CPU_CRITICAL", 90)
+        ram_warning = settings_manager.get_setting("RAM_WARNING", 85)
+        ram_critical = settings_manager.get_setting("RAM_CRITICAL", 95)
+        disk_warning = settings_manager.get_setting("DISK_WARNING", 80)
+        disk_critical = settings_manager.get_setting("DISK_CRITICAL", 90)
 
-        return True, (
-            f"✅ {setting_title}: {threshold_value}%\n\n"
-            "Текущие пороги:\n"
-            f"• CPU предупреждение: {cpu_warning}%\n"
-            f"• CPU критический: {cpu_critical}%\n"
-            f"• RAM предупреждение: {ram_warning}%\n"
-            f"• RAM критический: {ram_critical}%\n"
-            f"• Disk предупреждение: {disk_warning}%\n"
-            f"• Disk критический: {disk_critical}%"
-        ), "accepted", [
-            {"label": "💻 CPU предупреждение", "action": "set_cpu_warning"},
-            {"label": "💻 CPU критический", "action": "set_cpu_critical"},
-            {"label": "🧠 RAM предупреждение", "action": "set_ram_warning"},
-            {"label": "🧠 RAM критический", "action": "set_ram_critical"},
-            {"label": "💾 Disk предупреждение", "action": "set_disk_warning"},
-            {"label": "💾 Disk критический", "action": "set_disk_critical"},
-            {"label": "↩️ Назад", "action": "settings_extensions_back_local"},
-            {"label": "✖️ Закрыть", "action": "settings_extensions_close_local"},
-        ]
+        return (
+            True,
+            (
+                f"✅ {setting_title}: {threshold_value}%\n\n"
+                "Текущие пороги:\n"
+                f"• CPU предупреждение: {cpu_warning}%\n"
+                f"• CPU критический: {cpu_critical}%\n"
+                f"• RAM предупреждение: {ram_warning}%\n"
+                f"• RAM критический: {ram_critical}%\n"
+                f"• Disk предупреждение: {disk_warning}%\n"
+                f"• Disk критический: {disk_critical}%"
+            ),
+            "accepted",
+            [
+                {"label": "💻 CPU предупреждение", "action": "set_cpu_warning"},
+                {"label": "💻 CPU критический", "action": "set_cpu_critical"},
+                {"label": "🧠 RAM предупреждение", "action": "set_ram_warning"},
+                {"label": "🧠 RAM критический", "action": "set_ram_critical"},
+                {"label": "💾 Disk предупреждение", "action": "set_disk_warning"},
+                {"label": "💾 Disk критический", "action": "set_disk_critical"},
+                {"label": "↩️ Назад", "action": "settings_extensions_back_local"},
+                {"label": "✖️ Закрыть", "action": "settings_extensions_close_local"},
+            ],
+        )
 
     if (
         action in menu_actions
@@ -1594,19 +1631,31 @@ def _execute_mobile_control_action(action: str):
             "supplier_stock_reports": ("supplier_stock_files", "📦 Остатки поставщиков отключены"),
             "zfs": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
             "zfs_menu": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
-            "zfs_pool_free_space_menu": ("zfs_pool_free_space_monitor", "💽 Мониторинг свободного места ZFS-пулов отключён"),
-            "snapshot_transfer_menu": ("snapshot_transfer_monitor", "📸 Мониторинг передач ZFS-снэпшотов отключён"),
+            "zfs_pool_free_space_menu": (
+                "zfs_pool_free_space_monitor",
+                "💽 Мониторинг свободного места ZFS-пулов отключён",
+            ),
+            "snapshot_transfer_menu": (
+                "snapshot_transfer_monitor",
+                "📸 Мониторинг передач ZFS-снэпшотов отключён",
+            ),
         }
 
         extension_requirement = extension_requirements.get(action)
         if extension_requirement is None and action.startswith("zfsp_"):
-            extension_requirement = ("zfs_pool_free_space_monitor", "💽 Мониторинг свободного места ZFS-пулов отключён")
+            extension_requirement = (
+                "zfs_pool_free_space_monitor",
+                "💽 Мониторинг свободного места ZFS-пулов отключён",
+            )
         if extension_requirement is None and action.startswith("db_detail_"):
             extension_requirement = ("database_backup_monitor", "🗃️ Мониторинг бэкапов БД отключён")
         if extension_requirement is None and action.startswith("settings_db_toggle_monitor_"):
             extension_requirement = ("database_backup_monitor", "🗃️ Мониторинг бэкапов БД отключён")
         if extension_requirement is None and action.startswith("snapshot_transfer_host_"):
-            extension_requirement = ("snapshot_transfer_monitor", "📸 Мониторинг передач ZFS-снэпшотов отключён")
+            extension_requirement = (
+                "snapshot_transfer_monitor",
+                "📸 Мониторинг передач ZFS-снэпшотов отключён",
+            )
         if extension_requirement is not None:
             extension_id, disabled_message = extension_requirement
             if not extension_manager.is_extension_enabled(extension_id):
@@ -1614,6 +1663,7 @@ def _execute_mobile_control_action(action: str):
 
         try:
             from extensions.backup_monitor.bot_handler import BackupMonitorBot
+
             backup_bot = BackupMonitorBot()
         except Exception as exc:
             return False, f"Не удалось открыть раздел {action}: {exc}", "failed", None
@@ -1625,14 +1675,22 @@ def _execute_mobile_control_action(action: str):
             action = "zfs_menu"
 
         if action == "zfs_pool_free_space_menu":
-            from extensions.zfs_pool_free_space import build_status_lines, collect_zfs_pool_free_space
+            from extensions.zfs_pool_free_space import (
+                build_status_lines,
+                collect_zfs_pool_free_space,
+            )
 
             results, errors = collect_zfs_pool_free_space()
             status_message = "\n".join(build_status_lines(results, errors))
-            return True, status_message, "accepted", [
-                {"label": "🔄 Обновить", "action": "zfs_pool_free_space_menu"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ]
+            return (
+                True,
+                status_message,
+                "accepted",
+                [
+                    {"label": "🔄 Обновить", "action": "zfs_pool_free_space_menu"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            )
 
         if action == "snapshot_transfer_menu":
             from config.settings import BACKUP_DB_FILE
@@ -1716,14 +1774,14 @@ def _execute_mobile_control_action(action: str):
                         f"{host_state} {host_name} · старт {start_time} · "
                         f"{transfer_state} {latest_status} ({received_at})"
                     )
-                    menu_options.append({
-                        "label": f"{transfer_state} {host_name}",
-                        "action": f"snapshot_transfer_host_{host_name}",
-                    })
+                    menu_options.append(
+                        {
+                            "label": f"{transfer_state} {host_name}",
+                            "action": f"snapshot_transfer_host_{host_name}",
+                        }
+                    )
                 lines.append("")
-                lines.append(
-                    f"Всего хостов: {total_hosts} · 🟢 {ok_hosts} · 🔴 {problem_hosts}"
-                )
+                lines.append(f"Всего хостов: {total_hosts} · 🟢 {ok_hosts} · 🔴 {problem_hosts}")
 
             if recent_rows:
                 lines.append("")
@@ -1733,10 +1791,12 @@ def _execute_mobile_control_action(action: str):
                         f"{_status_icon(status_val)} {host_name} · {status_val} ({received_at})"
                     )
 
-            menu_options.extend([
-                {"label": "🔄 Обновить", "action": "snapshot_transfer_menu"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ])
+            menu_options.extend(
+                [
+                    {"label": "🔄 Обновить", "action": "snapshot_transfer_menu"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ]
+            )
             return True, "\n".join(lines), "accepted", menu_options
 
         if action.startswith("snapshot_transfer_host_"):
@@ -1784,9 +1844,7 @@ def _execute_mobile_control_action(action: str):
             else:
                 ok_count = sum(1 for s, _, _ in records if s in {"SUCCESS", "SKIPPED"})
                 err_count = sum(1 for s, _, _ in records if s == "ERROR")
-                lines.append(
-                    f"Показано: {len(records)} · 🟢 {ok_count} · 🔴 {err_count}"
-                )
+                lines.append(f"Показано: {len(records)} · 🟢 {ok_count} · 🔴 {err_count}")
                 lines.append("")
                 for status_val, received_at, subject in records:
                     normalized = (status_val or "").upper()
@@ -1803,10 +1861,15 @@ def _execute_mobile_control_action(action: str):
                         line += f"\n   ↳ {subject}"
                     lines.append(line)
 
-            return True, "\n".join(lines), "accepted", [
-                {"label": "↩️ Назад", "action": "snapshot_transfer_menu"},
-                {"label": "🔄 Обновить", "action": f"snapshot_transfer_host_{host_name}"},
-            ]
+            return (
+                True,
+                "\n".join(lines),
+                "accepted",
+                [
+                    {"label": "↩️ Назад", "action": "snapshot_transfer_menu"},
+                    {"label": "🔄 Обновить", "action": f"snapshot_transfer_host_{host_name}"},
+                ],
+            )
 
         if action == "zfsp_hosts_list" or action.startswith("zfsp_"):
             from extensions.zfs_pool_free_space import get_hosts_config, save_hosts_config
@@ -1836,11 +1899,23 @@ def _execute_mobile_control_action(action: str):
                     toggle_text = "⛔️ Отключить" if enabled else "✅ Включить"
                     menu_options.extend(
                         [
-                            {"label": f"✏️ Имя: {host_name}", "action": f"zfsp_edit_name_{host_name}"},
+                            {
+                                "label": f"✏️ Имя: {host_name}",
+                                "action": f"zfsp_edit_name_{host_name}",
+                            },
                             {"label": f"🌐 IP: {host_name}", "action": f"zfsp_edit_ip_{host_name}"},
-                            {"label": f"🎚 Порог: {host_name}", "action": f"zfsp_edit_threshold_{host_name}"},
-                            {"label": f"🗑 Удалить: {host_name}", "action": f"zfsp_delete_{host_name}"},
-                            {"label": f"{toggle_text}: {host_name}", "action": f"zfsp_toggle_{host_name}"},
+                            {
+                                "label": f"🎚 Порог: {host_name}",
+                                "action": f"zfsp_edit_threshold_{host_name}",
+                            },
+                            {
+                                "label": f"🗑 Удалить: {host_name}",
+                                "action": f"zfsp_delete_{host_name}",
+                            },
+                            {
+                                "label": f"{toggle_text}: {host_name}",
+                                "action": f"zfsp_toggle_{host_name}",
+                            },
                         ]
                     )
 
@@ -1882,7 +1957,9 @@ def _execute_mobile_control_action(action: str):
             if action.startswith("zfsp_add|"):
                 parts = action.split("|", 3)
                 if len(parts) < 4:
-                    return _build_zfsp_hosts_response("❌ Неверный формат. Используй zfsp_add|<name>|<ip>|<threshold>")
+                    return _build_zfsp_hosts_response(
+                        "❌ Неверный формат. Используй zfsp_add|<name>|<ip>|<threshold>"
+                    )
                 _, host_name, host_ip, threshold_raw = parts
                 host_name = unquote(host_name).strip()
                 host_ip = unquote(host_ip).strip()
@@ -1891,7 +1968,9 @@ def _execute_mobile_control_action(action: str):
                 except ValueError:
                     return _build_zfsp_hosts_response("❌ Порог должен быть целым числом 1-95.")
                 if not host_name or not host_ip or threshold < 1 or threshold > 95:
-                    return _build_zfsp_hosts_response("❌ Проверь name/ip/threshold (threshold: 1-95).")
+                    return _build_zfsp_hosts_response(
+                        "❌ Проверь name/ip/threshold (threshold: 1-95)."
+                    )
                 hosts = get_hosts_config()
                 hosts[host_name] = {"ip": host_ip, "threshold": threshold, "enabled": True}
                 save_hosts_config(hosts)
@@ -1916,7 +1995,9 @@ def _execute_mobile_control_action(action: str):
                 host_data = dict(hosts.pop(old_name))
                 hosts[new_name] = host_data
                 save_hosts_config(hosts)
-                return _build_zfsp_hosts_response(f"✅ Имя хоста обновлено: {old_name} → {new_name}")
+                return _build_zfsp_hosts_response(
+                    f"✅ Имя хоста обновлено: {old_name} → {new_name}"
+                )
 
             if action.startswith("zfsp_edit_ip_"):
                 host_and_ip = action.replace("zfsp_edit_ip_", "", 1)
@@ -1960,7 +2041,12 @@ def _execute_mobile_control_action(action: str):
         if action == "backup_hosts":
             hosts = backup_bot.get_all_hosts(include_disabled=True)
             if not hosts:
-                return True, "💾 Бэкапы Proxmox\n\nДанные по хостам пока отсутствуют.", "accepted", None
+                return (
+                    True,
+                    "💾 Бэкапы Proxmox\n\nДанные по хостам пока отсутствуют.",
+                    "accepted",
+                    None,
+                )
             problem_hosts = 0
             disabled_hosts = 0
             menu_options = []
@@ -1983,13 +2069,18 @@ def _execute_mobile_control_action(action: str):
                     }
                 )
             ok_hosts = len(hosts) - problem_hosts
-            return True, (
-                "💾 Бэкапы Proxmox\n\n"
-                f"Всего хостов: {len(hosts)}\n"
-                f"✅ Без проблем: {ok_hosts}\n"
-                f"🚨 Проблемных: {problem_hosts}\n"
-                f"⚪ Отключённых: {disabled_hosts}"
-            ), "accepted", menu_options
+            return (
+                True,
+                (
+                    "💾 Бэкапы Proxmox\n\n"
+                    f"Всего хостов: {len(hosts)}\n"
+                    f"✅ Без проблем: {ok_hosts}\n"
+                    f"🚨 Проблемных: {problem_hosts}\n"
+                    f"⚪ Отключённых: {disabled_hosts}"
+                ),
+                "accepted",
+                menu_options,
+            )
 
         if action.startswith("backup_host_"):
             host_name = action.replace("backup_host_", "", 1).strip()
@@ -2046,14 +2137,18 @@ def _execute_mobile_control_action(action: str):
             menu_options = []
             for backup_type, db_name, status, is_disabled, display_name in db_status_rows:
                 health_prefix = "🚨" if status != "success" else "✅"
-                monitor_status = "⚪ мониторинг отключён" if is_disabled else "🟢 мониторинг включён"
+                monitor_status = (
+                    "⚪ мониторинг отключён" if is_disabled else "🟢 мониторинг включён"
+                )
                 menu_options.append(
                     {
                         "label": f"{health_prefix} {display_name} ({backup_type}) • {monitor_status}",
                         "action": f"db_detail_{backup_type}__{db_name}",
                     }
                 )
-            problem_db_names = [f"{db_name} ({backup_type})" for backup_type, db_name, _ in problem_db_rows]
+            problem_db_names = [
+                f"{db_name} ({backup_type})" for backup_type, db_name, _ in problem_db_rows
+            ]
             preview_limit = 5
             if problem_db_names:
                 preview_names = ", ".join(problem_db_names[:preview_limit])
@@ -2063,15 +2158,20 @@ def _execute_mobile_control_action(action: str):
                     problem_db_line = f"Проблемные базы: {preview_names}"
             else:
                 problem_db_line = "Проблемные базы: нет"
-            return True, (
-                "🗃️ Бэкапы БД\n\n"
-                f"Баз в отчёте: {len(db_status_rows)}\n"
-                f"🚫 Отключено: {sum(1 for _, _, _, is_disabled, _ in db_status_rows if is_disabled)}\n"
-                f"✅ Без проблем: {ok_dbs}\n"
-                f"🚨 Проблемных: {problem_dbs}\n"
-                f"🔎 В мониторинге: {len(enabled_db_rows)}\n"
-                f"{problem_db_line}"
-            ), "accepted", menu_options
+            return (
+                True,
+                (
+                    "🗃️ Бэкапы БД\n\n"
+                    f"Баз в отчёте: {len(db_status_rows)}\n"
+                    f"🚫 Отключено: {sum(1 for _, _, _, is_disabled, _ in db_status_rows if is_disabled)}\n"
+                    f"✅ Без проблем: {ok_dbs}\n"
+                    f"🚨 Проблемных: {problem_dbs}\n"
+                    f"🔎 В мониторинге: {len(enabled_db_rows)}\n"
+                    f"{problem_db_line}"
+                ),
+                "accepted",
+                menu_options,
+            )
 
         if action.startswith("settings_db_toggle_monitor_"):
             raw = action.replace("settings_db_toggle_monitor_", "", 1)
@@ -2081,18 +2181,28 @@ def _execute_mobile_control_action(action: str):
             backup_type = unquote(encoded_backup_type).strip()
             db_name = unquote(encoded_db_name).strip()
             if not backup_type or not db_name:
-                return False, "Не указан тип или имя базы для переключения мониторинга", "failed", None
+                return (
+                    False,
+                    "Не указан тип или имя базы для переключения мониторинга",
+                    "failed",
+                    None,
+                )
 
             from extensions.backup_monitor.backup_handlers import _toggle_database_monitoring
 
             now_enabled = _toggle_database_monitoring(backup_type, db_name)
-            return True, (
-                f"🗃️ {db_name} ({backup_type})\n\n"
-                f"Мониторинг: {'включён' if now_enabled else 'отключён'}."
-            ), "accepted", [
-                {"label": "📋 Обновить список БД", "action": "backup_databases"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ]
+            return (
+                True,
+                (
+                    f"🗃️ {db_name} ({backup_type})\n\n"
+                    f"Мониторинг: {'включён' if now_enabled else 'отключён'}."
+                ),
+                "accepted",
+                [
+                    {"label": "📋 Обновить список БД", "action": "backup_databases"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            )
 
         if action.startswith("db_detail_"):
             payload = action.replace("db_detail_", "", 1)
@@ -2106,7 +2216,12 @@ def _execute_mobile_control_action(action: str):
 
             details = backup_bot.get_database_details(backup_type, db_name)
             if not details:
-                return True, f"🗃️ {db_name} ({backup_type})\n\nДанные по базе отсутствуют.", "accepted", None
+                return (
+                    True,
+                    f"🗃️ {db_name} ({backup_type})\n\nДанные по базе отсутствуют.",
+                    "accepted",
+                    None,
+                )
 
             status = backup_bot.get_database_display_status(backup_type, db_name)
             status_icon = "✅" if status == "success" else "🚨"
@@ -2123,7 +2238,9 @@ def _execute_mobile_control_action(action: str):
                 error_count = row[2] if len(row) > 2 else 0
                 received_at = row[4] if len(row) > 4 else "-"
                 icon = "✅" if backup_status == "success" else "🚨"
-                error_text = f" • errors: {error_count}" if error_count not in (None, "", 0, "0") else ""
+                error_text = (
+                    f" • errors: {error_count}" if error_count not in (None, "", 0, "0") else ""
+                )
                 lines.append(f"{icon} {received_at} • {backup_status} • {task_type}{error_text}")
 
             return True, "\n".join(lines), "accepted", None
@@ -2131,7 +2248,12 @@ def _execute_mobile_control_action(action: str):
         if action == "backup_mail":
             mail_backups = backup_bot.get_mail_backups(hours=72, limit=20)
             if not mail_backups:
-                return True, "📬 Бэкапы почты\n\nДанные по почтовым бэкапам пока отсутствуют.", "accepted", None
+                return (
+                    True,
+                    "📬 Бэкапы почты\n\nДанные по почтовым бэкапам пока отсутствуют.",
+                    "accepted",
+                    None,
+                )
             problem_backups = sum(1 for row in mail_backups if str(row[0]).lower() != "success")
             ok_backups = len(mail_backups) - problem_backups
             lines = [
@@ -2155,8 +2277,10 @@ def _execute_mobile_control_action(action: str):
             )
             return True, "\n".join(lines), "accepted", None
 
-
-        if action == "supplier_stock_reports" or action in {"supplier_stock_reports_download", "supplier_stock_reports_mail"}:
+        if action == "supplier_stock_reports" or action in {
+            "supplier_stock_reports_download",
+            "supplier_stock_reports_mail",
+        }:
             source_kind = "mail" if action.endswith("_mail") else "download"
             reports = get_supplier_stock_reports(limit=None, period_days=1, source_kind=source_kind)
             title = "полученные скачиванием" if source_kind == "download" else "полученные по почте"
@@ -2170,10 +2294,15 @@ def _execute_mobile_control_action(action: str):
             grouped = summarize_supplier_stock_reports(period_days=1).get(source_kind, [])
             if not grouped:
                 lines.append("⚪️ За сутки данных нет.")
-                return True, "\n".join(lines), "accepted", [
-                    {"label": "⬇️ Скачивание", "action": "supplier_stock_reports_download"},
-                    {"label": "📧 Почта", "action": "supplier_stock_reports_mail"},
-                ]
+                return (
+                    True,
+                    "\n".join(lines),
+                    "accepted",
+                    [
+                        {"label": "⬇️ Скачивание", "action": "supplier_stock_reports_download"},
+                        {"label": "📧 Почта", "action": "supplier_stock_reports_mail"},
+                    ],
+                )
 
             lines.append("Кликни источник, чтобы открыть историю за сутки.")
             menu_options = [
@@ -2181,23 +2310,29 @@ def _execute_mobile_control_action(action: str):
                 {"label": "📧 Почта", "action": "supplier_stock_reports_mail"},
             ]
             for item in grouped:
-                source_name = str(item.get("source_name") or item.get("source_id") or "неизвестный источник")
+                source_name = str(
+                    item.get("source_name") or item.get("source_id") or "неизвестный источник"
+                )
                 recv = item.get("receive", {})
                 proc = item.get("processing", {})
                 tran = item.get("transfer", {})
-                lines.extend([
-                    "",
-                    f"• {source_name}",
-                    f"  📥 Загрузка: {recv.get('icon', '⚪️')} {recv.get('label', 'нет данных')}",
-                    f"  🧩 Обработка: {proc.get('icon', '⚪️')} {proc.get('label', 'нет данных')}",
-                    f"  📤 Выгрузка: {tran.get('icon', '⚪️')} {tran.get('label', 'нет данных')}",
-                ])
+                lines.extend(
+                    [
+                        "",
+                        f"• {source_name}",
+                        f"  📥 Загрузка: {recv.get('icon', '⚪️')} {recv.get('label', 'нет данных')}",
+                        f"  🧩 Обработка: {proc.get('icon', '⚪️')} {proc.get('label', 'нет данных')}",
+                        f"  📤 Выгрузка: {tran.get('icon', '⚪️')} {tran.get('label', 'нет данных')}",
+                    ]
+                )
                 source_id = str(item.get("source_id") or "").strip()
                 if source_id:
-                    menu_options.append({
-                        "label": f"📊 {source_name[:24]}",
-                        "action": f"supplier_stock_report_source_day|{source_kind}|{source_id}",
-                    })
+                    menu_options.append(
+                        {
+                            "label": f"📊 {source_name[:24]}",
+                            "action": f"supplier_stock_report_source_day|{source_kind}|{source_id}",
+                        }
+                    )
             return True, "\n".join(lines), "accepted", menu_options
 
         if action.startswith("supplier_stock_report_source_day|"):
@@ -2208,7 +2343,9 @@ def _execute_mobile_control_action(action: str):
             source_id = parts[2].strip()
             if not source_id:
                 return False, "Не указан источник", "failed", None
-            stats = build_supplier_stock_source_stats(source_id=source_id, source_kind=source_kind, period_days=1)
+            stats = build_supplier_stock_source_stats(
+                source_id=source_id, source_kind=source_kind, period_days=1
+            )
             summary = stats.get("summary") or {}
             entries = stats.get("entries") or []
             lines = [
@@ -2236,19 +2373,29 @@ def _execute_mobile_control_action(action: str):
                     )
                     if error:
                         lines.append(f"  ↳ {error}")
-            return True, "\n".join(lines), "accepted", [
-                {"label": "↩️ Назад", "action": f"supplier_stock_reports_{source_kind}"},
-                {"label": "🔄 Обновить", "action": f"supplier_stock_report_source_day|{source_kind}|{source_id}"},
-            ]
+            return (
+                True,
+                "\n".join(lines),
+                "accepted",
+                [
+                    {"label": "↩️ Назад", "action": f"supplier_stock_reports_{source_kind}"},
+                    {
+                        "label": "🔄 Обновить",
+                        "action": f"supplier_stock_report_source_day|{source_kind}|{source_id}",
+                    },
+                ],
+            )
 
         if action == "backup_stock_loads":
             hours = 24
             stock_loads = backup_bot.get_stock_loads(hours=hours)
             if not stock_loads:
-                return True, (
-                    "📦 Загрузка остатков 1С\n\n"
-                    f"❌ Нет данных за последние {hours} часов."
-                ), "accepted", None
+                return (
+                    True,
+                    ("📦 Загрузка остатков 1С\n\n" f"❌ Нет данных за последние {hours} часов."),
+                    "accepted",
+                    None,
+                )
 
             grouped = {}
             for source_name, supplier, status, rows_count, error_sample, received_at in stock_loads:
@@ -2268,12 +2415,18 @@ def _execute_mobile_control_action(action: str):
                 lines.append(f"{source_name} ({len(items)})")
                 for supplier, status, rows_count, error_sample, received_at in items:
                     normalized_status = str(status).lower()
-                    status_icon = "✅" if normalized_status == "success" else "⚠️" if normalized_status == "warning" else "🚨"
+                    status_icon = (
+                        "✅"
+                        if normalized_status == "success"
+                        else "⚠️" if normalized_status == "warning" else "🚨"
+                    )
                     supplier_text = str(supplier).strip() or "неизвестно"
                     rows_text = f"{rows_count} строк" if rows_count else "строки: —"
                     error_text = f" — {error_sample}" if error_sample else ""
                     time_ago = backup_bot.format_time_ago(received_at)
-                    lines.append(f"{status_icon} {supplier_text} ({rows_text}){error_text} ({time_ago})")
+                    lines.append(
+                        f"{status_icon} {supplier_text} ({rows_text}){error_text} ({time_ago})"
+                    )
                 lines.append("")
 
             return True, "\n".join(lines).strip(), "accepted", None
@@ -2288,7 +2441,7 @@ def _execute_mobile_control_action(action: str):
             return f"{size:.1f} {units[idx]}"
 
         def _resolve_backup_server_targets() -> list[tuple[str, str]]:
-            proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+            proxmox_hosts = settings_manager.get_setting("PROXMOX_HOSTS", {})
             if not isinstance(proxmox_hosts, dict):
                 proxmox_hosts = {}
 
@@ -2310,10 +2463,9 @@ def _execute_mobile_control_action(action: str):
 
             targets: list[tuple[str, str]] = []
             for host_name, payload in enabled_hosts:
-                address = (
-                    str(payload.get("ip") or payload.get("host") or payload.get("address") or "")
-                    .strip()
-                )
+                address = str(
+                    payload.get("ip") or payload.get("host") or payload.get("address") or ""
+                ).strip()
                 if not address:
                     address = by_name.get(host_name.lower(), "").strip()
                 if not address:
@@ -2325,13 +2477,17 @@ def _execute_mobile_control_action(action: str):
             targets = _resolve_backup_server_targets()
             if not targets:
                 return (
-                    "💽 Свободное место ZFS (PBS)\n\n"
-                    "⚠️ Нет включённых хостов в `PROXMOX_HOSTS`."
+                    "💽 Свободное место ZFS (PBS)\n\n" "⚠️ Нет включённых хостов в `PROXMOX_HOSTS`."
                 )
 
-            ssh_username = str(settings_manager.get_setting('SSH_USERNAME', 'root') or 'root').strip() or 'root'
-            ssh_key_path = str(settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa') or '').strip()
-            ssh_port = int(settings_manager.get_setting('SSH_PORT', 22) or 22)
+            ssh_username = (
+                str(settings_manager.get_setting("SSH_USERNAME", "root") or "root").strip()
+                or "root"
+            )
+            ssh_key_path = str(
+                settings_manager.get_setting("SSH_KEY_PATH", "/root/.ssh/id_rsa") or ""
+            ).strip()
+            ssh_port = int(settings_manager.get_setting("SSH_PORT", 22) or 22)
 
             section_lines = ["💽 Свободное место ZFS (PBS)", ""]
             cmd_script = (
@@ -2368,7 +2524,9 @@ def _execute_mobile_control_action(action: str):
                     continue
 
                 if result.returncode != 0:
-                    error_text = (result.stderr or result.stdout or "unknown error").strip().splitlines()[0]
+                    error_text = (
+                        (result.stderr or result.stdout or "unknown error").strip().splitlines()[0]
+                    )
                     section_lines.append(f"❌ {host_name} ({address}) — {error_text}")
                     continue
 
@@ -2379,7 +2537,7 @@ def _execute_mobile_control_action(action: str):
 
                 section_lines.append(f"🖥 {host_name} ({address})")
                 for row in pool_rows:
-                    parts = row.split('\t')
+                    parts = row.split("\t")
                     if len(parts) < 6:
                         continue
                     pool_name, total_raw, alloc_raw, free_raw, cap_raw, health_raw = parts[:6]
@@ -2404,14 +2562,14 @@ def _execute_mobile_control_action(action: str):
             from core.config_manager import config_manager as settings_manager
             from extensions.backup_monitor.db_settings_backup_monitor import BACKUP_DATABASE_CONFIG
 
-            zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+            zfs_servers = settings_manager.get_setting("ZFS_SERVERS", {})
             if not isinstance(zfs_servers, dict):
                 zfs_servers = {}
 
             allowed_servers = {
                 name
                 for name, server_value in zfs_servers.items()
-                if not isinstance(server_value, dict) or server_value.get('enabled', True)
+                if not isinstance(server_value, dict) or server_value.get("enabled", True)
             }
 
             db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
@@ -2439,11 +2597,16 @@ def _execute_mobile_control_action(action: str):
                 rows = cursor.fetchall()
             except Exception as exc:
                 if "no such table: zfs_pool_status" in str(exc):
-                    return True, (
-                        "🧊 ZFS статусы\n\n"
-                        "❌ Таблица ZFS ещё не создана.\n"
-                        "Дождитесь первого письма или перезапустите мониторинг."
-                    ), "accepted", None
+                    return (
+                        True,
+                        (
+                            "🧊 ZFS статусы\n\n"
+                            "❌ Таблица ZFS ещё не создана.\n"
+                            "Дождитесь первого письма или перезапустите мониторинг."
+                        ),
+                        "accepted",
+                        None,
+                    )
                 return False, f"Не удалось получить статусы ZFS: {exc}", "failed", None
             finally:
                 conn.close()
@@ -2485,6 +2648,7 @@ def _execute_mobile_control_action(action: str):
 
     if action == "send_morning_report":
         from modules.morning_report import morning_report
+
         report_text = morning_report.force_report()
         return True, report_text, "accepted", None
 
@@ -2503,21 +2667,30 @@ def _execute_mobile_control_action(action: str):
     return False, f"Unsupported action: {action}", "failed", None
 
 
-@app.route('/v1/auth/token', methods=['POST'])
-@app.route('/v1/auth/login', methods=['POST'])
-@app.route('/api/v1/auth/token', methods=['POST'])
-@app.route('/api/v1/auth/login', methods=['POST'])
-@app.route('/auth/token', methods=['POST'])
-@app.route('/auth/login', methods=['POST'])
-@app.route('/token', methods=['POST'])
+@app.route("/v1/auth/token", methods=["POST"])
+@app.route("/v1/auth/login", methods=["POST"])
+@app.route("/api/v1/auth/token", methods=["POST"])
+@app.route("/api/v1/auth/login", methods=["POST"])
+@app.route("/auth/token", methods=["POST"])
+@app.route("/auth/login", methods=["POST"])
+@app.route("/token", methods=["POST"])
 def mobile_auth_token():
     """Auth endpoint: bootstrap-token -> session token (DB), fallback на legacy username/password."""
     payload = request.get_json(silent=True) or request.form.to_dict()
     bearer_token = _extract_bearer_token(request.headers.get("Authorization"))
 
-    if _MOBILE_DEFAULT_TOKEN and bearer_token and hmac.compare_digest(bearer_token, _MOBILE_DEFAULT_TOKEN):
-        device_id = str(payload.get("device_id") or request.headers.get("X-Device-ID") or "").strip() or None
-        subject_raw = str(payload.get("subject") or payload.get("client_name") or device_id or "android-client").strip()
+    if (
+        _MOBILE_DEFAULT_TOKEN
+        and bearer_token
+        and hmac.compare_digest(bearer_token, _MOBILE_DEFAULT_TOKEN)
+    ):
+        device_id = (
+            str(payload.get("device_id") or request.headers.get("X-Device-ID") or "").strip()
+            or None
+        )
+        subject_raw = str(
+            payload.get("subject") or payload.get("client_name") or device_id or "android-client"
+        ).strip()
         subject = subject_raw[:128] if subject_raw else "android-client"
         reissue = bool(payload.get("reissue", True))
 
@@ -2527,57 +2700,83 @@ def mobile_auth_token():
             reissue=reissue,
         )
 
-        return jsonify({
-            "access_token": token,
-            "token_type": "Bearer",
-            "expires_in": _MOBILE_SESSION_TOKEN_TTL_SEC if _MOBILE_SESSION_TOKEN_TTL_SEC > 0 else None,
-            "scope": "monitoring:read monitoring:control",
-            "issued_at": datetime.now().isoformat(),
-            "expires_at": datetime.fromtimestamp(expires_at).isoformat() if expires_at is not None else None,
-            "subject": subject,
-            "token_mask": token_mask,
-            "auth_type": "bootstrap_exchange",
-        })
+        return jsonify(
+            {
+                "access_token": token,
+                "token_type": "Bearer",
+                "expires_in": (
+                    _MOBILE_SESSION_TOKEN_TTL_SEC if _MOBILE_SESSION_TOKEN_TTL_SEC > 0 else None
+                ),
+                "scope": "monitoring:read monitoring:control",
+                "issued_at": datetime.now().isoformat(),
+                "expires_at": (
+                    datetime.fromtimestamp(expires_at).isoformat()
+                    if expires_at is not None
+                    else None
+                ),
+                "subject": subject,
+                "token_mask": token_mask,
+                "auth_type": "bootstrap_exchange",
+            }
+        )
 
     username, password = _extract_credentials(payload)
     if not username or not password:
-        return jsonify({
-            "error": "invalid_request",
-            "message": "Требуется Authorization: Bearer <MOBILE_DEFAULT_TOKEN> или username/login/email + password"
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": "invalid_request",
+                    "message": "Требуется Authorization: Bearer <MOBILE_DEFAULT_TOKEN> или username/login/email + password",
+                }
+            ),
+            400,
+        )
 
     token, expires_at = _issue_mobile_token(username)
-    return jsonify({
-        "access_token": token,
-        "token_type": "Bearer",
-        "expires_in": _MOBILE_TOKEN_TTL_SEC if _MOBILE_TOKEN_TTL_SEC > 0 else None,
-        "scope": "monitoring:read monitoring:control",
-        "issued_at": datetime.now().isoformat(),
-        "expires_at": datetime.fromtimestamp(expires_at).isoformat() if expires_at is not None else None,
-        "auth_type": "legacy_credentials",
-    })
+    return jsonify(
+        {
+            "access_token": token,
+            "token_type": "Bearer",
+            "expires_in": _MOBILE_TOKEN_TTL_SEC if _MOBILE_TOKEN_TTL_SEC > 0 else None,
+            "scope": "monitoring:read monitoring:control",
+            "issued_at": datetime.now().isoformat(),
+            "expires_at": (
+                datetime.fromtimestamp(expires_at).isoformat() if expires_at is not None else None
+            ),
+            "auth_type": "legacy_credentials",
+        }
+    )
 
 
-@app.route('/v1/auth/token/reissue', methods=['POST'])
-@app.route('/api/v1/auth/token/reissue', methods=['POST'])
+@app.route("/v1/auth/token/reissue", methods=["POST"])
+@app.route("/api/v1/auth/token/reissue", methods=["POST"])
 def mobile_auth_token_reissue():
     """Явный перевыпуск токена по bootstrap token (например, после переустановки приложения)."""
     if not _MOBILE_DEFAULT_TOKEN:
-        return jsonify({
-            "error": "bootstrap_token_not_configured",
-            "message": "MOBILE_DEFAULT_TOKEN is not configured on server"
-        }), 503
+        return (
+            jsonify(
+                {
+                    "error": "bootstrap_token_not_configured",
+                    "message": "MOBILE_DEFAULT_TOKEN is not configured on server",
+                }
+            ),
+            503,
+        )
 
     bearer_token = _extract_bearer_token(request.headers.get("Authorization"))
     if not bearer_token or not hmac.compare_digest(bearer_token, _MOBILE_DEFAULT_TOKEN):
-        return jsonify({
-            "error": "unauthorized",
-            "message": "Bearer MOBILE_DEFAULT_TOKEN required"
-        }), 401
+        return (
+            jsonify({"error": "unauthorized", "message": "Bearer MOBILE_DEFAULT_TOKEN required"}),
+            401,
+        )
 
     payload = request.get_json(silent=True) or request.form.to_dict()
-    device_id = str(payload.get("device_id") or request.headers.get("X-Device-ID") or "").strip() or None
-    subject_raw = str(payload.get("subject") or payload.get("client_name") or device_id or "android-client").strip()
+    device_id = (
+        str(payload.get("device_id") or request.headers.get("X-Device-ID") or "").strip() or None
+    )
+    subject_raw = str(
+        payload.get("subject") or payload.get("client_name") or device_id or "android-client"
+    ).strip()
     subject = subject_raw[:128] if subject_raw else "android-client"
 
     token, expires_at, token_mask = _issue_persistent_mobile_token(
@@ -2586,32 +2785,40 @@ def mobile_auth_token_reissue():
         reissue=True,
     )
 
-    return jsonify({
-        "access_token": token,
-        "token_type": "Bearer",
-        "expires_in": _MOBILE_SESSION_TOKEN_TTL_SEC if _MOBILE_SESSION_TOKEN_TTL_SEC > 0 else None,
-        "scope": "monitoring:read monitoring:control",
-        "issued_at": datetime.now().isoformat(),
-        "expires_at": datetime.fromtimestamp(expires_at).isoformat() if expires_at is not None else None,
-        "subject": subject,
-        "token_mask": token_mask,
-        "auth_type": "reissued",
-    })
+    return jsonify(
+        {
+            "access_token": token,
+            "token_type": "Bearer",
+            "expires_in": (
+                _MOBILE_SESSION_TOKEN_TTL_SEC if _MOBILE_SESSION_TOKEN_TTL_SEC > 0 else None
+            ),
+            "scope": "monitoring:read monitoring:control",
+            "issued_at": datetime.now().isoformat(),
+            "expires_at": (
+                datetime.fromtimestamp(expires_at).isoformat() if expires_at is not None else None
+            ),
+            "subject": subject,
+            "token_mask": token_mask,
+            "auth_type": "reissued",
+        }
+    )
 
 
-def _build_availability_payload(scope='all'):
+def _build_availability_payload(scope="all"):
     stats, servers = get_monitoring_stats()
-    down_ips = {s.get('ip') for s in servers if s.get('status') == 'down'}
+    down_ips = {s.get("ip") for s in servers if s.get("status") == "down"}
 
     items = []
     for s in servers:
-        items.append({
-            "ip": s.get("ip"),
-            "name": s.get("name"),
-            "status": "down" if s.get("ip") in down_ips else "up",
-            "status_display": s.get("status_display"),
-            "scope": scope,
-        })
+        items.append(
+            {
+                "ip": s.get("ip"),
+                "name": s.get("name"),
+                "status": "down" if s.get("ip") in down_ips else "up",
+                "status_display": s.get("status_display"),
+                "scope": scope,
+            }
+        )
 
     return {
         "scope": scope,
@@ -2626,28 +2833,28 @@ def _build_availability_payload(scope='all'):
 
 def _resolve_server_for_targeted_check(server_id):
     """Ищет сервер по ip/имени/id из конфигурации."""
-    server_id_normalized = str(server_id or '').strip().lower()
+    server_id_normalized = str(server_id or "").strip().lower()
     if not server_id_normalized:
         return None
 
     servers = initialize_servers()
     for server in servers:
         candidates = {
-            str(server.get('ip') or '').strip().lower(),
-            str(server.get('name') or '').strip().lower(),
-            str(server.get('id') or '').strip().lower(),
+            str(server.get("ip") or "").strip().lower(),
+            str(server.get("name") or "").strip().lower(),
+            str(server.get("id") or "").strip().lower(),
         }
         if server_id_normalized in candidates:
             return server
     return None
 
 
-@app.route('/v1/monitoring/availability', methods=['GET'])
-@app.route('/api/v1/monitoring/availability', methods=['GET'])
+@app.route("/v1/monitoring/availability", methods=["GET"])
+@app.route("/api/v1/monitoring/availability", methods=["GET"])
 def mobile_availability():
     """Mobile BFF endpoint совместимый с auth_token_probe.sh"""
     started_at = time.time()
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
     ok, token_data = _validate_mobile_token(request.headers.get("Authorization"))
     if not ok:
@@ -2657,85 +2864,95 @@ def mobile_availability():
             token_data,
             int((time.time() - started_at) * 1000),
         )
-        response = jsonify({
-            "error": "unauthorized",
-            "message": "Bearer token required",
-            "reason": token_data,
-            "request_id": request_id,
-        })
-        response.headers['X-Request-ID'] = request_id
+        response = jsonify(
+            {
+                "error": "unauthorized",
+                "message": "Bearer token required",
+                "reason": token_data,
+                "request_id": request_id,
+            }
+        )
+        response.headers["X-Request-ID"] = request_id
         return response, 401
 
-    scope = request.args.get('scope', 'all')
+    scope = request.args.get("scope", "all")
     payload = _build_availability_payload(scope=scope)
-    payload['request_id'] = request_id
+    payload["request_id"] = request_id
     duration_ms = int((time.time() - started_at) * 1000)
     app.logger.info(
         "GET /v1/monitoring/availability request_id=%s status=200 duration_ms=%s total=%s",
         request_id,
         duration_ms,
-        payload.get('total', 0),
+        payload.get("total", 0),
     )
     response = jsonify(payload)
-    response.headers['X-Request-ID'] = request_id
+    response.headers["X-Request-ID"] = request_id
     return response
 
 
-@app.route('/v1/monitoring/availability/<path:server_id>', methods=['GET'])
-@app.route('/api/v1/monitoring/availability/<path:server_id>', methods=['GET'])
+@app.route("/v1/monitoring/availability/<path:server_id>", methods=["GET"])
+@app.route("/api/v1/monitoring/availability/<path:server_id>", methods=["GET"])
 def mobile_availability_single(server_id):
     """Точечная проверка доступности одного сервера для Android-клиента."""
     started_at = time.time()
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
     ok, token_data = _validate_mobile_token(request.headers.get("Authorization"))
     if not ok:
-        response = jsonify({
-            "error": "unauthorized",
-            "message": "Bearer token required",
-            "reason": token_data,
-            "request_id": request_id,
-        })
-        response.headers['X-Request-ID'] = request_id
+        response = jsonify(
+            {
+                "error": "unauthorized",
+                "message": "Bearer token required",
+                "reason": token_data,
+                "request_id": request_id,
+            }
+        )
+        response.headers["X-Request-ID"] = request_id
         return response, 401
 
     server = _resolve_server_for_targeted_check(server_id)
     if not server:
-        response = jsonify({
-            "error": "server_not_found",
-            "message": f'Сервер "{server_id}" не найден',
-            "request_id": request_id,
-        })
-        response.headers['X-Request-ID'] = request_id
+        response = jsonify(
+            {
+                "error": "server_not_found",
+                "message": f'Сервер "{server_id}" не найден',
+                "request_id": request_id,
+            }
+        )
+        response.headers["X-Request-ID"] = request_id
         return response, 404
 
     is_up = check_server_availability(server)
-    status = 'up' if is_up else 'down'
+    status = "up" if is_up else "down"
     now_iso = datetime.now().isoformat()
     payload = {
         "request_id": request_id,
         "generated_at": now_iso,
         "server": {
-            "server_id": server.get('ip') or server.get('name') or server_id,
-            "name": server.get('name') or server_id,
-            "ip": server.get('ip'),
+            "server_id": server.get("ip") or server.get("name") or server_id,
+            "name": server.get("name") or server_id,
+            "ip": server.get("ip"),
             "status": status,
             "checked_at": now_iso,
         },
-        "servers": [{
-            "id": server.get('ip') or server_id,
-            "name": server.get('name') or server_id,
-            "status": status,
-            "last_checked_at": now_iso,
-        }],
-        "items": [{
-            "server_id": server.get('ip') or server_id,
-            "status": status,
-            "checked_at": now_iso,
-        }],
+        "servers": [
+            {
+                "id": server.get("ip") or server_id,
+                "name": server.get("name") or server_id,
+                "status": status,
+                "last_checked_at": now_iso,
+            }
+        ],
+        "items": [
+            {
+                "server_id": server.get("ip") or server_id,
+                "status": status,
+                "checked_at": now_iso,
+            }
+        ],
         "summary": {
-            "up": 1 if status == 'up' else 0,
-            "down": 1 if status == 'down' else 0,
+            "up": 1 if status == "up" else 0,
+            "down": 1 if status == "down" else 0,
             "unknown": 0,
         },
     }
@@ -2744,100 +2961,110 @@ def mobile_availability_single(server_id):
         "GET /v1/monitoring/availability/<server_id> request_id=%s status=200 duration_ms=%s server=%s server_status=%s",
         request_id,
         duration_ms,
-        server.get('ip') or server_id,
+        server.get("ip") or server_id,
         status,
     )
     response = jsonify(payload)
-    response.headers['X-Request-ID'] = request_id
+    response.headers["X-Request-ID"] = request_id
     return response
 
 
-@app.route('/v1/monitoring/resources/<path:server_id>', methods=['GET'])
-@app.route('/api/v1/monitoring/resources/<path:server_id>', methods=['GET'])
+@app.route("/v1/monitoring/resources/<path:server_id>", methods=["GET"])
+@app.route("/api/v1/monitoring/resources/<path:server_id>", methods=["GET"])
 def mobile_resources_single(server_id):
     """Точечная проверка ресурсов одного сервера для Android-клиента."""
     started_at = time.time()
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
     ok, token_data = _validate_mobile_token(request.headers.get("Authorization"))
     if not ok:
-        response = jsonify({
-            "error": "unauthorized",
-            "message": "Bearer token required",
-            "reason": token_data,
-            "request_id": request_id,
-        })
-        response.headers['X-Request-ID'] = request_id
+        response = jsonify(
+            {
+                "error": "unauthorized",
+                "message": "Bearer token required",
+                "reason": token_data,
+                "request_id": request_id,
+            }
+        )
+        response.headers["X-Request-ID"] = request_id
         return response, 401
 
     server = _resolve_server_for_targeted_check(server_id)
     if not server:
-        response = jsonify({
-            "error": {
-                "code": "NOT_FOUND",
-                "message": f"Server '{server_id}' not found",
-                "request_id": request_id,
+        response = jsonify(
+            {
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"Server '{server_id}' not found",
+                    "request_id": request_id,
+                }
             }
-        })
-        response.headers['X-Request-ID'] = request_id
+        )
+        response.headers["X-Request-ID"] = request_id
         return response, 404
 
-    if not extension_manager.is_extension_enabled('resource_monitor'):
-        response = jsonify({
-            "error": {
-                "code": "RESOURCE_MONITOR_DISABLED",
-                "message": "Resource monitor extension is disabled",
-                "request_id": request_id,
+    if not extension_manager.is_extension_enabled("resource_monitor"):
+        response = jsonify(
+            {
+                "error": {
+                    "code": "RESOURCE_MONITOR_DISABLED",
+                    "message": "Resource monitor extension is disabled",
+                    "request_id": request_id,
+                }
             }
-        })
-        response.headers['X-Request-ID'] = request_id
+        )
+        response.headers["X-Request-ID"] = request_id
         return response, 409
 
     from modules.targeted_checks import targeted_checks
+
     success, _, message = targeted_checks.check_single_server_resources(server_id)
     if not success:
-        response = jsonify({
-            "error": {
-                "code": "RESOURCE_CHECK_FAILED",
-                "message": message,
-                "request_id": request_id,
+        response = jsonify(
+            {
+                "error": {
+                    "code": "RESOURCE_CHECK_FAILED",
+                    "message": message,
+                    "request_id": request_id,
+                }
             }
-        })
-        response.headers['X-Request-ID'] = request_id
+        )
+        response.headers["X-Request-ID"] = request_id
         return response, 502
 
     resources = None
     try:
         from core.monitor_core import server_status
-        resources = server_status.get(server['ip'], {}).get('resources')
+
+        resources = server_status.get(server["ip"], {}).get("resources")
     except Exception:
         resources = None
 
     payload = {
         "request_id": request_id,
         "server_id": server_id,
-        "server_name": server.get('name'),
-        "server_ip": server.get('ip'),
+        "server_name": server.get("name"),
+        "server_ip": server.get("ip"),
         "resources": resources,
         "message": message,
     }
     response = jsonify(payload)
-    response.headers['X-Request-ID'] = request_id
+    response.headers["X-Request-ID"] = request_id
     app.logger.info(
         "GET /v1/monitoring/resources/<server_id> request_id=%s status=200 duration_ms=%s server=%s",
         request_id,
         int((time.time() - started_at) * 1000),
-        server.get('ip'),
+        server.get("ip"),
     )
     return response
 
 
-@app.route('/v1/monitoring/status', methods=['GET'])
-@app.route('/api/v1/monitoring/status', methods=['GET'])
+@app.route("/v1/monitoring/status", methods=["GET"])
+@app.route("/api/v1/monitoring/status", methods=["GET"])
 def mobile_status():
     """Синоним для быстрой проверки статуса с Bearer токеном."""
     started_at = time.time()
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
     ok, token_data = _validate_mobile_token(request.headers.get("Authorization"))
     if not ok:
@@ -2847,34 +3074,34 @@ def mobile_status():
             token_data,
             int((time.time() - started_at) * 1000),
         )
-        response = jsonify({
-            "error": "unauthorized",
-            "message": "Bearer token required",
-            "reason": token_data,
-            "request_id": request_id,
-        })
-        response.headers['X-Request-ID'] = request_id
+        response = jsonify(
+            {
+                "error": "unauthorized",
+                "message": "Bearer token required",
+                "reason": token_data,
+                "request_id": request_id,
+            }
+        )
+        response.headers["X-Request-ID"] = request_id
         return response, 401
 
-    payload = _build_availability_payload(scope='all')
-    payload['request_id'] = request_id
+    payload = _build_availability_payload(scope="all")
+    payload["request_id"] = request_id
     duration_ms = int((time.time() - started_at) * 1000)
     app.logger.info(
         "GET /v1/monitoring/status request_id=%s status=200 duration_ms=%s total=%s",
         request_id,
         duration_ms,
-        payload.get('total', 0),
+        payload.get("total", 0),
     )
     response = jsonify(payload)
-    response.headers['X-Request-ID'] = request_id
+    response.headers["X-Request-ID"] = request_id
     return response
 
 
-
-
 def _parse_semver(raw_value):
-    value = str(raw_value or '').strip()
-    parts = value.split('.')
+    value = str(raw_value or "").strip()
+    parts = value.split(".")
     if len(parts) != 3:
         return None
     try:
@@ -2883,29 +3110,34 @@ def _parse_semver(raw_value):
         return None
 
 
-@app.route('/v1/mobile/version', methods=['GET'])
-@app.route('/api/v1/mobile/version', methods=['GET'])
+@app.route("/v1/mobile/version", methods=["GET"])
+@app.route("/api/v1/mobile/version", methods=["GET"])
 def v1_mobile_version():
     """Возвращает требования к минимальной версии Android-клиента."""
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.settings import (
-        ANDROID_MIN_SUPPORTED_VERSION,
-        ANDROID_LATEST_VERSION,
         ANDROID_APK_DOWNLOAD_URL,
+        ANDROID_LATEST_VERSION,
+        ANDROID_MIN_SUPPORTED_VERSION,
     )
 
-    current_version = (request.args.get('current_version') or '').strip()
+    current_version = (request.args.get("current_version") or "").strip()
     current_semver = _parse_semver(current_version)
     min_semver = _parse_semver(ANDROID_MIN_SUPPORTED_VERSION)
 
@@ -2915,19 +3147,24 @@ def v1_mobile_version():
     elif current_version:
         update_required = True
 
-    return jsonify({
-        "request_id": request_id,
-        "platform": "android",
-        "min_supported_version": str(ANDROID_MIN_SUPPORTED_VERSION),
-        "latest_version": str(ANDROID_LATEST_VERSION),
-        "apk_download_url": str(ANDROID_APK_DOWNLOAD_URL),
-        "current_version": current_version,
-        "update_required": update_required,
-    }), 200
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "platform": "android",
+                "min_supported_version": str(ANDROID_MIN_SUPPORTED_VERSION),
+                "latest_version": str(ANDROID_LATEST_VERSION),
+                "apk_download_url": str(ANDROID_APK_DOWNLOAD_URL),
+                "current_version": current_version,
+                "update_required": update_required,
+            }
+        ),
+        200,
+    )
 
 
-@app.route('/v1/mobile/diagnostics/tls', methods=['POST'])
-@app.route('/api/v1/mobile/diagnostics/tls', methods=['POST'])
+@app.route("/v1/mobile/diagnostics/tls", methods=["POST"])
+@app.route("/api/v1/mobile/diagnostics/tls", methods=["POST"])
 def v1_mobile_diagnostics_tls():
     """Принимает от Android-клиента результат проверки TLS-сертификата
     Base URL и подробно логирует его в консоль сервера, чтобы можно было
@@ -2935,111 +3172,152 @@ def v1_mobile_diagnostics_tls():
     удалённо, без доступа к logcat устройства.
 
     Временный диагностический эндпоинт (см. CHANGELOG 8.62.29)."""
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
         app.logger.warning(
             "POST /v1/mobile/diagnostics/tls unauthorized request_id=%s",
             request_id,
         )
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
 
-    outcome = str(payload.get('outcome') or 'unknown')
-    host = payload.get('host')
-    port = payload.get('port')
-    base_url = payload.get('base_url')
-    protocol = payload.get('protocol')
-    cipher = payload.get('cipher_suite')
-    status_text = payload.get('status_text')
-    cert_subject = payload.get('cert_subject')
-    cert_issuer = payload.get('cert_issuer')
-    cert_not_before = payload.get('cert_not_before')
-    cert_not_after = payload.get('cert_not_after')
-    cert_sans = payload.get('cert_sans')
-    app_version = payload.get('app_version')
-    device = payload.get('device')
-    error_chain = payload.get('error_chain')
-    stacktrace = payload.get('stacktrace')
+    outcome = str(payload.get("outcome") or "unknown")
+    host = payload.get("host")
+    port = payload.get("port")
+    base_url = payload.get("base_url")
+    protocol = payload.get("protocol")
+    cipher = payload.get("cipher_suite")
+    status_text = payload.get("status_text")
+    cert_subject = payload.get("cert_subject")
+    cert_issuer = payload.get("cert_issuer")
+    cert_not_before = payload.get("cert_not_before")
+    cert_not_after = payload.get("cert_not_after")
+    cert_sans = payload.get("cert_sans")
+    app_version = payload.get("app_version")
+    device = payload.get("device")
+    error_chain = payload.get("error_chain")
+    stacktrace = payload.get("stacktrace")
 
-    subject = token_info.get('subject') if isinstance(token_info, dict) else None
+    subject = token_info.get("subject") if isinstance(token_info, dict) else None
 
     header = (
         "[ANDROID TLS DIAG] request_id=%s subject=%s app_version=%s device=%s "
         "outcome=%s base_url=%s host=%s port=%s protocol=%s cipher=%s"
     )
     header_args = (
-        request_id, subject, app_version, device,
-        outcome, base_url, host, port, protocol, cipher,
+        request_id,
+        subject,
+        app_version,
+        device,
+        outcome,
+        base_url,
+        host,
+        port,
+        protocol,
+        cipher,
     )
-    if outcome == 'success':
+    if outcome == "success":
         app.logger.info(header, *header_args)
         app.logger.info(
             "[ANDROID TLS DIAG] request_id=%s status=%s subject=%s issuer=%s "
             "not_before=%s not_after=%s sans=%s",
-            request_id, status_text, cert_subject, cert_issuer,
-            cert_not_before, cert_not_after, cert_sans,
+            request_id,
+            status_text,
+            cert_subject,
+            cert_issuer,
+            cert_not_before,
+            cert_not_after,
+            cert_sans,
         )
     else:
         app.logger.warning(header, *header_args)
         app.logger.warning(
             "[ANDROID TLS DIAG] request_id=%s status=%s error_chain=%s",
-            request_id, status_text, error_chain,
+            request_id,
+            status_text,
+            error_chain,
         )
         if stacktrace:
             app.logger.warning(
                 "[ANDROID TLS DIAG] request_id=%s stacktrace:\n%s",
-                request_id, stacktrace,
+                request_id,
+                stacktrace,
             )
 
-    return jsonify({
-        "request_id": request_id,
-        "received": True,
-    }), 200
-
-
-@app.route('/v1/control/actions', methods=['POST'])
-def v1_control_actions():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
-    if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
+    return (
+        jsonify(
+            {
                 "request_id": request_id,
+                "received": True,
             }
-        }), 401
+        ),
+        200,
+    )
+
+
+@app.route("/v1/control/actions", methods=["POST"])
+def v1_control_actions():
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    action = str(payload.get('action') or '').strip()
+    action = str(payload.get("action") or "").strip()
     if not action:
-        return jsonify({
-            "error": {
-                "code": "INVALID_ACTION",
-                "message": "Field 'action' is required",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "INVALID_ACTION",
+                        "message": "Field 'action' is required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     ok, message, result, menu_options = _execute_mobile_control_action(action)
     if ok:
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": result,
-            "message": message,
-            "menu_options": menu_options,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": result,
+                    "message": message,
+                    "menu_options": menu_options,
+                }
+            ),
+            200,
+        )
 
     # Backward compatibility fallback for legacy action path.
     legacy_action = _map_mobile_action_to_legacy(action)
@@ -3053,50 +3331,67 @@ def v1_control_actions():
             else:
                 response_obj, status_code = legacy_response, 200
 
-            data = response_obj.get_json(silent=True) if hasattr(response_obj, 'get_json') else {}
-            fallback_message = (data or {}).get('message') or message or 'Action processed'
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "accepted" if status_code < 400 else "rejected",
-                "message": fallback_message,
-            }), (200 if status_code < 400 else status_code)
+            data = response_obj.get_json(silent=True) if hasattr(response_obj, "get_json") else {}
+            fallback_message = (data or {}).get("message") or message or "Action processed"
+            return jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted" if status_code < 400 else "rejected",
+                    "message": fallback_message,
+                }
+            ), (200 if status_code < 400 else status_code)
         except Exception as e:
-            return jsonify({
+            return (
+                jsonify(
+                    {
+                        "error": {
+                            "code": "CONTROL_ACTION_FAILED",
+                            "message": str(e),
+                            "request_id": request_id,
+                        }
+                    }
+                ),
+                500,
+            )
+
+    return (
+        jsonify(
+            {
                 "error": {
-                    "code": "CONTROL_ACTION_FAILED",
-                    "message": str(e),
+                    "code": "INVALID_ACTION",
+                    "message": message,
                     "request_id": request_id,
                 }
-            }), 500
-
-    return jsonify({
-        "error": {
-            "code": "INVALID_ACTION",
-            "message": message,
-            "request_id": request_id,
-        }
-    }), 400
-
-
-@app.route('/v1/control/status', methods=['GET'])
-@app.route('/api/v1/control/status', methods=['GET'])
-def v1_control_status():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
-    if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
             }
-        }), 401
+        ),
+        400,
+    )
+
+
+@app.route("/v1/control/status", methods=["GET"])
+@app.route("/api/v1/control/status", methods=["GET"])
+def v1_control_status():
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     import core.monitor_core as monitor_core
 
-    monitoring_active = bool(getattr(monitor_core, 'monitoring_active', True))
+    monitoring_active = bool(getattr(monitor_core, "monitoring_active", True))
     silent_active = bool(monitor_core.is_silent_time())
     silent_override = monitor_core.get_silent_override()
 
@@ -3107,25 +3402,30 @@ def v1_control_status():
     else:
         silent_mode = "force_loud"
 
-    return jsonify({
-        "request_id": request_id,
-        "monitoring_active": monitoring_active,
-        "monitoring_status": "active" if monitoring_active else "paused",
-        "silent_active": silent_active,
-        "silent_mode": silent_mode,
-        "silent_override": silent_override,
-    }), 200
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "monitoring_active": monitoring_active,
+                "monitoring_status": "active" if monitoring_active else "paused",
+                "silent_active": silent_active,
+                "silent_mode": silent_mode,
+                "silent_override": silent_override,
+            }
+        ),
+        200,
+    )
 
 
 def _mask_secret(value):
     """Возвращает маскированное значение секрета без раскрытия исходной строки."""
-    value_str = str(value or '').strip()
+    value_str = str(value or "").strip()
     if not value_str:
-        return ''
-    if ':' in value_str:
-        prefix = value_str.split(':', 1)[0]
+        return ""
+    if ":" in value_str:
+        prefix = value_str.split(":", 1)[0]
         return f"{prefix}:***"
-    return '********'
+    return "********"
 
 
 def _hour_to_hhmm(value, fallback):
@@ -3138,78 +3438,105 @@ def _hour_to_hhmm(value, fallback):
     return fallback
 
 
-@app.route('/v1/settings/extensions', methods=['GET'])
+@app.route("/v1/settings/extensions", methods=["GET"])
 def v1_get_settings_extensions():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     status_map = extension_manager.get_extensions_status()
     items = []
     enabled_count = 0
 
     for ext_id, status_info in status_map.items():
-        enabled = bool(status_info.get('enabled'))
+        enabled = bool(status_info.get("enabled"))
         if enabled:
             enabled_count += 1
-        info = status_info.get('info') or {}
-        items.append({
-            "id": ext_id,
-            "name": info.get('name', ext_id),
-            "description": info.get('description', ''),
-            "enabled": enabled,
-        })
-
-    return jsonify({
-        "request_id": request_id,
-        "items": items,
-        "summary": {
-            "total": len(items),
-            "enabled": enabled_count,
-            "disabled": len(items) - enabled_count,
-        }
-    }), 200
-
-
-@app.route('/v1/settings/extensions/<extension_id>', methods=['PATCH'])
-def v1_patch_settings_extension(extension_id):
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
-    if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
+        info = status_info.get("info") or {}
+        items.append(
+            {
+                "id": ext_id,
+                "name": info.get("name", ext_id),
+                "description": info.get("description", ""),
+                "enabled": enabled,
             }
-        }), 401
+        )
+
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "items": items,
+                "summary": {
+                    "total": len(items),
+                    "enabled": enabled_count,
+                    "disabled": len(items) - enabled_count,
+                },
+            }
+        ),
+        200,
+    )
+
+
+@app.route("/v1/settings/extensions/<extension_id>", methods=["PATCH"])
+def v1_patch_settings_extension(extension_id):
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    enabled = payload.get('enabled')
+    enabled = payload.get("enabled")
     if enabled is None:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "Field 'enabled' is required",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "Field 'enabled' is required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     if extension_id not in extension_manager.get_extensions_status():
-        return jsonify({
-            "error": {
-                "code": "NOT_FOUND",
-                "message": f"Extension '{extension_id}' not found",
-                "request_id": request_id,
-            }
-        }), 404
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "NOT_FOUND",
+                        "message": f"Extension '{extension_id}' not found",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            404,
+        )
 
     success, message = (
         extension_manager.enable_extension(extension_id)
@@ -3218,37 +3545,52 @@ def v1_patch_settings_extension(extension_id):
     )
 
     if not success:
-        return jsonify({
-            "error": {
-                "code": "UPDATE_FAILED",
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UPDATE_FAILED",
+                        "message": message,
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            500,
+        )
+
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "extension_id": extension_id,
+                "enabled": bool(enabled),
                 "message": message,
-                "request_id": request_id,
             }
-        }), 500
-
-    return jsonify({
-        "request_id": request_id,
-        "extension_id": extension_id,
-        "enabled": bool(enabled),
-        "message": message,
-    }), 200
+        ),
+        200,
+    )
 
 
-@app.route('/v1/settings/extensions/actions', methods=['POST'])
+@app.route("/v1/settings/extensions/actions", methods=["POST"])
 def v1_extensions_actions():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    raw_action = str(payload.get('action') or '').strip()
+    raw_action = str(payload.get("action") or "").strip()
     action = raw_action.lower()
 
     from core.config_manager import config_manager as settings_manager
@@ -3268,13 +3610,18 @@ def v1_extensions_actions():
         return {}
 
     def _get_proxmox_hosts_for_mobile_settings() -> dict:
-        proxmox_hosts = _normalize_proxmox_hosts(settings_manager.get_setting('PROXMOX_HOSTS', {}, use_cache=False))
+        proxmox_hosts = _normalize_proxmox_hosts(
+            settings_manager.get_setting("PROXMOX_HOSTS", {}, use_cache=False)
+        )
         if proxmox_hosts:
             return proxmox_hosts
 
         try:
             from core.config_manager import config_manager
-            fallback_db_hosts = _normalize_proxmox_hosts(config_manager.get_setting('PROXMOX_HOSTS', {}))
+
+            fallback_db_hosts = _normalize_proxmox_hosts(
+                config_manager.get_setting("PROXMOX_HOSTS", {})
+            )
         except Exception:
             fallback_db_hosts = {}
         if fallback_db_hosts:
@@ -3414,136 +3761,186 @@ def v1_extensions_actions():
         },
     }
 
-    if action == 'enable_all':
+    if action == "enable_all":
         changed = 0
         for ext_id in extension_manager.get_extensions_status():
             success, _ = extension_manager.enable_extension(ext_id)
             if success:
                 changed += 1
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "message": f"✅ Включено {changed} расширений",
-        }), 200
-
-    if action == 'disable_all':
-        changed = 0
-        for ext_id in extension_manager.get_extensions_status():
-            success, _ = extension_manager.disable_extension(ext_id)
-            if success:
-                changed += 1
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "message": f"✅ Отключено {changed} расширений",
-        }), 200
-
-    if action == 'settings_ext_enable_all':
-        changed = 0
-        for ext_id in extension_manager.get_extensions_status():
-            success, _ = extension_manager.enable_extension(ext_id)
-            if success:
-                changed += 1
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "message": f"✅ Включено {changed} расширений",
-        }), 200
-
-    if action == 'settings_ext_disable_all':
-        changed = 0
-        for ext_id in extension_manager.get_extensions_status():
-            success, _ = extension_manager.disable_extension(ext_id)
-            if success:
-                changed += 1
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "message": f"✅ Отключено {changed} расширений",
-        }), 200
-
-    if action.startswith('settings_ext_toggle_'):
-        extension_id = action.replace('settings_ext_toggle_', '', 1).strip()
-        if not extension_id:
-            return jsonify({
-                "error": {
-                    "code": "INVALID_ACTION",
-                    "message": "Extension id is required for settings_ext_toggle_*",
+        return (
+            jsonify(
+                {
                     "request_id": request_id,
+                    "action": action,
+                    "message": f"✅ Включено {changed} расширений",
                 }
-            }), 400
+            ),
+            200,
+        )
+
+    if action == "disable_all":
+        changed = 0
+        for ext_id in extension_manager.get_extensions_status():
+            success, _ = extension_manager.disable_extension(ext_id)
+            if success:
+                changed += 1
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "message": f"✅ Отключено {changed} расширений",
+                }
+            ),
+            200,
+        )
+
+    if action == "settings_ext_enable_all":
+        changed = 0
+        for ext_id in extension_manager.get_extensions_status():
+            success, _ = extension_manager.enable_extension(ext_id)
+            if success:
+                changed += 1
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "message": f"✅ Включено {changed} расширений",
+                }
+            ),
+            200,
+        )
+
+    if action == "settings_ext_disable_all":
+        changed = 0
+        for ext_id in extension_manager.get_extensions_status():
+            success, _ = extension_manager.disable_extension(ext_id)
+            if success:
+                changed += 1
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "message": f"✅ Отключено {changed} расширений",
+                }
+            ),
+            200,
+        )
+
+    if action.startswith("settings_ext_toggle_"):
+        extension_id = action.replace("settings_ext_toggle_", "", 1).strip()
+        if not extension_id:
+            return (
+                jsonify(
+                    {
+                        "error": {
+                            "code": "INVALID_ACTION",
+                            "message": "Extension id is required for settings_ext_toggle_*",
+                            "request_id": request_id,
+                        }
+                    }
+                ),
+                400,
+            )
 
         status_map = extension_manager.get_extensions_status()
         if extension_id not in status_map:
-            return jsonify({
-                "error": {
-                    "code": "NOT_FOUND",
-                    "message": f"Extension '{extension_id}' not found",
-                    "request_id": request_id,
-                }
-            }), 404
+            return (
+                jsonify(
+                    {
+                        "error": {
+                            "code": "NOT_FOUND",
+                            "message": f"Extension '{extension_id}' not found",
+                            "request_id": request_id,
+                        }
+                    }
+                ),
+                404,
+            )
 
-        enabled_now = bool((status_map.get(extension_id) or {}).get('enabled'))
+        enabled_now = bool((status_map.get(extension_id) or {}).get("enabled"))
         success, message = (
             extension_manager.disable_extension(extension_id)
             if enabled_now
             else extension_manager.enable_extension(extension_id)
         )
         if not success:
-            return jsonify({
-                "error": {
-                    "code": "UPDATE_FAILED",
-                    "message": message,
-                    "request_id": request_id,
-                }
-            }), 500
+            return (
+                jsonify(
+                    {
+                        "error": {
+                            "code": "UPDATE_FAILED",
+                            "message": message,
+                            "request_id": request_id,
+                        }
+                    }
+                ),
+                500,
+            )
 
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "message": message,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "message": message,
+                }
+            ),
+            200,
+        )
 
     if action == "settings_ext_backup_proxmox":
         proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
         proxmox_count = len(proxmox_hosts)
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": (
-                "🖥️ Бэкапы Proxmox\n\n"
-                f"Хостов в списке: {proxmox_count}\n\n"
-                "Выберите раздел:"
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": (
+                        "🖥️ Бэкапы Proxmox\n\n"
+                        f"Хостов в списке: {proxmox_count}\n\n"
+                        "Выберите раздел:"
+                    ),
+                    "menu_options": [
+                        {"label": "📋 Хосты", "action": "settings_backup_proxmox"},
+                        {"label": "🔍 Паттерны", "action": "settings_patterns_proxmox"},
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": "settings_extensions"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
             ),
-            "menu_options": [
-                {"label": "📋 Хосты", "action": "settings_backup_proxmox"},
-                {"label": "🔍 Паттерны", "action": "settings_patterns_proxmox"},
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_extensions"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+            200,
+        )
 
     if action == "settings_backup_proxmox":
         proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": (
-                "🖥️ Бэкапы Proxmox\n\n"
-                f"Хостов в списке: {len(proxmox_hosts)}\n\n"
-                "Выберите действие:"
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": (
+                        "🖥️ Бэкапы Proxmox\n\n"
+                        f"Хостов в списке: {len(proxmox_hosts)}\n\n"
+                        "Выберите действие:"
+                    ),
+                    "menu_options": [
+                        {"label": "📋 Список хостов", "action": "settings_proxmox_list"},
+                        {"label": "➕ Добавить хост", "action": "settings_proxmox_add"},
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
             ),
-            "menu_options": [
-                {"label": "📋 Список хостов", "action": "settings_proxmox_list"},
-                {"label": "➕ Добавить хост", "action": "settings_proxmox_add"},
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+            200,
+        )
 
     if action == "settings_proxmox_list":
         proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
@@ -3555,117 +3952,153 @@ def v1_extensions_actions():
                 host_value = proxmox_hosts.get(host_name)
                 enabled = True
                 if isinstance(host_value, dict):
-                    enabled = bool(host_value.get('enabled', True))
+                    enabled = bool(host_value.get("enabled", True))
                 lines.append(f"{'🟢' if enabled else '🔴'} {host_name}")
         menu_options = []
         for host_name in sorted(proxmox_hosts.keys()):
             host_value = proxmox_hosts.get(host_name)
             enabled = True
             if isinstance(host_value, dict):
-                enabled = bool(host_value.get('enabled', True))
+                enabled = bool(host_value.get("enabled", True))
             toggle_label = "⛔️ Отключить" if enabled else "✅ Включить"
-            menu_options.extend([
-                {"label": f"✏️ {host_name}", "action": f"settings_proxmox_edit_{host_name}"},
-                {"label": f"🗑️ {host_name}", "action": f"settings_proxmox_delete_{host_name}"},
-                {"label": f"{toggle_label} {host_name}", "action": f"settings_proxmox_toggle_{host_name}"},
-            ])
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": "\n".join(lines),
-            "menu_options": menu_options + [
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+            menu_options.extend(
+                [
+                    {"label": f"✏️ {host_name}", "action": f"settings_proxmox_edit_{host_name}"},
+                    {"label": f"🗑️ {host_name}", "action": f"settings_proxmox_delete_{host_name}"},
+                    {
+                        "label": f"{toggle_label} {host_name}",
+                        "action": f"settings_proxmox_toggle_{host_name}",
+                    },
+                ]
+            )
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": "\n".join(lines),
+                    "menu_options": menu_options
+                    + [
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_proxmox_toggle_"):
-        host_name = raw_action[len("settings_proxmox_toggle_"):]
+        host_name = raw_action[len("settings_proxmox_toggle_") :]
         proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
 
         host_value = proxmox_hosts.get(host_name)
         if host_value is None:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": f"❌ Хост '{host_name}' не найден.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_proxmox_list"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": f"❌ Хост '{host_name}' не найден.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_proxmox_list"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         enabled = True
         if isinstance(host_value, dict):
-            enabled = bool(host_value.get('enabled', True))
-            host_value['enabled'] = not enabled
+            enabled = bool(host_value.get("enabled", True))
+            host_value["enabled"] = not enabled
         else:
             proxmox_hosts[host_name] = {"pattern": str(host_value), "enabled": not enabled}
 
-        settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+        settings_manager.set_setting("PROXMOX_HOSTS", proxmox_hosts)
         next_action = "settings_proxmox_list"
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": f"🔄 Хост '{host_name}': {'включён' if not enabled else 'отключён'}.",
-            "menu_options": [
-                {"label": "📋 Обновить список", "action": next_action},
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": f"🔄 Хост '{host_name}': {'включён' if not enabled else 'отключён'}.",
+                    "menu_options": [
+                        {"label": "📋 Обновить список", "action": next_action},
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_proxmox_delete_"):
-        host_name = raw_action[len("settings_proxmox_delete_"):]
+        host_name = raw_action[len("settings_proxmox_delete_") :]
         proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
 
         if host_name not in proxmox_hosts:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": f"❌ Хост '{host_name}' не найден.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_proxmox_list"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": f"❌ Хост '{host_name}' не найден.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_proxmox_list"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         proxmox_hosts.pop(host_name, None)
-        settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": f"✅ Хост '{host_name}' удалён.",
-            "menu_options": [
-                {"label": "📋 Обновить список", "action": "settings_proxmox_list"},
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        settings_manager.set_setting("PROXMOX_HOSTS", proxmox_hosts)
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": f"✅ Хост '{host_name}' удалён.",
+                    "menu_options": [
+                        {"label": "📋 Обновить список", "action": "settings_proxmox_list"},
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_proxmox_edit_"):
-        host_name = raw_action[len("settings_proxmox_edit_"):]
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": (
-                f"✏️ Редактирование хоста '{host_name}' пока выполняется в Telegram-боте.\n\n"
-                "В Android/web сейчас доступны выключение и удаление."
+        host_name = raw_action[len("settings_proxmox_edit_") :]
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": (
+                        f"✏️ Редактирование хоста '{host_name}' пока выполняется в Telegram-боте.\n\n"
+                        "В Android/web сейчас доступны выключение и удаление."
+                    ),
+                    "menu_options": [
+                        {"label": "↩️ Назад", "action": "settings_proxmox_list"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
             ),
-            "menu_options": [
-                {"label": "↩️ Назад", "action": "settings_proxmox_list"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+            200,
+        )
 
     if action == "settings_proxmox_add" or action.startswith("settings_proxmox_add|"):
         host_name = ""
@@ -3675,47 +4108,62 @@ def v1_extensions_actions():
         if host_name:
             proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
             if host_name in proxmox_hosts:
-                return jsonify({
+                return (
+                    jsonify(
+                        {
+                            "request_id": request_id,
+                            "action": action,
+                            "result": "rejected",
+                            "message": f"❌ Хост '{host_name}' уже добавлен.",
+                            "menu_options": [
+                                {"label": "📋 Список хостов", "action": "settings_proxmox_list"},
+                                {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                                {"label": "✖️ Закрыть", "action": "close"},
+                            ],
+                        }
+                    ),
+                    200,
+                )
+
+            proxmox_hosts[host_name] = {"enabled": True}
+            settings_manager.set_setting("PROXMOX_HOSTS", proxmox_hosts)
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "accepted",
+                        "message": f"✅ Хост '{host_name}' добавлен.",
+                        "menu_options": [
+                            {"label": "📋 Список хостов", "action": "settings_proxmox_list"},
+                            {"label": "🏠 На главную", "action": "main_menu"},
+                            {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
+
+        return (
+            jsonify(
+                {
                     "request_id": request_id,
                     "action": action,
-                    "result": "rejected",
-                    "message": f"❌ Хост '{host_name}' уже добавлен.",
+                    "result": "accepted",
+                    "message": (
+                        "➕ Добавление Proxmox хоста\n\n"
+                        "Добавление/редактирование хостов пока выполняется в Telegram-боте."
+                    ),
                     "menu_options": [
-                        {"label": "📋 Список хостов", "action": "settings_proxmox_list"},
+                        {"label": "🏠 На главную", "action": "main_menu"},
                         {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
                         {"label": "✖️ Закрыть", "action": "close"},
                     ],
-                }), 200
-
-            proxmox_hosts[host_name] = {"enabled": True}
-            settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "accepted",
-                "message": f"✅ Хост '{host_name}' добавлен.",
-                "menu_options": [
-                    {"label": "📋 Список хостов", "action": "settings_proxmox_list"},
-                    {"label": "🏠 На главную", "action": "main_menu"},
-                    {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
-
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": (
-                "➕ Добавление Proxmox хоста\n\n"
-                "Добавление/редактирование хостов пока выполняется в Telegram-боте."
+                }
             ),
-            "menu_options": [
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+            200,
+        )
 
     if action == "settings_patterns_proxmox":
         conn = settings_manager.get_connection()
@@ -3736,43 +4184,74 @@ def v1_extensions_actions():
         if not rows:
             lines.append("❌ Паттерны не настроены.")
         else:
-            for index, (pattern_id, pattern_type, pattern_value, category, enabled) in enumerate(rows, start=1):
+            for index, (pattern_id, pattern_type, pattern_value, category, enabled) in enumerate(
+                rows, start=1
+            ):
                 display_category = category
                 display_type = pattern_type
-                if category == "database" and isinstance(pattern_type, str) and pattern_type.startswith("proxmox"):
+                if (
+                    category == "database"
+                    and isinstance(pattern_type, str)
+                    and pattern_type.startswith("proxmox")
+                ):
                     display_category = "proxmox"
-                    suffix = pattern_type[len("proxmox"):].strip("_:- ")
+                    suffix = pattern_type[len("proxmox") :].strip("_:- ")
                     display_type = suffix or "subject"
                 marker = "🟢" if bool(enabled) else "🔴"
-                lines.append(f"{index}. {marker} [{display_category}/{display_type}] {pattern_value}")
+                lines.append(
+                    f"{index}. {marker} [{display_category}/{display_type}] {pattern_value}"
+                )
 
         menu_options = []
-        for index, (pattern_id, pattern_type, pattern_value, category, enabled) in enumerate(rows, start=1):
+        for index, (pattern_id, pattern_type, pattern_value, category, enabled) in enumerate(
+            rows, start=1
+        ):
             display_category = category
             display_type = pattern_type
-            if category == "database" and isinstance(pattern_type, str) and pattern_type.startswith("proxmox"):
+            if (
+                category == "database"
+                and isinstance(pattern_type, str)
+                and pattern_type.startswith("proxmox")
+            ):
                 display_category = "proxmox"
-                suffix = pattern_type[len("proxmox"):].strip("_:- ")
+                suffix = pattern_type[len("proxmox") :].strip("_:- ")
                 display_type = suffix or "subject"
             toggle_label = "⛔️ Отключить" if bool(enabled) else "✅ Включить"
-            menu_options.extend([
-                {"label": f"✏️ {index}. {display_category}:{display_type} — {pattern_value}", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
-                {"label": f"🗑️ {index}. {display_category}:{display_type}", "action": f"settings_proxmox_pattern_delete_{pattern_id}"},
-                {"label": f"{toggle_label} {index}. {display_category}:{display_type}", "action": f"settings_proxmox_pattern_toggle_{pattern_id}"},
-            ])
+            menu_options.extend(
+                [
+                    {
+                        "label": f"✏️ {index}. {display_category}:{display_type} — {pattern_value}",
+                        "action": f"settings_proxmox_pattern_edit_{pattern_id}",
+                    },
+                    {
+                        "label": f"🗑️ {index}. {display_category}:{display_type}",
+                        "action": f"settings_proxmox_pattern_delete_{pattern_id}",
+                    },
+                    {
+                        "label": f"{toggle_label} {index}. {display_category}:{display_type}",
+                        "action": f"settings_proxmox_pattern_toggle_{pattern_id}",
+                    },
+                ]
+            )
 
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": "\n".join(lines),
-            "menu_options": menu_options + [
-                {"label": "➕ Добавить паттерн", "action": "settings_proxmox_pattern_add"},
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": "\n".join(lines),
+                    "menu_options": menu_options
+                    + [
+                        {"label": "➕ Добавить паттерн", "action": "settings_proxmox_pattern_add"},
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action == "settings_patterns_mail":
         conn = settings_manager.get_connection()
@@ -3799,113 +4278,159 @@ def v1_extensions_actions():
         menu_options = []
         for index, (pattern_id, pattern_type, _, enabled) in enumerate(rows, start=1):
             toggle_label = "⛔️ Отключить" if bool(enabled) else "✅ Включить"
-            menu_options.extend([
-                {"label": f"✏️ {index}. mail:{pattern_type}", "action": f"settings_mail_pattern_edit_{pattern_id}"},
-                {"label": f"🗑️ {index}. mail:{pattern_type}", "action": f"settings_mail_pattern_delete_{pattern_id}"},
-                {"label": f"{toggle_label} {index}. mail:{pattern_type}", "action": f"settings_mail_pattern_toggle_{pattern_id}"},
-            ])
+            menu_options.extend(
+                [
+                    {
+                        "label": f"✏️ {index}. mail:{pattern_type}",
+                        "action": f"settings_mail_pattern_edit_{pattern_id}",
+                    },
+                    {
+                        "label": f"🗑️ {index}. mail:{pattern_type}",
+                        "action": f"settings_mail_pattern_delete_{pattern_id}",
+                    },
+                    {
+                        "label": f"{toggle_label} {index}. mail:{pattern_type}",
+                        "action": f"settings_mail_pattern_toggle_{pattern_id}",
+                    },
+                ]
+            )
 
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": "\n".join(lines),
-            "menu_options": menu_options + [
-                {"label": "➕ Добавить паттерн", "action": "settings_mail_pattern_add"},
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_ext_backup_mail"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": "\n".join(lines),
+                    "menu_options": menu_options
+                    + [
+                        {"label": "➕ Добавить паттерн", "action": "settings_mail_pattern_add"},
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": "settings_ext_backup_mail"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_mail_pattern_toggle_"):
-        pattern_id_raw = raw_action[len("settings_mail_pattern_toggle_"):].strip()
+        pattern_id_raw = raw_action[len("settings_mail_pattern_toggle_") :].strip()
         if not pattern_id_raw.isdigit():
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Некорректный идентификатор паттерна.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Некорректный идентификатор паттерна.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         pattern_id = int(pattern_id_raw)
         conn = settings_manager.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT enabled FROM backup_patterns WHERE id = ? AND category = 'mail'",
-            (pattern_id,)
+            "SELECT enabled FROM backup_patterns WHERE id = ? AND category = 'mail'", (pattern_id,)
         )
         row = cursor.fetchone()
         if not row:
             conn.close()
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Паттерн не найден.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Паттерн не найден.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         next_enabled = 0 if bool(row[0]) else 1
-        cursor.execute("UPDATE backup_patterns SET enabled = ? WHERE id = ?", (next_enabled, pattern_id))
+        cursor.execute(
+            "UPDATE backup_patterns SET enabled = ? WHERE id = ?", (next_enabled, pattern_id)
+        )
         conn.commit()
         conn.close()
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": f"🔄 Паттерн {'включён' if next_enabled else 'отключён'}.",
-            "menu_options": [
-                {"label": "📋 Обновить список", "action": "settings_patterns_mail"},
-                {"label": "↩️ Назад", "action": "settings_ext_backup_mail"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": f"🔄 Паттерн {'включён' if next_enabled else 'отключён'}.",
+                    "menu_options": [
+                        {"label": "📋 Обновить список", "action": "settings_patterns_mail"},
+                        {"label": "↩️ Назад", "action": "settings_ext_backup_mail"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_mail_pattern_delete_"):
-        pattern_id_raw = raw_action[len("settings_mail_pattern_delete_"):].strip()
+        pattern_id_raw = raw_action[len("settings_mail_pattern_delete_") :].strip()
         if not pattern_id_raw.isdigit():
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Некорректный идентификатор паттерна.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Некорректный идентификатор паттерна.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         pattern_id = int(pattern_id_raw)
         conn = settings_manager.get_connection()
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE backup_patterns SET enabled = 0 WHERE id = ? AND category = 'mail'",
-            (pattern_id,)
+            (pattern_id,),
         )
         conn.commit()
         deleted = cursor.rowcount > 0
         conn.close()
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted" if deleted else "rejected",
-            "message": "✅ Паттерн удалён." if deleted else "❌ Паттерн не найден.",
-            "menu_options": [
-                {"label": "📋 Обновить список", "action": "settings_patterns_mail"},
-                {"label": "↩️ Назад", "action": "settings_ext_backup_mail"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted" if deleted else "rejected",
+                    "message": "✅ Паттерн удалён." if deleted else "❌ Паттерн не найден.",
+                    "menu_options": [
+                        {"label": "📋 Обновить список", "action": "settings_patterns_mail"},
+                        {"label": "↩️ Назад", "action": "settings_ext_backup_mail"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
-    if action.startswith("settings_mail_pattern_add") or action.startswith("settings_mail_pattern_edit_"):
+    if action.startswith("settings_mail_pattern_add") or action.startswith(
+        "settings_mail_pattern_edit_"
+    ):
+
         def _decode_action_part(value: str) -> str:
             return unquote(str(value or "")).strip()
 
@@ -3942,7 +4467,9 @@ def v1_extensions_actions():
             return escaped
 
         def _build_mail_pattern_from_fragments(raw_fragments: str) -> str:
-            fragments = [item.strip() for item in re.split(r"[;,]", raw_fragments or "") if item.strip()]
+            fragments = [
+                item.strip() for item in re.split(r"[;,]", raw_fragments or "") if item.strip()
+            ]
             if not fragments:
                 return ""
             escaped_parts = [re.escape(fragment) for fragment in fragments]
@@ -3952,21 +4479,32 @@ def v1_extensions_actions():
 
         if action == "settings_mail_pattern_add":
             if len(action_parts) < 3:
-                return jsonify({
-                    "request_id": request_id,
-                    "action": action,
-                    "result": "accepted",
-                    "message": (
-                        "➕ Добавление паттерна почты\n\n"
-                        "Android/web: выберите режим (тема или фрагменты), введите значение и сохраните."
+                return (
+                    jsonify(
+                        {
+                            "request_id": request_id,
+                            "action": action,
+                            "result": "accepted",
+                            "message": (
+                                "➕ Добавление паттерна почты\n\n"
+                                "Android/web: выберите режим (тема или фрагменты), введите значение и сохраните."
+                            ),
+                            "menu_options": [
+                                {
+                                    "label": "➕ По теме письма",
+                                    "action": "settings_mail_pattern_add|subject|",
+                                },
+                                {
+                                    "label": "➕ По фрагментам",
+                                    "action": "settings_mail_pattern_add|fragments|",
+                                },
+                                {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                                {"label": "✖️ Закрыть", "action": "close"},
+                            ],
+                        }
                     ),
-                    "menu_options": [
-                        {"label": "➕ По теме письма", "action": "settings_mail_pattern_add|subject|"},
-                        {"label": "➕ По фрагментам", "action": "settings_mail_pattern_add|fragments|"},
-                        {"label": "↩️ Назад", "action": "settings_patterns_mail"},
-                        {"label": "✖️ Закрыть", "action": "close"},
-                    ],
-                }), 200
+                    200,
+                )
 
             build_mode = _decode_action_part(action_parts[1]).lower() or "subject"
             raw_value = _decode_action_part("|".join(action_parts[2:]))
@@ -3978,16 +4516,21 @@ def v1_extensions_actions():
             source_label = "фрагменты" if build_mode == "fragments" else "тема"
 
             if not pattern_value:
-                return jsonify({
-                    "request_id": request_id,
-                    "action": action,
-                    "result": "rejected",
-                    "message": "❌ Не удалось собрать паттерн. Проверьте ввод.",
-                    "menu_options": [
-                        {"label": "↩️ Назад", "action": "settings_patterns_mail"},
-                        {"label": "✖️ Закрыть", "action": "close"},
-                    ],
-                }), 200
+                return (
+                    jsonify(
+                        {
+                            "request_id": request_id,
+                            "action": action,
+                            "result": "rejected",
+                            "message": "❌ Не удалось собрать паттерн. Проверьте ввод.",
+                            "menu_options": [
+                                {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                                {"label": "✖️ Закрыть", "action": "close"},
+                            ],
+                        }
+                    ),
+                    200,
+                )
 
             conn = settings_manager.get_connection()
             cursor = conn.cursor()
@@ -3996,34 +4539,44 @@ def v1_extensions_actions():
                 INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
                 VALUES (?, ?, ?, 1)
                 """,
-                ("subject", pattern_value, "mail")
+                ("subject", pattern_value, "mail"),
             )
             conn.commit()
             conn.close()
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "accepted",
-                "message": f"✅ Паттерн добавлен (источник: {source_label}).",
-                "menu_options": [
-                    {"label": "📋 Обновить список", "action": "settings_patterns_mail"},
-                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "accepted",
+                        "message": f"✅ Паттерн добавлен (источник: {source_label}).",
+                        "menu_options": [
+                            {"label": "📋 Обновить список", "action": "settings_patterns_mail"},
+                            {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
-        pattern_id_raw = raw_action[len("settings_mail_pattern_edit_"):].split("|", 1)[0].strip()
+        pattern_id_raw = raw_action[len("settings_mail_pattern_edit_") :].split("|", 1)[0].strip()
         if not pattern_id_raw.isdigit():
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Некорректный идентификатор паттерна.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Некорректный идентификатор паттерна.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         if len(action_parts) < 2:
             pattern_id = int(pattern_id_raw)
@@ -4031,76 +4584,108 @@ def v1_extensions_actions():
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT pattern FROM backup_patterns WHERE id = ? AND category = 'mail'",
-                (pattern_id,)
+                (pattern_id,),
             )
             row = cursor.fetchone()
             conn.close()
             current_pattern = row[0] if row and len(row) > 0 else ""
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "accepted" if current_pattern else "rejected",
-                "message": (
-                    "✏️ Редактирование паттерна почты\n\n"
-                    f"Текущий паттерн: `{current_pattern}`\n\n"
-                    "Нажмите кнопку ниже, чтобы открыть ввод нового значения."
-                ) if current_pattern else "❌ Паттерн не найден.",
-                "menu_options": ([
-                    {"label": "✏️ Ввести новый паттерн", "action": f"settings_mail_pattern_edit_{pattern_id}"},
-                ] if current_pattern else []) + [
-                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "accepted" if current_pattern else "rejected",
+                        "message": (
+                            (
+                                "✏️ Редактирование паттерна почты\n\n"
+                                f"Текущий паттерн: `{current_pattern}`\n\n"
+                                "Нажмите кнопку ниже, чтобы открыть ввод нового значения."
+                            )
+                            if current_pattern
+                            else "❌ Паттерн не найден."
+                        ),
+                        "menu_options": (
+                            [
+                                {
+                                    "label": "✏️ Ввести новый паттерн",
+                                    "action": f"settings_mail_pattern_edit_{pattern_id}",
+                                },
+                            ]
+                            if current_pattern
+                            else []
+                        )
+                        + [
+                            {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         new_pattern = _decode_action_part("|".join(action_parts[1:]))
         if not new_pattern:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Паттерн не может быть пустым.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Паттерн не может быть пустым.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         pattern_id = int(pattern_id_raw)
         conn = settings_manager.get_connection()
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE backup_patterns SET pattern = ? WHERE id = ? AND category = 'mail'",
-            (new_pattern, pattern_id)
+            (new_pattern, pattern_id),
         )
         conn.commit()
         updated = cursor.rowcount > 0
         conn.close()
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted" if updated else "rejected",
-            "message": "✅ Паттерн обновлён." if updated else "❌ Паттерн не найден.",
-            "menu_options": [
-                {"label": "📋 Обновить список", "action": "settings_patterns_mail"},
-                {"label": "↩️ Назад", "action": "settings_patterns_mail"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted" if updated else "rejected",
+                    "message": "✅ Паттерн обновлён." if updated else "❌ Паттерн не найден.",
+                    "menu_options": [
+                        {"label": "📋 Обновить список", "action": "settings_patterns_mail"},
+                        {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_proxmox_pattern_toggle_"):
-        pattern_id_raw = raw_action[len("settings_proxmox_pattern_toggle_"):].strip()
+        pattern_id_raw = raw_action[len("settings_proxmox_pattern_toggle_") :].strip()
         if not pattern_id_raw.isdigit():
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Некорректный идентификатор паттерна.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Некорректный идентификатор паттерна.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         pattern_id = int(pattern_id_raw)
         conn = settings_manager.get_connection()
@@ -4112,55 +4697,69 @@ def v1_extensions_actions():
             WHERE id = ?
               AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
             """,
-            (pattern_id,)
+            (pattern_id,),
         )
         row = cursor.fetchone()
         if not row:
             conn.close()
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Паттерн не найден.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Паттерн не найден.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         next_enabled = 0 if bool(row[0]) else 1
         cursor.execute(
-            "UPDATE backup_patterns SET enabled = ? WHERE id = ?",
-            (next_enabled, pattern_id)
+            "UPDATE backup_patterns SET enabled = ? WHERE id = ?", (next_enabled, pattern_id)
         )
         conn.commit()
         conn.close()
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": f"🔄 Паттерн {'включён' if next_enabled else 'отключён'}.",
-            "menu_options": [
-                {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": f"🔄 Паттерн {'включён' if next_enabled else 'отключён'}.",
+                    "menu_options": [
+                        {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_proxmox_pattern_delete_"):
-        pattern_id_raw = raw_action[len("settings_proxmox_pattern_delete_"):].strip()
+        pattern_id_raw = raw_action[len("settings_proxmox_pattern_delete_") :].strip()
         if not pattern_id_raw.isdigit():
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Некорректный идентификатор паттерна.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Некорректный идентификатор паттерна.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         pattern_id = int(pattern_id_raw)
         conn = settings_manager.get_connection()
@@ -4172,25 +4771,33 @@ def v1_extensions_actions():
             WHERE id = ?
               AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
             """,
-            (pattern_id,)
+            (pattern_id,),
         )
         conn.commit()
         deleted = cursor.rowcount > 0
         conn.close()
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted" if deleted else "rejected",
-            "message": "✅ Паттерн удалён." if deleted else "❌ Паттерн не найден.",
-            "menu_options": [
-                {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted" if deleted else "rejected",
+                    "message": "✅ Паттерн удалён." if deleted else "❌ Паттерн не найден.",
+                    "menu_options": [
+                        {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
-    if action.startswith("settings_proxmox_pattern_add") or action.startswith("settings_proxmox_pattern_edit_"):
+    if action.startswith("settings_proxmox_pattern_add") or action.startswith(
+        "settings_proxmox_pattern_edit_"
+    ):
+
         def _decode_action_part(value: str) -> str:
             return unquote(str(value or "")).strip()
 
@@ -4207,47 +4814,62 @@ def v1_extensions_actions():
 
         if action.startswith("settings_proxmox_pattern_add"):
             if len(action_parts) < 4:
-                return jsonify({
-                    "request_id": request_id,
-                    "action": action,
-                    "result": "accepted",
-                    "message": (
-                        "➕ Добавление паттерна Proxmox\n\n"
-                        "Android/web: откройте форму, заполните категорию/тип/паттерн и отправьте."
+                return (
+                    jsonify(
+                        {
+                            "request_id": request_id,
+                            "action": action,
+                            "result": "accepted",
+                            "message": (
+                                "➕ Добавление паттерна Proxmox\n\n"
+                                "Android/web: откройте форму, заполните категорию/тип/паттерн и отправьте."
+                            ),
+                            "menu_options": [
+                                {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                                {"label": "✖️ Закрыть", "action": "close"},
+                            ],
+                        }
                     ),
-                    "menu_options": [
-                        {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
-                        {"label": "✖️ Закрыть", "action": "close"},
-                    ],
-                }), 200
+                    200,
+                )
 
             category = _decode_action_part(action_parts[1]).lower() or "proxmox"
             pattern_type = _decode_action_part(action_parts[2]).lower() or "subject"
             pattern_value = _decode_action_part("|".join(action_parts[3:]))
 
             if category not in {"proxmox", "database"}:
-                return jsonify({
-                    "request_id": request_id,
-                    "action": action,
-                    "result": "rejected",
-                    "message": "❌ Категория должна быть proxmox или database.",
-                    "menu_options": [
-                        {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
-                        {"label": "✖️ Закрыть", "action": "close"},
-                    ],
-                }), 200
+                return (
+                    jsonify(
+                        {
+                            "request_id": request_id,
+                            "action": action,
+                            "result": "rejected",
+                            "message": "❌ Категория должна быть proxmox или database.",
+                            "menu_options": [
+                                {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                                {"label": "✖️ Закрыть", "action": "close"},
+                            ],
+                        }
+                    ),
+                    200,
+                )
 
             if not pattern_value:
-                return jsonify({
-                    "request_id": request_id,
-                    "action": action,
-                    "result": "rejected",
-                    "message": "❌ Паттерн не может быть пустым.",
-                    "menu_options": [
-                        {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
-                        {"label": "✖️ Закрыть", "action": "close"},
-                    ],
-                }), 200
+                return (
+                    jsonify(
+                        {
+                            "request_id": request_id,
+                            "action": action,
+                            "result": "rejected",
+                            "message": "❌ Паттерн не может быть пустым.",
+                            "menu_options": [
+                                {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                                {"label": "✖️ Закрыть", "action": "close"},
+                            ],
+                        }
+                    ),
+                    200,
+                )
 
             db_pattern_type = _proxmox_type_to_db_type(pattern_type, category)
             conn = settings_manager.get_connection()
@@ -4257,34 +4879,46 @@ def v1_extensions_actions():
                 INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
                 VALUES (?, ?, ?, 1)
                 """,
-                (db_pattern_type, pattern_value, category)
+                (db_pattern_type, pattern_value, category),
             )
             conn.commit()
             conn.close()
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "accepted",
-                "message": "✅ Паттерн Proxmox добавлен.",
-                "menu_options": [
-                    {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
-                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "accepted",
+                        "message": "✅ Паттерн Proxmox добавлен.",
+                        "menu_options": [
+                            {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
+                            {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
-        pattern_id_raw = raw_action[len("settings_proxmox_pattern_edit_"):].split("|", 1)[0].strip()
+        pattern_id_raw = (
+            raw_action[len("settings_proxmox_pattern_edit_") :].split("|", 1)[0].strip()
+        )
         if not pattern_id_raw.isdigit():
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Некорректный идентификатор паттерна.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Некорректный идентификатор паттерна.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         if len(action_parts) < 2:
             pattern_id = int(pattern_id_raw)
@@ -4297,33 +4931,48 @@ def v1_extensions_actions():
                 WHERE id = ?
                   AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
                 """,
-                (pattern_id,)
+                (pattern_id,),
             )
             row = cursor.fetchone()
             conn.close()
             current_pattern_type = row[0] if row and len(row) > 0 else ""
             current_pattern = row[1] if row and len(row) > 1 else ""
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "accepted" if current_pattern else "rejected",
-                "message": (
-                    "✏️ Редактирование паттерна Proxmox\n\n"
-                    f"Текущий тип: `{current_pattern_type}`\n"
-                    f"Текущий паттерн: `{current_pattern}`\n\n"
-                    "Нажмите кнопку ниже, чтобы открыть ввод нового типа и паттерна.\n"
-                    "Если клиент не поддерживает окно ввода, отправьте действие в формате:\n"
-                    "`settings_proxmox_pattern_edit_<id>|<новый_тип>|<новый_паттерн>`"
-                ) if current_pattern else (
-                    "❌ Паттерн не найден."
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "accepted" if current_pattern else "rejected",
+                        "message": (
+                            (
+                                "✏️ Редактирование паттерна Proxmox\n\n"
+                                f"Текущий тип: `{current_pattern_type}`\n"
+                                f"Текущий паттерн: `{current_pattern}`\n\n"
+                                "Нажмите кнопку ниже, чтобы открыть ввод нового типа и паттерна.\n"
+                                "Если клиент не поддерживает окно ввода, отправьте действие в формате:\n"
+                                "`settings_proxmox_pattern_edit_<id>|<новый_тип>|<новый_паттерн>`"
+                            )
+                            if current_pattern
+                            else ("❌ Паттерн не найден.")
+                        ),
+                        "menu_options": (
+                            [
+                                {
+                                    "label": "✏️ Ввести новый паттерн",
+                                    "action": f"settings_proxmox_pattern_edit_{pattern_id}",
+                                },
+                            ]
+                            if current_pattern
+                            else []
+                        )
+                        + [
+                            {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
                 ),
-                "menu_options": ([
-                    {"label": "✏️ Ввести новый паттерн", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
-                ] if current_pattern else []) + [
-                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+                200,
+            )
 
         if len(action_parts) >= 3:
             new_pattern_type = _decode_action_part(action_parts[1]).lower() or "subject"
@@ -4332,28 +4981,38 @@ def v1_extensions_actions():
             new_pattern_type = ""
             new_pattern = _decode_action_part("|".join(action_parts[1:]))
         if not new_pattern:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Паттерн не может быть пустым.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Паттерн не может быть пустым.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         if len(action_parts) >= 3 and not new_pattern_type:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Тип паттерна не может быть пустым.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Тип паттерна не может быть пустым.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         pattern_id = int(pattern_id_raw)
         conn = settings_manager.get_connection()
@@ -4366,7 +5025,7 @@ def v1_extensions_actions():
                 WHERE id = ?
                   AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
                 """,
-                (new_pattern_type, new_pattern, pattern_id)
+                (new_pattern_type, new_pattern, pattern_id),
             )
         else:
             cursor.execute(
@@ -4376,25 +5035,30 @@ def v1_extensions_actions():
                 WHERE id = ?
                   AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
                 """,
-                (new_pattern, pattern_id)
+                (new_pattern, pattern_id),
             )
         conn.commit()
         updated = cursor.rowcount > 0
         conn.close()
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted" if updated else "rejected",
-            "message": "✅ Паттерн обновлён." if updated else "❌ Паттерн не найден.",
-            "menu_options": [
-                {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
-                {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted" if updated else "rejected",
+                    "message": "✅ Паттерн обновлён." if updated else "❌ Паттерн не найден.",
+                    "menu_options": [
+                        {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
+                        {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action == "settings_db_view_all":
-        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
         if not isinstance(db_config, dict):
             db_config = {}
 
@@ -4421,73 +5085,95 @@ def v1_extensions_actions():
             if not isinstance(databases, dict):
                 databases = {}
             encoded_category = quote(str(category), safe="")
-            menu_options.append({
-                "label": f"➕ Добавить БД в {str(category).upper()}",
-                "action": f"settings_db_add_db_{encoded_category}",
-            })
+            menu_options.append(
+                {
+                    "label": f"➕ Добавить БД в {str(category).upper()}",
+                    "action": f"settings_db_add_db_{encoded_category}",
+                }
+            )
             for db_key in sorted(databases.keys()):
                 encoded_db_key = quote(str(db_key), safe="")
-                menu_options.extend([
-                    {
-                        "label": f"✏️ {str(category).upper()}: {str(db_key)}",
-                        "action": f"settings_db_edit_db_{encoded_category}__{encoded_db_key}",
-                    },
-                    {
-                        "label": f"🗑️ {str(category).upper()}: {str(db_key)}",
-                        "action": f"settings_db_delete_db_{encoded_category}__{encoded_db_key}",
-                    },
-                ])
-            menu_options.append({
-                "label": f"🗑️ Удалить категорию {str(category).upper()}",
-                "action": f"settings_db_delete_{encoded_category}",
-            })
+                menu_options.extend(
+                    [
+                        {
+                            "label": f"✏️ {str(category).upper()}: {str(db_key)}",
+                            "action": f"settings_db_edit_db_{encoded_category}__{encoded_db_key}",
+                        },
+                        {
+                            "label": f"🗑️ {str(category).upper()}: {str(db_key)}",
+                            "action": f"settings_db_delete_db_{encoded_category}__{encoded_db_key}",
+                        },
+                    ]
+                )
+            menu_options.append(
+                {
+                    "label": f"🗑️ Удалить категорию {str(category).upper()}",
+                    "action": f"settings_db_delete_{encoded_category}",
+                }
+            )
 
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": "\n".join(lines),
-            "menu_options": menu_options + [
-                {"label": "↩️ Назад", "action": "settings_db_main"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": "\n".join(lines),
+                    "menu_options": menu_options
+                    + [
+                        {"label": "↩️ Назад", "action": "settings_db_main"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_db_add_category|"):
         payload = action.split("|", 1)[1].strip()
         category = unquote(payload).strip().lower()
         if not category:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Категория не указана.",
-                "menu_options": [{"label": "↩️ Назад", "action": "settings_db_main"}],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Категория не указана.",
+                        "menu_options": [{"label": "↩️ Назад", "action": "settings_db_main"}],
+                    }
+                ),
+                200,
+            )
 
-        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
         if not isinstance(db_config, dict):
             db_config = {}
         if category in db_config:
             message = f"ℹ️ Категория «{category}» уже существует."
         else:
             db_config[category] = {}
-            settings_manager.set_setting('DATABASE_CONFIG', db_config, 'database', data_type='auto')
+            settings_manager.set_setting("DATABASE_CONFIG", db_config, "database", data_type="auto")
             message = f"✅ Категория «{category}» добавлена."
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": message,
-            "menu_options": [
-                {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
-                {"label": "↩️ Назад", "action": "settings_db_main"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": message,
+                    "menu_options": [
+                        {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
+                        {"label": "↩️ Назад", "action": "settings_db_main"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action == "settings_db_delete_category":
-        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
         if not isinstance(db_config, dict):
             db_config = {}
         categories = sorted([str(item) for item in db_config.keys()])
@@ -4498,16 +5184,26 @@ def v1_extensions_actions():
             }
             for category in categories
         ]
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": "Выбери категорию БД для удаления." if categories else "❌ Категории БД не найдены.",
-            "menu_options": menu_options + [
-                {"label": "↩️ Назад", "action": "settings_db_main"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": (
+                        "Выбери категорию БД для удаления."
+                        if categories
+                        else "❌ Категории БД не найдены."
+                    ),
+                    "menu_options": menu_options
+                    + [
+                        {"label": "↩️ Назад", "action": "settings_db_main"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_db_add_db_submit|"):
         parts = action.split("|")
@@ -4515,34 +5211,44 @@ def v1_extensions_actions():
         db_key = unquote(parts[2]).strip() if len(parts) > 2 else ""
         db_name = unquote(parts[3]).strip() if len(parts) > 3 else ""
         if not category or not db_key:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Укажи категорию и ключ БД.",
-                "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Укажи категорию и ключ БД.",
+                        "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
+                    }
+                ),
+                200,
+            )
         if not db_name:
             db_name = db_key
 
-        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
         if not isinstance(db_config, dict):
             db_config = {}
         if category not in db_config or not isinstance(db_config.get(category), dict):
             db_config[category] = {}
         db_config[category][db_key] = db_name
-        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'database', data_type='auto')
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": f"✅ БД «{db_key}» сохранена в категории «{category}».",
-            "menu_options": [
-                {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
-                {"label": "↩️ Назад", "action": "settings_db_main"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        settings_manager.set_setting("DATABASE_CONFIG", db_config, "database", data_type="auto")
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": f"✅ БД «{db_key}» сохранена в категории «{category}».",
+                    "menu_options": [
+                        {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
+                        {"label": "↩️ Назад", "action": "settings_db_main"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_db_edit_db_submit|"):
         parts = action.split("|")
@@ -4551,43 +5257,58 @@ def v1_extensions_actions():
         new_key = unquote(parts[3]).strip() if len(parts) > 3 else ""
         new_name = unquote(parts[4]).strip() if len(parts) > 4 else ""
         if not category or not old_key or not new_key:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Недостаточно данных для редактирования БД.",
-                "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Недостаточно данных для редактирования БД.",
+                        "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
+                    }
+                ),
+                200,
+            )
 
-        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
         if not isinstance(db_config, dict):
             db_config = {}
         category_map = db_config.get(category) if isinstance(db_config.get(category), dict) else {}
         if old_key not in category_map:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ База не найдена в указанной категории.",
-                "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ База не найдена в указанной категории.",
+                        "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
+                    }
+                ),
+                200,
+            )
         value = new_name or category_map.get(old_key) or new_key
         if old_key != new_key:
             category_map.pop(old_key, None)
         category_map[new_key] = value
         db_config[category] = category_map
-        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'database', data_type='auto')
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": f"✅ БД «{old_key}» обновлена.",
-            "menu_options": [
-                {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
-                {"label": "↩️ Назад", "action": "settings_db_main"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        settings_manager.set_setting("DATABASE_CONFIG", db_config, "database", data_type="auto")
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": f"✅ БД «{old_key}» обновлена.",
+                    "menu_options": [
+                        {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
+                        {"label": "↩️ Назад", "action": "settings_db_main"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_db_delete_db_"):
         raw = action.replace("settings_db_delete_db_", "", 1)
@@ -4595,59 +5316,79 @@ def v1_extensions_actions():
         category = unquote(parts[0]).strip().lower() if parts else ""
         db_key = unquote(parts[1]).strip() if len(parts) > 1 else ""
         if not category or not db_key:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Не удалось определить категорию/БД для удаления.",
-                "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
-            }), 200
-        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Не удалось определить категорию/БД для удаления.",
+                        "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
+                    }
+                ),
+                200,
+            )
+        db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
         if not isinstance(db_config, dict):
             db_config = {}
         category_map = db_config.get(category) if isinstance(db_config.get(category), dict) else {}
         removed = category_map.pop(db_key, None)
         db_config[category] = category_map
-        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'database', data_type='auto')
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": f"{'✅' if removed is not None else 'ℹ️'} БД «{db_key}» {'удалена' if removed is not None else 'не найдена'}.",
-            "menu_options": [
-                {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
-                {"label": "↩️ Назад", "action": "settings_db_main"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        settings_manager.set_setting("DATABASE_CONFIG", db_config, "database", data_type="auto")
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": f"{'✅' if removed is not None else 'ℹ️'} БД «{db_key}» {'удалена' if removed is not None else 'не найдена'}.",
+                    "menu_options": [
+                        {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
+                        {"label": "↩️ Назад", "action": "settings_db_main"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_db_delete_") and action != "settings_db_delete_category":
         encoded_category = action.replace("settings_db_delete_", "", 1)
         category = unquote(encoded_category).strip().lower()
         if not category:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "rejected",
-                "message": "❌ Категория для удаления не указана.",
-                "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
-            }), 200
-        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "rejected",
+                        "message": "❌ Категория для удаления не указана.",
+                        "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
+                    }
+                ),
+                200,
+            )
+        db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
         if not isinstance(db_config, dict):
             db_config = {}
         removed = db_config.pop(category, None)
-        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'database', data_type='auto')
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": f"{'✅' if removed is not None else 'ℹ️'} Категория «{category}» {'удалена' if removed is not None else 'не найдена'}.",
-            "menu_options": [
-                {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
-                {"label": "↩️ Назад", "action": "settings_db_main"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        settings_manager.set_setting("DATABASE_CONFIG", db_config, "database", data_type="auto")
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": f"{'✅' if removed is not None else 'ℹ️'} Категория «{category}» {'удалена' if removed is not None else 'не найдена'}.",
+                    "menu_options": [
+                        {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
+                        {"label": "↩️ Назад", "action": "settings_db_main"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action == "settings_patterns_db":
         conn = settings_manager.get_connection()
@@ -4675,27 +5416,44 @@ def v1_extensions_actions():
         menu_options = []
         for index, (pattern_id, pattern_type, pattern_value, enabled) in enumerate(rows, start=1):
             toggle_label = "⛔️ Отключить" if bool(enabled) else "✅ Включить"
-            menu_options.extend([
-                {"label": f"✏️ {index}. {pattern_type} — {pattern_value}", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
-                {"label": f"🗑️ {index}. {pattern_type}", "action": f"settings_proxmox_pattern_delete_{pattern_id}"},
-                {"label": f"{toggle_label} {index}. {pattern_type}", "action": f"settings_proxmox_pattern_toggle_{pattern_id}"},
-            ])
+            menu_options.extend(
+                [
+                    {
+                        "label": f"✏️ {index}. {pattern_type} — {pattern_value}",
+                        "action": f"settings_proxmox_pattern_edit_{pattern_id}",
+                    },
+                    {
+                        "label": f"🗑️ {index}. {pattern_type}",
+                        "action": f"settings_proxmox_pattern_delete_{pattern_id}",
+                    },
+                    {
+                        "label": f"{toggle_label} {index}. {pattern_type}",
+                        "action": f"settings_proxmox_pattern_toggle_{pattern_id}",
+                    },
+                ]
+            )
 
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": "\n".join(lines),
-            "menu_options": menu_options + [
+        return (
+            jsonify(
                 {
-                    "label": "➕ Добавить паттерн БД",
-                    "action": "settings_proxmox_pattern_add|database|subject|",
-                },
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_ext_backup_db"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": "\n".join(lines),
+                    "menu_options": menu_options
+                    + [
+                        {
+                            "label": "➕ Добавить паттерн БД",
+                            "action": "settings_proxmox_pattern_add|database|subject|",
+                        },
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": "settings_ext_backup_db"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action == "settings_patterns_zfs":
         conn = settings_manager.get_connection()
@@ -4722,30 +5480,47 @@ def v1_extensions_actions():
         menu_options = []
         for index, (pattern_id, pattern_type, pattern_value, enabled) in enumerate(rows, start=1):
             toggle_label = "⛔️ Отключить" if bool(enabled) else "✅ Включить"
-            menu_options.extend([
-                {"label": f"✏️ {index}. {pattern_type} — {pattern_value}", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
-                {"label": f"🗑️ {index}. {pattern_type}", "action": f"settings_proxmox_pattern_delete_{pattern_id}"},
-                {"label": f"{toggle_label} {index}. {pattern_type}", "action": f"settings_proxmox_pattern_toggle_{pattern_id}"},
-            ])
+            menu_options.extend(
+                [
+                    {
+                        "label": f"✏️ {index}. {pattern_type} — {pattern_value}",
+                        "action": f"settings_proxmox_pattern_edit_{pattern_id}",
+                    },
+                    {
+                        "label": f"🗑️ {index}. {pattern_type}",
+                        "action": f"settings_proxmox_pattern_delete_{pattern_id}",
+                    },
+                    {
+                        "label": f"{toggle_label} {index}. {pattern_type}",
+                        "action": f"settings_proxmox_pattern_toggle_{pattern_id}",
+                    },
+                ]
+            )
 
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": "\n".join(lines),
-            "menu_options": menu_options + [
+        return (
+            jsonify(
                 {
-                    "label": "➕ Добавить паттерн ZFS",
-                    "action": "settings_proxmox_pattern_add|zfs|subject|",
-                },
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_zfs"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": "\n".join(lines),
+                    "menu_options": menu_options
+                    + [
+                        {
+                            "label": "➕ Добавить паттерн ZFS",
+                            "action": "settings_proxmox_pattern_add|zfs|subject|",
+                        },
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": "settings_zfs"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action == "settings_zfs_list":
-        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+        zfs_servers = settings_manager.get_setting("ZFS_SERVERS", {})
         zfs_servers = zfs_servers if isinstance(zfs_servers, dict) else {}
 
         lines = ["📋 ZFS серверы", ""]
@@ -4756,7 +5531,7 @@ def v1_extensions_actions():
                 server_value = zfs_servers.get(server_name)
                 enabled = True
                 if isinstance(server_value, dict):
-                    enabled = bool(server_value.get('enabled', True))
+                    enabled = bool(server_value.get("enabled", True))
                 lines.append(f"{'🟢' if enabled else '🔴'} {server_name}")
 
         menu_options = []
@@ -4765,122 +5540,171 @@ def v1_extensions_actions():
             server_value = zfs_servers.get(server_name)
             enabled = True
             if isinstance(server_value, dict):
-                enabled = bool(server_value.get('enabled', True))
+                enabled = bool(server_value.get("enabled", True))
             toggle_label = "⛔️ Отключить" if enabled else "✅ Включить"
-            menu_options.extend([
-                {"label": f"✏️ {server_name}", "action": f"settings_zfs_edit_name_{encoded_server_name}"},
-                {"label": f"🗑️ {server_name}", "action": f"settings_zfs_delete_{encoded_server_name}"},
-                {"label": f"{toggle_label} {server_name}", "action": f"settings_zfs_toggle_{encoded_server_name}"},
-            ])
+            menu_options.extend(
+                [
+                    {
+                        "label": f"✏️ {server_name}",
+                        "action": f"settings_zfs_edit_name_{encoded_server_name}",
+                    },
+                    {
+                        "label": f"🗑️ {server_name}",
+                        "action": f"settings_zfs_delete_{encoded_server_name}",
+                    },
+                    {
+                        "label": f"{toggle_label} {server_name}",
+                        "action": f"settings_zfs_toggle_{encoded_server_name}",
+                    },
+                ]
+            )
 
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": "\n".join(lines),
-            "menu_options": menu_options + [
-                {"label": "➕ Добавить сервер", "action": "settings_zfs_add"},
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_zfs"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": "\n".join(lines),
+                    "menu_options": menu_options
+                    + [
+                        {"label": "➕ Добавить сервер", "action": "settings_zfs_add"},
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": "settings_zfs"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action == "settings_zfs_add" or action.startswith("settings_zfs_add|"):
         payload = raw_action.split("|", 1)
         server_name = unquote(payload[1]).strip() if len(payload) > 1 else ""
         if not server_name:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "accepted",
-                "message": (
-                    "➕ Добавление ZFS-сервера\n\n"
-                    "Отправьте действие в формате:\n"
-                    "`settings_zfs_add|<имя_сервера>`"
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "accepted",
+                        "message": (
+                            "➕ Добавление ZFS-сервера\n\n"
+                            "Отправьте действие в формате:\n"
+                            "`settings_zfs_add|<имя_сервера>`"
+                        ),
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
                 ),
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_zfs_list"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+                200,
+            )
 
-        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+        zfs_servers = settings_manager.get_setting("ZFS_SERVERS", {})
         if not isinstance(zfs_servers, dict):
             zfs_servers = {}
 
         if server_name in zfs_servers:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "accepted",
-                "message": f"❌ ZFS-сервер «{server_name}» уже существует.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_zfs_list"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "accepted",
+                        "message": f"❌ ZFS-сервер «{server_name}» уже существует.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         zfs_servers[server_name] = {"enabled": True}
-        settings_manager.set_setting('ZFS_SERVERS', zfs_servers, 'zfs')
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": f"✅ ZFS-сервер «{server_name}» добавлен.",
-            "menu_options": [
-                {"label": "📋 Обновить список", "action": "settings_zfs_list"},
-                {"label": "↩️ Назад", "action": "settings_zfs"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        settings_manager.set_setting("ZFS_SERVERS", zfs_servers, "zfs")
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": f"✅ ZFS-сервер «{server_name}» добавлен.",
+                    "menu_options": [
+                        {"label": "📋 Обновить список", "action": "settings_zfs_list"},
+                        {"label": "↩️ Назад", "action": "settings_zfs"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action == "supplier_stock_download":
-        supplier_config = extension_manager.load_extension_config('supplier_stock_files')
-        download_settings = supplier_config.get('download', {}) if isinstance(supplier_config, dict) else {}
-        sources = download_settings.get('sources', []) if isinstance(download_settings, dict) else []
+        supplier_config = extension_manager.load_extension_config("supplier_stock_files")
+        download_settings = (
+            supplier_config.get("download", {}) if isinstance(supplier_config, dict) else {}
+        )
+        sources = (
+            download_settings.get("sources", []) if isinstance(download_settings, dict) else []
+        )
         source_count = len(sources) if isinstance(sources, list) else 0
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": (
-                "🌐 Скачивание файлов остатков поставщиков\n\n"
-                f"Источников: {source_count}\n\n"
-                "Выберите раздел:"
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": (
+                        "🌐 Скачивание файлов остатков поставщиков\n\n"
+                        f"Источников: {source_count}\n\n"
+                        "Выберите раздел:"
+                    ),
+                    "menu_options": [
+                        {"label": "⏱ Расписание", "action": "supplier_stock_schedule"},
+                        {"label": "🖥 Ресурсы", "action": "supplier_stock_resources"},
+                        {"label": "🗄 FTP", "action": "supplier_stock_ftp"},
+                        {"label": "⚙️ Обработка", "action": "supplier_stock_processing"},
+                        {"label": "↩️ Назад", "action": "settings_ext_supplier_stock"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
             ),
-            "menu_options": [
-                {"label": "⏱ Расписание", "action": "supplier_stock_schedule"},
-                {"label": "🖥 Ресурсы", "action": "supplier_stock_resources"},
-                {"label": "🗄 FTP", "action": "supplier_stock_ftp"},
-                {"label": "⚙️ Обработка", "action": "supplier_stock_processing"},
-                {"label": "↩️ Назад", "action": "settings_ext_supplier_stock"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+            200,
+        )
 
     if action == "supplier_stock_mail":
-        supplier_config = extension_manager.load_extension_config('supplier_stock_files')
-        mail_settings = supplier_config.get('mail', {}) if isinstance(supplier_config, dict) else {}
-        sources = mail_settings.get('sources', []) if isinstance(mail_settings, dict) else []
+        supplier_config = extension_manager.load_extension_config("supplier_stock_files")
+        mail_settings = supplier_config.get("mail", {}) if isinstance(supplier_config, dict) else {}
+        sources = mail_settings.get("sources", []) if isinstance(mail_settings, dict) else []
         source_count = len(sources) if isinstance(sources, list) else 0
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": (
-                "📧 Почтовые сообщения (остатки поставщиков)\n\n"
-                f"Источников: {source_count}\n\n"
-                "Выберите раздел:"
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": (
+                        "📧 Почтовые сообщения (остатки поставщиков)\n\n"
+                        f"Источников: {source_count}\n\n"
+                        "Выберите раздел:"
+                    ),
+                    "menu_options": [
+                        {"label": "📨 Источники почты", "action": "supplier_stock_mail_sources"},
+                        {
+                            "label": "🗓 Отчёты (download)",
+                            "action": "supplier_stock_reports_download",
+                        },
+                        {"label": "🗓 Отчёты (mail)", "action": "supplier_stock_reports_mail"},
+                        {"label": "↩️ Назад", "action": "settings_ext_supplier_stock"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
             ),
-            "menu_options": [
-                {"label": "📨 Источники почты", "action": "supplier_stock_mail_sources"},
-                {"label": "🗓 Отчёты (download)", "action": "supplier_stock_reports_download"},
-                {"label": "🗓 Отчёты (mail)", "action": "supplier_stock_reports_mail"},
-                {"label": "↩️ Назад", "action": "settings_ext_supplier_stock"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+            200,
+        )
 
     if action in {
         "supplier_stock_report_period",
@@ -4902,43 +5726,63 @@ def v1_extensions_actions():
             "supplier_stock_reports_download": "🗓 Отчёты (download)",
             "supplier_stock_reports_mail": "🗓 Отчёты (mail)",
         }
-        back_action = "supplier_stock_mail" if action.startswith("supplier_stock_mail_") or action.startswith("supplier_stock_reports_") else "supplier_stock_download"
+        back_action = (
+            "supplier_stock_mail"
+            if action.startswith("supplier_stock_mail_")
+            or action.startswith("supplier_stock_reports_")
+            else "supplier_stock_download"
+        )
         if action == "supplier_stock_report_period":
             back_action = "settings_ext_supplier_stock"
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": f"{title_map.get(action, 'Раздел')}\n\nДетальная настройка пока доступна в Telegram-боте.",
-            "menu_options": [
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": back_action},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": f"{title_map.get(action, 'Раздел')}\n\nДетальная настройка пока доступна в Telegram-боте.",
+                    "menu_options": [
+                        {"label": "🏠 На главную", "action": "main_menu"},
+                        {"label": "↩️ Назад", "action": back_action},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     mapped_action = settings_menu_action_map.get(action)
     if mapped_action:
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": mapped_action.get("message"),
-            "menu_options": mapped_action.get("menu_options", []),
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": mapped_action.get("message"),
+                    "menu_options": mapped_action.get("menu_options", []),
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_zfs_toggle_"):
-        server_name = unquote(raw_action[len("settings_zfs_toggle_"):]).strip()
+        server_name = unquote(raw_action[len("settings_zfs_toggle_") :]).strip()
         if not server_name:
-            return jsonify({
-                "error": {
-                    "code": "INVALID_ACTION",
-                    "message": "Server name is required for settings_zfs_toggle_*",
-                    "request_id": request_id,
-                }
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "error": {
+                            "code": "INVALID_ACTION",
+                            "message": "Server name is required for settings_zfs_toggle_*",
+                            "request_id": request_id,
+                        }
+                    }
+                ),
+                400,
+            )
 
-        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+        zfs_servers = settings_manager.get_setting("ZFS_SERVERS", {})
         if not isinstance(zfs_servers, dict):
             zfs_servers = {}
 
@@ -4946,85 +5790,110 @@ def v1_extensions_actions():
             if key != server_name:
                 continue
             if isinstance(value, dict):
-                value['enabled'] = not bool(value.get('enabled', True))
+                value["enabled"] = not bool(value.get("enabled", True))
             else:
-                zfs_servers[key] = {'host': str(value), 'enabled': False}
-            settings_manager.set_setting('ZFS_SERVERS', zfs_servers, 'zfs')
+                zfs_servers[key] = {"host": str(value), "enabled": False}
+            settings_manager.set_setting("ZFS_SERVERS", zfs_servers, "zfs")
             break
 
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": "🔄 Статус ZFS-сервера обновлён.",
-            "menu_options": [
-                {"label": "↩️ Назад", "action": "settings_zfs_list"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": "🔄 Статус ZFS-сервера обновлён.",
+                    "menu_options": [
+                        {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_zfs_edit_name_"):
-        payload = raw_action[len("settings_zfs_edit_name_"):]
+        payload = raw_action[len("settings_zfs_edit_name_") :]
         parts = payload.split("|", 1)
         current_name = unquote(parts[0]).strip() if parts else ""
         new_name = unquote(parts[1]).strip() if len(parts) > 1 else ""
 
         if not current_name:
-            return jsonify({
-                "error": {
-                    "code": "INVALID_ACTION",
-                    "message": "Server name is required for settings_zfs_edit_name_*",
-                    "request_id": request_id,
-                }
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "error": {
+                            "code": "INVALID_ACTION",
+                            "message": "Server name is required for settings_zfs_edit_name_*",
+                            "request_id": request_id,
+                        }
+                    }
+                ),
+                400,
+            )
 
         if not new_name:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "accepted",
-                "message": (
-                    "✏️ Переименование ZFS-сервера\n\n"
-                    "Отправьте действие в формате:\n"
-                    f"`settings_zfs_edit_name_{quote(current_name, safe='')}|<новое_имя>`"
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "accepted",
+                        "message": (
+                            "✏️ Переименование ZFS-сервера\n\n"
+                            "Отправьте действие в формате:\n"
+                            f"`settings_zfs_edit_name_{quote(current_name, safe='')}|<новое_имя>`"
+                        ),
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
                 ),
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_zfs_list"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+                200,
+            )
 
-        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+        zfs_servers = settings_manager.get_setting("ZFS_SERVERS", {})
         if not isinstance(zfs_servers, dict):
             zfs_servers = {}
         if current_name not in zfs_servers:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "accepted",
-                "message": f"❌ ZFS-сервер «{current_name}» не найден.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_zfs_list"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "accepted",
+                        "message": f"❌ ZFS-сервер «{current_name}» не найден.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
         if new_name in zfs_servers and new_name != current_name:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "accepted",
-                "message": f"❌ ZFS-сервер «{new_name}» уже существует.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_zfs_list"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "accepted",
+                        "message": f"❌ ZFS-сервер «{new_name}» уже существует.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
         server_value = zfs_servers.pop(current_name, None)
         if not isinstance(server_value, dict):
             server_value = {"enabled": True}
         zfs_servers[new_name] = server_value
-        settings_manager.set_setting('ZFS_SERVERS', zfs_servers, 'zfs')
+        settings_manager.set_setting("ZFS_SERVERS", zfs_servers, "zfs")
         try:
             backup_db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
             if backup_db_path:
@@ -5045,46 +5914,61 @@ def v1_extensions_actions():
                     exc,
                 )
 
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": f"✅ ZFS-сервер переименован: «{current_name}» → «{new_name}».",
-            "menu_options": [
-                {"label": "📋 Обновить список", "action": "settings_zfs_list"},
-                {"label": "↩️ Назад", "action": "settings_zfs"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": f"✅ ZFS-сервер переименован: «{current_name}» → «{new_name}».",
+                    "menu_options": [
+                        {"label": "📋 Обновить список", "action": "settings_zfs_list"},
+                        {"label": "↩️ Назад", "action": "settings_zfs"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_zfs_delete_"):
-        server_name = unquote(raw_action[len("settings_zfs_delete_"):]).strip()
+        server_name = unquote(raw_action[len("settings_zfs_delete_") :]).strip()
         if not server_name:
-            return jsonify({
-                "error": {
-                    "code": "INVALID_ACTION",
-                    "message": "Server name is required for settings_zfs_delete_*",
-                    "request_id": request_id,
-                }
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "error": {
+                            "code": "INVALID_ACTION",
+                            "message": "Server name is required for settings_zfs_delete_*",
+                            "request_id": request_id,
+                        }
+                    }
+                ),
+                400,
+            )
 
-        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+        zfs_servers = settings_manager.get_setting("ZFS_SERVERS", {})
         if not isinstance(zfs_servers, dict):
             zfs_servers = {}
         removed = zfs_servers.pop(server_name, None)
         if removed is None:
-            return jsonify({
-                "request_id": request_id,
-                "action": action,
-                "result": "accepted",
-                "message": f"❌ ZFS-сервер «{server_name}» не найден.",
-                "menu_options": [
-                    {"label": "↩️ Назад", "action": "settings_zfs_list"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "request_id": request_id,
+                        "action": action,
+                        "result": "accepted",
+                        "message": f"❌ ZFS-сервер «{server_name}» не найден.",
+                        "menu_options": [
+                            {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                            {"label": "✖️ Закрыть", "action": "close"},
+                        ],
+                    }
+                ),
+                200,
+            )
 
-        settings_manager.set_setting('ZFS_SERVERS', zfs_servers, 'zfs')
+        settings_manager.set_setting("ZFS_SERVERS", zfs_servers, "zfs")
         try:
             backup_db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
             if backup_db_path:
@@ -5104,113 +5988,152 @@ def v1_extensions_actions():
                     exc,
                 )
 
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": f"✅ ZFS-сервер «{server_name}» удалён.",
-            "menu_options": [
-                {"label": "📋 Обновить список", "action": "settings_zfs_list"},
-                {"label": "↩️ Назад", "action": "settings_zfs"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": f"✅ ZFS-сервер «{server_name}» удалён.",
+                    "menu_options": [
+                        {"label": "📋 Обновить список", "action": "settings_zfs_list"},
+                        {"label": "↩️ Назад", "action": "settings_zfs"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("settings_db_"):
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": "🗃️ Детальное редактирование БД пока доступно в Telegram-боте.",
-            "menu_options": [
-                {"label": "↩️ Назад", "action": "settings_db_main"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": "🗃️ Детальное редактирование БД пока доступно в Telegram-боте.",
+                    "menu_options": [
+                        {"label": "↩️ Назад", "action": "settings_db_main"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
 
     if action.startswith("supplier_stock_"):
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "result": "accepted",
-            "message": "📦 Детальная настройка раздела остатков поставщиков пока доступна в Telegram-боте.",
-            "menu_options": [
-                {"label": "↩️ Назад", "action": "settings_ext_supplier_stock"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        }), 200
-
-    if action == 'settings_resources':
-        return jsonify({
-            "request_id": request_id,
-            "action": action,
-            "message": "Откройте раздел «Доступность и ресурсы» для просмотра ресурсов серверов.",
-        }), 200
-
-    return jsonify({
-        "error": {
-            "code": "INVALID_ACTION",
-            "message": (
-                "Supported actions: enable_all, disable_all, "
-                "settings_ext_enable_all, settings_ext_disable_all, "
-                "settings_ext_toggle_{extension_id}, settings_ext_*, settings_zfs, settings_resources"
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": "📦 Детальная настройка раздела остатков поставщиков пока доступна в Telegram-боте.",
+                    "menu_options": [
+                        {"label": "↩️ Назад", "action": "settings_ext_supplier_stock"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
             ),
-            "request_id": request_id,
-        }
-    }), 400
+            200,
+        )
 
+    if action == "settings_resources":
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "message": "Откройте раздел «Доступность и ресурсы» для просмотра ресурсов серверов.",
+                }
+            ),
+            200,
+        )
 
-@app.route('/v1/settings/monitoring', methods=['GET'])
-def v1_get_settings_monitoring():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
-    if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
+    return (
+        jsonify(
+            {
+                "error": {
+                    "code": "INVALID_ACTION",
+                    "message": (
+                        "Supported actions: enable_all, disable_all, "
+                        "settings_ext_enable_all, settings_ext_disable_all, "
+                        "settings_ext_toggle_{extension_id}, settings_ext_*, settings_zfs, settings_resources"
+                    ),
+                    "request_id": request_id,
+                }
             }
-        }), 401
+        ),
+        400,
+    )
+
+
+@app.route("/v1/settings/monitoring", methods=["GET"])
+def v1_get_settings_monitoring():
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.db_settings_app import settings_manager
 
     response = {
         "request_id": request_id,
         "settings": {
-            "check_interval_sec": settings_manager.get_setting('CHECK_INTERVAL', 60),
-            "timeout_sec": settings_manager.get_setting('API_TIMEOUT_SEC', 15),
-            "max_downtime_sec": settings_manager.get_setting('MAX_FAIL_TIME', 900),
-            "windows_2025_timeout_sec": settings_manager.get_setting('WINDOWS_2025_TIMEOUT', 35),
-            "domain_servers_timeout_sec": settings_manager.get_setting('DOMAIN_SERVERS_TIMEOUT', 20),
-            "admin_servers_timeout_sec": settings_manager.get_setting('ADMIN_SERVERS_TIMEOUT', 25),
-            "standard_windows_timeout_sec": settings_manager.get_setting('STANDARD_WINDOWS_TIMEOUT', 30),
-            "linux_timeout_sec": settings_manager.get_setting('LINUX_TIMEOUT', 15),
-            "ping_timeout_sec": settings_manager.get_setting('PING_TIMEOUT', 10),
-        }
+            "check_interval_sec": settings_manager.get_setting("CHECK_INTERVAL", 60),
+            "timeout_sec": settings_manager.get_setting("API_TIMEOUT_SEC", 15),
+            "max_downtime_sec": settings_manager.get_setting("MAX_FAIL_TIME", 900),
+            "windows_2025_timeout_sec": settings_manager.get_setting("WINDOWS_2025_TIMEOUT", 35),
+            "domain_servers_timeout_sec": settings_manager.get_setting(
+                "DOMAIN_SERVERS_TIMEOUT", 20
+            ),
+            "admin_servers_timeout_sec": settings_manager.get_setting("ADMIN_SERVERS_TIMEOUT", 25),
+            "standard_windows_timeout_sec": settings_manager.get_setting(
+                "STANDARD_WINDOWS_TIMEOUT", 30
+            ),
+            "linux_timeout_sec": settings_manager.get_setting("LINUX_TIMEOUT", 15),
+            "ping_timeout_sec": settings_manager.get_setting("PING_TIMEOUT", 10),
+        },
     }
     app.logger.info("GET /v1/settings/monitoring request_id=%s", request_id)
     return jsonify(response), 200
 
 
-@app.route('/v1/settings/bot', methods=['GET'])
+@app.route("/v1/settings/bot", methods=["GET"])
 def v1_get_settings_bot():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.db_settings_app import settings_manager
 
-    raw_chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+    raw_chat_ids = settings_manager.get_setting("CHAT_IDS", [])
     if isinstance(raw_chat_ids, list):
         chat_ids = [str(chat_id).strip() for chat_id in raw_chat_ids if str(chat_id).strip()]
     elif raw_chat_ids:
@@ -5218,114 +6141,147 @@ def v1_get_settings_bot():
     else:
         chat_ids = []
 
-    token = settings_manager.get_setting('TELEGRAM_TOKEN', '')
+    token = settings_manager.get_setting("TELEGRAM_TOKEN", "")
 
     response = {
         "request_id": request_id,
         "settings": {
-            "telegram_chat_id": chat_ids[0] if chat_ids else '',
+            "telegram_chat_id": chat_ids[0] if chat_ids else "",
             "telegram_chat_ids": chat_ids,
             "masked_token": _mask_secret(token),
-        }
+        },
     }
     app.logger.info("GET /v1/settings/bot request_id=%s", request_id)
     return jsonify(response), 200
 
 
-@app.route('/v1/settings/bot', methods=['PATCH'])
+@app.route("/v1/settings/bot", methods=["PATCH"])
 def v1_settings_bot():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    token = payload.get('telegram_bot_token')
-    single_chat_id = payload.get('telegram_chat_id')
-    chat_ids = payload.get('telegram_chat_ids')
+    token = payload.get("telegram_bot_token")
+    single_chat_id = payload.get("telegram_chat_id")
+    chat_ids = payload.get("telegram_chat_ids")
 
     if token is None and single_chat_id is None and chat_ids is None:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "At least one field is required",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "At least one field is required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     from config.db_settings_app import settings_manager
 
     if token is not None:
-        settings_manager.set_setting('TELEGRAM_TOKEN', str(token), 'telegram')
+        settings_manager.set_setting("TELEGRAM_TOKEN", str(token), "telegram")
 
     if chat_ids is not None:
         if not isinstance(chat_ids, list):
-            return jsonify({
-                "error": {
-                    "code": "VALIDATION_FAILED",
-                    "message": "telegram_chat_ids must be an array",
-                    "request_id": request_id,
-                }
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "error": {
+                            "code": "VALIDATION_FAILED",
+                            "message": "telegram_chat_ids must be an array",
+                            "request_id": request_id,
+                        }
+                    }
+                ),
+                400,
+            )
         normalized_chat_ids = [str(chat_id).strip() for chat_id in chat_ids if str(chat_id).strip()]
-        settings_manager.set_setting('CHAT_IDS', normalized_chat_ids, 'telegram')
+        settings_manager.set_setting("CHAT_IDS", normalized_chat_ids, "telegram")
     elif single_chat_id is not None:
         value = str(single_chat_id).strip()
-        settings_manager.set_setting('CHAT_IDS', [value] if value else [], 'telegram')
+        settings_manager.set_setting("CHAT_IDS", [value] if value else [], "telegram")
 
-    raw_chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+    raw_chat_ids = settings_manager.get_setting("CHAT_IDS", [])
     if isinstance(raw_chat_ids, list):
-        normalized_chat_ids = [str(chat_id).strip() for chat_id in raw_chat_ids if str(chat_id).strip()]
+        normalized_chat_ids = [
+            str(chat_id).strip() for chat_id in raw_chat_ids if str(chat_id).strip()
+        ]
     elif raw_chat_ids:
         normalized_chat_ids = [str(raw_chat_ids).strip()]
     else:
         normalized_chat_ids = []
 
-    saved_token = settings_manager.get_setting('TELEGRAM_TOKEN', '')
-    return jsonify({
-        "request_id": request_id,
-        "settings": {
-            "telegram_chat_id": normalized_chat_ids[0] if normalized_chat_ids else '',
-            "telegram_chat_ids": normalized_chat_ids,
-            "masked_token": _mask_secret(saved_token),
-        }
-    }), 200
-
-
-@app.route('/v1/settings/bot/chats', methods=['POST'])
-def v1_settings_bot_add_chat():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
-    if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
+    saved_token = settings_manager.get_setting("TELEGRAM_TOKEN", "")
+    return (
+        jsonify(
+            {
                 "request_id": request_id,
+                "settings": {
+                    "telegram_chat_id": normalized_chat_ids[0] if normalized_chat_ids else "",
+                    "telegram_chat_ids": normalized_chat_ids,
+                    "masked_token": _mask_secret(saved_token),
+                },
             }
-        }), 401
+        ),
+        200,
+    )
+
+
+@app.route("/v1/settings/bot/chats", methods=["POST"])
+def v1_settings_bot_add_chat():
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    chat_id = str(payload.get('chat_id') or '').strip()
+    chat_id = str(payload.get("chat_id") or "").strip()
     if not chat_id:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "chat_id is required",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "chat_id is required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     from config.db_settings_app import settings_manager
-    raw_chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+
+    raw_chat_ids = settings_manager.get_setting("CHAT_IDS", [])
     if isinstance(raw_chat_ids, list):
         chat_ids = [str(item).strip() for item in raw_chat_ids if str(item).strip()]
     elif raw_chat_ids:
@@ -5335,34 +6291,45 @@ def v1_settings_bot_add_chat():
 
     if chat_id not in chat_ids:
         chat_ids.append(chat_id)
-        settings_manager.set_setting('CHAT_IDS', chat_ids, 'telegram')
+        settings_manager.set_setting("CHAT_IDS", chat_ids, "telegram")
 
-    return jsonify({
-        "request_id": request_id,
-        "settings": {
-            "telegram_chat_ids": chat_ids,
-            "telegram_chat_id": chat_ids[0] if chat_ids else '',
-        }
-    }), 200
-
-
-@app.route('/v1/settings/bot/chats/<chat_id>', methods=['DELETE'])
-def v1_settings_bot_remove_chat(chat_id):
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
-    if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
+    return (
+        jsonify(
+            {
                 "request_id": request_id,
+                "settings": {
+                    "telegram_chat_ids": chat_ids,
+                    "telegram_chat_id": chat_ids[0] if chat_ids else "",
+                },
             }
-        }), 401
+        ),
+        200,
+    )
+
+
+@app.route("/v1/settings/bot/chats/<chat_id>", methods=["DELETE"])
+def v1_settings_bot_remove_chat(chat_id):
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     target_chat_id = str(chat_id).strip()
     from config.db_settings_app import settings_manager
-    raw_chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+
+    raw_chat_ids = settings_manager.get_setting("CHAT_IDS", [])
     if isinstance(raw_chat_ids, list):
         chat_ids = [str(item).strip() for item in raw_chat_ids if str(item).strip()]
     elif raw_chat_ids:
@@ -5371,51 +6338,63 @@ def v1_settings_bot_remove_chat(chat_id):
         chat_ids = []
 
     chat_ids = [item for item in chat_ids if item != target_chat_id]
-    settings_manager.set_setting('CHAT_IDS', chat_ids, 'telegram')
+    settings_manager.set_setting("CHAT_IDS", chat_ids, "telegram")
 
-    return jsonify({
-        "request_id": request_id,
-        "settings": {
-            "telegram_chat_ids": chat_ids,
-            "telegram_chat_id": chat_ids[0] if chat_ids else '',
-        }
-    }), 200
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "settings": {
+                    "telegram_chat_ids": chat_ids,
+                    "telegram_chat_id": chat_ids[0] if chat_ids else "",
+                },
+            }
+        ),
+        200,
+    )
 
 
 def _normalize_matrix_homeserver(value):
-    homeserver = str(value or '').strip().rstrip('/')
+    homeserver = str(value or "").strip().rstrip("/")
     return homeserver
 
 
 def _default_matrix_homeserver():
     try:
         from config import settings as _settings
-        return _normalize_matrix_homeserver(getattr(_settings, 'MATRIX_HOMESERVER', ''))
+
+        return _normalize_matrix_homeserver(getattr(_settings, "MATRIX_HOMESERVER", ""))
     except Exception:
-        return ''
+        return ""
 
 
-@app.route('/v1/settings/bot/matrix', methods=['GET'])
+@app.route("/v1/settings/bot/matrix", methods=["GET"])
 def v1_get_settings_bot_matrix():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.db_settings_app import settings_manager
 
-    homeserver = _normalize_matrix_homeserver(
-        settings_manager.get_setting('MATRIX_HOMESERVER', '')
-    ) or _default_matrix_homeserver()
-    room_id = str(settings_manager.get_setting('MATRIX_ROOM_ID', '') or '').strip()
-    access_token = settings_manager.get_setting('MATRIX_ACCESS_TOKEN', '')
+    homeserver = (
+        _normalize_matrix_homeserver(settings_manager.get_setting("MATRIX_HOMESERVER", ""))
+        or _default_matrix_homeserver()
+    )
+    room_id = str(settings_manager.get_setting("MATRIX_ROOM_ID", "") or "").strip()
+    access_token = settings_manager.get_setting("MATRIX_ACCESS_TOKEN", "")
 
     response = {
         "request_id": request_id,
@@ -5423,67 +6402,83 @@ def v1_get_settings_bot_matrix():
             "matrix_homeserver": homeserver,
             "matrix_room_id": room_id,
             "masked_access_token": _mask_secret(access_token),
-        }
+        },
     }
     app.logger.info("GET /v1/settings/bot/matrix request_id=%s", request_id)
     return jsonify(response), 200
 
 
-@app.route('/v1/settings/bot/matrix', methods=['PATCH'])
+@app.route("/v1/settings/bot/matrix", methods=["PATCH"])
 def v1_settings_bot_matrix():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    homeserver = payload.get('matrix_homeserver')
-    access_token = payload.get('matrix_access_token')
-    room_id = payload.get('matrix_room_id')
+    homeserver = payload.get("matrix_homeserver")
+    access_token = payload.get("matrix_access_token")
+    room_id = payload.get("matrix_room_id")
 
     if homeserver is None and access_token is None and room_id is None:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "At least one field is required",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "At least one field is required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     from config.db_settings_app import settings_manager
 
     if homeserver is not None:
         settings_manager.set_setting(
-            'MATRIX_HOMESERVER',
+            "MATRIX_HOMESERVER",
             _normalize_matrix_homeserver(homeserver),
-            'matrix',
+            "matrix",
         )
     if access_token is not None:
-        settings_manager.set_setting('MATRIX_ACCESS_TOKEN', str(access_token), 'matrix')
+        settings_manager.set_setting("MATRIX_ACCESS_TOKEN", str(access_token), "matrix")
     if room_id is not None:
-        settings_manager.set_setting('MATRIX_ROOM_ID', str(room_id).strip(), 'matrix')
+        settings_manager.set_setting("MATRIX_ROOM_ID", str(room_id).strip(), "matrix")
 
-    saved_homeserver = _normalize_matrix_homeserver(
-        settings_manager.get_setting('MATRIX_HOMESERVER', '')
-    ) or _default_matrix_homeserver()
-    saved_room_id = str(settings_manager.get_setting('MATRIX_ROOM_ID', '') or '').strip()
-    saved_token = settings_manager.get_setting('MATRIX_ACCESS_TOKEN', '')
+    saved_homeserver = (
+        _normalize_matrix_homeserver(settings_manager.get_setting("MATRIX_HOMESERVER", ""))
+        or _default_matrix_homeserver()
+    )
+    saved_room_id = str(settings_manager.get_setting("MATRIX_ROOM_ID", "") or "").strip()
+    saved_token = settings_manager.get_setting("MATRIX_ACCESS_TOKEN", "")
 
-    return jsonify({
-        "request_id": request_id,
-        "settings": {
-            "matrix_homeserver": saved_homeserver,
-            "matrix_room_id": saved_room_id,
-            "masked_access_token": _mask_secret(saved_token),
-        }
-    }), 200
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "settings": {
+                    "matrix_homeserver": saved_homeserver,
+                    "matrix_room_id": saved_room_id,
+                    "masked_access_token": _mask_secret(saved_token),
+                },
+            }
+        ),
+        200,
+    )
 
 
 def _telegram_bot_test(token):
@@ -5502,38 +6497,48 @@ def _telegram_bot_test(token):
     except Exception:
         return False, f"HTTP {resp.status_code}: некорректный JSON", None
 
-    if resp.status_code != 200 or not data.get('ok'):
-        description = data.get('description') or f"HTTP {resp.status_code}"
+    if resp.status_code != 200 or not data.get("ok"):
+        description = data.get("description") or f"HTTP {resp.status_code}"
         return False, description, data
 
-    result = data.get('result') or {}
-    username = result.get('username')
-    return True, username or 'ok', result
+    result = data.get("result") or {}
+    username = result.get("username")
+    return True, username or "ok", result
 
 
-@app.route('/v1/settings/bot/test', methods=['POST'])
+@app.route("/v1/settings/bot/test", methods=["POST"])
 def v1_settings_bot_test():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.db_settings_app import settings_manager
 
-    token = str(settings_manager.get_setting('TELEGRAM_TOKEN', '') or '').strip()
+    token = str(settings_manager.get_setting("TELEGRAM_TOKEN", "") or "").strip()
     if not token:
-        return jsonify({
-            "request_id": request_id,
-            "ok": False,
-            "message": "telegram_bot_token не задан в настройках",
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "ok": False,
+                    "message": "telegram_bot_token не задан в настройках",
+                }
+            ),
+            200,
+        )
 
     ok, detail, _ = _telegram_bot_test(token)
     if ok:
@@ -5543,19 +6548,26 @@ def v1_settings_bot_test():
 
     app.logger.info(
         "POST /v1/settings/bot/test request_id=%s ok=%s detail=%s",
-        request_id, ok, detail,
+        request_id,
+        ok,
+        detail,
     )
-    return jsonify({
-        "request_id": request_id,
-        "ok": ok,
-        "message": message,
-    }), 200
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "ok": ok,
+                "message": message,
+            }
+        ),
+        200,
+    )
 
 
 def _matrix_bot_test(homeserver, access_token):
     import requests as _requests
 
-    base = (homeserver or '').rstrip('/')
+    base = (homeserver or "").rstrip("/")
     url = f"{base}/_matrix/client/v3/account/whoami"
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
@@ -5572,47 +6584,63 @@ def _matrix_bot_test(homeserver, access_token):
 
     if resp.status_code != 200:
         if isinstance(data, dict):
-            err = data.get('error') or data.get('errcode') or ''
-            return False, f"HTTP {resp.status_code}: {err}".rstrip(': '), data
+            err = data.get("error") or data.get("errcode") or ""
+            return False, f"HTTP {resp.status_code}: {err}".rstrip(": "), data
         return False, f"HTTP {resp.status_code}", data
 
-    user_id = (data or {}).get('user_id') if isinstance(data, dict) else None
-    return True, user_id or 'ok', data
+    user_id = (data or {}).get("user_id") if isinstance(data, dict) else None
+    return True, user_id or "ok", data
 
 
-@app.route('/v1/settings/bot/matrix/test', methods=['POST'])
+@app.route("/v1/settings/bot/matrix/test", methods=["POST"])
 def v1_settings_bot_matrix_test():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.db_settings_app import settings_manager
 
-    homeserver = _normalize_matrix_homeserver(
-        settings_manager.get_setting('MATRIX_HOMESERVER', '')
-    ) or _default_matrix_homeserver()
-    access_token = str(settings_manager.get_setting('MATRIX_ACCESS_TOKEN', '') or '').strip()
+    homeserver = (
+        _normalize_matrix_homeserver(settings_manager.get_setting("MATRIX_HOMESERVER", ""))
+        or _default_matrix_homeserver()
+    )
+    access_token = str(settings_manager.get_setting("MATRIX_ACCESS_TOKEN", "") or "").strip()
 
     if not homeserver:
-        return jsonify({
-            "request_id": request_id,
-            "ok": False,
-            "message": "matrix_homeserver не задан в настройках",
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "ok": False,
+                    "message": "matrix_homeserver не задан в настройках",
+                }
+            ),
+            200,
+        )
     if not access_token:
-        return jsonify({
-            "request_id": request_id,
-            "ok": False,
-            "message": "matrix_access_token не задан в настройках",
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "ok": False,
+                    "message": "matrix_access_token не задан в настройках",
+                }
+            ),
+            200,
+        )
 
     ok, detail, _ = _matrix_bot_test(homeserver, access_token)
     if ok:
@@ -5622,34 +6650,46 @@ def v1_settings_bot_matrix_test():
 
     app.logger.info(
         "POST /v1/settings/bot/matrix/test request_id=%s ok=%s detail=%s",
-        request_id, ok, detail,
+        request_id,
+        ok,
+        detail,
     )
-    return jsonify({
-        "request_id": request_id,
-        "ok": ok,
-        "message": message,
-    }), 200
-
-
-@app.route('/v1/settings/time', methods=['GET'])
-def v1_get_settings_time():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
-    if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
+    return (
+        jsonify(
+            {
                 "request_id": request_id,
+                "ok": ok,
+                "message": message,
             }
-        }), 401
+        ),
+        200,
+    )
+
+
+@app.route("/v1/settings/time", methods=["GET"])
+def v1_get_settings_time():
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.db_settings_app import settings_manager
 
-    quiet_start = _hour_to_hhmm(settings_manager.get_setting('SILENT_START', 23), '23:00')
-    quiet_end = _hour_to_hhmm(settings_manager.get_setting('SILENT_END', 8), '08:00')
-    metrics_collection_time = str(settings_manager.get_setting('DATA_COLLECTION_TIME', '07:30'))
+    quiet_start = _hour_to_hhmm(settings_manager.get_setting("SILENT_START", 23), "23:00")
+    quiet_end = _hour_to_hhmm(settings_manager.get_setting("SILENT_END", 8), "08:00")
+    metrics_collection_time = str(settings_manager.get_setting("DATA_COLLECTION_TIME", "07:30"))
 
     response = {
         "request_id": request_id,
@@ -5657,290 +6697,380 @@ def v1_get_settings_time():
             "quiet_start": quiet_start,
             "quiet_end": quiet_end,
             "metrics_collection_time": metrics_collection_time,
-        }
+        },
     }
     app.logger.info("GET /v1/settings/time request_id=%s", request_id)
     return jsonify(response), 200
 
 
-@app.route('/v1/settings/auth', methods=['GET'])
+@app.route("/v1/settings/auth", methods=["GET"])
 def v1_get_settings_auth():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.db_settings_app import settings_manager
 
-    ssh_password = settings_manager.get_setting('SSH_PASSWORD', '')
-    windows_password = settings_manager.get_setting('WINDOWS_PASSWORD', '')
+    ssh_password = settings_manager.get_setting("SSH_PASSWORD", "")
+    windows_password = settings_manager.get_setting("WINDOWS_PASSWORD", "")
     windows_credentials = settings_manager.get_windows_credentials()
     safe_windows_credentials = []
     for item in windows_credentials:
         safe_item = dict(item)
-        if 'password' in safe_item:
-            safe_item['password'] = _mask_secret(safe_item.get('password'))
+        if "password" in safe_item:
+            safe_item["password"] = _mask_secret(safe_item.get("password"))
         safe_windows_credentials.append(safe_item)
 
     response = {
         "request_id": request_id,
         "settings": {
-            "auth_mode": str(settings_manager.get_setting('AUTH_MODE', 'mixed')),
-            "ssh_username": str(settings_manager.get_setting('SSH_USERNAME', 'root')),
-            "ssh_port": int(settings_manager.get_setting('SSH_PORT', 22)),
-            "ssh_key_path": str(settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')),
-            "windows_username": str(settings_manager.get_setting('WINDOWS_USERNAME', 'Administrator')),
+            "auth_mode": str(settings_manager.get_setting("AUTH_MODE", "mixed")),
+            "ssh_username": str(settings_manager.get_setting("SSH_USERNAME", "root")),
+            "ssh_port": int(settings_manager.get_setting("SSH_PORT", 22)),
+            "ssh_key_path": str(settings_manager.get_setting("SSH_KEY_PATH", "/root/.ssh/id_rsa")),
+            "windows_username": str(
+                settings_manager.get_setting("WINDOWS_USERNAME", "Administrator")
+            ),
             "masked_ssh_password": _mask_secret(ssh_password),
             "masked_windows_password": _mask_secret(windows_password),
             "windows_credentials": safe_windows_credentials,
             "windows_server_types": settings_manager.get_windows_server_types(),
-        }
+        },
     }
     app.logger.info("GET /v1/settings/auth request_id=%s", request_id)
     return jsonify(response), 200
 
 
-@app.route('/v1/settings/auth', methods=['PATCH'])
+@app.route("/v1/settings/auth", methods=["PATCH"])
 def v1_settings_auth():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
 
-    auth_mode = payload.get('auth_mode')
-    ssh_username = payload.get('ssh_username')
-    ssh_port = payload.get('ssh_port')
-    ssh_key_path = payload.get('ssh_key_path')
-    windows_username = payload.get('windows_username')
-    ssh_password = payload.get('ssh_password')
-    windows_password = payload.get('windows_password')
+    auth_mode = payload.get("auth_mode")
+    ssh_username = payload.get("ssh_username")
+    ssh_port = payload.get("ssh_port")
+    ssh_key_path = payload.get("ssh_key_path")
+    windows_username = payload.get("windows_username")
+    ssh_password = payload.get("ssh_password")
+    windows_password = payload.get("windows_password")
 
     if (
-        auth_mode is None and ssh_username is None and ssh_port is None and ssh_key_path is None
-        and windows_username is None and ssh_password is None and windows_password is None
+        auth_mode is None
+        and ssh_username is None
+        and ssh_port is None
+        and ssh_key_path is None
+        and windows_username is None
+        and ssh_password is None
+        and windows_password is None
     ):
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "At least one field is required",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "At least one field is required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     from config.db_settings_app import settings_manager
 
     if auth_mode is not None:
-        settings_manager.set_setting('AUTH_MODE', str(auth_mode).strip(), 'auth')
+        settings_manager.set_setting("AUTH_MODE", str(auth_mode).strip(), "auth")
     if ssh_username is not None:
-        settings_manager.set_setting('SSH_USERNAME', str(ssh_username).strip(), 'auth')
+        settings_manager.set_setting("SSH_USERNAME", str(ssh_username).strip(), "auth")
     if ssh_port is not None:
-        settings_manager.set_setting('SSH_PORT', int(ssh_port), 'auth', data_type='int')
+        settings_manager.set_setting("SSH_PORT", int(ssh_port), "auth", data_type="int")
     if ssh_key_path is not None:
-        settings_manager.set_setting('SSH_KEY_PATH', str(ssh_key_path).strip(), 'auth')
+        settings_manager.set_setting("SSH_KEY_PATH", str(ssh_key_path).strip(), "auth")
     if windows_username is not None:
-        settings_manager.set_setting('WINDOWS_USERNAME', str(windows_username).strip(), 'auth')
+        settings_manager.set_setting("WINDOWS_USERNAME", str(windows_username).strip(), "auth")
     if ssh_password is not None:
-        settings_manager.set_setting('SSH_PASSWORD', str(ssh_password), 'auth')
+        settings_manager.set_setting("SSH_PASSWORD", str(ssh_password), "auth")
     if windows_password is not None:
-        settings_manager.set_setting('WINDOWS_PASSWORD', str(windows_password), 'auth')
+        settings_manager.set_setting("WINDOWS_PASSWORD", str(windows_password), "auth")
 
     return v1_get_settings_auth()
 
 
-@app.route('/v1/settings/auth/windows-credentials', methods=['GET'])
+@app.route("/v1/settings/auth/windows-credentials", methods=["GET"])
 def v1_get_windows_credentials():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.db_settings_app import settings_manager
+
     windows_credentials = settings_manager.get_windows_credentials()
     safe_windows_credentials = []
     for item in windows_credentials:
         safe_item = dict(item)
-        if 'password' in safe_item:
-            safe_item['password'] = _mask_secret(safe_item.get('password'))
+        if "password" in safe_item:
+            safe_item["password"] = _mask_secret(safe_item.get("password"))
         safe_windows_credentials.append(safe_item)
-    return jsonify({
-        "request_id": request_id,
-        "items": safe_windows_credentials,
-        "server_types": settings_manager.get_windows_server_types(),
-    }), 200
-
-
-@app.route('/v1/settings/auth/windows-credentials', methods=['POST'])
-def v1_add_windows_credential():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
-    if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
+    return (
+        jsonify(
+            {
                 "request_id": request_id,
+                "items": safe_windows_credentials,
+                "server_types": settings_manager.get_windows_server_types(),
             }
-        }), 401
+        ),
+        200,
+    )
+
+
+@app.route("/v1/settings/auth/windows-credentials", methods=["POST"])
+def v1_add_windows_credential():
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    username = str(payload.get('username') or '').strip()
-    password = str(payload.get('password') or '').strip()
-    server_type = str(payload.get('server_type') or 'default').strip() or 'default'
-    priority = int(payload.get('priority') or 0)
+    username = str(payload.get("username") or "").strip()
+    password = str(payload.get("password") or "").strip()
+    server_type = str(payload.get("server_type") or "default").strip() or "default"
+    priority = int(payload.get("priority") or 0)
 
     if not username or not password:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "username and password are required",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "username and password are required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     from config.db_settings_app import settings_manager
+
     ok = settings_manager.add_windows_credential(username, password, server_type, priority)
     if not ok:
-        return jsonify({
-            "error": {
-                "code": "CONFIG_STORE_UNAVAILABLE",
-                "message": "failed to add windows credential",
-                "request_id": request_id,
-            }
-        }), 500
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "CONFIG_STORE_UNAVAILABLE",
+                        "message": "failed to add windows credential",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            500,
+        )
 
     return v1_get_windows_credentials()
 
 
-@app.route('/v1/settings/auth/windows-credentials/<int:cred_id>', methods=['DELETE'])
+@app.route("/v1/settings/auth/windows-credentials/<int:cred_id>", methods=["DELETE"])
 def v1_delete_windows_credential(cred_id):
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.db_settings_app import settings_manager
+
     ok = settings_manager.delete_windows_credential(int(cred_id))
     if not ok:
-        return jsonify({
-            "error": {
-                "code": "CONFIG_STORE_UNAVAILABLE",
-                "message": "failed to delete windows credential",
-                "request_id": request_id,
-            }
-        }), 500
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "CONFIG_STORE_UNAVAILABLE",
+                        "message": "failed to delete windows credential",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            500,
+        )
 
     return v1_get_windows_credentials()
 
 
 def _build_windows_types_stats(settings_manager):
     credentials = settings_manager.get_windows_credentials()
-    grouped = {type_name: {"total": 0, "active": 0, "inactive": 0} for type_name in settings_manager.get_windows_server_types()}
+    grouped = {
+        type_name: {"total": 0, "active": 0, "inactive": 0}
+        for type_name in settings_manager.get_windows_server_types()
+    }
     for cred in credentials:
-        server_type = str(cred.get('server_type') or 'default')
+        server_type = str(cred.get("server_type") or "default")
         bucket = grouped.setdefault(server_type, {"total": 0, "active": 0, "inactive": 0})
         bucket["total"] += 1
-        if cred.get('enabled'):
+        if cred.get("enabled"):
             bucket["active"] += 1
         else:
             bucket["inactive"] += 1
     return grouped
 
 
-@app.route('/v1/settings/auth/windows-types', methods=['GET'])
+@app.route("/v1/settings/auth/windows-types", methods=["GET"])
 def v1_get_windows_types():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.db_settings_app import settings_manager
+
     stats = _build_windows_types_stats(settings_manager)
-    return jsonify({
-        "request_id": request_id,
-        "types": [
+    return (
+        jsonify(
             {
-                "name": type_name,
-                "total": values["total"],
-                "active": values["active"],
-                "inactive": values["inactive"],
-            }
-            for type_name, values in sorted(stats.items())
-        ],
-        "summary": {
-            "types_count": len(stats),
-            "credentials_count": sum(item["total"] for item in stats.values()),
-        }
-    }), 200
-
-
-@app.route('/v1/settings/auth/windows-types', methods=['POST'])
-def v1_create_windows_type():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
-    if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
                 "request_id": request_id,
+                "types": [
+                    {
+                        "name": type_name,
+                        "total": values["total"],
+                        "active": values["active"],
+                        "inactive": values["inactive"],
+                    }
+                    for type_name, values in sorted(stats.items())
+                ],
+                "summary": {
+                    "types_count": len(stats),
+                    "credentials_count": sum(item["total"] for item in stats.values()),
+                },
             }
-        }), 401
+        ),
+        200,
+    )
+
+
+@app.route("/v1/settings/auth/windows-types", methods=["POST"])
+def v1_create_windows_type():
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    type_name = str(payload.get('name') or '').strip()
+    type_name = str(payload.get("name") or "").strip()
     if not type_name:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "name is required",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "name is required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     from config.db_settings_app import settings_manager
+
     existing = set(settings_manager.get_windows_server_types())
     if type_name in existing:
-        return jsonify({
-            "error": {
-                "code": "CONFLICT",
-                "message": "type already exists",
-                "request_id": request_id,
-            }
-        }), 409
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "CONFLICT",
+                        "message": "type already exists",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            409,
+        )
 
     # В БД тип существует только через учетные записи: создаем и сразу отключаем тех. запись.
     settings_manager.add_windows_credential(
@@ -5951,137 +7081,190 @@ def v1_create_windows_type():
     )
     created = settings_manager.get_windows_credentials(type_name)
     if created:
-        settings_manager.update_windows_credential(created[0]['id'], enabled=0)
+        settings_manager.update_windows_credential(created[0]["id"], enabled=0)
 
     return v1_get_windows_types()
 
 
-@app.route('/v1/settings/auth/windows-types/<type_name>', methods=['PATCH'])
+@app.route("/v1/settings/auth/windows-types/<type_name>", methods=["PATCH"])
 def v1_rename_windows_type(type_name):
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    new_name = str(payload.get('new_name') or '').strip()
-    old_name = str(type_name or '').strip()
+    new_name = str(payload.get("new_name") or "").strip()
+    old_name = str(type_name or "").strip()
     if not old_name or not new_name:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "new_name is required",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "new_name is required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     from config.db_settings_app import settings_manager
+
     existing = set(settings_manager.get_windows_server_types())
     if old_name not in existing:
-        return jsonify({
-            "error": {
-                "code": "NOT_FOUND",
-                "message": "type not found",
-                "request_id": request_id,
-            }
-        }), 404
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "NOT_FOUND",
+                        "message": "type not found",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            404,
+        )
     if new_name in existing and new_name != old_name:
-        return jsonify({
-            "error": {
-                "code": "CONFLICT",
-                "message": "target type already exists",
-                "request_id": request_id,
-            }
-        }), 409
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "CONFLICT",
+                        "message": "target type already exists",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            409,
+        )
 
     for cred in settings_manager.get_windows_credentials(old_name):
-        settings_manager.update_windows_credential(cred['id'], server_type=new_name)
+        settings_manager.update_windows_credential(cred["id"], server_type=new_name)
 
     return v1_get_windows_types()
 
 
-@app.route('/v1/settings/auth/windows-types/merge', methods=['POST'])
+@app.route("/v1/settings/auth/windows-types/merge", methods=["POST"])
 def v1_merge_windows_types():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    source_type = str(payload.get('source_type') or '').strip()
-    target_type = str(payload.get('target_type') or '').strip()
+    source_type = str(payload.get("source_type") or "").strip()
+    target_type = str(payload.get("target_type") or "").strip()
     if not source_type or not target_type or source_type == target_type:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "source_type and target_type are required and must differ",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "source_type and target_type are required and must differ",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     from config.db_settings_app import settings_manager
+
     existing = set(settings_manager.get_windows_server_types())
     if source_type not in existing or target_type not in existing:
-        return jsonify({
-            "error": {
-                "code": "NOT_FOUND",
-                "message": "source or target type not found",
-                "request_id": request_id,
-            }
-        }), 404
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "NOT_FOUND",
+                        "message": "source or target type not found",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            404,
+        )
 
     for cred in settings_manager.get_windows_credentials(source_type):
-        settings_manager.update_windows_credential(cred['id'], server_type=target_type)
+        settings_manager.update_windows_credential(cred["id"], server_type=target_type)
 
     return v1_get_windows_types()
 
 
-@app.route('/v1/settings/auth/windows-types/<type_name>', methods=['DELETE'])
+@app.route("/v1/settings/auth/windows-types/<type_name>", methods=["DELETE"])
 def v1_delete_windows_type(type_name):
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
-    source_type = str(type_name or '').strip()
-    target_type = str(request.args.get('target_type') or 'default').strip() or 'default'
-    if source_type == 'default':
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "type 'default' cannot be deleted",
-                "request_id": request_id,
-            }
-        }), 400
+    source_type = str(type_name or "").strip()
+    target_type = str(request.args.get("target_type") or "default").strip() or "default"
+    if source_type == "default":
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "type 'default' cannot be deleted",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     from config.db_settings_app import settings_manager
+
     existing = set(settings_manager.get_windows_server_types())
     if source_type not in existing:
-        return jsonify({
-            "error": {
-                "code": "NOT_FOUND",
-                "message": "type not found",
-                "request_id": request_id,
-            }
-        }), 404
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "NOT_FOUND",
+                        "message": "type not found",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            404,
+        )
 
     if target_type not in existing:
         settings_manager.add_windows_credential(
@@ -6092,40 +7275,65 @@ def v1_delete_windows_type(type_name):
         )
         created = settings_manager.get_windows_credentials(target_type)
         if created:
-            settings_manager.update_windows_credential(created[0]['id'], enabled=0)
+            settings_manager.update_windows_credential(created[0]["id"], enabled=0)
 
     for cred in settings_manager.get_windows_credentials(source_type):
-        settings_manager.update_windows_credential(cred['id'], server_type=target_type)
+        settings_manager.update_windows_credential(cred["id"], server_type=target_type)
 
     return v1_get_windows_types()
 
 
-@app.route('/v1/settings/monitoring', methods=['PATCH'])
+@app.route("/v1/settings/monitoring", methods=["PATCH"])
 def v1_settings_monitoring():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
 
-    check_interval = payload.get('check_interval_sec')
-    timeout_sec = payload.get('timeout_sec')
-    max_downtime = payload.get('max_downtime_sec')
+    check_interval = payload.get("check_interval_sec")
+    timeout_sec = payload.get("timeout_sec")
+    max_downtime = payload.get("max_downtime_sec")
     server_timeout_fields = (
-        ('windows_2025_timeout_sec', 'WINDOWS_2025_TIMEOUT', 'Таймаут Windows 2025 серверов (секунды)', 35),
-        ('domain_servers_timeout_sec', 'DOMAIN_SERVERS_TIMEOUT', 'Таймаут доменных серверов (секунды)', 20),
-        ('admin_servers_timeout_sec', 'ADMIN_SERVERS_TIMEOUT', 'Таймаут Admin серверов (секунды)', 25),
-        ('standard_windows_timeout_sec', 'STANDARD_WINDOWS_TIMEOUT', 'Таймаут стандартных Windows серверов (секунды)', 30),
-        ('linux_timeout_sec', 'LINUX_TIMEOUT', 'Таймаут Linux серверов (секунды)', 15),
-        ('ping_timeout_sec', 'PING_TIMEOUT', 'Таймаут Ping серверов (секунды)', 10),
+        (
+            "windows_2025_timeout_sec",
+            "WINDOWS_2025_TIMEOUT",
+            "Таймаут Windows 2025 серверов (секунды)",
+            35,
+        ),
+        (
+            "domain_servers_timeout_sec",
+            "DOMAIN_SERVERS_TIMEOUT",
+            "Таймаут доменных серверов (секунды)",
+            20,
+        ),
+        (
+            "admin_servers_timeout_sec",
+            "ADMIN_SERVERS_TIMEOUT",
+            "Таймаут Admin серверов (секунды)",
+            25,
+        ),
+        (
+            "standard_windows_timeout_sec",
+            "STANDARD_WINDOWS_TIMEOUT",
+            "Таймаут стандартных Windows серверов (секунды)",
+            30,
+        ),
+        ("linux_timeout_sec", "LINUX_TIMEOUT", "Таймаут Linux серверов (секунды)", 15),
+        ("ping_timeout_sec", "PING_TIMEOUT", "Таймаут Ping серверов (секунды)", 10),
     )
     server_timeout_inputs = {field[0]: payload.get(field[0]) for field in server_timeout_fields}
     any_server_timeout = any(value is not None for value in server_timeout_inputs.values())
@@ -6136,13 +7344,18 @@ def v1_settings_monitoring():
         and max_downtime is None
         and not any_server_timeout
     ):
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "At least one field is required",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "At least one field is required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     try:
         from config.db_settings_app import settings_manager
@@ -6150,26 +7363,73 @@ def v1_settings_monitoring():
         if check_interval is not None:
             check_interval = int(check_interval)
             if check_interval < 5:
-                return jsonify({"error": {"code": "INVALID_THRESHOLD", "message": "check_interval_sec must be >= 5", "request_id": request_id}}), 400
-            settings_manager.set_setting('CHECK_INTERVAL', check_interval, 'monitoring', 'Интервал проверки серверов (секунды)', 'int')
+                return (
+                    jsonify(
+                        {
+                            "error": {
+                                "code": "INVALID_THRESHOLD",
+                                "message": "check_interval_sec must be >= 5",
+                                "request_id": request_id,
+                            }
+                        }
+                    ),
+                    400,
+                )
+            settings_manager.set_setting(
+                "CHECK_INTERVAL",
+                check_interval,
+                "monitoring",
+                "Интервал проверки серверов (секунды)",
+                "int",
+            )
         else:
-            check_interval = settings_manager.get_setting('CHECK_INTERVAL', 60)
+            check_interval = settings_manager.get_setting("CHECK_INTERVAL", 60)
 
         if max_downtime is not None:
             max_downtime = int(max_downtime)
             if max_downtime < 30:
-                return jsonify({"error": {"code": "INVALID_THRESHOLD", "message": "max_downtime_sec must be >= 30", "request_id": request_id}}), 400
-            settings_manager.set_setting('MAX_FAIL_TIME', max_downtime, 'monitoring', 'Максимальное время простоя до алерта (секунды)', 'int')
+                return (
+                    jsonify(
+                        {
+                            "error": {
+                                "code": "INVALID_THRESHOLD",
+                                "message": "max_downtime_sec must be >= 30",
+                                "request_id": request_id,
+                            }
+                        }
+                    ),
+                    400,
+                )
+            settings_manager.set_setting(
+                "MAX_FAIL_TIME",
+                max_downtime,
+                "monitoring",
+                "Максимальное время простоя до алерта (секунды)",
+                "int",
+            )
         else:
-            max_downtime = settings_manager.get_setting('MAX_FAIL_TIME', 900)
+            max_downtime = settings_manager.get_setting("MAX_FAIL_TIME", 900)
 
         if timeout_sec is not None:
             timeout_sec = int(timeout_sec)
             if timeout_sec < 1:
-                return jsonify({"error": {"code": "INVALID_THRESHOLD", "message": "timeout_sec must be >= 1", "request_id": request_id}}), 400
-            settings_manager.set_setting('API_TIMEOUT_SEC', timeout_sec, 'monitoring', 'Таймаут API (секунды)', 'int')
+                return (
+                    jsonify(
+                        {
+                            "error": {
+                                "code": "INVALID_THRESHOLD",
+                                "message": "timeout_sec must be >= 1",
+                                "request_id": request_id,
+                            }
+                        }
+                    ),
+                    400,
+                )
+            settings_manager.set_setting(
+                "API_TIMEOUT_SEC", timeout_sec, "monitoring", "Таймаут API (секунды)", "int"
+            )
         else:
-            timeout_sec = settings_manager.get_setting('API_TIMEOUT_SEC', 15)
+            timeout_sec = settings_manager.get_setting("API_TIMEOUT_SEC", 15)
 
         server_timeout_values = {}
         for payload_key, db_key, description, default in server_timeout_fields:
@@ -6178,117 +7438,176 @@ def v1_settings_monitoring():
                 try:
                     parsed_value = int(raw_value)
                 except (TypeError, ValueError):
-                    return jsonify({"error": {"code": "VALIDATION_FAILED", "message": f"{payload_key} must be an integer", "request_id": request_id}}), 400
+                    return (
+                        jsonify(
+                            {
+                                "error": {
+                                    "code": "VALIDATION_FAILED",
+                                    "message": f"{payload_key} must be an integer",
+                                    "request_id": request_id,
+                                }
+                            }
+                        ),
+                        400,
+                    )
                 if parsed_value < 1:
-                    return jsonify({"error": {"code": "INVALID_THRESHOLD", "message": f"{payload_key} must be >= 1", "request_id": request_id}}), 400
-                settings_manager.set_setting(db_key, parsed_value, 'monitoring', description, 'int')
+                    return (
+                        jsonify(
+                            {
+                                "error": {
+                                    "code": "INVALID_THRESHOLD",
+                                    "message": f"{payload_key} must be >= 1",
+                                    "request_id": request_id,
+                                }
+                            }
+                        ),
+                        400,
+                    )
+                settings_manager.set_setting(db_key, parsed_value, "monitoring", description, "int")
                 server_timeout_values[payload_key] = parsed_value
             else:
                 server_timeout_values[payload_key] = settings_manager.get_setting(db_key, default)
 
-        return jsonify({
-            "request_id": request_id,
-            "settings": {
-                "check_interval_sec": check_interval,
-                "timeout_sec": timeout_sec,
-                "max_downtime_sec": max_downtime,
-                **server_timeout_values,
-                "updated_at": datetime.now().isoformat(),
-            }
-        }), 200
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "settings": {
+                        "check_interval_sec": check_interval,
+                        "timeout_sec": timeout_sec,
+                        "max_downtime_sec": max_downtime,
+                        **server_timeout_values,
+                        "updated_at": datetime.now().isoformat(),
+                    },
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
-        return jsonify({
-            "error": {
-                "code": "CONFIG_STORE_UNAVAILABLE",
-                "message": str(e),
-                "request_id": request_id,
-            }
-        }), 500
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "CONFIG_STORE_UNAVAILABLE",
+                        "message": str(e),
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            500,
+        )
 
 
 def _normalize_server_type(raw_value):
-    normalized = str(raw_value or '').strip().lower()
+    normalized = str(raw_value or "").strip().lower()
     aliases = {
-        'windows': 'rdp',
-        'linux': 'ssh',
-        'rdp': 'rdp',
-        'ssh': 'ssh',
-        'ping': 'ping',
+        "windows": "rdp",
+        "linux": "ssh",
+        "rdp": "rdp",
+        "ssh": "ssh",
+        "ping": "ping",
     }
     return aliases.get(normalized)
 
 
-@app.route('/v1/settings/servers', methods=['GET'])
+@app.route("/v1/settings/servers", methods=["GET"])
 def v1_get_settings_servers():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.db_settings_app import settings_manager
+
     servers = settings_manager.get_all_servers(include_disabled=True)
-    return jsonify({
-        "request_id": request_id,
-        "items": servers,
-        "summary": {
-            "total": len(servers),
-            "enabled": sum(1 for item in servers if item.get("enabled")),
-            "disabled": sum(1 for item in servers if not item.get("enabled")),
-        }
-    }), 200
-
-
-@app.route('/v1/settings/servers', methods=['POST'])
-def v1_add_settings_server():
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
-    if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
+    return (
+        jsonify(
+            {
                 "request_id": request_id,
+                "items": servers,
+                "summary": {
+                    "total": len(servers),
+                    "enabled": sum(1 for item in servers if item.get("enabled")),
+                    "disabled": sum(1 for item in servers if not item.get("enabled")),
+                },
             }
-        }), 401
+        ),
+        200,
+    )
+
+
+@app.route("/v1/settings/servers", methods=["POST"])
+def v1_add_settings_server():
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    ip = str(payload.get('ip') or '').strip()
-    name = str(payload.get('name') or '').strip()
-    server_type = _normalize_server_type(payload.get('type'))
-    timeout = payload.get('timeout')
-    enabled = payload.get('enabled')
+    ip = str(payload.get("ip") or "").strip()
+    name = str(payload.get("name") or "").strip()
+    server_type = _normalize_server_type(payload.get("type"))
+    timeout = payload.get("timeout")
+    enabled = payload.get("enabled")
 
     if not ip or not name or not server_type:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "ip, name and type are required",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "ip, name and type are required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     try:
         timeout_value = int(timeout) if timeout is not None else 30
         if timeout_value < 1:
             raise ValueError("timeout must be >= 1")
     except Exception:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "timeout must be integer >= 1",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "timeout must be integer >= 1",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     enabled_value = True if enabled is None else bool(enabled)
     from config.db_settings_app import settings_manager
+
     ok = settings_manager.add_server(
         ip=ip,
         name=name,
@@ -6297,45 +7616,60 @@ def v1_add_settings_server():
         enabled=enabled_value,
     )
     if not ok:
-        return jsonify({
-            "error": {
-                "code": "CONFIG_STORE_UNAVAILABLE",
-                "message": "failed to add server",
-                "request_id": request_id,
-            }
-        }), 500
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "CONFIG_STORE_UNAVAILABLE",
+                        "message": "failed to add server",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            500,
+        )
 
     return v1_get_settings_servers()
 
 
-@app.route('/v1/settings/servers/<path:ip>', methods=['PATCH'])
+@app.route("/v1/settings/servers/<path:ip>", methods=["PATCH"])
 def v1_update_settings_server(ip):
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    name = payload.get('name')
-    raw_type = payload.get('type')
+    name = payload.get("name")
+    raw_type = payload.get("type")
     server_type = _normalize_server_type(raw_type) if raw_type is not None else None
-    timeout = payload.get('timeout')
-    enabled = payload.get('enabled')
+    timeout = payload.get("timeout")
+    enabled = payload.get("enabled")
 
     if name is None and raw_type is None and timeout is None and enabled is None:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "At least one field is required",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "At least one field is required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     timeout_value = None
     if timeout is not None:
@@ -6344,24 +7678,35 @@ def v1_update_settings_server(ip):
             if timeout_value < 1:
                 raise ValueError("timeout must be >= 1")
         except Exception:
-            return jsonify({
-                "error": {
-                    "code": "VALIDATION_FAILED",
-                    "message": "timeout must be integer >= 1",
-                    "request_id": request_id,
-                }
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "error": {
+                            "code": "VALIDATION_FAILED",
+                            "message": "timeout must be integer >= 1",
+                            "request_id": request_id,
+                        }
+                    }
+                ),
+                400,
+            )
 
     if raw_type is not None and server_type is None:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "type must be one of: rdp, ssh, ping",
-                "request_id": request_id,
-            }
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "type must be one of: rdp, ssh, ping",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     from config.db_settings_app import settings_manager
+
     ok = settings_manager.update_server(
         ip=str(ip).strip(),
         name=str(name).strip() if name is not None else None,
@@ -6370,81 +7715,114 @@ def v1_update_settings_server(ip):
         enabled=bool(enabled) if enabled is not None else None,
     )
     if not ok:
-        return jsonify({
-            "error": {
-                "code": "SERVER_NOT_FOUND",
-                "message": "server not found or update skipped",
-                "request_id": request_id,
-            }
-        }), 404
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "SERVER_NOT_FOUND",
+                        "message": "server not found or update skipped",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            404,
+        )
 
     return v1_get_settings_servers()
 
 
-@app.route('/v1/settings/servers/<path:ip>/enabled', methods=['PATCH'])
+@app.route("/v1/settings/servers/<path:ip>/enabled", methods=["PATCH"])
 def v1_toggle_settings_server(ip):
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     payload = request.get_json(silent=True) or {}
-    if 'enabled' not in payload:
-        return jsonify({
-            "error": {
-                "code": "VALIDATION_FAILED",
-                "message": "enabled field is required",
-                "request_id": request_id,
-            }
-        }), 400
+    if "enabled" not in payload:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "enabled field is required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
 
     from config.db_settings_app import settings_manager
-    ok = settings_manager.set_server_enabled(str(ip).strip(), bool(payload.get('enabled')))
+
+    ok = settings_manager.set_server_enabled(str(ip).strip(), bool(payload.get("enabled")))
     if not ok:
-        return jsonify({
-            "error": {
-                "code": "SERVER_NOT_FOUND",
-                "message": "server not found",
-                "request_id": request_id,
-            }
-        }), 404
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "SERVER_NOT_FOUND",
+                        "message": "server not found",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            404,
+        )
 
     return v1_get_settings_servers()
 
 
-@app.route('/v1/settings/servers/<path:ip>', methods=['DELETE'])
+@app.route("/v1/settings/servers/<path:ip>", methods=["DELETE"])
 def v1_delete_settings_server(ip):
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
-    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
     if not is_ok:
-        return jsonify({
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "Invalid or expired token",
-                "request_id": request_id,
-            }
-        }), 401
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
 
     from config.db_settings_app import settings_manager
+
     ok = settings_manager.delete_server(str(ip).strip())
     if not ok:
-        return jsonify({
-            "error": {
-                "code": "CONFIG_STORE_UNAVAILABLE",
-                "message": "failed to delete server",
-                "request_id": request_id,
-            }
-        }), 500
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "CONFIG_STORE_UNAVAILABLE",
+                        "message": "failed to delete server",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            500,
+        )
 
     return v1_get_settings_servers()
 
-@app.route('/')
+
+@app.route("/")
 def index():
     """Главная страница веб-интерфейса"""
     try:
@@ -6473,90 +7851,101 @@ def index():
             servers=servers,
             last_update=datetime.now().strftime("%H:%M:%S"),
             supplier_stock_enabled=supplier_stock_enabled,
-            supplier_stock=supplier_stock
+            supplier_stock=supplier_stock,
         )
     except Exception as e:
         return f"❌ Ошибка загрузки веб-интерфейса: {e}"
 
-@app.route('/api/run_check')
+
+@app.route("/api/run_check")
 def api_run_check():
     """API для запуска проверок"""
-    check_type = request.args.get('type', 'quick')
-    
+    check_type = request.args.get("type", "quick")
+
     try:
-        if check_type == 'quick':
+        if check_type == "quick":
             # Запуск быстрой проверки доступности
             from core.monitor_core import get_current_server_status
+
             status = get_current_server_status()
             message = f"✅ Быстрая проверка выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
-            
-        elif check_type == 'resources':
+
+        elif check_type == "resources":
             # Запуск проверки ресурсов
             from core.monitor_core import check_resources_automatically
+
             check_resources_automatically()
             message = "✅ Проверка ресурсов выполнена. Данные обновятся через 1-2 минуты."
-            
-        elif check_type == 'report':
+
+        elif check_type == "report":
             # Формирование отчета
             from core.monitor_core import send_morning_report
+
             send_morning_report()
             message = "✅ Отчет сформирован и отправлен в Telegram"
-            
+
         else:
             message = "❌ Неизвестный тип проверки"
-            
-        return jsonify({"success": True, "message": message, "reload": check_type != 'resources'})
-        
+
+        return jsonify({"success": True, "message": message, "reload": check_type != "resources"})
+
     except Exception as e:
         return jsonify({"success": False, "message": f"❌ Ошибка: {str(e)}"})
 
-@app.route('/api/run_action')
+
+@app.route("/api/run_action")
 def api_run_action():
     """API ??? ?????????? ????????"""
-    action = request.args.get('action', '')
-    
+    action = request.args.get("action", "")
+
     try:
-        if action == 'check_all':
+        if action == "check_all":
             from core.monitor_core import get_current_server_status
+
             status = get_current_server_status()
             message = f"? ???????? ???? ???????? ?????????: {len(status['ok'])} ????????, {len(status['failed'])} ??????????"
-            
-        elif action == 'check_resources':
+
+        elif action == "check_resources":
             from core.monitor_core import check_resources_automatically
+
             check_resources_automatically()
             message = "? ???????? ???????? ????????. ?????? ????????? ????? 1-2 ??????."
-            
-        elif action == 'morning_report':
+
+        elif action == "morning_report":
             from core.monitor_core import send_morning_report
+
             send_morning_report()
             message = "? ???????? ????? ????????? ? Telegram"
-            
-        elif action == 'restart_service':
+
+        elif action == "restart_service":
             # ?????????? ??????? (?????????!)
-            subprocess.run(['systemctl', 'restart', 'server-monitor.service'], check=True)
+            subprocess.run(["systemctl", "restart", "server-monitor.service"], check=True)
             message = "? ?????? ???????????????..."
-            
-        elif action == 'toggle_monitoring':
+
+        elif action == "toggle_monitoring":
             # ? ???????? ?????????? ????? ????? ?????? ?????????? ??????????
             message = "?? ??????? ???????????? ??????????? ? ??????????"
-            
-        elif action == 'toggle_silent':
+
+        elif action == "toggle_silent":
             # ? ???????? ?????????? ????? ????? ?????? ?????????? ??????????
             message = "?? ??????? ???????????? ?????? ?????? ? ??????????"
-            
+
         else:
             message = "? ??????????? ????????"
-            
-        return jsonify({
-            "success": True, 
-            "message": message, 
-            "reload": action not in ['check_resources', 'toggle_monitoring', 'toggle_silent']
-        })
-        
+
+        return jsonify(
+            {
+                "success": True,
+                "message": message,
+                "reload": action not in ["check_resources", "toggle_monitoring", "toggle_silent"],
+            }
+        )
+
     except Exception as e:
         return jsonify({"success": False, "message": f"? ??????: {str(e)}"})
 
-@app.route('/api/supplier_stock/run', methods=['POST'])
+
+@app.route("/api/supplier_stock/run", methods=["POST"])
 def api_supplier_stock_run():
     """API для запуска загрузки остатков поставщиков."""
     if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
@@ -6568,7 +7957,8 @@ def api_supplier_stock_run():
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({"success": True, "message": "✅ Загрузка остатков поставщиков запущена"})
 
-@app.route('/api/supplier_stock/schedule', methods=['GET', 'POST'])
+
+@app.route("/api/supplier_stock/schedule", methods=["GET", "POST"])
 def api_supplier_stock_schedule():
     """API для управления расписанием загрузки остатков."""
     if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
@@ -6577,7 +7967,7 @@ def api_supplier_stock_schedule():
     config = get_supplier_stock_config()
     schedule = config.get("download", {}).get("schedule", {})
 
-    if request.method == 'GET':
+    if request.method == "GET":
         return jsonify({"success": True, "schedule": schedule})
 
     data = request.json or {}
@@ -6588,11 +7978,13 @@ def api_supplier_stock_schedule():
     if time_value:
         schedule_times = parse_supplier_stock_schedule_times(time_value)
         if not schedule_times:
-            return jsonify({
-                "success": False,
-                "message": "❌ Неверный формат времени. Используйте HH:MM, разделители: пробел, запятая или ;",
-            })
-        schedule["time"] = ', '.join(schedule_times)
+            return jsonify(
+                {
+                    "success": False,
+                    "message": "❌ Неверный формат времени. Используйте HH:MM, разделители: пробел, запятая или ;",
+                }
+            )
+        schedule["time"] = ", ".join(schedule_times)
     else:
         schedule["time"] = schedule.get("time", "")
     schedule["enabled"] = enabled_value
@@ -6606,24 +7998,25 @@ def api_supplier_stock_schedule():
 
     return jsonify({"success": True, "message": "✅ Расписание обновлено", "schedule": schedule})
 
-@app.route('/api/supplier_stock/reports')
+
+@app.route("/api/supplier_stock/reports")
 def api_supplier_stock_reports():
     """API для получения отчетов по остаткам поставщиков."""
     if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
         return jsonify({"success": False, "message": "📦 Модуль остатков поставщиков отключен"})
 
-    limit = request.args.get('limit')
+    limit = request.args.get("limit")
     try:
         limit_value = int(limit) if limit is not None else 20
     except ValueError:
         limit_value = 20
-    period_days = request.args.get('period_days')
+    period_days = request.args.get("period_days")
     try:
         period_value = int(period_days) if period_days else None
     except ValueError:
         period_value = None
-    source_id = request.args.get('source_id')
-    source_kind = request.args.get('source_kind')
+    source_id = request.args.get("source_id")
+    source_kind = request.args.get("source_kind")
     reports = get_supplier_stock_reports(
         limit_value,
         period_value,
@@ -6632,7 +8025,8 @@ def api_supplier_stock_reports():
     )
     return jsonify({"success": True, "reports": reports})
 
-@app.route('/api/supplier_stock/source_stats')
+
+@app.route("/api/supplier_stock/source_stats")
 def api_supplier_stock_source_stats():
     """API для получения детальной статистики по источнику остатков."""
     if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
@@ -6645,78 +8039,80 @@ def api_supplier_stock_source_stats():
     config = get_supplier_stock_config()
     period_days = config.get("reporting", {}).get("period_days", 7)
     stats = build_supplier_stock_source_stats(source_id, source_kind, period_days)
-    return jsonify({
-        "success": True,
-        "period_days": period_days,
-        "stats": stats.get("summary", {}),
-        "entries": stats.get("entries", []),
-    })
+    return jsonify(
+        {
+            "success": True,
+            "period_days": period_days,
+            "stats": stats.get("summary", {}),
+            "entries": stats.get("entries", []),
+        }
+    )
 
-@app.route('/api/status')
+
+@app.route("/api/status")
 def api_status():
     """API endpoint для получения статуса"""
     stats, servers = get_monitoring_stats()
-    return jsonify({
-        "status": "ok", 
-        "message": "Система мониторинга работает",
-        "data": {
-            "stats": stats,
-            "servers": servers,
-            "timestamp": datetime.now().isoformat()
+    return jsonify(
+        {
+            "status": "ok",
+            "message": "Система мониторинга работает",
+            "data": {"stats": stats, "servers": servers, "timestamp": datetime.now().isoformat()},
         }
-    })
+    )
 
-@app.route('/api/servers')
+
+@app.route("/api/servers")
 def api_servers():
     """API endpoint для получения списка серверов"""
     stats, servers = get_monitoring_stats()
-    return jsonify({
-        "servers": servers,
-        "count": len(servers),
-        "timestamp": datetime.now().isoformat()
-    })
+    return jsonify(
+        {"servers": servers, "count": len(servers), "timestamp": datetime.now().isoformat()}
+    )
 
-@app.route('/api/stats')
+
+@app.route("/api/stats")
 def api_stats():
     """API endpoint для получения статистики"""
     stats, servers = get_monitoring_stats()
-    return jsonify({
-        "statistics": stats,
-        "timestamp": datetime.now().isoformat()
-    })
+    return jsonify({"statistics": stats, "timestamp": datetime.now().isoformat()})
 
-@app.route('/health')
+
+@app.route("/health")
 def health_check():
     """Health check endpoint"""
     return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
 
-@app.route('/api/servers', methods=['GET', 'POST', 'PUT', 'DELETE'])
+
+@app.route("/api/servers", methods=["GET", "POST", "PUT", "DELETE"])
 def api_manage_servers():
     """API для управления списком серверов"""
-    if request.method == 'GET':
+    if request.method == "GET":
         # Получить список серверов
         from extensions.server_checks import initialize_servers
+
         servers = initialize_servers()
         return jsonify({"servers": servers})
-    
-    elif request.method == 'POST':
+
+    elif request.method == "POST":
         # Добавить новый сервер
         data = request.json
         # Здесь добавить логику сохранения в server_list.json
         return jsonify({"success": True, "message": "Сервер добавлен"})
-    
-    elif request.method == 'PUT':
+
+    elif request.method == "PUT":
         # Обновить сервер
         data = request.json
         # Логика обновления
         return jsonify({"success": True, "message": "Сервер обновлен"})
-    
-    elif request.method == 'DELETE':
+
+    elif request.method == "DELETE":
         # Удалить сервер
-        server_ip = request.args.get('ip')
+        server_ip = request.args.get("ip")
         # Логика удаления
         return jsonify({"success": True, "message": "Сервер удален"})
-    
+
+
 def start_web_server():
     """Запускает веб-сервер"""
     print(f"🌐 Запуск веб-интерфейса на http://{WEB_HOST}:{WEB_PORT}")
@@ -6726,6 +8122,7 @@ def start_web_server():
         app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False)
     except Exception as e:
         print(f"❌ Ошибка запуска веб-сервера: {e}")
+
 
 if __name__ == "__main__":
     start_web_server()

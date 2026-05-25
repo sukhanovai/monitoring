@@ -12,14 +12,15 @@ Main launch module
 Основной модуль запуска
 """
 
+import argparse
 import os
 import sys
-import argparse
 import threading
 import time
 from pathlib import Path
 
 from lib.logging import setup_logging
+
 PROJECT_ROOT = Path(__file__).resolve().parent
 BASE_DIR = Path(os.environ.get("MONITORING_BASE_DIR", PROJECT_ROOT)).resolve()
 BASE_DIR.mkdir(parents=True, exist_ok=True)
@@ -32,6 +33,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Server Monitoring System")
     try:
         from core.task_router import TASK_ROUTES
+
         parser.add_argument(
             "--check",
             choices=list(TASK_ROUTES.keys()),
@@ -154,15 +156,15 @@ def main(args: argparse.Namespace):
     # ------------------------------------------------------------------
     try:
         from config.db_settings import (
-        TELEGRAM_TOKEN,
-        DEBUG_MODE,
-        CHAT_IDS,
-        SILENT_START,
-        SILENT_END,
-        MATRIX_HOMESERVER,
-        MATRIX_ACCESS_TOKEN,
-        MATRIX_ROOM_ID,
-    )
+            CHAT_IDS,
+            DEBUG_MODE,
+            MATRIX_ACCESS_TOKEN,
+            MATRIX_HOMESERVER,
+            MATRIX_ROOM_ID,
+            SILENT_END,
+            SILENT_START,
+            TELEGRAM_TOKEN,
+        )
     except ImportError as e:
         print(f"❌ Не удалось загрузить db_settings: {e}")
         sys.exit(1)
@@ -213,6 +215,7 @@ def main(args: argparse.Namespace):
 
         try:
             from telegram.error import NetworkError, TimedOut
+
             network_errors = (NetworkError, TimedOut, TimeoutError)
         except Exception:
             network_errors = (TimeoutError,)
@@ -225,7 +228,7 @@ def main(args: argparse.Namespace):
 
     dispatcher.add_error_handler(telegram_error_handler)
     try:
-        from lib.alerts import init_telegram_bot, init_matrix_bot
+        from lib.alerts import init_matrix_bot, init_telegram_bot
 
         init_telegram_bot(updater.bot, CHAT_IDS)
         init_matrix_bot(MATRIX_HOMESERVER, MATRIX_ACCESS_TOKEN, MATRIX_ROOM_ID)
@@ -233,7 +236,6 @@ def main(args: argparse.Namespace):
         logger.warning(f"⚠️ Не удалось инициализировать алерты: {e}")
 
     logger.info("✅ Telegram бот инициализирован")
-
 
     # ------------------------------------------------------------------
     # 4. Команды бота
@@ -274,21 +276,21 @@ def main(args: argparse.Namespace):
         try:
             from extensions.extension_manager import extension_manager
 
-            if extension_manager.is_extension_enabled('backup_monitor'):
+            if extension_manager.is_extension_enabled("backup_monitor"):
                 from extensions.backup_monitor.bot_handler import setup_backup_handlers
+
                 setup_backup_handlers(dispatcher)
                 logger.info("✅ Расширение backup_monitor подключено")
 
-            if extension_manager.is_extension_enabled('web_interface'):
+            if extension_manager.is_extension_enabled("web_interface"):
                 from extensions.web_interface import start_web_server
-                threading.Thread(
-                    target=start_web_server,
-                    daemon=True
-                ).start()
+
+                threading.Thread(target=start_web_server, daemon=True).start()
                 logger.info("✅ Веб-интерфейс запущен")
 
-            if extension_manager.is_extension_enabled('supplier_stock_files'):
+            if extension_manager.is_extension_enabled("supplier_stock_files"):
                 from extensions.supplier_stock_files import start_supplier_stock_scheduler
+
                 start_supplier_stock_scheduler()
                 logger.info("✅ Планировщик остатков поставщиков запущен")
 
@@ -303,10 +305,8 @@ def main(args: argparse.Namespace):
     if not args.dry_run:
         try:
             from core.monitor import monitor
-            threading.Thread(
-                target=monitor.start,
-                daemon=True
-            ).start()
+
+            threading.Thread(target=monitor.start, daemon=True).start()
             logger.info("✅ Основной мониторинг запущен")
         except Exception as e:
             logger.error(f"❌ Ошибка запуска мониторинга: {e}")
@@ -319,15 +319,15 @@ def main(args: argparse.Namespace):
     if not args.dry_run:
         try:
             from config.db_settings import (
-                MATRIX_HOMESERVER,
                 MATRIX_ACCESS_TOKEN,
-                MATRIX_ROOM_ID,
-                MATRIX_ALLOWED_USER_IDS,
                 MATRIX_ALLOWED_ROOM_IDS,
-                MATRIX_BOT_USER_ID,
+                MATRIX_ALLOWED_USER_IDS,
                 MATRIX_BOT_PASSWORD,
-                MATRIX_STORE_PATH,
+                MATRIX_BOT_USER_ID,
                 MATRIX_DEVICE_NAME,
+                MATRIX_HOMESERVER,
+                MATRIX_ROOM_ID,
+                MATRIX_STORE_PATH,
             )
             from lib.matrix_commands import run_matrix_command_bot
 
@@ -341,7 +341,8 @@ def main(args: argparse.Namespace):
                     "access_token": MATRIX_ACCESS_TOKEN,
                     "room_id": MATRIX_ROOM_ID,
                     "whitelist_user_ids": _parse_acl(MATRIX_ALLOWED_USER_IDS),
-                    "allowed_room_ids": _parse_acl(MATRIX_ALLOWED_ROOM_IDS) or ([MATRIX_ROOM_ID] if MATRIX_ROOM_ID else []),
+                    "allowed_room_ids": _parse_acl(MATRIX_ALLOWED_ROOM_IDS)
+                    or ([MATRIX_ROOM_ID] if MATRIX_ROOM_ID else []),
                     "bot_user_id": MATRIX_BOT_USER_ID,
                     "bot_password": MATRIX_BOT_PASSWORD,
                     "store_path": MATRIX_STORE_PATH,
@@ -367,7 +368,7 @@ def main(args: argparse.Namespace):
     if args.dry_run:
         logger.info("🧪 Dry-run завершён: опрос Telegram не запускался")
         return
-    
+
     retry_delay_sec = 5
     max_retry_delay_sec = 60
 
@@ -380,6 +381,7 @@ def main(args: argparse.Namespace):
         except Exception as e:
             try:
                 from telegram.error import NetworkError, TimedOut
+
                 network_errors = (NetworkError, TimedOut, TimeoutError, ConnectionError, OSError)
             except Exception:
                 network_errors = (TimeoutError, ConnectionError, OSError)

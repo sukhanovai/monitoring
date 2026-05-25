@@ -50,19 +50,16 @@ extend-ignore = [
     "UP034",  # extraneous-parentheses
     "UP035",  # deprecated-import
     "UP037",  # quoted-annotation
+    "UP038",  # non-pep604-isinstance (ruff помечает фикс unsafe)
     "UP041",  # timeout-error-alias
-    "UP045",  # non-pep604-annotation
-    # Pyflakes — снимется после ruff --fix в PR3 и unstar-импортов.
-    "F401",   # unused-import
+    # Pyflakes — снимаются по мере декомпозиции монолитов.
+    "F401",   # unused-import (на уровне репо; локально снят в чистых модулях)
     "F403",   # import-star
     "F405",   # undefined-local-with-import-star-usage
-    "F541",   # f-string-missing-placeholders
     "F811",   # redefined-while-unused
     "F821",   # undefined-name (нужна проверка вручную)
     "F823",   # undefined-local
     "F841",   # unused-variable
-    # Изоrt — массово исправится в PR3.
-    "I001",   # unsorted-imports
 ]
 
 [tool.ruff.lint.per-file-ignores]

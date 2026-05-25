@@ -20,7 +20,5 @@ if __package__ is None:
 
 from modules.mail_monitor import main
 
-
 if __name__ == "__main__":
     main()
-    

@@ -11,20 +11,23 @@ Handlers for managing settings via a bot
 Обработчики для управления настройками через бота
 """
 
+import ast
+import json
+import re
 import sqlite3
 from datetime import datetime
-import ast
+from urllib.parse import quote, unquote
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest, TelegramError
+from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler
 from telegram.utils.helpers import escape_markdown
-from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
-from core.config_manager import config_manager as settings_manager
-from config.db_settings import BACKUP_DATABASE_CONFIG, load_all_settings
-from config.settings import BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS, BACKUP_DB_FILE
-from extensions.extension_manager import extension_manager
-from extensions.zfs_free_space_monitor import get_zfs_servers_config
+
 from bot.handlers.zfs_pool_free_space_handlers import handle_text_input as handle_zfsp_text_input
+from config.db_settings import BACKUP_DATABASE_CONFIG, load_all_settings
+from config.settings import BACKUP_DB_FILE, BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS
+from core.config_manager import config_manager as settings_manager
+from extensions.extension_manager import extension_manager
 from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
     build_supplier_stock_source_stats,
@@ -34,40 +37,39 @@ from extensions.supplier_stock_files import (
     save_supplier_stock_config,
     summarize_supplier_stock_reports,
 )
+from extensions.zfs_free_space_monitor import get_zfs_servers_config
 from lib.logging import debug_log
-import json
-import re
-from urllib.parse import quote, unquote
 
 BACKUP_SETTINGS_CALLBACKS = {
-    'backup_times',
-    'settings_backup_databases',
-    'backup_db_add_category',
-    'view_patterns',
-    'add_pattern',
-    'add_zfs_pattern',
-    'add_proxmox_pattern',
-    'add_mail_pattern',
-    'add_stock_pattern',
-    'add_snapshot_pattern',
-    'edit_mail_default_pattern',
-    'mail_pattern_confirm',
-    'mail_pattern_retry',
-    'stock_pattern_confirm',
-    'stock_pattern_retry',
-    'zfs_pattern_confirm',
-    'zfs_pattern_retry',
-    'db_pattern_confirm',
-    'db_pattern_retry',
-    'proxmox_pattern_confirm',
-    'proxmox_pattern_retry',
-    'snapshot_pattern_confirm',
-    'snapshot_pattern_retry',
-    'settings_patterns_db_from_backup',
+    "backup_times",
+    "settings_backup_databases",
+    "backup_db_add_category",
+    "view_patterns",
+    "add_pattern",
+    "add_zfs_pattern",
+    "add_proxmox_pattern",
+    "add_mail_pattern",
+    "add_stock_pattern",
+    "add_snapshot_pattern",
+    "edit_mail_default_pattern",
+    "mail_pattern_confirm",
+    "mail_pattern_retry",
+    "stock_pattern_confirm",
+    "stock_pattern_retry",
+    "zfs_pattern_confirm",
+    "zfs_pattern_retry",
+    "db_pattern_confirm",
+    "db_pattern_retry",
+    "proxmox_pattern_confirm",
+    "proxmox_pattern_retry",
+    "snapshot_pattern_confirm",
+    "snapshot_pattern_retry",
+    "settings_patterns_db_from_backup",
 }
 
 
 debug_logger = debug_log
+
 
 def _normalize_proxmox_hosts(raw_hosts) -> dict:
     """Нормализует PROXMOX_HOSTS к словарю для всех входных форматов."""
@@ -84,9 +86,10 @@ def _normalize_proxmox_hosts(raw_hosts) -> dict:
         return parsed_hosts if isinstance(parsed_hosts, dict) else {}
     return {}
 
+
 def _get_proxmox_hosts_for_settings() -> dict:
     """Получить PROXMOX_HOSTS с fallback, как в мобильном API настроек."""
-    proxmox_hosts = _normalize_proxmox_hosts(settings_manager.get_setting('PROXMOX_HOSTS', {}))
+    proxmox_hosts = _normalize_proxmox_hosts(settings_manager.get_setting("PROXMOX_HOSTS", {}))
     if proxmox_hosts:
         return proxmox_hosts
 
@@ -104,6 +107,7 @@ def _get_proxmox_hosts_for_settings() -> dict:
         fallback_proxmox_hosts = {}
     return _normalize_proxmox_hosts(fallback_proxmox_hosts)
 
+
 def _safe_query_answer(query, text: str | None = None, **kwargs) -> None:
     try:
         if text is None:
@@ -113,9 +117,10 @@ def _safe_query_answer(query, text: str | None = None, **kwargs) -> None:
     except (BadRequest, TelegramError):
         pass
 
+
 def _build_db_monitor_toggle_callback(context, encoded_category: str, encoded_db_key: str) -> str:
     """Собирает короткий callback_data для переключателя мониторинга БД."""
-    toggle_map = context.user_data.setdefault('settings_db_toggle_map', {})
+    toggle_map = context.user_data.setdefault("settings_db_toggle_map", {})
     token = f"k{len(toggle_map)}"
     toggle_map[token] = f"{encoded_category}__{encoded_db_key}"
     return f"settings_db_toggle_monitor_{token}"
@@ -123,24 +128,24 @@ def _build_db_monitor_toggle_callback(context, encoded_category: str, encoded_db
 
 def _build_db_category_callback(context, action_prefix: str, category: str) -> str:
     """Собирает короткий callback_data для действий над категорией БД."""
-    category_map = context.user_data.setdefault('settings_db_category_map', {})
+    category_map = context.user_data.setdefault("settings_db_category_map", {})
     token = f"c{len(category_map)}"
-    category_map[token] = str(category or '')
+    category_map[token] = str(category or "")
     return f"{action_prefix}{token}"
 
 
 def _resolve_db_category_from_callback(context, value: str) -> str:
     """Расшифровать категорию БД из callback_data (token/raw/urlencoded)."""
-    category_map = context.user_data.get('settings_db_category_map', {})
+    category_map = context.user_data.get("settings_db_category_map", {})
     if value in category_map:
-        return str(category_map[value] or '')
-    decoded = unquote(str(value or '')).strip()
+        return str(category_map[value] or "")
+    decoded = unquote(str(value or "")).strip()
     return decoded
 
 
 def _build_db_entry_callback(context, action_prefix: str, category: str, db_key: str) -> str:
     """Собирает короткий callback_data для действий над конкретной БД."""
-    entry_map = context.user_data.setdefault('settings_db_entry_map', {})
+    entry_map = context.user_data.setdefault("settings_db_entry_map", {})
     token = f"d{len(entry_map)}"
     entry_map[token] = f"{category}__{db_key}"
     return f"{action_prefix}{token}"
@@ -148,23 +153,23 @@ def _build_db_entry_callback(context, action_prefix: str, category: str, db_key:
 
 def _resolve_db_entry_from_callback(context, value: str) -> tuple[str, str]:
     """Расшифровать (category, db_key) из callback_data (token/raw/urlencoded)."""
-    entry_map = context.user_data.get('settings_db_entry_map', {})
-    raw_value = str(entry_map.get(value, value) or '')
-    if '__' not in raw_value:
+    entry_map = context.user_data.get("settings_db_entry_map", {})
+    raw_value = str(entry_map.get(value, value) or "")
+    if "__" not in raw_value:
         return "", ""
-    raw_category, raw_db_key = raw_value.split('__', 1)
+    raw_category, raw_db_key = raw_value.split("__", 1)
     return unquote(raw_category).strip(), unquote(raw_db_key).strip()
 
 
-def _get_settings_db_back_callback(context, default: str = 'settings_ext_backup_db') -> str:
+def _get_settings_db_back_callback(context, default: str = "settings_ext_backup_db") -> str:
     """Вернуть callback для кнопки «Назад» в меню БД."""
-    back_callback = str(context.user_data.get('settings_db_back') or '').strip()
+    back_callback = str(context.user_data.get("settings_db_back") or "").strip()
     return back_callback or default
 
 
 def _get_disabled_db_monitors_settings() -> set[tuple[str, str]]:
     """Получить пары (backup_type, db_name), отключённые в мониторинге бэкапов БД."""
-    raw_disabled = settings_manager.get_setting('DATABASE_MONITORING_DISABLED', [], use_cache=False)
+    raw_disabled = settings_manager.get_setting("DATABASE_MONITORING_DISABLED", [], use_cache=False)
     if isinstance(raw_disabled, str):
         raw_disabled = [raw_disabled]
     if not isinstance(raw_disabled, list):
@@ -172,10 +177,10 @@ def _get_disabled_db_monitors_settings() -> set[tuple[str, str]]:
 
     disabled_pairs: set[tuple[str, str]] = set()
     for item in raw_disabled:
-        value = str(item or '').strip()
-        if '__' not in value:
+        value = str(item or "").strip()
+        if "__" not in value:
             continue
-        backup_type, db_name = value.split('__', 1)
+        backup_type, db_name = value.split("__", 1)
         backup_type = backup_type.strip()
         db_name = db_name.strip()
         if backup_type and db_name:
@@ -185,8 +190,8 @@ def _get_disabled_db_monitors_settings() -> set[tuple[str, str]]:
 
 def _toggle_database_monitoring_settings(backup_type: str, db_name: str) -> bool:
     """Переключить мониторинг БД. Возвращает True, если мониторинг включён после переключения."""
-    backup_type = str(backup_type or '').strip()
-    db_name = str(db_name or '').strip()
+    backup_type = str(backup_type or "").strip()
+    db_name = str(db_name or "").strip()
     if not backup_type or not db_name:
         raise ValueError("Не указан тип или имя базы")
 
@@ -200,8 +205,11 @@ def _toggle_database_monitoring_settings(backup_type: str, db_name: str) -> bool
         now_enabled = False
 
     serialized = sorted(f"{item_type}__{item_name}" for item_type, item_name in disabled_pairs)
-    settings_manager.set_setting('DATABASE_MONITORING_DISABLED', serialized, category='backup', data_type='auto')
+    settings_manager.set_setting(
+        "DATABASE_MONITORING_DISABLED", serialized, category="backup", data_type="auto"
+    )
     return now_enabled
+
 
 def _get_mail_fallback_patterns() -> list:
     """Получить запасные паттерны для бэкапов почты."""
@@ -227,7 +235,7 @@ def _get_mail_fallback_patterns() -> list:
     if patterns:
         return patterns
 
-    fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
+    fallback_raw = settings_manager.get_setting("BACKUP_PATTERNS", DEFAULT_BACKUP_PATTERNS)
     if isinstance(fallback_raw, str):
         try:
             fallback_raw = json.loads(fallback_raw)
@@ -242,9 +250,11 @@ def _get_mail_fallback_patterns() -> list:
         return fallback_mail or [default_pattern]
     return [default_pattern]
 
+
 def _escape_pattern_text(text: str) -> str:
     """Экранирует текст для Markdown."""
     return escape_markdown(str(text or ""), version=1)
+
 
 def _format_current_hint(value, default: str = "не задано") -> str:
     """Сформировать подсказку для текущего значения."""
@@ -253,6 +263,7 @@ def _format_current_hint(value, default: str = "не задано") -> str:
     if isinstance(value, str) and value.strip() == "":
         return default
     return str(value)
+
 
 def _format_archive_cleanup_days(value) -> str:
     """Сформировать отображение периода очистки архива."""
@@ -263,6 +274,7 @@ def _format_archive_cleanup_days(value) -> str:
     if days <= 0:
         return "выключено"
     return f"{days} дн."
+
 
 def _build_mail_pattern_from_subject(subject: str) -> str:
     """Собрать regex паттерн по теме письма."""
@@ -300,6 +312,7 @@ def _build_mail_pattern_from_subject(subject: str) -> str:
 
     return escaped
 
+
 def _build_mail_pattern_from_fragments(fragments: list[str]) -> str:
     """Собрать regex паттерн из обязательных фрагментов."""
     cleaned = [fragment.strip() for fragment in fragments if fragment.strip()]
@@ -307,6 +320,7 @@ def _build_mail_pattern_from_fragments(fragments: list[str]) -> str:
         return ""
     escaped_parts = [re.escape(fragment) for fragment in cleaned]
     return r".*".join(escaped_parts)
+
 
 def _build_stock_subject_pattern(subject: str) -> str:
     """Собрать regex паттерн для темы письма загрузки остатков."""
@@ -330,9 +344,11 @@ def _build_stock_subject_pattern(subject: str) -> str:
     escaped = escaped.replace(re.escape("__DATE__"), r"\d{2}[./-]\d{2}[./-]\d{2,4}")
     return escaped
 
+
 def _build_stock_pattern_from_fragments(fragments: list[str]) -> str:
     """Собрать regex паттерн для остатков из обязательных фрагментов."""
     return _build_mail_pattern_from_fragments(fragments)
+
 
 def _build_stock_success_pattern(sample: str) -> str:
     """Собрать regex паттерн успеха по примеру строки."""
@@ -355,9 +371,10 @@ def _build_stock_success_pattern(sample: str) -> str:
     escaped = escaped.replace(re.escape("__ROWS__"), r"(?P<rows>\d+)")
     return escaped
 
+
 def _get_stock_load_fallback_patterns() -> dict[str, list[str]]:
     """Получить запасные паттерны для загрузки остатков."""
-    fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
+    fallback_raw = settings_manager.get_setting("BACKUP_PATTERNS", DEFAULT_BACKUP_PATTERNS)
     if isinstance(fallback_raw, str):
         try:
             fallback_raw = json.loads(fallback_raw)
@@ -376,9 +393,10 @@ def _get_stock_load_fallback_patterns() -> dict[str, list[str]]:
         if isinstance(value, list)
     }
 
+
 def _get_database_fallback_patterns() -> dict[str, list[str]]:
     """Получить запасные паттерны для бэкапов БД."""
-    fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
+    fallback_raw = settings_manager.get_setting("BACKUP_PATTERNS", DEFAULT_BACKUP_PATTERNS)
     if isinstance(fallback_raw, str):
         try:
             fallback_raw = json.loads(fallback_raw)
@@ -404,9 +422,10 @@ def _get_database_fallback_patterns() -> dict[str, list[str]]:
         }
     return {}
 
+
 def _get_backup_patterns_setting() -> dict:
     """Получить полные паттерны из настроек."""
-    raw_patterns = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
+    raw_patterns = settings_manager.get_setting("BACKUP_PATTERNS", DEFAULT_BACKUP_PATTERNS)
     if isinstance(raw_patterns, str):
         try:
             raw_patterns = json.loads(raw_patterns)
@@ -415,6 +434,7 @@ def _get_backup_patterns_setting() -> dict:
     if not isinstance(raw_patterns, dict):
         return {}
     return raw_patterns
+
 
 def _get_database_patterns_setting() -> dict[str, list[str]]:
     """Получить паттерны БД из настроек в нормализованном виде."""
@@ -436,15 +456,17 @@ def _get_database_patterns_setting() -> dict[str, list[str]]:
         }
     return {}
 
+
 def _save_database_patterns_setting(db_patterns: dict[str, list[str]]) -> None:
     """Сохранить паттерны БД в настройках."""
     raw_patterns = _get_backup_patterns_setting()
     raw_patterns["database"] = db_patterns
-    settings_manager.set_setting('BACKUP_PATTERNS', raw_patterns)
+    settings_manager.set_setting("BACKUP_PATTERNS", raw_patterns)
+
 
 def _get_database_names() -> list[str]:
     """Получить список имён БД из настроек."""
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     if not isinstance(db_config, dict):
         return []
 
@@ -453,6 +475,7 @@ def _get_database_names() -> list[str]:
         if isinstance(databases, dict):
             names.extend([name for name in databases.keys() if isinstance(name, str)])
     return names
+
 
 def _inject_db_placeholder(text: str, db_names: list[str]) -> tuple[str, str | None]:
     """Подменить имя БД на плейсхолдер, если найдено."""
@@ -468,13 +491,9 @@ def _inject_db_placeholder(text: str, db_names: list[str]) -> tuple[str, str | N
     if not matched:
         return text, None
 
-    replaced = re.sub(
-        re.escape(matched),
-        "__DB__",
-        text,
-        flags=re.IGNORECASE
-    )
+    replaced = re.sub(re.escape(matched), "__DB__", text, flags=re.IGNORECASE)
     return replaced, matched
+
 
 def _build_db_pattern_from_subject(subject: str, db_names: list[str]) -> tuple[str, str | None]:
     """Собрать regex паттерн БД по теме письма."""
@@ -493,6 +512,7 @@ def _build_db_pattern_from_subject(subject: str, db_names: list[str]) -> tuple[s
     escaped = re.sub(r"\\\s+", r"\\s+", escaped)
     escaped = escaped.replace(re.escape("__DB__"), r"([\w.-]+)")
     return escaped, db_name
+
 
 def _build_db_pattern_from_fragments(
     fragments: list[str],
@@ -521,12 +541,14 @@ def _build_db_pattern_from_fragments(
     pattern = pattern.replace(re.escape("__DB__"), r"([\w.-]+)")
     return pattern, matched_db
 
+
 def _get_zfs_server_names() -> list[str]:
     """Получить список имён ZFS серверов из настроек."""
-    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+    zfs_servers = settings_manager.get_setting("ZFS_SERVERS", {})
     if isinstance(zfs_servers, dict):
         return [name for name in zfs_servers.keys() if isinstance(name, str)]
     return []
+
 
 def _inject_server_placeholder(text: str, server_names: list[str]) -> tuple[str, bool]:
     """Подменить имя сервера на плейсхолдер, если найдено."""
@@ -542,13 +564,9 @@ def _inject_server_placeholder(text: str, server_names: list[str]) -> tuple[str,
     if not matched:
         return text, False
 
-    replaced = re.sub(
-        re.escape(matched),
-        "__SERVER__",
-        text,
-        flags=re.IGNORECASE
-    )
+    replaced = re.sub(re.escape(matched), "__SERVER__", text, flags=re.IGNORECASE)
     return replaced, True
+
 
 def _build_zfs_pattern_from_subject(subject: str, server_names: list[str]) -> tuple[str, bool]:
     """Собрать regex паттерн ZFS по теме письма."""
@@ -564,6 +582,7 @@ def _build_zfs_pattern_from_subject(subject: str, server_names: list[str]) -> tu
     escaped = re.sub(r"\\\s+", r"\\s+", escaped)
     escaped = escaped.replace(re.escape("__SERVER__"), r"(?P<server>[\w.-]+)")
     return escaped, has_server
+
 
 def _build_zfs_pattern_from_fragments(
     fragments: list[str],
@@ -587,51 +606,59 @@ def _build_zfs_pattern_from_fragments(
     pattern = pattern.replace(re.escape("__SERVER__"), r"(?P<server>[\w.-]+)")
     return pattern, has_server
 
+
 def settings_command(update, context):
     """Команда управления настройками"""
     keyboard = [
-        [InlineKeyboardButton("🤖 Настройки Telegram", callback_data='settings_telegram')],
-        [InlineKeyboardButton("🟦 Настройки Matrix", callback_data='settings_matrix')],
-        [InlineKeyboardButton("⏰ Временные настройки", callback_data='settings_time')],
-        [InlineKeyboardButton("🔧 Мониторинг", callback_data='settings_monitoring')],
+        [InlineKeyboardButton("🤖 Настройки Telegram", callback_data="settings_telegram")],
+        [InlineKeyboardButton("🟦 Настройки Matrix", callback_data="settings_matrix")],
+        [InlineKeyboardButton("⏰ Временные настройки", callback_data="settings_time")],
+        [InlineKeyboardButton("🔧 Мониторинг", callback_data="settings_monitoring")],
     ]
 
-    keyboard.extend([
-        [InlineKeyboardButton("🔐 Аутентификация", callback_data='settings_auth')],
-        [InlineKeyboardButton("🖥️ Серверы", callback_data='settings_servers')],
-    ])
+    keyboard.extend(
+        [
+            [InlineKeyboardButton("🔐 Аутентификация", callback_data="settings_auth")],
+            [InlineKeyboardButton("🖥️ Серверы", callback_data="settings_servers")],
+        ]
+    )
 
-    keyboard.append([InlineKeyboardButton("🧩 Расширения", callback_data='settings_extensions')])
+    keyboard.append([InlineKeyboardButton("🧩 Расширения", callback_data="settings_extensions")])
 
-    if extension_manager.is_extension_enabled('web_interface'):
-        keyboard.append([InlineKeyboardButton("🌐 Веб-интерфейс", callback_data='settings_web')])
+    if extension_manager.is_extension_enabled("web_interface"):
+        keyboard.append([InlineKeyboardButton("🌐 Веб-интерфейс", callback_data="settings_web")])
 
-    keyboard.extend([
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ])
-    
+    keyboard.extend(
+        [
+            [
+                InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ]
+        ]
+    )
+
     if update.message:
         update.message.reply_text(
             "⚙️ *Управление настройками*\n\nВыберите категорию для настройки:",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard),
         )
     else:
         update.callback_query.edit_message_text(
             "⚙️ *Управление настройками*\n\nВыберите категорию для настройки:",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard),
         )
+
 
 def show_telegram_settings(update, context):
     """Показать настройки Telegram - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
-    
-    token = settings_manager.get_setting('TELEGRAM_TOKEN', '')
-    chat_ids = settings_manager.get_setting('CHAT_IDS', [])
-    
+
+    token = settings_manager.get_setting("TELEGRAM_TOKEN", "")
+    chat_ids = settings_manager.get_setting("CHAT_IDS", [])
+
     token_display = "🟢 Установлен" if token else "🔴 Не установлен"
     chats_display = f"{len(chat_ids)} чатов" if chat_ids else "🔴 Не настроены"
 
@@ -641,32 +668,33 @@ def show_telegram_settings(update, context):
         f"• ID чатов: {chats_display}\n\n"
         "Выберите параметр для изменения:"
     )
-    
+
     keyboard = [
-        [InlineKeyboardButton("🔑 Установить токен", callback_data='set_telegram_token')],
-        [InlineKeyboardButton("💬 Управление чатами", callback_data='manage_chats')],
-        [InlineKeyboardButton("🧪 Тест Telegram", callback_data='test_alert_telegram')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("🔑 Установить токен", callback_data="set_telegram_token")],
+        [InlineKeyboardButton("💬 Управление чатами", callback_data="manage_chats")],
+        [InlineKeyboardButton("🧪 Тест Telegram", callback_data="test_alert_telegram")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_main"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_matrix_settings(update, context):
     """Показать настройки Matrix"""
     query = update.callback_query
     query.answer()
 
-    homeserver = settings_manager.get_setting('MATRIX_HOMESERVER', '')
-    access_token = settings_manager.get_setting('MATRIX_ACCESS_TOKEN', '')
-    room_id = settings_manager.get_setting('MATRIX_ROOM_ID', '')
-    bot_user_id = settings_manager.get_setting('MATRIX_BOT_USER_ID', '')
-    bot_password = settings_manager.get_setting('MATRIX_BOT_PASSWORD', '')
-    store_path = settings_manager.get_setting('MATRIX_STORE_PATH', '')
+    homeserver = settings_manager.get_setting("MATRIX_HOMESERVER", "")
+    access_token = settings_manager.get_setting("MATRIX_ACCESS_TOKEN", "")
+    room_id = settings_manager.get_setting("MATRIX_ROOM_ID", "")
+    bot_user_id = settings_manager.get_setting("MATRIX_BOT_USER_ID", "")
+    bot_password = settings_manager.get_setting("MATRIX_BOT_PASSWORD", "")
+    store_path = settings_manager.get_setting("MATRIX_STORE_PATH", "")
 
     def _mono(value):
         # Значения могут содержать _ * ` [ — в legacy-Markdown это ломает
@@ -702,21 +730,37 @@ def show_matrix_settings(update, context):
     )
 
     keyboard = [
-        [InlineKeyboardButton("🌐 Установить homeserver", callback_data='set_matrix_homeserver')],
-        [InlineKeyboardButton("🔑 Установить access token", callback_data='set_matrix_access_token')],
-        [InlineKeyboardButton("💬 Установить room ID", callback_data='set_matrix_room_id')],
-        [InlineKeyboardButton("👤 Установить bot user ID (E2EE)", callback_data='set_matrix_bot_user_id')],
-        [InlineKeyboardButton("🔐 Установить bot password (E2EE)", callback_data='set_matrix_bot_password')],
-        [InlineKeyboardButton("📁 Установить store path (опц.)", callback_data='set_matrix_store_path')],
-        [InlineKeyboardButton("🧪 Тест Matrix", callback_data='test_alert_matrix')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("🌐 Установить homeserver", callback_data="set_matrix_homeserver")],
+        [
+            InlineKeyboardButton(
+                "🔑 Установить access token", callback_data="set_matrix_access_token"
+            )
+        ],
+        [InlineKeyboardButton("💬 Установить room ID", callback_data="set_matrix_room_id")],
+        [
+            InlineKeyboardButton(
+                "👤 Установить bot user ID (E2EE)", callback_data="set_matrix_bot_user_id"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔐 Установить bot password (E2EE)", callback_data="set_matrix_bot_password"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📁 Установить store path (опц.)", callback_data="set_matrix_store_path"
+            )
+        ],
+        [InlineKeyboardButton("🧪 Тест Matrix", callback_data="test_alert_matrix")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_main"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
@@ -724,17 +768,17 @@ def show_monitoring_settings(update, context):
     """Показать настройки мониторинга - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
-    
-    check_interval = settings_manager.get_setting('CHECK_INTERVAL', 60)
-    max_fail_time = settings_manager.get_setting('MAX_FAIL_TIME', 900)
-    
+
+    check_interval = settings_manager.get_setting("CHECK_INTERVAL", 60)
+    max_fail_time = settings_manager.get_setting("MAX_FAIL_TIME", 900)
+
     # Новые настройки таймаутов
-    windows_2025_timeout = settings_manager.get_setting('WINDOWS_2025_TIMEOUT', 35)
-    domain_timeout = settings_manager.get_setting('DOMAIN_SERVERS_TIMEOUT', 20)
-    admin_timeout = settings_manager.get_setting('ADMIN_SERVERS_TIMEOUT', 25)
-    standard_timeout = settings_manager.get_setting('STANDARD_WINDOWS_TIMEOUT', 30)
-    linux_timeout = settings_manager.get_setting('LINUX_TIMEOUT', 15)
-    
+    windows_2025_timeout = settings_manager.get_setting("WINDOWS_2025_TIMEOUT", 35)
+    domain_timeout = settings_manager.get_setting("DOMAIN_SERVERS_TIMEOUT", 20)
+    admin_timeout = settings_manager.get_setting("ADMIN_SERVERS_TIMEOUT", 25)
+    standard_timeout = settings_manager.get_setting("STANDARD_WINDOWS_TIMEOUT", 30)
+    linux_timeout = settings_manager.get_setting("LINUX_TIMEOUT", 15)
+
     message = (
         "🔧 *Настройки мониторинга*\n\n"
         f"• Интервал проверки: {check_interval} сек\n"
@@ -747,66 +791,67 @@ def show_monitoring_settings(update, context):
         f"• Linux серверы: {linux_timeout} сек\n\n"
         "Выберите параметр для изменения:"
     )
-    
+
     keyboard = [
-        [InlineKeyboardButton("⏱️ Интервал проверки", callback_data='set_check_interval')],
-        [InlineKeyboardButton("🚨 Макс. время простоя", callback_data='set_max_fail_time')],
-        [InlineKeyboardButton("⏰ Таймауты серверов", callback_data='server_timeouts')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("⏱️ Интервал проверки", callback_data="set_check_interval")],
+        [InlineKeyboardButton("🚨 Макс. время простоя", callback_data="set_max_fail_time")],
+        [InlineKeyboardButton("⏰ Таймауты серверов", callback_data="server_timeouts")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_main"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_time_settings(update, context):
     """Показать временные настройки"""
     query = update.callback_query
     query.answer()
-    
-    silent_start = settings_manager.get_setting('SILENT_START', 20)
-    silent_end = settings_manager.get_setting('SILENT_END', 9)
+
+    silent_start = settings_manager.get_setting("SILENT_START", 20)
+    silent_end = settings_manager.get_setting("SILENT_END", 9)
     data_collection = settings_manager.get_setting(
-        'DATA_COLLECTION_TIMES',
-        settings_manager.get_setting('DATA_COLLECTION_TIME', '08:30')
+        "DATA_COLLECTION_TIMES", settings_manager.get_setting("DATA_COLLECTION_TIME", "08:30")
     )
-    
+
     message = (
         "⏰ *Временные настройки*\n\n"
         f"• Тихий режим: {silent_start}:00 - {silent_end}:00\n"
         f"• Сбор данных: {data_collection}\n\n"
         "Выберите параметр для изменения:"
     )
-    
+
     keyboard = [
-        [InlineKeyboardButton("🔇 Начало тихого режима", callback_data='set_silent_start')],
-        [InlineKeyboardButton("🔊 Конец тихого режима", callback_data='set_silent_end')],
-        [InlineKeyboardButton("📊 Время(а) сбора данных", callback_data='set_data_collection')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("🔇 Начало тихого режима", callback_data="set_silent_start")],
+        [InlineKeyboardButton("🔊 Конец тихого режима", callback_data="set_silent_end")],
+        [InlineKeyboardButton("📊 Время(а) сбора данных", callback_data="set_data_collection")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_main"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_resource_settings(update, context):
     """Показать настройки ресурсов"""
     query = update.callback_query
     query.answer()
-    
-    cpu_warning = settings_manager.get_setting('CPU_WARNING', 80)
-    cpu_critical = settings_manager.get_setting('CPU_CRITICAL', 90)
-    ram_warning = settings_manager.get_setting('RAM_WARNING', 85)
-    ram_critical = settings_manager.get_setting('RAM_CRITICAL', 95)
-    disk_warning = settings_manager.get_setting('DISK_WARNING', 80)
-    disk_critical = settings_manager.get_setting('DISK_CRITICAL', 90)
-    
+
+    cpu_warning = settings_manager.get_setting("CPU_WARNING", 80)
+    cpu_critical = settings_manager.get_setting("CPU_CRITICAL", 90)
+    ram_warning = settings_manager.get_setting("RAM_WARNING", 85)
+    ram_critical = settings_manager.get_setting("RAM_CRITICAL", 95)
+    disk_warning = settings_manager.get_setting("DISK_WARNING", 80)
+    disk_critical = settings_manager.get_setting("DISK_CRITICAL", 90)
+
     message = (
         "💻 *Настройки ресурсов*\n\n"
         f"• CPU предупреждение: {cpu_warning}%\n"
@@ -817,40 +862,41 @@ def show_resource_settings(update, context):
         f"• Disk критический: {disk_critical}%\n\n"
         "Выберите параметр для изменения:"
     )
-    
+
     keyboard = [
-        [InlineKeyboardButton("💻 CPU предупреждение", callback_data='set_cpu_warning')],
-        [InlineKeyboardButton("💻 CPU критический", callback_data='set_cpu_critical')],
-        [InlineKeyboardButton("🧠 RAM предупреждение", callback_data='set_ram_warning')],
-        [InlineKeyboardButton("🧠 RAM критический", callback_data='set_ram_critical')],
-        [InlineKeyboardButton("💾 Disk предупреждение", callback_data='set_disk_warning')],
-        [InlineKeyboardButton("💾 Disk критический", callback_data='set_disk_critical')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='check_resources'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("💻 CPU предупреждение", callback_data="set_cpu_warning")],
+        [InlineKeyboardButton("💻 CPU критический", callback_data="set_cpu_critical")],
+        [InlineKeyboardButton("🧠 RAM предупреждение", callback_data="set_ram_warning")],
+        [InlineKeyboardButton("🧠 RAM критический", callback_data="set_ram_critical")],
+        [InlineKeyboardButton("💾 Disk предупреждение", callback_data="set_disk_warning")],
+        [InlineKeyboardButton("💾 Disk критический", callback_data="set_disk_critical")],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="check_resources"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_backup_settings(update, context):
     """Показать настройки бэкапов - С ИЗМЕНЕННЫМ CALLBACK"""
     query = update.callback_query
     query.answer()
-    
-    backup_alert_hours = settings_manager.get_setting('BACKUP_ALERT_HOURS', 24)
-    backup_stale_hours = settings_manager.get_setting('BACKUP_STALE_HOURS', 36)
-    
-    database_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+
+    backup_alert_hours = settings_manager.get_setting("BACKUP_ALERT_HOURS", 24)
+    backup_stale_hours = settings_manager.get_setting("BACKUP_STALE_HOURS", 36)
+
+    database_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     db_categories = list(database_config.keys()) if database_config else []
-    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    proxmox_hosts = settings_manager.get_setting("PROXMOX_HOSTS", {})
     proxmox_count = len(proxmox_hosts) if isinstance(proxmox_hosts, dict) else 0
-    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+    zfs_servers = settings_manager.get_setting("ZFS_SERVERS", {})
     zfs_count = len(zfs_servers) if isinstance(zfs_servers, dict) else 0
-    
+
     message = (
         "💾 *Настройки бэкапов*\n\n"
         f"• Алерты через: {backup_alert_hours}ч\n"
@@ -860,33 +906,42 @@ def show_backup_settings(update, context):
         f"• ZFS серверы: {zfs_count}\n\n"
         "Выберите раздел для настройки:"
     )
-    
+
     keyboard = [
-        [InlineKeyboardButton("⏰ Временные интервалы", callback_data='backup_times')],
+        [InlineKeyboardButton("⏰ Временные интервалы", callback_data="backup_times")],
     ]
 
-    if extension_manager.is_extension_enabled('backup_monitor'):
-        keyboard.append([InlineKeyboardButton("🖥️ Proxmox бэкапы", callback_data='settings_backup_proxmox')])
-        keyboard.append([InlineKeyboardButton("🖥️ Паттерны Proxmox", callback_data='settings_patterns_proxmox')])
+    if extension_manager.is_extension_enabled("backup_monitor"):
+        keyboard.append(
+            [InlineKeyboardButton("🖥️ Proxmox бэкапы", callback_data="settings_backup_proxmox")]
+        )
+        keyboard.append(
+            [InlineKeyboardButton("🖥️ Паттерны Proxmox", callback_data="settings_patterns_proxmox")]
+        )
 
-    if extension_manager.is_extension_enabled('database_backup_monitor'):
-        keyboard.append([InlineKeyboardButton("🗃️ Базы данных", callback_data='settings_db_main')])
-        keyboard.append([InlineKeyboardButton("🗃️ Паттерны БД", callback_data='settings_patterns_db')])
+    if extension_manager.is_extension_enabled("database_backup_monitor"):
+        keyboard.append([InlineKeyboardButton("🗃️ Базы данных", callback_data="settings_db_main")])
+        keyboard.append(
+            [InlineKeyboardButton("🗃️ Паттерны БД", callback_data="settings_patterns_db")]
+        )
 
-    if extension_manager.is_extension_enabled('zfs_monitor'):
-        keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='settings_zfs')])
+    if extension_manager.is_extension_enabled("zfs_monitor"):
+        keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data="settings_zfs")])
 
-    keyboard.extend([
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ])
-    
-    query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+    keyboard.extend(
+        [
+            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            [
+                InlineKeyboardButton("↩️ Назад", callback_data="settings_main"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
+        ]
     )
+
+    query.edit_message_text(
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 
 def show_proxmox_backup_settings(update, context):
     """Показать настройки бэкапов Proxmox в разделе расширений"""
@@ -896,61 +951,55 @@ def show_proxmox_backup_settings(update, context):
     proxmox_hosts = _get_proxmox_hosts_for_settings()
     proxmox_count = len(proxmox_hosts)
 
-    message = (
-        "🖥️ *Бэкапы Proxmox*\n\n"
-        f"Хостов в списке: {proxmox_count}\n\n"
-        "Выберите раздел:"
-    )
+    message = "🖥️ *Бэкапы Proxmox*\n\n" f"Хостов в списке: {proxmox_count}\n\n" "Выберите раздел:"
 
     keyboard = [
-        [InlineKeyboardButton("📋 Хосты", callback_data='settings_backup_proxmox')],
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_proxmox')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("📋 Хосты", callback_data="settings_backup_proxmox")],
+        [InlineKeyboardButton("🔍 Паттерны", callback_data="settings_patterns_proxmox")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_extensions"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_database_backup_settings(update, context):
     """Показать настройки бэкапов БД в разделе расширений"""
     query = update.callback_query
     query.answer()
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     db_categories = list(db_config.keys()) if isinstance(db_config, dict) else []
 
-    message = (
-        "🗃️ *Бэкапы БД*\n\n"
-        f"Категорий: {len(db_categories)}\n\n"
-        "Выберите раздел:"
-    )
+    message = "🗃️ *Бэкапы БД*\n\n" f"Категорий: {len(db_categories)}\n\n" "Выберите раздел:"
 
     keyboard = [
-        [InlineKeyboardButton("📋 Базы", callback_data='settings_db_main')],
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_db')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("📋 Базы", callback_data="settings_db_main")],
+        [InlineKeyboardButton("🔍 Паттерны", callback_data="settings_patterns_db")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_extensions"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_backup_databases_settings(update, context):
     """Показать настройки баз данных для бэкапов"""
     query = update.callback_query
     query.answer()
-    
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-    
+
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
+
     message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
-    
+
     if not db_config:
         message += "❌ *Базы данных не настроены*\n\n"
         message += "Здесь вы можете настроить категории и базы данных для мониторинга бэкапов."
@@ -968,272 +1017,295 @@ def show_backup_databases_settings(update, context):
             if len(databases) > 2:
                 message += f"   • ... и еще {len(databases) - 2} БД\n"
             message += "\n"
-    
+
     message += "Выберите действие:"
-    
-    back_callback = context.user_data.get('settings_db_back') or 'settings_extensions'
+
+    back_callback = context.user_data.get("settings_db_back") or "settings_extensions"
 
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')],
-        [InlineKeyboardButton("✏️ Редактировать категорию", callback_data='settings_db_edit_category')],
-        [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
-        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
-        [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("➕ Добавить категорию", callback_data="settings_db_add_category")],
+        [
+            InlineKeyboardButton(
+                "✏️ Редактировать категорию", callback_data="settings_db_edit_category"
+            )
+        ],
+        [InlineKeyboardButton("🗑️ Удалить категорию", callback_data="settings_db_delete_category")],
+        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data="settings_db_view_all")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_all_settings(update, context):
     """Показать все настройки"""
     query = update.callback_query
     query.answer()
-    
+
     all_settings = settings_manager.get_all_settings()
-    
+
     message = "📊 *Все настройки системы*\n\n"
-    
+
     for category in settings_manager.get_categories():
         message += f"*{category.upper()}:*\n"
-        category_settings = {k: v for k, v in all_settings.items() if k.lower().startswith(category.lower()) or settings_manager.get_setting(k, category='') == category}
-        
+        category_settings = {
+            k: v
+            for k, v in all_settings.items()
+            if k.lower().startswith(category.lower())
+            or settings_manager.get_setting(k, category="") == category
+        }
+
         for key, value in category_settings.items():
-            if key == 'TELEGRAM_TOKEN' and value:
-                value = '***' + value[-4:]  # Показываем только последние 4 символа
-            elif key == 'CHAT_IDS':
+            if key == "TELEGRAM_TOKEN" and value:
+                value = "***" + value[-4:]  # Показываем только последние 4 символа
+            elif key == "CHAT_IDS":
                 value = f"{len(value)} чатов"
             elif isinstance(value, (list, dict)):
                 value = f"{len(value)} элементов"
-            
+
             message += f"• {key}: {value}\n"
         message += "\n"
-    
+
     keyboard = [
-        [InlineKeyboardButton("⚙️ Управление настройками", callback_data='settings_main')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("⚙️ Управление настройками", callback_data="settings_main")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_main"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def settings_callback_handler(update, context):
     """Обработчик callback'ов настроек"""
     query = update.callback_query
     data = query.data
-    
+
     # если это callback от бэкапов, НЕ обрабатываем здесь
     if (
-        data.startswith('db_')
+        data.startswith("db_")
         and data not in BACKUP_SETTINGS_CALLBACKS
-        and not data.startswith('db_default_')
+        and not data.startswith("db_default_")
     ):
         _safe_query_answer(query, "⚙️ Перенаправление к модулю бэкапов...")
         # Передаем обработку дальше по цепочке
         return
-    if data.startswith('backup_') and data not in BACKUP_SETTINGS_CALLBACKS:
+    if data.startswith("backup_") and data not in BACKUP_SETTINGS_CALLBACKS:
         _safe_query_answer(query, "⚙️ Перенаправление к модулю бэкапов...")
         # Передаем обработку дальше по цепочке
         return
 
     try:
         # Основные категории настроек
-        if data == 'settings_main':
+        if data == "settings_main":
             settings_command(update, context)
-        elif data == 'settings_telegram':
+        elif data == "settings_telegram":
             show_telegram_settings(update, context)
-        elif data == 'settings_matrix':
+        elif data == "settings_matrix":
             show_matrix_settings(update, context)
-        elif data == 'settings_monitoring':
+        elif data == "settings_monitoring":
             show_monitoring_settings(update, context)
-        elif data == 'settings_time':
+        elif data == "settings_time":
             show_time_settings(update, context)
-        elif data == 'settings_resources':
+        elif data == "settings_resources":
             show_resource_settings(update, context)
-        elif data == 'settings_auth':
+        elif data == "settings_auth":
             show_auth_settings(update, context)  # Теперь упрощенная версия
-        elif data == 'settings_servers':
+        elif data == "settings_servers":
             show_servers_settings(update, context)
-        elif data == 'settings_backup':
+        elif data == "settings_backup":
             show_backup_settings(update, context)
-        elif data == 'settings_extensions':
+        elif data == "settings_extensions":
             show_settings_extensions_menu(update, context)
-        elif data == 'settings_extensions_manage':
+        elif data == "settings_extensions_manage":
             show_extensions_settings_menu(update, context)
-        elif data == 'settings_ext_backup_proxmox':
+        elif data == "settings_ext_backup_proxmox":
             show_proxmox_backup_settings(update, context)
-        elif data == 'settings_ext_backup_db':
-            context.user_data.pop('settings_db_back', None)
+        elif data == "settings_ext_backup_db":
+            context.user_data.pop("settings_db_back", None)
             show_database_backup_settings(update, context)
-        elif data == 'settings_ext_backup_mail':
+        elif data == "settings_ext_backup_mail":
             show_mail_backup_settings(update, context)
-        elif data == 'settings_ext_stock_load':
+        elif data == "settings_ext_stock_load":
             show_stock_load_settings(update, context)
-        elif data == 'settings_ext_supplier_stock':
+        elif data == "settings_ext_supplier_stock":
             show_supplier_stock_settings(update, context)
-        elif data == 'settings_snapshot_menu':
+        elif data == "settings_snapshot_menu":
             show_snapshot_transfer_settings(update, context)
-        elif data == 'settings_patterns_db':
+        elif data == "settings_patterns_db":
             show_db_patterns_menu(update, context)
-        elif data == 'settings_patterns_db_from_backup':
+        elif data == "settings_patterns_db_from_backup":
             show_db_patterns_menu_from_backup(update, context)
-        elif data == 'settings_patterns_proxmox':
+        elif data == "settings_patterns_proxmox":
             show_proxmox_patterns_menu(update, context)
-        elif data == 'settings_patterns_zfs':
+        elif data == "settings_patterns_zfs":
             show_zfs_patterns_menu(update, context)
-        elif data == 'settings_patterns_mail':
+        elif data == "settings_patterns_mail":
             show_mail_patterns_menu(update, context)
-        elif data == 'settings_patterns_stock':
+        elif data == "settings_patterns_stock":
             show_stock_load_patterns_menu(update, context)
-        elif data == 'settings_snapshot_hosts':
+        elif data == "settings_snapshot_hosts":
             show_snapshot_hosts_menu(update, context)
-        elif data == 'settings_snapshot_patterns':
-            context.user_data['patterns_filter'] = 'snapshot_transfer'
-            context.user_data['patterns_back'] = 'settings_snapshot_menu'
-            context.user_data['patterns_add'] = 'add_snapshot_pattern'
-            context.user_data['patterns_title'] = "📸 *Паттерны передач снэпшотов*"
+        elif data == "settings_snapshot_patterns":
+            context.user_data["patterns_filter"] = "snapshot_transfer"
+            context.user_data["patterns_back"] = "settings_snapshot_menu"
+            context.user_data["patterns_add"] = "add_snapshot_pattern"
+            context.user_data["patterns_title"] = "📸 *Паттерны передач снэпшотов*"
             view_patterns_handler(update, context)
-        elif data == 'add_snapshot_pattern':
+        elif data == "add_snapshot_pattern":
             _clear_snapshot_host_input_state(context)
             add_snapshot_pattern_handler(update, context)
-        elif data == 'settings_web':
+        elif data == "settings_web":
             show_web_settings(update, context)
-        elif data == 'settings_view_all':
+        elif data == "settings_view_all":
             view_all_settings_handler(update, context)
 
-        elif data == 'supplier_stock_download':
+        elif data == "supplier_stock_download":
             show_supplier_stock_download_settings(update, context)
-        elif data == 'supplier_stock_mail':
+        elif data == "supplier_stock_mail":
             show_supplier_stock_mail_settings(update, context)
-        elif data == 'supplier_stock_reports':
-            show_supplier_stock_reports(update, context, source_kind='download')
-        elif data == 'supplier_stock_reports_download':
-            show_supplier_stock_reports(update, context, source_kind='download')
-        elif data == 'supplier_stock_reports_mail':
-            show_supplier_stock_reports(update, context, source_kind='mail')
-        elif data == 'supplier_stock_reports_sources_download':
-            show_supplier_stock_report_sources(update, context, source_kind='download')
-        elif data == 'supplier_stock_reports_sources_mail':
-            show_supplier_stock_report_sources(update, context, source_kind='mail')
-        elif data.startswith('supplier_stock_report_source_day|'):
-            _, source_kind, source_id = data.split('|', 2)
-            show_supplier_stock_report_source_stats(update, context, source_id, source_kind, period_days=1)
-        elif data.startswith('supplier_stock_report_source|'):
-            _, source_kind, source_id = data.split('|', 2)
+        elif data == "supplier_stock_reports":
+            show_supplier_stock_reports(update, context, source_kind="download")
+        elif data == "supplier_stock_reports_download":
+            show_supplier_stock_reports(update, context, source_kind="download")
+        elif data == "supplier_stock_reports_mail":
+            show_supplier_stock_reports(update, context, source_kind="mail")
+        elif data == "supplier_stock_reports_sources_download":
+            show_supplier_stock_report_sources(update, context, source_kind="download")
+        elif data == "supplier_stock_reports_sources_mail":
+            show_supplier_stock_report_sources(update, context, source_kind="mail")
+        elif data.startswith("supplier_stock_report_source_day|"):
+            _, source_kind, source_id = data.split("|", 2)
+            show_supplier_stock_report_source_stats(
+                update, context, source_id, source_kind, period_days=1
+            )
+        elif data.startswith("supplier_stock_report_source|"):
+            _, source_kind, source_id = data.split("|", 2)
             show_supplier_stock_report_source_stats(update, context, source_id, source_kind)
-        elif data.startswith('supplier_stock_report_entry|'):
-            _, entry_key = data.split('|', 1)
+        elif data.startswith("supplier_stock_report_entry|"):
+            _, entry_key = data.split("|", 1)
             show_supplier_stock_report_entry_details(update, context, entry_key)
-        elif data == 'supplier_stock_processing':
-            show_supplier_stock_processing_menu(update, context, action_prefix="supplier_stock_processing")
-        elif data.startswith('supplier_stock_processing|'):
-            parts = data.split('|')
-            action = parts[1] if len(parts) > 1 else ''
-            rule_id = parts[2] if len(parts) > 2 else ''
-            if action == 'add':
+        elif data == "supplier_stock_processing":
+            show_supplier_stock_processing_menu(
+                update, context, action_prefix="supplier_stock_processing"
+            )
+        elif data.startswith("supplier_stock_processing|"):
+            parts = data.split("|")
+            action = parts[1] if len(parts) > 1 else ""
+            rule_id = parts[2] if len(parts) > 2 else ""
+            if action == "add":
                 supplier_stock_start_processing_rule_menu(update, context)
-            elif action == 'edit' and rule_id:
+            elif action == "edit" and rule_id:
                 supplier_stock_start_processing_rule_menu(update, context, rule_id=rule_id)
-            elif action in ('toggle', 'delete', 'activate') and rule_id:
+            elif action in ("toggle", "delete", "activate") and rule_id:
                 config = get_supplier_stock_config()
                 rules = config.get("processing", {}).get("rules", [])
-                if action == 'toggle':
+                if action == "toggle":
                     for rule in rules:
                         if str(rule.get("id")) == rule_id:
                             rule["enabled"] = not rule.get("enabled", True)
                             if not rule.get("enabled", True):
                                 rule["active"] = False
                             break
-                elif action == 'activate':
+                elif action == "activate":
                     _set_supplier_stock_processing_active_rule(rules, rule_id)
-                elif action == 'delete':
+                elif action == "delete":
                     rules = [item for item in rules if str(item.get("id")) != rule_id]
                 config.setdefault("processing", {})["rules"] = rules
                 save_supplier_stock_config(config)
-                show_supplier_stock_processing_menu(update, context, action_prefix="supplier_stock_processing")
-        elif data.startswith('supplier_stock_processing_rule|'):
-            parts = data.split('|')
-            action = parts[1] if len(parts) > 1 else ''
-            if action == 'menu':
+                show_supplier_stock_processing_menu(
+                    update, context, action_prefix="supplier_stock_processing"
+                )
+        elif data.startswith("supplier_stock_processing_rule|"):
+            parts = data.split("|")
+            action = parts[1] if len(parts) > 1 else ""
+            if action == "menu":
                 show_supplier_stock_processing_rule_menu(update, context)
-            elif action == 'save':
+            elif action == "save":
                 supplier_stock_save_processing_rule(update, context)
-            elif action == 'save_back':
+            elif action == "save_back":
                 if _save_processing_rule_data(update, context):
-                    back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
+                    back_callback = context.user_data.get(
+                        "supplier_stock_processing_back", "supplier_stock_processing"
+                    )
                     _show_processing_rule_back_menu(update, context, back_callback)
-            elif action == 'back':
-                if context.user_data.get('supplier_stock_processing_rule_dirty'):
+            elif action == "back":
+                if context.user_data.get("supplier_stock_processing_rule_dirty"):
                     _persist_processing_rule_data(context)
-                    context.user_data['supplier_stock_processing_rule_dirty'] = False
-                back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
+                    context.user_data["supplier_stock_processing_rule_dirty"] = False
+                back_callback = context.user_data.get(
+                    "supplier_stock_processing_back", "supplier_stock_processing"
+                )
                 _show_processing_rule_back_menu(update, context, back_callback)
-            elif action == 'toggle_processing':
-                data = context.user_data.get('supplier_stock_processing_rule_data', {})
-                data['requires_processing'] = not data.get('requires_processing', True)
-                if data.get('requires_processing') and not data.get('variants'):
+            elif action == "toggle_processing":
+                data = context.user_data.get("supplier_stock_processing_rule_data", {})
+                data["requires_processing"] = not data.get("requires_processing", True)
+                if data.get("requires_processing") and not data.get("variants"):
                     _sync_processing_variants_count(data, 1)
-                    data['variants_count'] = 1
-                context.user_data['supplier_stock_processing_rule_data'] = data
-                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                    data["variants_count"] = 1
+                context.user_data["supplier_stock_processing_rule_data"] = data
+                context.user_data["supplier_stock_processing_rule_dirty"] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_rule_menu(update, context)
-            elif action in ('add_variant', 'remove_variant'):
-                data = context.user_data.get('supplier_stock_processing_rule_data', {})
-                variants = data.get('variants', [])
+            elif action in ("add_variant", "remove_variant"):
+                data = context.user_data.get("supplier_stock_processing_rule_data", {})
+                variants = data.get("variants", [])
                 current_count = len(variants)
-                if action == 'add_variant':
+                if action == "add_variant":
                     new_count = current_count + 1
                 else:
                     new_count = max(current_count - 1, 0)
                 _sync_processing_variants_count(data, new_count)
-                data['variants_count'] = new_count
-                context.user_data['supplier_stock_processing_rule_data'] = data
-                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                data["variants_count"] = new_count
+                context.user_data["supplier_stock_processing_rule_data"] = data
+                context.user_data["supplier_stock_processing_rule_dirty"] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_rule_menu(update, context)
-            elif action == 'variant' and len(parts) > 2:
+            elif action == "variant" and len(parts) > 2:
                 variant_index = int(parts[2])
-                context.user_data['supplier_stock_processing_variant_index'] = variant_index
+                context.user_data["supplier_stock_processing_variant_index"] = variant_index
                 show_supplier_stock_processing_variant_menu(update, context, variant_index)
-            elif action == 'field' and len(parts) > 2:
+            elif action == "field" and len(parts) > 2:
                 field = parts[2]
                 supplier_stock_start_processing_field_edit(update, context, field)
-        elif data.startswith('supplier_stock_processing_variant|'):
-            parts = data.split('|')
-            action = parts[1] if len(parts) > 1 else ''
+        elif data.startswith("supplier_stock_processing_variant|"):
+            parts = data.split("|")
+            action = parts[1] if len(parts) > 1 else ""
             variant_index = int(parts[2]) if len(parts) > 2 else 0
-            if action == 'menu':
+            if action == "menu":
                 show_supplier_stock_processing_variant_menu(update, context, variant_index)
-            elif action == 'add_column':
-                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+            elif action == "add_column":
+                data = context.user_data.get("supplier_stock_processing_rule_data", {})
                 variant = _ensure_processing_variant(data, variant_index)
-                columns_count = variant.get("data_columns_count") or len(variant.get("data_columns", []))
+                columns_count = variant.get("data_columns_count") or len(
+                    variant.get("data_columns", [])
+                )
                 _sync_variant_columns(variant, columns_count + 1)
-                data['variants'][variant_index] = variant
-                context.user_data['supplier_stock_processing_rule_data'] = data
-                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                data["variants"][variant_index] = variant
+                context.user_data["supplier_stock_processing_rule_data"] = data
+                context.user_data["supplier_stock_processing_rule_dirty"] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_variant_menu(update, context, variant_index)
-            elif action == 'toggle_orc':
-                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+            elif action == "toggle_orc":
+                data = context.user_data.get("supplier_stock_processing_rule_data", {})
                 variant = _ensure_processing_variant(data, variant_index)
-                orc = variant.get('orc', {})
-                orc['enabled'] = not orc.get('enabled', False)
-                variant['orc'] = orc
-                data['variants'][variant_index] = variant
-                context.user_data['supplier_stock_processing_rule_data'] = data
-                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                orc = variant.get("orc", {})
+                orc["enabled"] = not orc.get("enabled", False)
+                variant["orc"] = orc
+                data["variants"][variant_index] = variant
+                context.user_data["supplier_stock_processing_rule_data"] = data
+                context.user_data["supplier_stock_processing_rule_dirty"] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_rule_menu(update, context)
-            elif action == 'field' and len(parts) > 3:
+            elif action == "field" and len(parts) > 3:
                 field = parts[3]
                 item_index = int(parts[4]) if len(parts) > 4 else None
                 supplier_stock_start_processing_field_edit(
@@ -1243,119 +1315,123 @@ def settings_callback_handler(update, context):
                     variant_index=variant_index,
                     item_index=item_index,
                 )
-        elif data.startswith('supplier_stock_processing_columns|'):
-            parts = data.split('|')
-            action = parts[1] if len(parts) > 1 else ''
+        elif data.startswith("supplier_stock_processing_columns|"):
+            parts = data.split("|")
+            action = parts[1] if len(parts) > 1 else ""
             variant_index = int(parts[2]) if len(parts) > 2 else 0
-            if action == 'menu':
+            if action == "menu":
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
-            elif action == 'toggle_article_filter':
-                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+            elif action == "toggle_article_filter":
+                data = context.user_data.get("supplier_stock_processing_rule_data", {})
                 variant = _ensure_processing_variant(data, variant_index)
                 current_value = variant.get("use_article_filter")
                 if current_value is None:
                     current_value = bool(variant.get("article_filter"))
                 variant["use_article_filter"] = not current_value
-                data['variants'][variant_index] = variant
-                context.user_data['supplier_stock_processing_rule_data'] = data
-                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                data["variants"][variant_index] = variant
+                context.user_data["supplier_stock_processing_rule_data"] = data
+                context.user_data["supplier_stock_processing_rule_dirty"] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
-            elif action in ('tac', 'toggle_article_filter_column') and len(parts) > 3:
+            elif action in ("tac", "toggle_article_filter_column") and len(parts) > 3:
                 column_index = int(parts[3])
-                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                data = context.user_data.get("supplier_stock_processing_rule_data", {})
                 variant = _ensure_processing_variant(data, variant_index)
-                columns_count = variant.get("data_columns_count") or len(variant.get("data_columns", []))
+                columns_count = variant.get("data_columns_count") or len(
+                    variant.get("data_columns", [])
+                )
                 _sync_variant_columns(variant, columns_count)
                 filters = list(variant.get("use_article_filter_columns", []))
                 if 0 <= column_index < len(filters):
                     filters[column_index] = not filters[column_index]
                     variant["use_article_filter_columns"] = filters
-                    data['variants'][variant_index] = variant
-                    context.user_data['supplier_stock_processing_rule_data'] = data
-                    context.user_data['supplier_stock_processing_rule_dirty'] = True
+                    data["variants"][variant_index] = variant
+                    context.user_data["supplier_stock_processing_rule_data"] = data
+                    context.user_data["supplier_stock_processing_rule_dirty"] = True
                     _persist_processing_rule_data(context)
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
-            elif action == 'add_column':
-                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+            elif action == "add_column":
+                data = context.user_data.get("supplier_stock_processing_rule_data", {})
                 variant = _ensure_processing_variant(data, variant_index)
-                columns_count = variant.get("data_columns_count") or len(variant.get("data_columns", []))
+                columns_count = variant.get("data_columns_count") or len(
+                    variant.get("data_columns", [])
+                )
                 _sync_variant_columns(variant, columns_count + 1)
-                data['variants'][variant_index] = variant
-                context.user_data['supplier_stock_processing_rule_data'] = data
-                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                data["variants"][variant_index] = variant
+                context.user_data["supplier_stock_processing_rule_data"] = data
+                context.user_data["supplier_stock_processing_rule_dirty"] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
-            elif action == 'remove_column' and len(parts) > 3:
+            elif action == "remove_column" and len(parts) > 3:
                 column_index = int(parts[3])
-                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                data = context.user_data.get("supplier_stock_processing_rule_data", {})
                 variant = _ensure_processing_variant(data, variant_index)
                 if _remove_variant_column(variant, column_index):
-                    data['variants'][variant_index] = variant
-                    context.user_data['supplier_stock_processing_rule_data'] = data
-                    context.user_data['supplier_stock_processing_rule_dirty'] = True
+                    data["variants"][variant_index] = variant
+                    context.user_data["supplier_stock_processing_rule_data"] = data
+                    context.user_data["supplier_stock_processing_rule_dirty"] = True
                     _persist_processing_rule_data(context)
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
-        elif data.startswith('supplier_stock_processing_orc|'):
-            parts = data.split('|')
-            action = parts[1] if len(parts) > 1 else ''
+        elif data.startswith("supplier_stock_processing_orc|"):
+            parts = data.split("|")
+            action = parts[1] if len(parts) > 1 else ""
             variant_index = int(parts[2]) if len(parts) > 2 else 0
-            if action == 'menu':
+            if action == "menu":
                 show_supplier_stock_processing_orc_menu(update, context, variant_index)
-            elif action == 'set_input' and len(parts) > 3:
+            elif action == "set_input" and len(parts) > 3:
                 input_index = int(parts[3])
-                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                data = context.user_data.get("supplier_stock_processing_rule_data", {})
                 variant = _ensure_processing_variant(data, variant_index)
-                orc = variant.get('orc', {})
-                orc['input_index'] = input_index
-                variant['orc'] = orc
-                data['variants'][variant_index] = variant
-                context.user_data['supplier_stock_processing_rule_data'] = data
-                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                orc = variant.get("orc", {})
+                orc["input_index"] = input_index
+                variant["orc"] = orc
+                data["variants"][variant_index] = variant
+                context.user_data["supplier_stock_processing_rule_data"] = data
+                context.user_data["supplier_stock_processing_rule_dirty"] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_orc_menu(update, context, variant_index)
-            elif action == 'clear_input':
-                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+            elif action == "clear_input":
+                data = context.user_data.get("supplier_stock_processing_rule_data", {})
                 variant = _ensure_processing_variant(data, variant_index)
-                orc = variant.get('orc', {})
-                orc.pop('input_index', None)
-                variant['orc'] = orc
-                data['variants'][variant_index] = variant
-                context.user_data['supplier_stock_processing_rule_data'] = data
-                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                orc = variant.get("orc", {})
+                orc.pop("input_index", None)
+                variant["orc"] = orc
+                data["variants"][variant_index] = variant
+                context.user_data["supplier_stock_processing_rule_data"] = data
+                context.user_data["supplier_stock_processing_rule_dirty"] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_orc_menu(update, context, variant_index)
-            elif action == 'set_output' and len(parts) > 3:
+            elif action == "set_output" and len(parts) > 3:
                 output_index = int(parts[3])
-                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                data = context.user_data.get("supplier_stock_processing_rule_data", {})
                 variant = _ensure_processing_variant(data, variant_index)
-                orc = variant.get('orc', {})
-                orc['output_index'] = output_index
-                variant['orc'] = orc
-                data['variants'][variant_index] = variant
-                context.user_data['supplier_stock_processing_rule_data'] = data
-                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                orc = variant.get("orc", {})
+                orc["output_index"] = output_index
+                variant["orc"] = orc
+                data["variants"][variant_index] = variant
+                context.user_data["supplier_stock_processing_rule_data"] = data
+                context.user_data["supplier_stock_processing_rule_dirty"] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_orc_menu(update, context, variant_index)
-            elif action == 'clear_output':
-                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+            elif action == "clear_output":
+                data = context.user_data.get("supplier_stock_processing_rule_data", {})
                 variant = _ensure_processing_variant(data, variant_index)
-                orc = variant.get('orc', {})
-                orc.pop('output_index', None)
-                variant['orc'] = orc
-                data['variants'][variant_index] = variant
-                context.user_data['supplier_stock_processing_rule_data'] = data
-                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                orc = variant.get("orc", {})
+                orc.pop("output_index", None)
+                variant["orc"] = orc
+                data["variants"][variant_index] = variant
+                context.user_data["supplier_stock_processing_rule_data"] = data
+                context.user_data["supplier_stock_processing_rule_dirty"] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_orc_menu(update, context, variant_index)
-        elif data.startswith('supplier_stock_processing_source|'):
-            parts = data.split('|')
-            source_id = parts[1] if len(parts) > 1 else ''
-            action = parts[2] if len(parts) > 2 else ''
-            rule_id = parts[3] if len(parts) > 3 else ''
-            back_callback = f'supplier_stock_source_settings|{source_id}'
-            action_prefix = f'supplier_stock_processing_source|{source_id}'
-            if action == 'menu':
+        elif data.startswith("supplier_stock_processing_source|"):
+            parts = data.split("|")
+            source_id = parts[1] if len(parts) > 1 else ""
+            action = parts[2] if len(parts) > 2 else ""
+            rule_id = parts[3] if len(parts) > 3 else ""
+            back_callback = f"supplier_stock_source_settings|{source_id}"
+            action_prefix = f"supplier_stock_processing_source|{source_id}"
+            if action == "menu":
                 show_supplier_stock_processing_menu(
                     update,
                     context,
@@ -1365,7 +1441,7 @@ def settings_callback_handler(update, context):
                     action_prefix=action_prefix,
                     title="🧩 *Обработка файлов (источник)*",
                 )
-            elif action == 'add':
+            elif action == "add":
                 supplier_stock_start_processing_rule_menu(
                     update,
                     context,
@@ -1373,7 +1449,7 @@ def settings_callback_handler(update, context):
                     source_kind="download",
                     back_callback=back_callback,
                 )
-            elif action == 'edit' and rule_id:
+            elif action == "edit" and rule_id:
                 supplier_stock_start_processing_rule_menu(
                     update,
                     context,
@@ -1382,24 +1458,24 @@ def settings_callback_handler(update, context):
                     source_kind="download",
                     back_callback=back_callback,
                 )
-            elif action in ('toggle', 'delete', 'activate') and rule_id:
+            elif action in ("toggle", "delete", "activate") and rule_id:
                 config = get_supplier_stock_config()
                 rules = config.get("processing", {}).get("rules", [])
-                if action == 'toggle':
+                if action == "toggle":
                     for rule in rules:
                         if str(rule.get("id")) == rule_id:
                             rule["enabled"] = not rule.get("enabled", True)
                             if not rule.get("enabled", True):
                                 rule["active"] = False
                             break
-                elif action == 'activate':
+                elif action == "activate":
                     _set_supplier_stock_processing_active_rule(
                         rules,
                         rule_id,
                         source_id=source_id,
                         source_kind="download",
                     )
-                elif action == 'delete':
+                elif action == "delete":
                     rules = [item for item in rules if str(item.get("id")) != rule_id]
                 config.setdefault("processing", {})["rules"] = rules
                 save_supplier_stock_config(config)
@@ -1412,14 +1488,14 @@ def settings_callback_handler(update, context):
                     action_prefix=action_prefix,
                     title="🧩 *Обработка файлов (источник)*",
                 )
-        elif data.startswith('supplier_stock_processing_mail|'):
-            parts = data.split('|')
-            source_id = parts[1] if len(parts) > 1 else ''
-            action = parts[2] if len(parts) > 2 else ''
-            rule_id = parts[3] if len(parts) > 3 else ''
-            back_callback = f'supplier_stock_mail_source_settings|{source_id}'
-            action_prefix = f'supplier_stock_processing_mail|{source_id}'
-            if action == 'menu':
+        elif data.startswith("supplier_stock_processing_mail|"):
+            parts = data.split("|")
+            source_id = parts[1] if len(parts) > 1 else ""
+            action = parts[2] if len(parts) > 2 else ""
+            rule_id = parts[3] if len(parts) > 3 else ""
+            back_callback = f"supplier_stock_mail_source_settings|{source_id}"
+            action_prefix = f"supplier_stock_processing_mail|{source_id}"
+            if action == "menu":
                 show_supplier_stock_processing_menu(
                     update,
                     context,
@@ -1429,7 +1505,7 @@ def settings_callback_handler(update, context):
                     action_prefix=action_prefix,
                     title="🧩 *Обработка файлов (почта)*",
                 )
-            elif action == 'add':
+            elif action == "add":
                 supplier_stock_start_processing_rule_menu(
                     update,
                     context,
@@ -1437,7 +1513,7 @@ def settings_callback_handler(update, context):
                     source_kind="mail",
                     back_callback=back_callback,
                 )
-            elif action == 'edit' and rule_id:
+            elif action == "edit" and rule_id:
                 supplier_stock_start_processing_rule_menu(
                     update,
                     context,
@@ -1446,24 +1522,24 @@ def settings_callback_handler(update, context):
                     source_kind="mail",
                     back_callback=back_callback,
                 )
-            elif action in ('toggle', 'delete', 'activate') and rule_id:
+            elif action in ("toggle", "delete", "activate") and rule_id:
                 config = get_supplier_stock_config()
                 rules = config.get("processing", {}).get("rules", [])
-                if action == 'toggle':
+                if action == "toggle":
                     for rule in rules:
                         if str(rule.get("id")) == rule_id:
                             rule["enabled"] = not rule.get("enabled", True)
                             if not rule.get("enabled", True):
                                 rule["active"] = False
                             break
-                elif action == 'activate':
+                elif action == "activate":
                     _set_supplier_stock_processing_active_rule(
                         rules,
                         rule_id,
                         source_id=source_id,
                         source_kind="mail",
                     )
-                elif action == 'delete':
+                elif action == "delete":
                     rules = [item for item in rules if str(item.get("id")) != rule_id]
                 config.setdefault("processing", {})["rules"] = rules
                 save_supplier_stock_config(config)
@@ -1476,86 +1552,91 @@ def settings_callback_handler(update, context):
                     action_prefix=action_prefix,
                     title="🧩 *Обработка файлов (почта)*",
                 )
-        elif data == 'supplier_stock_noop':
+        elif data == "supplier_stock_noop":
             query.answer(" ", show_alert=False)
-        elif data == 'supplier_stock_mail_toggle':
+        elif data == "supplier_stock_mail_toggle":
             config = get_supplier_stock_config()
             mail_settings = config.get("mail", {})
             mail_settings["enabled"] = not mail_settings.get("enabled", False)
             config["mail"] = mail_settings
             save_supplier_stock_config(config)
             show_supplier_stock_mail_settings(update, context)
-        elif data == 'supplier_stock_mail_temp_dir':
-            context.user_data['supplier_stock_mail_edit'] = 'temp_dir'
+        elif data == "supplier_stock_mail_temp_dir":
+            context.user_data["supplier_stock_mail_edit"] = "temp_dir"
             config = get_supplier_stock_config()
             current_temp_dir = _format_current_hint(config.get("mail", {}).get("temp_dir"))
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
                 "Введите путь к временному каталогу для почтовых файлов:\n"
                 f"Текущее значение: {current_temp_dir}",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_mail")]]
+                ),
             )
-        elif data == 'supplier_stock_mail_archive_dir':
-            context.user_data['supplier_stock_mail_edit'] = 'archive_dir'
+        elif data == "supplier_stock_mail_archive_dir":
+            context.user_data["supplier_stock_mail_edit"] = "archive_dir"
             config = get_supplier_stock_config()
             current_archive_dir = _format_current_hint(config.get("mail", {}).get("archive_dir"))
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
                 "Введите путь к каталогу архива для почтовых файлов:\n"
                 f"Текущее значение: {current_archive_dir}",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_mail")]]
+                ),
             )
-        elif data == 'supplier_stock_archive_cleanup_mail':
-            context.user_data['supplier_stock_edit'] = 'archive_cleanup_days'
-            context.user_data['supplier_stock_archive_cleanup_back'] = 'supplier_stock_mail'
+        elif data == "supplier_stock_archive_cleanup_mail":
+            context.user_data["supplier_stock_edit"] = "archive_cleanup_days"
+            context.user_data["supplier_stock_archive_cleanup_back"] = "supplier_stock_mail"
             config = get_supplier_stock_config()
             current_value = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
                 "Введите период очистки архива в днях (0 — отключить):\n"
                 f"Текущее значение: {current_value}",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_mail")]]
+                ),
             )
-        elif data == 'supplier_stock_report_period':
-            context.user_data['supplier_stock_edit'] = 'report_period_days'
+        elif data == "supplier_stock_report_period":
+            context.user_data["supplier_stock_edit"] = "report_period_days"
             config = get_supplier_stock_config()
             current_value = config.get("reporting", {}).get("period_days", 7)
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
-                "Введите период отчётов в днях (минимум 1):\n"
-                f"Текущее значение: {current_value}",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='settings_ext_supplier_stock')]
-                ])
+                "Введите период отчётов в днях (минимум 1):\n" f"Текущее значение: {current_value}",
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "❌ Отмена", callback_data="settings_ext_supplier_stock"
+                            )
+                        ]
+                    ]
+                ),
             )
-        elif data == 'supplier_stock_mail_unpack_toggle':
+        elif data == "supplier_stock_mail_unpack_toggle":
             query.answer("ℹ️ Распаковка теперь на уровне правил", show_alert=False)
             show_supplier_stock_mail_settings(update, context)
-        elif data == 'supplier_stock_mail_sources':
+        elif data == "supplier_stock_mail_sources":
             show_supplier_stock_mail_sources_menu(update, context)
-        elif data == 'supplier_stock_resources':
+        elif data == "supplier_stock_resources":
             show_supplier_stock_resources_menu(update, context)
-        elif data == 'supplier_stock_ftp':
+        elif data == "supplier_stock_ftp":
             show_supplier_stock_ftp_settings(update, context)
-        elif data == 'supplier_stock_mail_source_add':
+        elif data == "supplier_stock_mail_source_add":
             supplier_stock_start_mail_source_wizard(update, context)
-        elif data.startswith('supplier_stock_mail_source_settings|'):
-            source_id = data.split('|', 1)[1]
+        elif data.startswith("supplier_stock_mail_source_settings|"):
+            source_id = data.split("|", 1)[1]
             show_supplier_stock_mail_source_settings(update, context, source_id)
-        elif data.startswith('supplier_stock_mail_source_individual|'):
-            source_id = data.split('|', 1)[1]
+        elif data.startswith("supplier_stock_mail_source_individual|"):
+            source_id = data.split("|", 1)[1]
             show_supplier_stock_mail_source_individual_settings(update, context, source_id)
-        elif data.startswith('supplier_stock_mail_field|'):
-            _, source_id, field = data.split('|', 2)
+        elif data.startswith("supplier_stock_mail_field|"):
+            _, source_id, field = data.split("|", 2)
             supplier_stock_start_mail_source_field_edit(update, context, source_id, field)
-        elif data.startswith('supplier_stock_mail_source_individual_toggle_'):
-            source_id = data.replace('supplier_stock_mail_source_individual_toggle_', '')
+        elif data.startswith("supplier_stock_mail_source_individual_toggle_"):
+            source_id = data.replace("supplier_stock_mail_source_individual_toggle_", "")
             config = get_supplier_stock_config()
             sources = config.get("mail", {}).get("sources", [])
             for source in sources:
@@ -1566,8 +1647,8 @@ def settings_callback_handler(update, context):
             config["mail"]["sources"] = sources
             save_supplier_stock_config(config)
             show_supplier_stock_mail_source_individual_settings(update, context, source_id)
-        elif data.startswith('supplier_stock_mail_source_unpack_toggle_'):
-            source_id = data.replace('supplier_stock_mail_source_unpack_toggle_', '')
+        elif data.startswith("supplier_stock_mail_source_unpack_toggle_"):
+            source_id = data.replace("supplier_stock_mail_source_unpack_toggle_", "")
             config = get_supplier_stock_config()
             sources = config.get("mail", {}).get("sources", [])
             updated = False
@@ -1581,12 +1662,12 @@ def settings_callback_handler(update, context):
                 return
             config["mail"]["sources"] = sources
             save_supplier_stock_config(config)
-            if context.user_data.get('supplier_stock_mail_source_settings_id') == source_id:
+            if context.user_data.get("supplier_stock_mail_source_settings_id") == source_id:
                 show_supplier_stock_mail_source_settings(update, context, source_id)
             else:
                 show_supplier_stock_mail_sources_menu(update, context)
-        elif data.startswith('supplier_stock_mail_source_toggle_'):
-            source_id = data.replace('supplier_stock_mail_source_toggle_', '')
+        elif data.startswith("supplier_stock_mail_source_toggle_"):
+            source_id = data.replace("supplier_stock_mail_source_toggle_", "")
             config = get_supplier_stock_config()
             sources = config.get("mail", {}).get("sources", [])
             for source in sources:
@@ -1595,28 +1676,28 @@ def settings_callback_handler(update, context):
                     break
             config["mail"]["sources"] = sources
             save_supplier_stock_config(config)
-            if context.user_data.get('supplier_stock_mail_source_settings_id') == source_id:
+            if context.user_data.get("supplier_stock_mail_source_settings_id") == source_id:
                 show_supplier_stock_mail_source_settings(update, context, source_id)
             else:
                 show_supplier_stock_mail_sources_menu(update, context)
-        elif data.startswith('supplier_stock_mail_source_delete_'):
-            source_id = data.replace('supplier_stock_mail_source_delete_', '')
+        elif data.startswith("supplier_stock_mail_source_delete_"):
+            source_id = data.replace("supplier_stock_mail_source_delete_", "")
             config = get_supplier_stock_config()
             sources = config.get("mail", {}).get("sources", [])
             sources = [item for item in sources if str(item.get("id")) != source_id]
             config["mail"]["sources"] = sources
             save_supplier_stock_config(config)
             show_supplier_stock_mail_sources_menu(update, context)
-        elif data.startswith('supplier_stock_resource_settings|'):
-            resource_id = data.split('|', 1)[1]
+        elif data.startswith("supplier_stock_resource_settings|"):
+            resource_id = data.split("|", 1)[1]
             show_supplier_stock_resource_settings(update, context, resource_id)
-        elif data.startswith('supplier_stock_resource_field|'):
-            _, resource_id, field = data.split('|', 2)
+        elif data.startswith("supplier_stock_resource_field|"):
+            _, resource_id, field = data.split("|", 2)
             supplier_stock_start_resource_field_edit(update, context, resource_id, field)
-        elif data == 'supplier_stock_resource_add':
+        elif data == "supplier_stock_resource_add":
             supplier_stock_start_resource_wizard(update, context)
-        elif data.startswith('supplier_stock_resource_toggle_'):
-            resource_id = data.replace('supplier_stock_resource_toggle_', '')
+        elif data.startswith("supplier_stock_resource_toggle_"):
+            resource_id = data.replace("supplier_stock_resource_toggle_", "")
             config = get_supplier_stock_config()
             resources = config.get("resources", [])
             for resource in resources:
@@ -1626,74 +1707,76 @@ def settings_callback_handler(update, context):
             config["resources"] = resources
             save_supplier_stock_config(config)
             show_supplier_stock_resources_menu(update, context)
-        elif data.startswith('supplier_stock_resource_delete_'):
-            resource_id = data.replace('supplier_stock_resource_delete_', '')
+        elif data.startswith("supplier_stock_resource_delete_"):
+            resource_id = data.replace("supplier_stock_resource_delete_", "")
             config = get_supplier_stock_config()
-            resources = [item for item in config.get("resources", []) if str(item.get("id")) != resource_id]
+            resources = [
+                item for item in config.get("resources", []) if str(item.get("id")) != resource_id
+            ]
             config["resources"] = resources
             save_supplier_stock_config(config)
             show_supplier_stock_resources_menu(update, context)
-        elif data.startswith('supplier_stock_ftp_field|'):
-            _, field = data.split('|', 1)
+        elif data.startswith("supplier_stock_ftp_field|"):
+            _, field = data.split("|", 1)
             supplier_stock_start_ftp_field_edit(update, context, field)
-        elif data == 'supplier_stock_temp_dir':
-            context.user_data['supplier_stock_edit'] = 'temp_dir'
+        elif data == "supplier_stock_temp_dir":
+            context.user_data["supplier_stock_edit"] = "temp_dir"
             config = get_supplier_stock_config()
             current_temp_dir = _format_current_hint(config.get("download", {}).get("temp_dir"))
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
-                "Введите путь к временному каталогу:\n"
-                f"Текущее значение: {current_temp_dir}",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
-                ])
+                "Введите путь к временному каталогу:\n" f"Текущее значение: {current_temp_dir}",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_download")]]
+                ),
             )
-        elif data == 'supplier_stock_schedule':
+        elif data == "supplier_stock_schedule":
             show_supplier_stock_schedule_menu(update, context)
-        elif data == 'supplier_stock_unpack_toggle':
+        elif data == "supplier_stock_unpack_toggle":
             query.answer("ℹ️ Распаковка теперь на уровне источников", show_alert=False)
             show_supplier_stock_download_settings(update, context)
-        elif data == 'supplier_stock_archive_dir':
-            context.user_data['supplier_stock_edit'] = 'archive_dir'
+        elif data == "supplier_stock_archive_dir":
+            context.user_data["supplier_stock_edit"] = "archive_dir"
             config = get_supplier_stock_config()
-            current_archive_dir = _format_current_hint(config.get("download", {}).get("archive_dir"))
+            current_archive_dir = _format_current_hint(
+                config.get("download", {}).get("archive_dir")
+            )
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
-                "Введите путь к каталогу архива:\n"
-                f"Текущее значение: {current_archive_dir}",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
-                ])
+                "Введите путь к каталогу архива:\n" f"Текущее значение: {current_archive_dir}",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_download")]]
+                ),
             )
-        elif data == 'supplier_stock_archive_cleanup_download':
-            context.user_data['supplier_stock_edit'] = 'archive_cleanup_days'
-            context.user_data['supplier_stock_archive_cleanup_back'] = 'supplier_stock_download'
+        elif data == "supplier_stock_archive_cleanup_download":
+            context.user_data["supplier_stock_edit"] = "archive_cleanup_days"
+            context.user_data["supplier_stock_archive_cleanup_back"] = "supplier_stock_download"
             config = get_supplier_stock_config()
             current_value = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
                 "Введите период очистки архива в днях (0 — отключить):\n"
                 f"Текущее значение: {current_value}",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_download")]]
+                ),
             )
-        elif data == 'supplier_stock_unpack_toggle':
+        elif data == "supplier_stock_unpack_toggle":
             config = get_supplier_stock_config()
             download_settings = config.get("download", {})
             download_settings["unpack_archive"] = not download_settings.get("unpack_archive", False)
             config["download"] = download_settings
             save_supplier_stock_config(config)
             show_supplier_stock_download_settings(update, context)
-        elif data == 'supplier_stock_schedule_toggle':
+        elif data == "supplier_stock_schedule_toggle":
             config = get_supplier_stock_config()
             schedule = config.get("download", {}).get("schedule", {})
             schedule["enabled"] = not schedule.get("enabled", False)
             config["download"]["schedule"] = schedule
             save_supplier_stock_config(config)
             show_supplier_stock_schedule_menu(update, context)
-        elif data == 'supplier_stock_schedule_time':
-            context.user_data['supplier_stock_edit'] = 'schedule_time'
+        elif data == "supplier_stock_schedule_time":
+            context.user_data["supplier_stock_edit"] = "schedule_time"
             config = get_supplier_stock_config()
             current_time = _format_current_hint(
                 config.get("download", {}).get("schedule", {}).get("time")
@@ -1703,31 +1786,31 @@ def settings_callback_handler(update, context):
                 "Введите одно или несколько времен запуска (HH:MM).\n"
                 "Разделители: пробел, запятая или точка с запятой.\n"
                 f"Текущее значение: {current_time}",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_schedule')]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_schedule")]]
+                ),
             )
-        elif data == 'supplier_stock_sources':
+        elif data == "supplier_stock_sources":
             show_supplier_stock_sources_menu(update, context)
-        elif data == 'supplier_stock_source_add':
+        elif data == "supplier_stock_source_add":
             supplier_stock_start_source_wizard(update, context)
-        elif data.startswith('supplier_stock_source_settings|'):
-            source_id = data.split('|', 1)[1]
+        elif data.startswith("supplier_stock_source_settings|"):
+            source_id = data.split("|", 1)[1]
             show_supplier_stock_source_settings(update, context, source_id)
-        elif data.startswith('supplier_stock_source_individual|'):
-            source_id = data.split('|', 1)[1]
+        elif data.startswith("supplier_stock_source_individual|"):
+            source_id = data.split("|", 1)[1]
             show_supplier_stock_source_individual_settings(update, context, source_id)
-        elif data.startswith('supplier_stock_source_field|'):
-            _, source_id, field = data.split('|', 2)
+        elif data.startswith("supplier_stock_source_field|"):
+            _, source_id, field = data.split("|", 2)
             supplier_stock_start_source_field_edit(update, context, source_id, field)
-        elif data.startswith('supplier_stock_source_iek_settings|'):
-            source_id = data.split('|', 1)[1]
+        elif data.startswith("supplier_stock_source_iek_settings|"):
+            source_id = data.split("|", 1)[1]
             show_supplier_stock_source_iek_settings(update, context, source_id)
-        elif data.startswith('supplier_stock_source_iek_field|'):
-            _, source_id, field = data.split('|', 2)
+        elif data.startswith("supplier_stock_source_iek_field|"):
+            _, source_id, field = data.split("|", 2)
             supplier_stock_start_source_iek_field_edit(update, context, source_id, field)
-        elif data.startswith('supplier_stock_source_individual_toggle_'):
-            source_id = data.replace('supplier_stock_source_individual_toggle_', '')
+        elif data.startswith("supplier_stock_source_individual_toggle_"):
+            source_id = data.replace("supplier_stock_source_individual_toggle_", "")
             config = get_supplier_stock_config()
             sources = config.get("download", {}).get("sources", [])
             for source in sources:
@@ -1738,8 +1821,8 @@ def settings_callback_handler(update, context):
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
             show_supplier_stock_source_individual_settings(update, context, source_id)
-        elif data.startswith('supplier_stock_source_unpack_toggle_'):
-            source_id = data.replace('supplier_stock_source_unpack_toggle_', '')
+        elif data.startswith("supplier_stock_source_unpack_toggle_"):
+            source_id = data.replace("supplier_stock_source_unpack_toggle_", "")
             config = get_supplier_stock_config()
             sources = config.get("download", {}).get("sources", [])
             updated = False
@@ -1753,12 +1836,12 @@ def settings_callback_handler(update, context):
                 return
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
-            if context.user_data.get('supplier_stock_source_settings_id') == source_id:
+            if context.user_data.get("supplier_stock_source_settings_id") == source_id:
                 show_supplier_stock_source_settings(update, context, source_id)
             else:
                 show_supplier_stock_sources_menu(update, context)
-        elif data.startswith('supplier_stock_source_toggle_'):
-            source_id = data.replace('supplier_stock_source_toggle_', '')
+        elif data.startswith("supplier_stock_source_toggle_"):
+            source_id = data.replace("supplier_stock_source_toggle_", "")
             config = get_supplier_stock_config()
             sources = config.get("download", {}).get("sources", [])
             for source in sources:
@@ -1767,401 +1850,412 @@ def settings_callback_handler(update, context):
                     break
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
-            if context.user_data.get('supplier_stock_source_settings_id') == source_id:
+            if context.user_data.get("supplier_stock_source_settings_id") == source_id:
                 show_supplier_stock_source_settings(update, context, source_id)
             else:
                 show_supplier_stock_sources_menu(update, context)
-        elif data.startswith('supplier_stock_source_delete_'):
-            source_id = data.replace('supplier_stock_source_delete_', '')
+        elif data.startswith("supplier_stock_source_delete_"):
+            source_id = data.replace("supplier_stock_source_delete_", "")
             config = get_supplier_stock_config()
             sources = config.get("download", {}).get("sources", [])
             sources = [item for item in sources if str(item.get("id")) != source_id]
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
             show_supplier_stock_sources_menu(update, context)
-        
+
         # Подпункты
-        elif data == 'backup_times':
+        elif data == "backup_times":
             show_backup_times(update, context)
-        elif data == 'settings_backup_proxmox':
+        elif data == "settings_backup_proxmox":
             show_backup_proxmox_settings(update, context)
-        elif data == 'settings_proxmox_add':
+        elif data == "settings_proxmox_add":
             add_proxmox_host_handler(update, context)
-        elif data == 'settings_proxmox_list':
+        elif data == "settings_proxmox_list":
             show_proxmox_hosts_list(update, context)
-        elif data.startswith('settings_proxmox_delete_'):
-            host_name = data.replace('settings_proxmox_delete_', '')
+        elif data.startswith("settings_proxmox_delete_"):
+            host_name = data.replace("settings_proxmox_delete_", "")
             delete_proxmox_host(update, context, host_name)
-        elif data.startswith('settings_proxmox_edit_'):
-            host_name = data.replace('settings_proxmox_edit_', '')
+        elif data.startswith("settings_proxmox_edit_"):
+            host_name = data.replace("settings_proxmox_edit_", "")
             edit_proxmox_host_handler(update, context, host_name)
-        elif data.startswith('settings_proxmox_toggle_'):
-            host_name = data.replace('settings_proxmox_toggle_', '')
+        elif data.startswith("settings_proxmox_toggle_"):
+            host_name = data.replace("settings_proxmox_toggle_", "")
             toggle_proxmox_host(update, context, host_name)
-        elif data == 'settings_zfs':
+        elif data == "settings_zfs":
             show_zfs_settings(update, context)
-        elif data == 'settings_zfs_list':
+        elif data == "settings_zfs_list":
             show_zfs_servers_list(update, context)
-        elif data == 'settings_zfs_add':
+        elif data == "settings_zfs_add":
             add_zfs_server_handler(update, context)
-        elif data.startswith('settings_zfs_edit_name_'):
-            server_name = data.replace('settings_zfs_edit_name_', '')
+        elif data.startswith("settings_zfs_edit_name_"):
+            server_name = data.replace("settings_zfs_edit_name_", "")
             edit_zfs_server_name_handler(update, context, server_name)
-        elif data.startswith('settings_zfs_edit_ip_'):
-            server_name = data.replace('settings_zfs_edit_ip_', '')
+        elif data.startswith("settings_zfs_edit_ip_"):
+            server_name = data.replace("settings_zfs_edit_ip_", "")
             edit_zfs_server_ip_handler(update, context, server_name)
-        elif data.startswith('settings_zfs_edit_threshold_'):
-            server_name = data.replace('settings_zfs_edit_threshold_', '')
+        elif data.startswith("settings_zfs_edit_threshold_"):
+            server_name = data.replace("settings_zfs_edit_threshold_", "")
             edit_zfs_server_threshold_handler(update, context, server_name)
-        elif data.startswith('settings_zfs_delete_'):
-            server_name = data.replace('settings_zfs_delete_', '')
+        elif data.startswith("settings_zfs_delete_"):
+            server_name = data.replace("settings_zfs_delete_", "")
             delete_zfs_server(update, context, server_name)
-        elif data.startswith('settings_zfs_toggle_'):
-            server_name = data.replace('settings_zfs_toggle_', '')
+        elif data.startswith("settings_zfs_toggle_"):
+            server_name = data.replace("settings_zfs_toggle_", "")
             toggle_zfs_server(update, context, server_name)
-        
+
         # Новые обработчики для настроек БД
-        elif data == 'settings_db_main':
+        elif data == "settings_db_main":
             show_backup_databases_settings(update, context)
-        elif data == 'settings_db_main_from_backup':
-            context.user_data['settings_db_back'] = 'backup_databases'
+        elif data == "settings_db_main_from_backup":
+            context.user_data["settings_db_back"] = "backup_databases"
             show_backup_databases_settings(update, context)
-        elif data == 'settings_db_add_category':
+        elif data == "settings_db_add_category":
             add_database_category_handler(update, context)
-        elif data == 'settings_db_manage_categories':
+        elif data == "settings_db_manage_categories":
             manage_database_categories_handler(update, context)
-        elif data == 'settings_db_manage_categories_from_backup':
-            context.user_data['settings_db_back'] = 'backup_databases'
+        elif data == "settings_db_manage_categories_from_backup":
+            context.user_data["settings_db_back"] = "backup_databases"
             manage_database_categories_handler(update, context)
-        elif data == 'settings_db_edit_category':
+        elif data == "settings_db_edit_category":
             edit_databases_handler(update, context)
-        elif data == 'settings_db_delete_category':
+        elif data == "settings_db_delete_category":
             delete_database_category_handler(update, context)
-        elif data == 'settings_db_view_all':
+        elif data == "settings_db_view_all":
             view_all_databases_handler(update, context)
-        elif data == 'settings_db_view_all_from_backup':
-            context.user_data['settings_db_back'] = 'backup_databases'
+        elif data == "settings_db_view_all_from_backup":
+            context.user_data["settings_db_back"] = "backup_databases"
             view_all_databases_handler(update, context)
-        elif data == 'settings_db_add_new':
+        elif data == "settings_db_add_new":
             add_new_database_from_manage_handler(update, context)
-        
+
         # Обработчики для новых пунктов меню
-        elif data == 'manage_chats':
+        elif data == "manage_chats":
             manage_chats_handler(update, context)
-        elif data == 'server_timeouts':
+        elif data == "server_timeouts":
             show_server_timeouts(update, context)  # Теперь упрощенная версия
-        elif data == 'settings_add_server':
+        elif data == "settings_add_server":
             add_server_handler(update, context)
-        
+
         # Обработчики для установки значений
-        elif data.startswith('set_'):
-            handle_setting_input(update, context, data.replace('set_', ''))
-        
+        elif data.startswith("set_"):
+            handle_setting_input(update, context, data.replace("set_", ""))
+
         # Управление чатами
-        elif data == 'add_chat':
+        elif data == "add_chat":
             add_chat_handler(update, context)
-        elif data == 'remove_chat':
+        elif data == "remove_chat":
             remove_chat_handler(update, context)
         # Паттерны бэкапов
-        elif data == 'view_patterns':
+        elif data == "view_patterns":
             view_patterns_handler(update, context)
-        elif data == 'add_pattern':
+        elif data == "add_pattern":
             add_pattern_handler(update, context)
-        elif data == 'add_zfs_pattern':
+        elif data == "add_zfs_pattern":
             add_zfs_pattern_handler(update, context)
-        elif data == 'add_proxmox_pattern':
+        elif data == "add_proxmox_pattern":
             add_proxmox_pattern_handler(update, context)
-        elif data == 'add_mail_pattern':
+        elif data == "add_mail_pattern":
             add_mail_pattern_handler(update, context)
-        elif data == 'add_snapshot_pattern':
+        elif data == "add_snapshot_pattern":
             _clear_snapshot_host_input_state(context)
             add_snapshot_pattern_handler(update, context)
-        elif data == 'snapshot_host_add':
+        elif data == "snapshot_host_add":
             _clear_snapshot_host_input_state(context)
-            context.user_data['adding_snapshot_host'] = True
-            context.user_data['snapshot_add_back_callback'] = 'settings_snapshot_hosts'
+            context.user_data["adding_snapshot_host"] = True
+            context.user_data["snapshot_add_back_callback"] = "settings_snapshot_hosts"
             query.edit_message_text(
                 "➕ *Добавление хоста передачи снэпшотов*\n\n"
                 "Введите имя хоста (например: `sr-srv1`)",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Назад", callback_data='settings_snapshot_hosts')]])
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("↩️ Назад", callback_data="settings_snapshot_hosts")]]
+                ),
             )
-        elif data.startswith('snapshot_host_edit|'):
-            _, host_name = data.split('|', 1)
+        elif data.startswith("snapshot_host_edit|"):
+            _, host_name = data.split("|", 1)
             _clear_snapshot_host_input_state(context)
-            context.user_data['editing_snapshot_host_name'] = host_name
-            context.user_data['snapshot_add_back_callback'] = 'settings_snapshot_hosts'
+            context.user_data["editing_snapshot_host_name"] = host_name
+            context.user_data["snapshot_add_back_callback"] = "settings_snapshot_hosts"
             query.edit_message_text(
                 f"✏️ *Переименование хоста*\n\nТекущий: `{escape_markdown(host_name, version=1)}`\nВведите новое имя:",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Назад", callback_data='settings_snapshot_hosts')]])
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("↩️ Назад", callback_data="settings_snapshot_hosts")]]
+                ),
             )
-        elif data.startswith('snapshot_host_toggle|'):
-            _, host_name = data.split('|', 1)
+        elif data.startswith("snapshot_host_toggle|"):
+            _, host_name = data.split("|", 1)
             toggle_snapshot_host_handler(update, context, host_name)
             show_snapshot_hosts_menu(update, context)
-        elif data.startswith('snapshot_host_delete|'):
-            _, host_name = data.split('|', 1)
+        elif data.startswith("snapshot_host_delete|"):
+            _, host_name = data.split("|", 1)
             delete_snapshot_host_handler(update, context, host_name)
             show_snapshot_hosts_menu(update, context)
-        elif data.startswith('snapshot_host_start|'):
-            _, host_name = data.split('|', 1)
+        elif data.startswith("snapshot_host_start|"):
+            _, host_name = data.split("|", 1)
             _clear_snapshot_host_input_state(context)
-            context.user_data['editing_snapshot_start_time'] = host_name
-            context.user_data['snapshot_add_back_callback'] = 'settings_snapshot_hosts'
+            context.user_data["editing_snapshot_start_time"] = host_name
+            context.user_data["snapshot_add_back_callback"] = "settings_snapshot_hosts"
             query.edit_message_text(
                 f"⏰ *Время старта для `{escape_markdown(host_name, version=1)}`*\n\nВведите время в формате HH:MM",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Назад", callback_data='settings_snapshot_hosts')]])
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("↩️ Назад", callback_data="settings_snapshot_hosts")]]
+                ),
             )
-        elif data == 'add_stock_pattern':
+        elif data == "add_stock_pattern":
             show_stock_pattern_type_menu(update, context)
-        elif data == 'edit_mail_default_pattern':
+        elif data == "edit_mail_default_pattern":
             edit_mail_default_pattern_handler(update, context)
-        elif data == 'db_pattern_confirm':
+        elif data == "db_pattern_confirm":
             db_pattern_confirm_handler(update, context)
-        elif data == 'db_pattern_retry':
+        elif data == "db_pattern_retry":
             db_pattern_retry_handler(update, context)
-        elif data.startswith('db_pattern_set_category_'):
-            category = data.replace('db_pattern_set_category_', '')
+        elif data.startswith("db_pattern_set_category_"):
+            category = data.replace("db_pattern_set_category_", "")
             db_pattern_set_category_handler(update, context, category)
-        elif data == 'zfs_pattern_confirm':
+        elif data == "zfs_pattern_confirm":
             zfs_pattern_confirm_handler(update, context)
-        elif data == 'zfs_pattern_retry':
+        elif data == "zfs_pattern_retry":
             zfs_pattern_retry_handler(update, context)
-        elif data == 'proxmox_pattern_confirm':
+        elif data == "proxmox_pattern_confirm":
             proxmox_pattern_confirm_handler(update, context)
-        elif data == 'proxmox_pattern_retry':
+        elif data == "proxmox_pattern_retry":
             proxmox_pattern_retry_handler(update, context)
-        elif data == 'stock_pattern_confirm':
+        elif data == "stock_pattern_confirm":
             stock_pattern_confirm_handler(update, context)
-        elif data == 'stock_pattern_retry':
+        elif data == "stock_pattern_retry":
             stock_pattern_retry_handler(update, context)
-        elif data.startswith('stock_pattern_select_'):
-            pattern_type = data.replace('stock_pattern_select_', '')
+        elif data.startswith("stock_pattern_select_"):
+            pattern_type = data.replace("stock_pattern_select_", "")
             stock_pattern_select_handler(update, context, pattern_type)
-        elif data.startswith('db_default_edit_'):
-            raw_value = data.replace('db_default_edit_', '')
-            if '__' in raw_value:
-                category, index_value = raw_value.split('__', 1)
+        elif data.startswith("db_default_edit_"):
+            raw_value = data.replace("db_default_edit_", "")
+            if "__" in raw_value:
+                category, index_value = raw_value.split("__", 1)
                 edit_default_db_pattern_handler(update, context, category, index_value)
-        elif data.startswith('db_default_delete_'):
-            raw_value = data.replace('db_default_delete_', '')
-            if '__' in raw_value:
-                category, index_value = raw_value.split('__', 1)
+        elif data.startswith("db_default_delete_"):
+            raw_value = data.replace("db_default_delete_", "")
+            if "__" in raw_value:
+                category, index_value = raw_value.split("__", 1)
                 delete_default_db_pattern_handler(update, context, category, index_value)
-        elif data == 'mail_pattern_confirm':
+        elif data == "mail_pattern_confirm":
             mail_pattern_confirm_handler(update, context)
-        elif data == 'mail_pattern_retry':
+        elif data == "mail_pattern_retry":
             mail_pattern_retry_handler(update, context)
-        elif data == 'snapshot_pattern_confirm':
+        elif data == "snapshot_pattern_confirm":
             snapshot_pattern_confirm_handler(update, context)
-        elif data == 'snapshot_pattern_retry':
+        elif data == "snapshot_pattern_retry":
             add_snapshot_pattern_handler(update, context)
-        elif data == 'settings_ext_enable_all':
+        elif data == "settings_ext_enable_all":
             _enable_all_extensions_settings(query)
             show_extensions_settings_menu(update, context)
-        elif data == 'settings_ext_disable_all':
+        elif data == "settings_ext_disable_all":
             _disable_all_extensions_settings(query)
             show_extensions_settings_menu(update, context)
-        elif data.startswith('settings_ext_toggle_'):
-            extension_id = data.replace('settings_ext_toggle_', '')
+        elif data.startswith("settings_ext_toggle_"):
+            extension_id = data.replace("settings_ext_toggle_", "")
             success, message = extension_manager.toggle_extension(extension_id)
             if success:
                 _safe_query_answer(query, message)
                 show_extensions_settings_menu(update, context)
             else:
                 _safe_query_answer(query, message, show_alert=True)
-        elif data.startswith('delete_pattern_'):
-            pattern_id = data.replace('delete_pattern_', '')
+        elif data.startswith("delete_pattern_"):
+            pattern_id = data.replace("delete_pattern_", "")
             delete_pattern_handler(update, context, pattern_id)
-        elif data.startswith('edit_pattern_'):
-            pattern_id = data.replace('edit_pattern_', '')
+        elif data.startswith("edit_pattern_"):
+            pattern_id = data.replace("edit_pattern_", "")
             edit_pattern_handler(update, context, pattern_id)
-        
+
         # Обработчики для редактирования и удаления категорий БД
-        elif data.startswith('settings_db_add_db_'):
-            raw_value = data.replace('settings_db_add_db_', '', 1)
+        elif data.startswith("settings_db_add_db_"):
+            raw_value = data.replace("settings_db_add_db_", "", 1)
             category = _resolve_db_category_from_callback(context, raw_value)
             add_database_entry_handler(update, context, category)
-        elif data.startswith('settings_db_edit_db_'):
-            raw_value = data.replace('settings_db_edit_db_', '', 1)
+        elif data.startswith("settings_db_edit_db_"):
+            raw_value = data.replace("settings_db_edit_db_", "", 1)
             category, db_key = _resolve_db_entry_from_callback(context, raw_value)
             if category and db_key:
                 edit_database_entry_handler(update, context, category, db_key)
-        elif data.startswith('settings_db_toggle_monitor_'):
-            raw_value = data.replace('settings_db_toggle_monitor_', '', 1)
-            if '__' in raw_value:
-                encoded_backup_type, encoded_db_name = raw_value.split('__', 1)
-                settings_toggle_database_monitoring(update, context, encoded_backup_type, encoded_db_name)
+        elif data.startswith("settings_db_toggle_monitor_"):
+            raw_value = data.replace("settings_db_toggle_monitor_", "", 1)
+            if "__" in raw_value:
+                encoded_backup_type, encoded_db_name = raw_value.split("__", 1)
+                settings_toggle_database_monitoring(
+                    update, context, encoded_backup_type, encoded_db_name
+                )
             else:
-                toggle_map = context.user_data.get('settings_db_toggle_map', {})
-                encoded_pair = toggle_map.get(raw_value, '')
-                if '__' in encoded_pair:
-                    encoded_backup_type, encoded_db_name = encoded_pair.split('__', 1)
-                    settings_toggle_database_monitoring(update, context, encoded_backup_type, encoded_db_name)
+                toggle_map = context.user_data.get("settings_db_toggle_map", {})
+                encoded_pair = toggle_map.get(raw_value, "")
+                if "__" in encoded_pair:
+                    encoded_backup_type, encoded_db_name = encoded_pair.split("__", 1)
+                    settings_toggle_database_monitoring(
+                        update, context, encoded_backup_type, encoded_db_name
+                    )
                 else:
                     _safe_query_answer(query, "Не удалось определить базу данных", show_alert=True)
-        elif data.startswith('settings_db_delete_db_confirm_'):
-            raw_value = data.replace('settings_db_delete_db_confirm_', '', 1)
+        elif data.startswith("settings_db_delete_db_confirm_"):
+            raw_value = data.replace("settings_db_delete_db_confirm_", "", 1)
             category, db_key = _resolve_db_entry_from_callback(context, raw_value)
             if category and db_key:
                 delete_database_entry_execute(update, context, category, db_key)
-        elif data.startswith('settings_db_delete_db_'):
-            raw_value = data.replace('settings_db_delete_db_', '', 1)
+        elif data.startswith("settings_db_delete_db_"):
+            raw_value = data.replace("settings_db_delete_db_", "", 1)
             category, db_key = _resolve_db_entry_from_callback(context, raw_value)
             if category and db_key:
                 delete_database_entry_confirmation(update, context, category, db_key)
-        elif data.startswith('settings_db_delete_confirm_'):
-            raw_value = data.replace('settings_db_delete_confirm_', '', 1)
+        elif data.startswith("settings_db_delete_confirm_"):
+            raw_value = data.replace("settings_db_delete_confirm_", "", 1)
             category = _resolve_db_category_from_callback(context, raw_value)
             delete_database_category_execute(update, context, category)
-        elif data.startswith('settings_db_delete_'):
-            raw_value = data.replace('settings_db_delete_', '', 1)
+        elif data.startswith("settings_db_delete_"):
+            raw_value = data.replace("settings_db_delete_", "", 1)
             category = _resolve_db_category_from_callback(context, raw_value)
             delete_database_category_confirmation(update, context, category)
-        elif data.startswith('settings_db_rename_'):
-            raw_value = data.replace('settings_db_rename_', '', 1)
+        elif data.startswith("settings_db_rename_"):
+            raw_value = data.replace("settings_db_rename_", "", 1)
             category = _resolve_db_category_from_callback(context, raw_value)
             start_database_category_edit_handler(update, context, category)
-        elif data.startswith('settings_db_edit_'):
-            raw_value = data.replace('settings_db_edit_', '', 1)
+        elif data.startswith("settings_db_edit_"):
+            raw_value = data.replace("settings_db_edit_", "", 1)
             category = _resolve_db_category_from_callback(context, raw_value)
             edit_database_category_details(update, context, category)
-        
+
         # Обработчики для серверов
-        elif data == 'settings_servers_list':
+        elif data == "settings_servers_list":
             show_servers_list(update, context)
-        elif data.startswith('settings_delete_server_'):
-            ip = data.replace('settings_delete_server_', '')
+        elif data.startswith("settings_delete_server_"):
+            ip = data.replace("settings_delete_server_", "")
             delete_server_confirmation(update, context, ip)
-        elif data.startswith('settings_confirm_delete_server_'):
-            ip = data.replace('settings_confirm_delete_server_', '')
+        elif data.startswith("settings_confirm_delete_server_"):
+            ip = data.replace("settings_confirm_delete_server_", "")
             delete_server_execute(update, context, ip)
-        elif data.startswith('settings_edit_server_type_select_'):
+        elif data.startswith("settings_edit_server_type_select_"):
             handle_server_type_selection(update, context)
-        elif data.startswith('settings_edit_server_name_'):
-            ip = data.replace('settings_edit_server_name_', '')
+        elif data.startswith("settings_edit_server_name_"):
+            ip = data.replace("settings_edit_server_name_", "")
             start_server_name_edit(update, context, ip)
-        elif data.startswith('settings_edit_server_type_'):
-            ip = data.replace('settings_edit_server_type_', '')
+        elif data.startswith("settings_edit_server_type_"):
+            ip = data.replace("settings_edit_server_type_", "")
             start_server_type_edit(update, context, ip)
-        elif data.startswith('settings_edit_server_'):
-            ip = data.replace('settings_edit_server_', '')
+        elif data.startswith("settings_edit_server_"):
+            ip = data.replace("settings_edit_server_", "")
             show_server_edit_menu(update, context, ip)
-        elif data.startswith('settings_toggle_server_'):
-            ip = data.replace('settings_toggle_server_', '')
+        elif data.startswith("settings_toggle_server_"):
+            ip = data.replace("settings_toggle_server_", "")
             toggle_server_monitoring(update, context, ip)
-        
+
         # Обработчики для таймаутов серверов
-        elif data == 'set_windows_2025_timeout':
-            handle_setting_input(update, context, 'windows_2025_timeout')
-        elif data == 'set_domain_servers_timeout':
-            handle_setting_input(update, context, 'domain_servers_timeout')
-        elif data == 'set_admin_servers_timeout':
-            handle_setting_input(update, context, 'admin_servers_timeout')
-        elif data == 'set_standard_windows_timeout':
-            handle_setting_input(update, context, 'standard_windows_timeout')
-        elif data == 'set_linux_timeout':
-            handle_setting_input(update, context, 'linux_timeout')
-        elif data == 'set_ping_timeout':
-            handle_setting_input(update, context, 'ping_timeout')
-        
+        elif data == "set_windows_2025_timeout":
+            handle_setting_input(update, context, "windows_2025_timeout")
+        elif data == "set_domain_servers_timeout":
+            handle_setting_input(update, context, "domain_servers_timeout")
+        elif data == "set_admin_servers_timeout":
+            handle_setting_input(update, context, "admin_servers_timeout")
+        elif data == "set_standard_windows_timeout":
+            handle_setting_input(update, context, "standard_windows_timeout")
+        elif data == "set_linux_timeout":
+            handle_setting_input(update, context, "linux_timeout")
+        elif data == "set_ping_timeout":
+            handle_setting_input(update, context, "ping_timeout")
+
         # Обработчики типов серверов
-        elif data.startswith('server_type_'):
+        elif data.startswith("server_type_"):
             handle_server_type(update, context)
-        
+
         # Аутентификация
-        elif data == 'settings_auth':
+        elif data == "settings_auth":
             show_auth_settings(update, context)
-        elif data == 'ssh_auth_settings':
+        elif data == "ssh_auth_settings":
             show_ssh_auth_settings(update, context)
-        
+
         # Windows аутентификация
-        elif data == 'windows_auth_main':
+        elif data == "windows_auth_main":
             show_windows_auth_settings(update, context)
-        elif data == 'windows_auth_list':
+        elif data == "windows_auth_list":
             show_windows_auth_list(update, context)
-        elif data == 'windows_auth_add':
+        elif data == "windows_auth_add":
             show_windows_auth_add(update, context)
-        elif data == 'windows_auth_by_type':
+        elif data == "windows_auth_by_type":
             show_windows_auth_by_type(update, context)
-        elif data == 'windows_auth_manage_types':
+        elif data == "windows_auth_manage_types":
             show_windows_auth_manage_types(update, context)
-        
+
         # Обработчики типов для Windows учетных данных
-        elif data.startswith('cred_type_'):
+        elif data.startswith("cred_type_"):
             handle_credential_type_selection(update, context)
 
         # Обработчики управления типами серверов Windows
-        elif data.startswith('manage_type_'):
+        elif data.startswith("manage_type_"):
             handle_server_type_management(update, context)
 
         # Обработчики для управления типами серверов (подтверждение операций)
-        elif data.startswith('merge_confirm_'):
-            parts = data.replace('merge_confirm_', '').split('_')
+        elif data.startswith("merge_confirm_"):
+            parts = data.replace("merge_confirm_", "").split("_")
             if len(parts) >= 2:
                 source_type = parts[0]
-                target_type = '_'.join(parts[1:])
+                target_type = "_".join(parts[1:])
                 merge_server_types_confirmation(update, context, source_type, target_type)
 
-        elif data.startswith('delete_type_confirm_'):
-            server_type = data.replace('delete_type_confirm_', '')
+        elif data.startswith("delete_type_confirm_"):
+            server_type = data.replace("delete_type_confirm_", "")
             delete_server_type_confirmation(update, context, server_type)
 
         # Обработчики для выполнения операций с типами серверов
-        elif data.startswith('merge_execute_'):
-            parts = data.replace('merge_execute_', '').split('_')
+        elif data.startswith("merge_execute_"):
+            parts = data.replace("merge_execute_", "").split("_")
             if len(parts) >= 2:
                 source_type = parts[0]
-                target_type = '_'.join(parts[1:])
+                target_type = "_".join(parts[1:])
                 execute_server_type_merge(update, context, source_type, target_type)
 
-        elif data.startswith('delete_type_execute_'):
-            server_type = data.replace('delete_type_execute_', '')
+        elif data.startswith("delete_type_execute_"):
+            server_type = data.replace("delete_type_execute_", "")
             execute_server_type_delete(update, context, server_type)
 
         # Обработчики для закрытия меню
-        elif data == 'close':
+        elif data == "close":
             try:
                 query.delete_message()
             except:
                 query.edit_message_text("✅ Меню закрыто")
-        
+
         else:
             _safe_query_answer(query, "⚙️ Этот раздел в разработке")
-    
+
     except Exception as e:
         print(f"❌ Ошибка в settings_callback_handler: {e}")
         debug_logger(f"Ошибка в settings_callback_handler: {e}")
         _safe_query_answer(query, "❌ Произошла ошибка при обработке запроса")
-    
+
     _safe_query_answer(query)
 
+
 _SETTING_KEY_TO_DB_KEY = {
-    'check_interval': 'CHECK_INTERVAL',
-    'max_fail_time': 'MAX_FAIL_TIME',
-    'silent_start': 'SILENT_START',
-    'silent_end': 'SILENT_END',
-    'data_collection': 'DATA_COLLECTION_TIMES',
-    'cpu_warning': 'CPU_WARNING',
-    'cpu_critical': 'CPU_CRITICAL',
-    'ram_warning': 'RAM_WARNING',
-    'ram_critical': 'RAM_CRITICAL',
-    'disk_warning': 'DISK_WARNING',
-    'disk_critical': 'DISK_CRITICAL',
-    'ssh_username': 'SSH_USERNAME',
-    'ssh_key_path': 'SSH_KEY_PATH',
-    'web_port': 'WEB_PORT',
-    'web_host': 'WEB_HOST',
-    'backup_alert_hours': 'BACKUP_ALERT_HOURS',
-    'backup_stale_hours': 'BACKUP_STALE_HOURS',
-    'windows_2025_timeout': 'WINDOWS_2025_TIMEOUT',
-    'domain_servers_timeout': 'DOMAIN_SERVERS_TIMEOUT',
-    'admin_servers_timeout': 'ADMIN_SERVERS_TIMEOUT',
-    'standard_windows_timeout': 'STANDARD_WINDOWS_TIMEOUT',
-    'linux_timeout': 'LINUX_TIMEOUT',
-    'ping_timeout': 'PING_TIMEOUT',
+    "check_interval": "CHECK_INTERVAL",
+    "max_fail_time": "MAX_FAIL_TIME",
+    "silent_start": "SILENT_START",
+    "silent_end": "SILENT_END",
+    "data_collection": "DATA_COLLECTION_TIMES",
+    "cpu_warning": "CPU_WARNING",
+    "cpu_critical": "CPU_CRITICAL",
+    "ram_warning": "RAM_WARNING",
+    "ram_critical": "RAM_CRITICAL",
+    "disk_warning": "DISK_WARNING",
+    "disk_critical": "DISK_CRITICAL",
+    "ssh_username": "SSH_USERNAME",
+    "ssh_key_path": "SSH_KEY_PATH",
+    "web_port": "WEB_PORT",
+    "web_host": "WEB_HOST",
+    "backup_alert_hours": "BACKUP_ALERT_HOURS",
+    "backup_stale_hours": "BACKUP_STALE_HOURS",
+    "windows_2025_timeout": "WINDOWS_2025_TIMEOUT",
+    "domain_servers_timeout": "DOMAIN_SERVERS_TIMEOUT",
+    "admin_servers_timeout": "ADMIN_SERVERS_TIMEOUT",
+    "standard_windows_timeout": "STANDARD_WINDOWS_TIMEOUT",
+    "linux_timeout": "LINUX_TIMEOUT",
+    "ping_timeout": "PING_TIMEOUT",
 }
 
 
@@ -2191,88 +2285,99 @@ def handle_setting_input(update, context, setting_key):
     query.answer()
 
     # Сохраняем какое настройку меняем
-    context.user_data['editing_setting'] = setting_key
-    context.user_data['editing_setting_message_id'] = query.message.message_id
-    context.user_data['editing_setting_chat_id'] = query.message.chat_id
+    context.user_data["editing_setting"] = setting_key
+    context.user_data["editing_setting_message_id"] = query.message.message_id
+    context.user_data["editing_setting_chat_id"] = query.message.chat_id
 
     setting_descriptions = {
         # Существующие настройки...
-        'telegram_token': 'Введите новый токен Telegram бота:',
-        'matrix_homeserver': 'Введите URL Matrix homeserver (например https://matrix.example.com):',
-        'matrix_access_token': 'Введите Matrix access token:',
-        'matrix_room_id': 'Введите Matrix room ID (например !roomid:example.com):',
-        'matrix_bot_user_id': 'Введите полный MXID бота для E2EE (например @comdone:matrix.202020.ru):',
-        'matrix_bot_password': 'Введите пароль аккаунта Matrix-бота (для E2EE-логина):',
-        'matrix_store_path': 'Введите путь к persistent crypto-store (пусто = data/matrix_store):',
-        'check_interval': 'Введите новый интервал проверки (в секундах):',
-        'max_fail_time': 'Введите максимальное время простоя (в секундах):',
-        'silent_start': 'Введите час начала тихого режима (0-23):',
-        'silent_end': 'Введите час окончания тихого режима (0-23):',
-        'data_collection': 'Введите время сбора данных (формат HH:MM):',
-        'cpu_warning': 'Введите порог предупреждения для CPU (%):',
-        'cpu_critical': 'Введите критический порог для CPU (%):',
-        'ram_warning': 'Введите порог предупреждения для RAM (%):',
-        'ram_critical': 'Введите критический порог для RAM (%):',
-        'disk_warning': 'Введите порог предупреждения для Disk (%):',
-        'disk_critical': 'Введите критический порог для Disk (%):',
-        'ssh_username': 'Введите имя пользователя SSH:',
-        'ssh_key_path': 'Введите путь к SSH ключу:',
-        'web_port': 'Введите порт веб-интерфейса:',
-        'web_host': 'Введите хост веб-интерфейса:',
-        'backup_alert_hours': 'Введите количество часов для алертов о бэкапах:',
-        'backup_stale_hours': 'Введите количество часов для устаревших бэкапов:',
-        
+        "telegram_token": "Введите новый токен Telegram бота:",
+        "matrix_homeserver": "Введите URL Matrix homeserver (например https://matrix.example.com):",
+        "matrix_access_token": "Введите Matrix access token:",
+        "matrix_room_id": "Введите Matrix room ID (например !roomid:example.com):",
+        "matrix_bot_user_id": "Введите полный MXID бота для E2EE (например @comdone:matrix.202020.ru):",
+        "matrix_bot_password": "Введите пароль аккаунта Matrix-бота (для E2EE-логина):",
+        "matrix_store_path": "Введите путь к persistent crypto-store (пусто = data/matrix_store):",
+        "check_interval": "Введите новый интервал проверки (в секундах):",
+        "max_fail_time": "Введите максимальное время простоя (в секундах):",
+        "silent_start": "Введите час начала тихого режима (0-23):",
+        "silent_end": "Введите час окончания тихого режима (0-23):",
+        "data_collection": "Введите время сбора данных (формат HH:MM):",
+        "cpu_warning": "Введите порог предупреждения для CPU (%):",
+        "cpu_critical": "Введите критический порог для CPU (%):",
+        "ram_warning": "Введите порог предупреждения для RAM (%):",
+        "ram_critical": "Введите критический порог для RAM (%):",
+        "disk_warning": "Введите порог предупреждения для Disk (%):",
+        "disk_critical": "Введите критический порог для Disk (%):",
+        "ssh_username": "Введите имя пользователя SSH:",
+        "ssh_key_path": "Введите путь к SSH ключу:",
+        "web_port": "Введите порт веб-интерфейса:",
+        "web_host": "Введите хост веб-интерфейса:",
+        "backup_alert_hours": "Введите количество часов для алертов о бэкапах:",
+        "backup_stale_hours": "Введите количество часов для устаревших бэкапов:",
         # Новые таймауты серверов
-        'windows_2025_timeout': 'Введите таймаут для Windows 2025 серверов (в секундах):',
-        'domain_servers_timeout': 'Введите таймаут для доменных серверов (в секундах):',
-        'admin_servers_timeout': 'Введите таймаут для Admin серверов (в секундах):',
-        'standard_windows_timeout': 'Введите таймаут для стандартных Windows серверов (в секундах):',
-        'linux_timeout': 'Введите таймаут для Linux серверов (в секундах):',
-        'ping_timeout': 'Введите таймаут для Ping серверов (в секундах):',
+        "windows_2025_timeout": "Введите таймаут для Windows 2025 серверов (в секундах):",
+        "domain_servers_timeout": "Введите таймаут для доменных серверов (в секундах):",
+        "admin_servers_timeout": "Введите таймаут для Admin серверов (в секундах):",
+        "standard_windows_timeout": "Введите таймаут для стандартных Windows серверов (в секундах):",
+        "linux_timeout": "Введите таймаут для Linux серверов (в секундах):",
+        "ping_timeout": "Введите таймаут для Ping серверов (в секундах):",
     }
-    
-    message = setting_descriptions.get(setting_key, f'Введите новое значение для {setting_key}:')
+
+    message = setting_descriptions.get(setting_key, f"Введите новое значение для {setting_key}:")
 
     current_value_hint = _format_current_setting_value(setting_key)
     if current_value_hint:
         message = f"{current_value_hint}\n\n{message}"
 
-    cancel_callback = 'settings_main'
-    if setting_key in {'cpu_warning', 'cpu_critical', 'ram_warning', 'ram_critical', 'disk_warning', 'disk_critical'}:
-        cancel_callback = 'settings_resources'
-    elif setting_key in {
-        'windows_2025_timeout', 'domain_servers_timeout', 'admin_servers_timeout',
-        'standard_windows_timeout', 'linux_timeout', 'ping_timeout',
+    cancel_callback = "settings_main"
+    if setting_key in {
+        "cpu_warning",
+        "cpu_critical",
+        "ram_warning",
+        "ram_critical",
+        "disk_warning",
+        "disk_critical",
     }:
-        cancel_callback = 'server_timeouts'
-    elif setting_key in {'check_interval', 'max_fail_time'}:
-        cancel_callback = 'settings_monitoring'
-    elif setting_key in {'silent_start', 'silent_end', 'data_collection'}:
-        cancel_callback = 'settings_time'
+        cancel_callback = "settings_resources"
+    elif setting_key in {
+        "windows_2025_timeout",
+        "domain_servers_timeout",
+        "admin_servers_timeout",
+        "standard_windows_timeout",
+        "linux_timeout",
+        "ping_timeout",
+    }:
+        cancel_callback = "server_timeouts"
+    elif setting_key in {"check_interval", "max_fail_time"}:
+        cancel_callback = "settings_monitoring"
+    elif setting_key in {"silent_start", "silent_end", "data_collection"}:
+        cancel_callback = "settings_time"
 
     query.edit_message_text(
         message,
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=cancel_callback)]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data=cancel_callback)]]
+        ),
     )
 
 
 def set_setting_handler(update, context, setting_key):
     """Совместимость для callback'ов с полными ключами настроек."""
     key_map = {
-        'SNAPSHOT_TRANSFER_HOSTS': 'snapshot_transfer_hosts',
-        'BACKUP_START_TIME': 'backup_start_time',
+        "SNAPSHOT_TRANSFER_HOSTS": "snapshot_transfer_hosts",
+        "BACKUP_START_TIME": "backup_start_time",
     }
-    normalized_key = key_map.get(setting_key, str(setting_key or '').lower())
+    normalized_key = key_map.get(setting_key, str(setting_key or "").lower())
     handle_setting_input(update, context, normalized_key)
+
 
 def show_snapshot_hosts_menu(update, context):
     """Показать список и управление хостами передачи снэпшотов."""
     query = update.callback_query
     query.answer()
 
-    hosts = settings_manager.get_setting('SNAPSHOT_TRANSFER_HOSTS', {}) or {}
+    hosts = settings_manager.get_setting("SNAPSHOT_TRANSFER_HOSTS", {}) or {}
     if not isinstance(hosts, dict):
         hosts = {}
 
@@ -2282,43 +2387,69 @@ def show_snapshot_hosts_menu(update, context):
     else:
         for idx, (host_name, host_cfg) in enumerate(sorted(hosts.items()), start=1):
             host_cfg = host_cfg if isinstance(host_cfg, dict) else {}
-            enabled = bool(host_cfg.get('enabled', True))
-            start_time = host_cfg.get('start_time', 'не задано')
+            enabled = bool(host_cfg.get("enabled", True))
+            start_time = host_cfg.get("start_time", "не задано")
             message += f"{idx}. {'🟢' if enabled else '🔴'} `{host_name}` (старт: `{start_time}`)\n"
 
     keyboard = []
     for host_name, host_cfg in sorted(hosts.items()):
         host_cfg = host_cfg if isinstance(host_cfg, dict) else {}
-        enabled = bool(host_cfg.get('enabled', True))
-        keyboard.append([InlineKeyboardButton(f"✏️ {host_name}", callback_data=f"snapshot_host_edit|{host_name}")])
-        keyboard.append([
-            InlineKeyboardButton("🔴 Выключить" if enabled else "🟢 Включить", callback_data=f"snapshot_host_toggle|{host_name}"),
-            InlineKeyboardButton("🗑️ Удалить", callback_data=f"snapshot_host_delete|{host_name}")
-        ])
-        keyboard.append([InlineKeyboardButton("⏰ Время старта", callback_data=f"snapshot_host_start|{host_name}")])
+        enabled = bool(host_cfg.get("enabled", True))
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"✏️ {host_name}", callback_data=f"snapshot_host_edit|{host_name}"
+                )
+            ]
+        )
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "🔴 Выключить" if enabled else "🟢 Включить",
+                    callback_data=f"snapshot_host_toggle|{host_name}",
+                ),
+                InlineKeyboardButton(
+                    "🗑️ Удалить", callback_data=f"snapshot_host_delete|{host_name}"
+                ),
+            ]
+        )
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "⏰ Время старта", callback_data=f"snapshot_host_start|{host_name}"
+                )
+            ]
+        )
 
-    keyboard.extend([
-        [InlineKeyboardButton("➕ Добавить хост", callback_data='snapshot_host_add')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_snapshot_menu'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ])
-    query.edit_message_text(message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+    keyboard.extend(
+        [
+            [InlineKeyboardButton("➕ Добавить хост", callback_data="snapshot_host_add")],
+            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            [
+                InlineKeyboardButton("↩️ Назад", callback_data="settings_snapshot_menu"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
+        ]
+    )
+    query.edit_message_text(
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 
 def _get_snapshot_hosts_config() -> dict:
-    hosts = settings_manager.get_setting('SNAPSHOT_TRANSFER_HOSTS', {}) or {}
+    hosts = settings_manager.get_setting("SNAPSHOT_TRANSFER_HOSTS", {}) or {}
     return hosts if isinstance(hosts, dict) else {}
 
 
 def _save_snapshot_hosts_config(hosts: dict) -> None:
-    settings_manager.set_setting('SNAPSHOT_TRANSFER_HOSTS', hosts, 'snapshot_transfer_hosts')
+    settings_manager.set_setting("SNAPSHOT_TRANSFER_HOSTS", hosts, "snapshot_transfer_hosts")
 
 
 def toggle_snapshot_host_handler(update, context, host_name: str) -> None:
     hosts = _get_snapshot_hosts_config()
     if host_name in hosts:
         host_cfg = hosts.get(host_name) if isinstance(hosts.get(host_name), dict) else {}
-        host_cfg['enabled'] = not bool(host_cfg.get('enabled', True))
+        host_cfg["enabled"] = not bool(host_cfg.get("enabled", True))
         hosts[host_name] = host_cfg
         _save_snapshot_hosts_config(hosts)
 
@@ -2330,65 +2461,68 @@ def delete_snapshot_host_handler(update, context, host_name: str) -> None:
         _save_snapshot_hosts_config(hosts)
 
 
-
-
 def _clear_snapshot_host_input_state(context) -> None:
     """Сбросить флаги текстового ввода для хостов/времени снэпшотов."""
-    for key in ('adding_snapshot_host', 'editing_snapshot_host_name', 'editing_snapshot_start_time'):
+    for key in (
+        "adding_snapshot_host",
+        "editing_snapshot_host_name",
+        "editing_snapshot_start_time",
+    ):
         context.user_data.pop(key, None)
 
+
 def handle_snapshot_host_text_input(update, context) -> bool:
-    text = (update.message.text or '').strip()
-    if context.user_data.get('adding_snapshot_host'):
+    text = (update.message.text or "").strip()
+    if context.user_data.get("adding_snapshot_host"):
         if not text:
-            update.message.reply_text('❌ Имя хоста не может быть пустым.')
+            update.message.reply_text("❌ Имя хоста не может быть пустым.")
             return True
         hosts = _get_snapshot_hosts_config()
         if text in hosts:
-            update.message.reply_text('❌ Такой хост уже существует.')
+            update.message.reply_text("❌ Такой хост уже существует.")
             return True
-        hosts[text] = {'enabled': True, 'start_time': '03:00'}
+        hosts[text] = {"enabled": True, "start_time": "03:00"}
         _save_snapshot_hosts_config(hosts)
         _clear_snapshot_host_input_state(context)
-        update.message.reply_text('✅ Хост добавлен.')
+        update.message.reply_text("✅ Хост добавлен.")
         return True
 
-    old_name = context.user_data.get('editing_snapshot_host_name')
+    old_name = context.user_data.get("editing_snapshot_host_name")
     if old_name is not None:
         new_name = text
         hosts = _get_snapshot_hosts_config()
         if not new_name:
-            update.message.reply_text('❌ Имя хоста не может быть пустым.')
+            update.message.reply_text("❌ Имя хоста не может быть пустым.")
             return True
         if old_name not in hosts:
-            context.user_data.pop('editing_snapshot_host_name', None)
-            update.message.reply_text('❌ Хост не найден.')
+            context.user_data.pop("editing_snapshot_host_name", None)
+            update.message.reply_text("❌ Хост не найден.")
             return True
         if new_name != old_name and new_name in hosts:
-            update.message.reply_text('❌ Такой хост уже существует.')
+            update.message.reply_text("❌ Такой хост уже существует.")
             return True
         hosts[new_name] = hosts.pop(old_name)
         _save_snapshot_hosts_config(hosts)
         _clear_snapshot_host_input_state(context)
-        update.message.reply_text('✅ Имя хоста обновлено.')
+        update.message.reply_text("✅ Имя хоста обновлено.")
         return True
 
-    edit_start = context.user_data.get('editing_snapshot_start_time')
+    edit_start = context.user_data.get("editing_snapshot_start_time")
     if edit_start is not None:
-        if not re.match(r'^([01]\d|2[0-3]):[0-5]\d$', text):
-            update.message.reply_text('❌ Время должно быть в формате HH:MM.')
+        if not re.match(r"^([01]\d|2[0-3]):[0-5]\d$", text):
+            update.message.reply_text("❌ Время должно быть в формате HH:MM.")
             return True
         hosts = _get_snapshot_hosts_config()
         if edit_start not in hosts:
-            context.user_data.pop('editing_snapshot_start_time', None)
-            update.message.reply_text('❌ Хост не найден.')
+            context.user_data.pop("editing_snapshot_start_time", None)
+            update.message.reply_text("❌ Хост не найден.")
             return True
         host_cfg = hosts.get(edit_start) if isinstance(hosts.get(edit_start), dict) else {}
-        host_cfg['start_time'] = text
+        host_cfg["start_time"] = text
         hosts[edit_start] = host_cfg
         _save_snapshot_hosts_config(hosts)
         _clear_snapshot_host_input_state(context)
-        update.message.reply_text('✅ Время старта обновлено.')
+        update.message.reply_text("✅ Время старта обновлено.")
         return True
 
     return False
@@ -2403,113 +2537,125 @@ def handle_setting_value(update, context):
         return
 
     # Сначала проверяем, не добавляется ли Windows учетная запись
-    if context.user_data.get('adding_windows_cred'):
+    if context.user_data.get("adding_windows_cred"):
         return handle_windows_credential_input(update, context)
 
     if (
-        context.user_data.get('supplier_stock_edit')
-        or context.user_data.get('supplier_stock_add_source')
-        or context.user_data.get('supplier_stock_edit_source')
-        or context.user_data.get('supplier_stock_source_field')
-        or context.user_data.get('supplier_stock_source_iek_field')
-        or context.user_data.get('supplier_stock_resource_add')
-        or context.user_data.get('supplier_stock_resource_field')
-        or context.user_data.get('supplier_stock_ftp_field')
-        or context.user_data.get('supplier_stock_processing_add')
-        or context.user_data.get('supplier_stock_processing_edit')
-        or context.user_data.get('supplier_stock_processing_field')
-        or context.user_data.get('supplier_stock_mail_edit')
-        or context.user_data.get('supplier_stock_mail_add_source')
-        or context.user_data.get('supplier_stock_mail_edit_source')
-        or context.user_data.get('supplier_stock_mail_source_field')
+        context.user_data.get("supplier_stock_edit")
+        or context.user_data.get("supplier_stock_add_source")
+        or context.user_data.get("supplier_stock_edit_source")
+        or context.user_data.get("supplier_stock_source_field")
+        or context.user_data.get("supplier_stock_source_iek_field")
+        or context.user_data.get("supplier_stock_resource_add")
+        or context.user_data.get("supplier_stock_resource_field")
+        or context.user_data.get("supplier_stock_ftp_field")
+        or context.user_data.get("supplier_stock_processing_add")
+        or context.user_data.get("supplier_stock_processing_edit")
+        or context.user_data.get("supplier_stock_processing_field")
+        or context.user_data.get("supplier_stock_mail_edit")
+        or context.user_data.get("supplier_stock_mail_add_source")
+        or context.user_data.get("supplier_stock_mail_edit_source")
+        or context.user_data.get("supplier_stock_mail_source_field")
     ):
         return supplier_stock_handle_input(update, context)
-    
+
     # Проверяем, не создается ли тип серверов
-    if context.user_data.get('creating_server_type'):
+    if context.user_data.get("creating_server_type"):
         return handle_server_type_creation(update, context)
-    
+
     # Проверяем, не редактируется ли тип серверов
-    if context.user_data.get('editing_server_type'):
+    if context.user_data.get("editing_server_type"):
         return handle_server_type_editing(update, context)
 
     # Проверяем, не редактируется ли сервер
-    if context.user_data.get('editing_server'):
+    if context.user_data.get("editing_server"):
         return handle_server_edit_input(update, context)
-    
+
     # Затем проверяем, не добавляется ли сервер
-    if context.user_data.get('adding_server'):
+    if context.user_data.get("adding_server"):
         return handle_server_input(update, context)
-    
+
     # Затем проверяем, не добавляется/редактируется ли категория БД
-    if context.user_data.get('adding_db_category'):
+    if context.user_data.get("adding_db_category"):
         return handle_db_category_input(update, context)
-    if context.user_data.get('editing_db_category'):
+    if context.user_data.get("editing_db_category"):
         return handle_db_category_rename_input(update, context)
 
     # Проверяем, не добавляется ли хост Proxmox
-    if context.user_data.get('adding_proxmox_host'):
+    if context.user_data.get("adding_proxmox_host"):
         return handle_proxmox_host_input(update, context)
 
     # Проверяем, не редактируется ли хост Proxmox
-    if context.user_data.get('editing_proxmox_host'):
+    if context.user_data.get("editing_proxmox_host"):
         return handle_proxmox_host_edit_input(update, context)
 
     # Проверяем, не добавляется ли ZFS сервер
-    if context.user_data.get('adding_zfs_server'):
+    if context.user_data.get("adding_zfs_server"):
         return handle_zfs_server_input(update, context)
 
     # Проверяем, не редактируется ли имя ZFS сервера
-    if context.user_data.get('editing_zfs_server_name'):
+    if context.user_data.get("editing_zfs_server_name"):
         return handle_zfs_server_name_edit_input(update, context)
-    if context.user_data.get('editing_zfs_server_ip'):
+    if context.user_data.get("editing_zfs_server_ip"):
         return handle_zfs_server_ip_edit_input(update, context)
-    if context.user_data.get('editing_zfs_server_threshold'):
+    if context.user_data.get("editing_zfs_server_threshold"):
         return handle_zfs_server_threshold_edit_input(update, context)
 
     # Проверяем, не добавляется ли база данных
-    if context.user_data.get('adding_db_entry'):
+    if context.user_data.get("adding_db_entry"):
         return handle_db_entry_input(update, context)
 
     # Проверяем, не редактируется ли база данных
-    if context.user_data.get('editing_db_entry'):
+    if context.user_data.get("editing_db_entry"):
         return handle_db_entry_edit_input(update, context)
 
     # Проверяем, не добавляется ли паттерн бэкапов
-    if context.user_data.get('adding_backup_pattern'):
+    if context.user_data.get("adding_backup_pattern"):
         return handle_backup_pattern_input(update, context)
 
     # Проверяем, не редактируется ли паттерн бэкапов
-    if context.user_data.get('editing_backup_pattern'):
+    if context.user_data.get("editing_backup_pattern"):
         return handle_backup_pattern_edit_input(update, context)
 
     # Проверяем, не редактируется ли дефолтный паттерн БД
-    if context.user_data.get('editing_default_db_pattern'):
+    if context.user_data.get("editing_default_db_pattern"):
         return handle_default_db_pattern_edit_input(update, context)
 
     # Если это обычная настройка
-    if 'editing_setting' not in context.user_data:
+    if "editing_setting" not in context.user_data:
         return
-        
-    setting_key = context.user_data['editing_setting']
+
+    setting_key = context.user_data["editing_setting"]
     new_value = update.message.text
-    
+
     try:
         # Определяем тип данных и преобразуем
         setting_types = {
-            'check_interval': 'int', 'max_fail_time': 'int', 'silent_start': 'int', 'silent_end': 'int',
-            'cpu_warning': 'int', 'cpu_critical': 'int', 'ram_warning': 'int', 'ram_critical': 'int',
-            'disk_warning': 'int', 'disk_critical': 'int', 'web_port': 'int',
-            'backup_alert_hours': 'int', 'backup_stale_hours': 'int',
-            'windows_2025_timeout': 'int', 'domain_servers_timeout': 'int',
-            'admin_servers_timeout': 'int', 'standard_windows_timeout': 'int',
-            'linux_timeout': 'int', 'ping_timeout': 'int',
+            "check_interval": "int",
+            "max_fail_time": "int",
+            "silent_start": "int",
+            "silent_end": "int",
+            "cpu_warning": "int",
+            "cpu_critical": "int",
+            "ram_warning": "int",
+            "ram_critical": "int",
+            "disk_warning": "int",
+            "disk_critical": "int",
+            "web_port": "int",
+            "backup_alert_hours": "int",
+            "backup_stale_hours": "int",
+            "windows_2025_timeout": "int",
+            "domain_servers_timeout": "int",
+            "admin_servers_timeout": "int",
+            "standard_windows_timeout": "int",
+            "linux_timeout": "int",
+            "ping_timeout": "int",
         }
-        
-        if setting_key in {'silent_start', 'silent_end'}:
+
+        if setting_key in {"silent_start", "silent_end"}:
             normalized = str(new_value).strip()
-            if ':' in normalized:
-                hour_part, minute_part = normalized.split(':', 1)
+            if ":" in normalized:
+                hour_part, minute_part = normalized.split(":", 1)
                 if not minute_part.isdigit() or len(minute_part) != 2:
                     raise ValueError("Неверный формат времени. Используйте HH:MM")
                 hour_value = int(hour_part)
@@ -2522,138 +2668,161 @@ def handle_setting_value(update, context):
                 if not (0 <= hour_value <= 23):
                     raise ValueError("Час должен быть в диапазоне 0-23")
                 new_value = hour_value
-        elif setting_key in setting_types and setting_types[setting_key] == 'int':
+        elif setting_key in setting_types and setting_types[setting_key] == "int":
             new_value = int(new_value)
-        elif setting_key == 'data_collection':
+        elif setting_key == "data_collection":
             # Проверяем и нормализуем список времен HH:MM,HH:MM
             normalized = str(new_value).strip()
-            raw_points = [item.strip() for item in normalized.replace(';', ',').split(',') if item.strip()]
+            raw_points = [
+                item.strip() for item in normalized.replace(";", ",").split(",") if item.strip()
+            ]
             if not raw_points:
                 raise ValueError("Укажите хотя бы одно время в формате HH:MM")
             normalized_points = []
             for point in raw_points:
-                if not re.match(r'^\d{1,2}:\d{2}$', point):
+                if not re.match(r"^\d{1,2}:\d{2}$", point):
                     raise ValueError("Неверный формат времени. Используйте HH:MM или HH:MM,HH:MM")
-                hour_part, minute_part = point.split(':', 1)
+                hour_part, minute_part = point.split(":", 1)
                 hour_value = int(hour_part)
                 minute_value = int(minute_part)
                 if not (0 <= hour_value <= 23 and 0 <= minute_value <= 59):
                     raise ValueError("Время должно быть в диапазоне 00:00-23:59")
                 normalized_points.append(f"{hour_value:02d}:{minute_value:02d}")
             new_value = ",".join(sorted(set(normalized_points)))
-        
+
         # Сохраняем настройку
         category_map = {
-            'telegram_token': 'telegram',
-            'matrix_homeserver': 'matrix', 'matrix_access_token': 'matrix', 'matrix_room_id': 'matrix',
-            'matrix_bot_user_id': 'matrix', 'matrix_bot_password': 'matrix', 'matrix_store_path': 'matrix',
-            'check_interval': 'monitoring', 'max_fail_time': 'monitoring',
-            'silent_start': 'time', 'silent_end': 'time', 'data_collection': 'time',
-            'cpu_warning': 'resources', 'cpu_critical': 'resources',
-            'ram_warning': 'resources', 'ram_critical': 'resources',
-            'disk_warning': 'resources', 'disk_critical': 'resources',
-            'ssh_username': 'auth', 'ssh_key_path': 'auth',
-            'web_port': 'web', 'web_host': 'web',
-            'backup_alert_hours': 'backup', 'backup_stale_hours': 'backup',
-            'windows_2025_timeout': 'timeouts', 'domain_servers_timeout': 'timeouts',
-            'admin_servers_timeout': 'timeouts', 'standard_windows_timeout': 'timeouts',
-            'linux_timeout': 'timeouts', 'ping_timeout': 'timeouts',
+            "telegram_token": "telegram",
+            "matrix_homeserver": "matrix",
+            "matrix_access_token": "matrix",
+            "matrix_room_id": "matrix",
+            "matrix_bot_user_id": "matrix",
+            "matrix_bot_password": "matrix",
+            "matrix_store_path": "matrix",
+            "check_interval": "monitoring",
+            "max_fail_time": "monitoring",
+            "silent_start": "time",
+            "silent_end": "time",
+            "data_collection": "time",
+            "cpu_warning": "resources",
+            "cpu_critical": "resources",
+            "ram_warning": "resources",
+            "ram_critical": "resources",
+            "disk_warning": "resources",
+            "disk_critical": "resources",
+            "ssh_username": "auth",
+            "ssh_key_path": "auth",
+            "web_port": "web",
+            "web_host": "web",
+            "backup_alert_hours": "backup",
+            "backup_stale_hours": "backup",
+            "windows_2025_timeout": "timeouts",
+            "domain_servers_timeout": "timeouts",
+            "admin_servers_timeout": "timeouts",
+            "standard_windows_timeout": "timeouts",
+            "linux_timeout": "timeouts",
+            "ping_timeout": "timeouts",
         }
-        
+
         special_db_keys = {
-            'telegram_token': 'TELEGRAM_TOKEN',
-            'matrix_homeserver': 'MATRIX_HOMESERVER',
-            'matrix_access_token': 'MATRIX_ACCESS_TOKEN',
-            'matrix_room_id': 'MATRIX_ROOM_ID',
-            'matrix_bot_user_id': 'MATRIX_BOT_USER_ID',
-            'matrix_bot_password': 'MATRIX_BOT_PASSWORD',
-            'matrix_store_path': 'MATRIX_STORE_PATH',
-            'data_collection': 'DATA_COLLECTION_TIMES',
+            "telegram_token": "TELEGRAM_TOKEN",
+            "matrix_homeserver": "MATRIX_HOMESERVER",
+            "matrix_access_token": "MATRIX_ACCESS_TOKEN",
+            "matrix_room_id": "MATRIX_ROOM_ID",
+            "matrix_bot_user_id": "MATRIX_BOT_USER_ID",
+            "matrix_bot_password": "MATRIX_BOT_PASSWORD",
+            "matrix_store_path": "MATRIX_STORE_PATH",
+            "data_collection": "DATA_COLLECTION_TIMES",
         }
         db_key = special_db_keys.get(setting_key, setting_key.upper())
-        category = category_map.get(setting_key, 'general')
-        
+        category = category_map.get(setting_key, "general")
+
         settings_manager.set_setting(db_key, new_value, category)
 
         # Подтягиваем обновленные значения из БД в runtime-конфиг,
         # чтобы цикл мониторинга сразу увидел новое время отчета.
         load_all_settings()
-        if db_key == 'DATA_COLLECTION_TIMES':
-            settings_manager.set_setting('DATA_COLLECTION_TIME', new_value.split(',')[0], category='time')
+        if db_key == "DATA_COLLECTION_TIMES":
+            settings_manager.set_setting(
+                "DATA_COLLECTION_TIME", new_value.split(",")[0], category="time"
+            )
             debug_log(f"🕒 Обновлено расписание сбора данных для утреннего отчета: {new_value}")
-        
+
         # Очищаем контекст
-        del context.user_data['editing_setting']
-        prompt_message_id = context.user_data.pop('editing_setting_message_id', None)
-        prompt_chat_id = context.user_data.pop('editing_setting_chat_id', None)
+        del context.user_data["editing_setting"]
+        prompt_message_id = context.user_data.pop("editing_setting_message_id", None)
+        prompt_chat_id = context.user_data.pop("editing_setting_chat_id", None)
         if prompt_message_id and prompt_chat_id:
             try:
                 context.bot.delete_message(chat_id=prompt_chat_id, message_id=prompt_message_id)
             except Exception:
                 pass
-        
+
         update.message.reply_text(
             f"✅ Настройка {db_key} успешно обновлена!",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("⚙️ Вернуться к настройкам", callback_data='settings_main')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("⚙️ Вернуться к настройкам", callback_data="settings_main")]]
+            ),
         )
-        
+
     except ValueError as e:
         update.message.reply_text(f"❌ Ошибка: {e}\nПопробуйте еще раз:")
     except Exception as e:
         update.message.reply_text(f"❌ Ошибка сохранения: {e}")
-        
+
+
 def show_web_settings(update, context):
     """Показать настройки веб-интерфейса - С КНОПКОЙ ЗАКРЫТЬ"""
     query = update.callback_query
     query.answer()
-    
-    web_port = settings_manager.get_setting('WEB_PORT', 5000)
-    web_host = settings_manager.get_setting('WEB_HOST', '0.0.0.0')
-    
+
+    web_port = settings_manager.get_setting("WEB_PORT", 5000)
+    web_host = settings_manager.get_setting("WEB_HOST", "0.0.0.0")
+
     message = (
         "🌐 *Настройки веб-интерфейса*\n\n"
         f"• Порт: {web_port}\n"
         f"• Хост: {web_host}\n\n"
         "Выберите параметр для изменения:"
     )
-    
+
     keyboard = [
-        [InlineKeyboardButton("🔌 Порт веб-интерфейса", callback_data='set_web_port')],
-        [InlineKeyboardButton("🌐 Хост веб-интерфейса", callback_data='set_web_host')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("🔌 Порт веб-интерфейса", callback_data="set_web_port")],
+        [InlineKeyboardButton("🌐 Хост веб-интерфейса", callback_data="set_web_host")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_main"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def get_settings_handlers():
     """Получить обработчики для настроек"""
     return [
         CommandHandler("settings", settings_command),
-        CallbackQueryHandler(settings_callback_handler, pattern='^settings_'),
-        CallbackQueryHandler(settings_callback_handler, pattern='^set_'),
-        CallbackQueryHandler(settings_callback_handler, pattern='^backup_'),
-        CallbackQueryHandler(settings_callback_handler, pattern='^manage_'),
-        MessageHandler(Filters.text & ~Filters.command, handle_setting_value)
+        CallbackQueryHandler(settings_callback_handler, pattern="^settings_"),
+        CallbackQueryHandler(settings_callback_handler, pattern="^set_"),
+        CallbackQueryHandler(settings_callback_handler, pattern="^backup_"),
+        CallbackQueryHandler(settings_callback_handler, pattern="^manage_"),
+        MessageHandler(Filters.text & ~Filters.command, handle_setting_value),
     ]
+
 
 def show_auth_settings(update, context):
     """Показать настройки аутентификации - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
-    
-    ssh_username = settings_manager.get_setting('SSH_USERNAME', 'root')
-    ssh_key_path = settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
-    
+
+    ssh_username = settings_manager.get_setting("SSH_USERNAME", "root")
+    ssh_key_path = settings_manager.get_setting("SSH_KEY_PATH", "/root/.ssh/id_rsa")
+
     # Получаем статистику по Windows учетным данным
     windows_creds = settings_manager.get_windows_credentials()
-    
+
     message = (
         "🔐 *Настройки аутентификации*\n\n"
         "*SSH аутентификация:*\n"
@@ -2664,67 +2833,69 @@ def show_auth_settings(update, context):
         f"• Типов серверов: {len(settings_manager.get_windows_server_types())}\n\n"
         "Выберите раздел для настройки:"
     )
-    
+
     keyboard = [
-        [InlineKeyboardButton("👤 SSH аутентификация", callback_data='ssh_auth_settings')],
-        [InlineKeyboardButton("🖥️ Windows аутентификация", callback_data='windows_auth_main')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("👤 SSH аутентификация", callback_data="ssh_auth_settings")],
+        [InlineKeyboardButton("🖥️ Windows аутентификация", callback_data="windows_auth_main")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_main"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_ssh_auth_settings(update, context):
     """Показать настройки SSH аутентификации"""
     query = update.callback_query
     query.answer()
-    
-    ssh_username = settings_manager.get_setting('SSH_USERNAME', 'root')
-    ssh_key_path = settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
-    
+
+    ssh_username = settings_manager.get_setting("SSH_USERNAME", "root")
+    ssh_key_path = settings_manager.get_setting("SSH_KEY_PATH", "/root/.ssh/id_rsa")
+
     message = (
         "👤 *SSH аутентификация*\n\n"
         f"• SSH пользователь: `{ssh_username}`\n"
         f"• Путь к SSH ключу: `{ssh_key_path}`\n\n"
         "Выберите параметр для изменения:"
     )
-    
+
     keyboard = [
-        [InlineKeyboardButton("👤 SSH пользователь", callback_data='set_ssh_username')],
-        [InlineKeyboardButton("🔑 Путь к SSH ключу", callback_data='set_ssh_key_path')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_auth'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("👤 SSH пользователь", callback_data="set_ssh_username")],
+        [InlineKeyboardButton("🔑 Путь к SSH ключу", callback_data="set_ssh_key_path")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_auth"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_servers_settings(update, context):
     """Показать настройки серверов - С КНОПКОЙ ЗАКРЫТЬ"""
     query = update.callback_query
     query.answer()
-    
+
     servers = settings_manager.get_all_servers(include_disabled=True)
-    enabled_servers = [s for s in servers if s.get('enabled', True)]
-    paused_servers = [s for s in servers if not s.get('enabled', True)]
-    windows_servers = [s for s in servers if s['type'] == 'rdp']
-    linux_servers = [s for s in servers if s['type'] == 'ssh']
-    ping_servers = [s for s in servers if s['type'] == 'ping']
-    
+    enabled_servers = [s for s in servers if s.get("enabled", True)]
+    paused_servers = [s for s in servers if not s.get("enabled", True)]
+    windows_servers = [s for s in servers if s["type"] == "rdp"]
+    linux_servers = [s for s in servers if s["type"] == "ssh"]
+    ping_servers = [s for s in servers if s["type"] == "ping"]
+
     # Сбрасываем состояния редактирования, если вернулись в меню
-    context.user_data.pop('adding_server', None)
-    context.user_data.pop('editing_server', None)
-    context.user_data.pop('server_stage', None)
-    context.user_data.pop('edit_server_stage', None)
-    context.user_data.pop('edit_server_ip', None)
-    context.user_data.pop('edit_server_data', None)
+    context.user_data.pop("adding_server", None)
+    context.user_data.pop("editing_server", None)
+    context.user_data.pop("server_stage", None)
+    context.user_data.pop("edit_server_stage", None)
+    context.user_data.pop("edit_server_ip", None)
+    context.user_data.pop("edit_server_data", None)
 
     message = (
         "🖥️ *Настройки серверов*\n\n"
@@ -2736,26 +2907,28 @@ def show_servers_settings(update, context):
         f"• Приостановлено: {len(paused_servers)}\n\n"
         "Выберите действие:"
     )
-    
+
     keyboard = [
-        [InlineKeyboardButton("📋 Список серверов", callback_data='settings_servers_list')],
-        [InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("📋 Список серверов", callback_data="settings_servers_list")],
+        [InlineKeyboardButton("➕ Добавить сервер", callback_data="settings_add_server")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_main"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def _get_server_by_ip(servers, ip):
     """Найти сервер по IP из списка"""
     for server in servers:
-        if server.get('ip') == ip:
+        if server.get("ip") == ip:
             return server
     return None
+
 
 def show_servers_list(update, context):
     """Показать список серверов с действиями"""
@@ -2765,64 +2938,60 @@ def show_servers_list(update, context):
     servers = settings_manager.get_all_servers(include_disabled=True)
 
     # Сбрасываем состояния редактирования при показе списка
-    context.user_data.pop('editing_server', None)
-    context.user_data.pop('edit_server_stage', None)
-    context.user_data.pop('edit_server_ip', None)
-    context.user_data.pop('edit_server_data', None)
+    context.user_data.pop("editing_server", None)
+    context.user_data.pop("edit_server_stage", None)
+    context.user_data.pop("edit_server_ip", None)
+    context.user_data.pop("edit_server_data", None)
 
     if not servers:
         message = "📋 *Список серверов*\n\n❌ Серверы не настроены."
         keyboard = [
-            [InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("➕ Добавить сервер", callback_data="settings_add_server")],
+            [
+                InlineKeyboardButton("↩️ Назад", callback_data="settings_servers"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
         ]
         query.edit_message_text(
-            message,
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return
 
     message_lines = ["📋 *Список серверов*\n"]
     for server in servers:
-        status_icon = "🟢" if server.get('enabled', True) else "⏸️"
-        status_text = "мониторинг" if server.get('enabled', True) else "пауза"
+        status_icon = "🟢" if server.get("enabled", True) else "⏸️"
+        status_text = "мониторинг" if server.get("enabled", True) else "пауза"
         message_lines.append(
             f"• {status_icon} {server['name']} (`{server['ip']}`) — {server['type'].upper()} — {status_text}"
         )
 
     keyboard = [
         [
-            InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_servers"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
         ]
     ]
     for server in servers:
-        toggle_text = "⏸️ Пауза" if server.get('enabled', True) else "▶️ Возобновить"
-        keyboard.append([
-            InlineKeyboardButton(
-                f"✏️ {server['name']}",
-                callback_data=f"settings_edit_server_{server['ip']}"
-            ),
-            InlineKeyboardButton(
-                toggle_text,
-                callback_data=f"settings_toggle_server_{server['ip']}"
-            ),
-            InlineKeyboardButton(
-                "🗑️",
-                callback_data=f"settings_delete_server_{server['ip']}"
-            )
-        ])
+        toggle_text = "⏸️ Пауза" if server.get("enabled", True) else "▶️ Возобновить"
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"✏️ {server['name']}", callback_data=f"settings_edit_server_{server['ip']}"
+                ),
+                InlineKeyboardButton(
+                    toggle_text, callback_data=f"settings_toggle_server_{server['ip']}"
+                ),
+                InlineKeyboardButton("🗑️", callback_data=f"settings_delete_server_{server['ip']}"),
+            ]
+        )
 
-    keyboard.append([
-        InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')
-    ])
-    query.edit_message_text(
-        "\n".join(message_lines),
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+    keyboard.append(
+        [InlineKeyboardButton("➕ Добавить сервер", callback_data="settings_add_server")]
     )
+    query.edit_message_text(
+        "\n".join(message_lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 
 def delete_server_confirmation(update, context, ip):
     """Подтверждение удаления сервера"""
@@ -2834,9 +3003,9 @@ def delete_server_confirmation(update, context, ip):
     if not server:
         query.edit_message_text(
             "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_servers_list")]]
+            ),
         )
         return
 
@@ -2848,14 +3017,13 @@ def delete_server_confirmation(update, context, ip):
 
     keyboard = [
         [InlineKeyboardButton("✅ Удалить", callback_data=f"settings_confirm_delete_server_{ip}")],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+        [InlineKeyboardButton("↩️ Назад", callback_data="settings_servers_list")],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def delete_server_execute(update, context, ip):
     """Удалить сервер"""
@@ -2870,11 +3038,12 @@ def delete_server_execute(update, context, ip):
 
     query.edit_message_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("↩️ Назад к списку", callback_data="settings_servers_list")]]
+        ),
     )
+
 
 def show_server_edit_menu(update, context, ip):
     """Меню редактирования сервера"""
@@ -2886,13 +3055,13 @@ def show_server_edit_menu(update, context, ip):
     if not server:
         query.edit_message_text(
             "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_servers_list")]]
+            ),
         )
         return
 
-    status_text = "🟢 Включен" if server.get('enabled', True) else "⏸️ Приостановлен"
+    status_text = "🟢 Включен" if server.get("enabled", True) else "⏸️ Приостановлен"
     message = (
         "✏️ *Редактирование сервера*\n\n"
         f"• Имя: *{server['name']}*\n"
@@ -2902,19 +3071,20 @@ def show_server_edit_menu(update, context, ip):
         "Выберите действие:"
     )
 
-    toggle_text = "⏸️ Приостановить мониторинг" if server.get('enabled', True) else "▶️ Возобновить мониторинг"
+    toggle_text = (
+        "⏸️ Приостановить мониторинг" if server.get("enabled", True) else "▶️ Возобновить мониторинг"
+    )
     keyboard = [
         [InlineKeyboardButton("📝 Изменить имя", callback_data=f"settings_edit_server_name_{ip}")],
         [InlineKeyboardButton("🔧 Изменить тип", callback_data=f"settings_edit_server_type_{ip}")],
         [InlineKeyboardButton(toggle_text, callback_data=f"settings_toggle_server_{ip}")],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+        [InlineKeyboardButton("↩️ Назад", callback_data="settings_servers_list")],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def toggle_server_monitoring(update, context, ip):
     """Переключить мониторинг сервера"""
@@ -2926,13 +3096,13 @@ def toggle_server_monitoring(update, context, ip):
     if not server:
         query.edit_message_text(
             "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_servers_list")]]
+            ),
         )
         return
 
-    new_status = not server.get('enabled', True)
+    new_status = not server.get("enabled", True)
     success = settings_manager.set_server_enabled(ip, new_status)
 
     if success:
@@ -2947,11 +3117,12 @@ def toggle_server_monitoring(update, context, ip):
 
     query.edit_message_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("↩️ Назад к списку", callback_data="settings_servers_list")]]
+        ),
     )
+
 
 def start_server_name_edit(update, context, ip):
     """Запуск редактирования имени сервера"""
@@ -2963,23 +3134,24 @@ def start_server_name_edit(update, context, ip):
     if not server:
         query.edit_message_text(
             "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_servers_list")]]
+            ),
         )
         return
 
-    context.user_data['editing_server'] = True
-    context.user_data['edit_server_stage'] = 'name'
-    context.user_data['edit_server_ip'] = ip
-    context.user_data['edit_server_data'] = server
+    context.user_data["editing_server"] = True
+    context.user_data["edit_server_stage"] = "name"
+    context.user_data["edit_server_ip"] = ip
+    context.user_data["edit_server_data"] = server
 
     query.edit_message_text(
         "📝 Введите новое имя сервера:",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers_list')]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="settings_servers_list")]]
+        ),
     )
+
 
 def start_server_type_edit(update, context, ip):
     """Запуск редактирования типа сервера"""
@@ -2991,77 +3163,89 @@ def start_server_type_edit(update, context, ip):
     if not server:
         query.edit_message_text(
             "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_servers_list")]]
+            ),
         )
         return
 
-    context.user_data['editing_server'] = True
-    context.user_data['edit_server_stage'] = 'type'
-    context.user_data['edit_server_ip'] = ip
-    context.user_data['edit_server_data'] = server
+    context.user_data["editing_server"] = True
+    context.user_data["edit_server_stage"] = "type"
+    context.user_data["edit_server_ip"] = ip
+    context.user_data["edit_server_data"] = server
 
     keyboard = [
-        [InlineKeyboardButton("🖥️ Windows (RDP)", callback_data=f"settings_edit_server_type_select_rdp_{ip}")],
-        [InlineKeyboardButton("🐧 Linux (SSH)", callback_data=f"settings_edit_server_type_select_ssh_{ip}")],
-        [InlineKeyboardButton("📡 Ping Only", callback_data=f"settings_edit_server_type_select_ping_{ip}")],
-        [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers_list')]
+        [
+            InlineKeyboardButton(
+                "🖥️ Windows (RDP)", callback_data=f"settings_edit_server_type_select_rdp_{ip}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🐧 Linux (SSH)", callback_data=f"settings_edit_server_type_select_ssh_{ip}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📡 Ping Only", callback_data=f"settings_edit_server_type_select_ping_{ip}"
+            )
+        ],
+        [InlineKeyboardButton("❌ Отмена", callback_data="settings_servers_list")],
     ]
 
     query.edit_message_text(
-        "🔧 Выберите новый тип сервера:",
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        "🔧 Выберите новый тип сервера:", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def handle_server_type_selection(update, context):
     """Обработчик выбора нового типа сервера"""
     query = update.callback_query
     query.answer()
 
-    if not context.user_data.get('editing_server'):
+    if not context.user_data.get("editing_server"):
         return
 
-    data = query.data.replace('settings_edit_server_type_select_', '')
-    parts = data.split('_')
+    data = query.data.replace("settings_edit_server_type_select_", "")
+    parts = data.split("_")
     if len(parts) < 2:
         query.edit_message_text(
             "❌ Неверный формат выбора типа.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_servers_list")]]
+            ),
         )
         return
 
     server_type = parts[0]
     ip = "_".join(parts[1:])
-    server = context.user_data.get('edit_server_data') or {}
-    if server.get('ip') != ip:
+    server = context.user_data.get("edit_server_data") or {}
+    if server.get("ip") != ip:
         servers = settings_manager.get_all_servers(include_disabled=True)
         server = _get_server_by_ip(servers, ip)
 
     if not server:
         query.edit_message_text(
             "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_servers_list")]]
+            ),
         )
         return
 
     success = settings_manager.add_server(
         ip,
-        server.get('name', ip),
+        server.get("name", ip),
         server_type,
-        server.get('credentials'),
-        server.get('timeout', 30),
-        server.get('enabled', True)
+        server.get("credentials"),
+        server.get("timeout", 30),
+        server.get("enabled", True),
     )
 
-    context.user_data.pop('editing_server', None)
-    context.user_data.pop('edit_server_stage', None)
-    context.user_data.pop('edit_server_ip', None)
-    context.user_data.pop('edit_server_data', None)
+    context.user_data.pop("editing_server", None)
+    context.user_data.pop("edit_server_stage", None)
+    context.user_data.pop("edit_server_ip", None)
+    context.user_data.pop("edit_server_data", None)
 
     if success:
         message = (
@@ -3074,19 +3258,20 @@ def handle_server_type_selection(update, context):
 
     query.edit_message_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("↩️ Назад к списку", callback_data="settings_servers_list")]]
+        ),
     )
+
 
 def handle_server_edit_input(update, context):
     """Обработчик ввода для редактирования сервера"""
-    if not context.user_data.get('editing_server'):
+    if not context.user_data.get("editing_server"):
         return
 
-    stage = context.user_data.get('edit_server_stage')
-    if stage != 'name':
+    stage = context.user_data.get("edit_server_stage")
+    if stage != "name":
         return
 
     new_name = update.message.text.strip()
@@ -3094,8 +3279,8 @@ def handle_server_edit_input(update, context):
         update.message.reply_text("❌ Имя не может быть пустым. Попробуйте снова:")
         return
 
-    server = context.user_data.get('edit_server_data') or {}
-    ip = context.user_data.get('edit_server_ip')
+    server = context.user_data.get("edit_server_data") or {}
+    ip = context.user_data.get("edit_server_ip")
     if not ip:
         update.message.reply_text("❌ Не удалось определить сервер.")
         return
@@ -3103,61 +3288,59 @@ def handle_server_edit_input(update, context):
     success = settings_manager.add_server(
         ip,
         new_name,
-        server.get('type', 'ping'),
-        server.get('credentials'),
-        server.get('timeout', 30),
-        server.get('enabled', True)
+        server.get("type", "ping"),
+        server.get("credentials"),
+        server.get("timeout", 30),
+        server.get("enabled", True),
     )
 
-    context.user_data.pop('editing_server', None)
-    context.user_data.pop('edit_server_stage', None)
-    context.user_data.pop('edit_server_ip', None)
-    context.user_data.pop('edit_server_data', None)
+    context.user_data.pop("editing_server", None)
+    context.user_data.pop("edit_server_stage", None)
+    context.user_data.pop("edit_server_ip", None)
+    context.user_data.pop("edit_server_data", None)
 
     if success:
-        message = (
-            "✅ Имя сервера обновлено.\n\n"
-            f"• IP: `{ip}`\n"
-            f"• Новое имя: *{new_name}*"
-        )
+        message = "✅ Имя сервера обновлено.\n\n" f"• IP: `{ip}`\n" f"• Новое имя: *{new_name}*"
     else:
         message = "❌ Не удалось обновить имя сервера."
 
     update.message.reply_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("↩️ Назад к списку", callback_data="settings_servers_list")]]
+        ),
     )
+
 
 def show_backup_times(update, context):
     """Показать настройки временных интервалов бэкапов - С КНОПКОЙ ЗАКРЫТЬ"""
     query = update.callback_query
     query.answer()
-    
-    alert_hours = settings_manager.get_setting('BACKUP_ALERT_HOURS', 24)
-    stale_hours = settings_manager.get_setting('BACKUP_STALE_HOURS', 36)
-    
+
+    alert_hours = settings_manager.get_setting("BACKUP_ALERT_HOURS", 24)
+    stale_hours = settings_manager.get_setting("BACKUP_STALE_HOURS", 36)
+
     message = (
         "⏰ *Временные интервалы бэкапов*\n\n"
         f"• Алерты через: {alert_hours} часов\n"
         f"• Устаревание через: {stale_hours} часов\n\n"
         "Выберите параметр для изменения:"
     )
-    
+
     keyboard = [
-        [InlineKeyboardButton("🚨 Часы для алертов", callback_data='set_backup_alert_hours')],
-        [InlineKeyboardButton("📅 Часы для устаревания", callback_data='set_backup_stale_hours')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("🚨 Часы для алертов", callback_data="set_backup_alert_hours")],
+        [InlineKeyboardButton("📅 Часы для устаревания", callback_data="set_backup_stale_hours")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_backup"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_backup_databases_settings(update, context):
     """Показать настройки баз данных для бэкапов без перегруза inline-клавиатуры."""
@@ -3165,15 +3348,15 @@ def show_backup_databases_settings(update, context):
     query.answer()
 
     # Сбрасываем состояния добавления/редактирования БД при выходе в меню
-    context.user_data.pop('adding_db_entry', None)
-    context.user_data.pop('editing_db_entry', None)
-    context.user_data.pop('db_entry_category', None)
-    context.user_data.pop('db_entry_key', None)
-    context.user_data['settings_db_toggle_map'] = {}
-    context.user_data['settings_db_category_map'] = {}
-    context.user_data['settings_db_entry_map'] = {}
+    context.user_data.pop("adding_db_entry", None)
+    context.user_data.pop("editing_db_entry", None)
+    context.user_data.pop("db_entry_category", None)
+    context.user_data.pop("db_entry_key", None)
+    context.user_data["settings_db_toggle_map"] = {}
+    context.user_data["settings_db_category_map"] = {}
+    context.user_data["settings_db_entry_map"] = {}
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
 
     message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
 
@@ -3186,7 +3369,9 @@ def show_backup_databases_settings(update, context):
             if not isinstance(databases, dict):
                 databases = {}
             total_databases += len(databases)
-            disabled_in_category = sum(1 for db_key in databases if (category, db_key) in disabled_pairs)
+            disabled_in_category = sum(
+                1 for db_key in databases if (category, db_key) in disabled_pairs
+            )
             message += (
                 f"• *{_escape_pattern_text(category.upper())}*: {len(databases)} БД "
                 f"(отключён мониторинг: {disabled_in_category})\n"
@@ -3201,46 +3386,59 @@ def show_backup_databases_settings(update, context):
     category_buttons = [
         InlineKeyboardButton(
             f"⚙️ {category}",
-            callback_data=_build_db_category_callback(context, "settings_db_edit_", category)
+            callback_data=_build_db_category_callback(context, "settings_db_edit_", category),
         )
         for category in sorted_categories[:20]
     ]
     for idx in range(0, len(category_buttons), 2):
-        keyboard.append(category_buttons[idx:idx + 2])
+        keyboard.append(category_buttons[idx : idx + 2])
 
     if len(sorted_categories) > 20:
-        message += "\n\nℹ️ Показаны первые 20 категорий. Для полного списка откройте «Управление базами»."
+        message += (
+            "\n\nℹ️ Показаны первые 20 категорий. Для полного списка откройте «Управление базами»."
+        )
 
     back_callback = _get_settings_db_back_callback(context)
-    from_backup = back_callback == 'backup_databases'
-    view_all_callback = 'settings_db_view_all_from_backup' if from_backup else 'settings_db_view_all'
+    from_backup = back_callback == "backup_databases"
+    view_all_callback = (
+        "settings_db_view_all_from_backup" if from_backup else "settings_db_view_all"
+    )
     manage_categories_callback = (
-        'settings_db_manage_categories_from_backup' if from_backup else 'settings_db_manage_categories'
+        "settings_db_manage_categories_from_backup"
+        if from_backup
+        else "settings_db_manage_categories"
     )
 
-    keyboard.extend([
-        [InlineKeyboardButton("🛠️ Управление базами", callback_data=view_all_callback)],
-        [InlineKeyboardButton("🗂️ Управление категориями", callback_data=manage_categories_callback)],
-        [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-         InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ])
+    keyboard.extend(
+        [
+            [InlineKeyboardButton("🛠️ Управление базами", callback_data=view_all_callback)],
+            [
+                InlineKeyboardButton(
+                    "🗂️ Управление категориями", callback_data=manage_categories_callback
+                )
+            ],
+            [
+                InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_backup_databases(update, context):
     """Показать настройки баз данных для бэкапов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
-    
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-    
+
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
+
     message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
-    
+
     for category, databases in db_config.items():
         message += f"*{category.upper()}* ({len(databases)} БД):\n"
         for db_key, db_name in list(databases.items())[:3]:
@@ -3248,22 +3446,25 @@ def show_backup_databases(update, context):
         if len(databases) > 3:
             message += f"• ... и еще {len(databases) - 3} БД\n"
         message += "\n"
-    
+
     message += "Выберите действие:"
-    
+
     keyboard = [
-        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='view_all_databases')],
-        [InlineKeyboardButton("➕ Добавить БД", callback_data='add_database'),
-         InlineKeyboardButton("✏️ Редактировать БД", callback_data='edit_databases')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data="view_all_databases")],
+        [
+            InlineKeyboardButton("➕ Добавить БД", callback_data="add_database"),
+            InlineKeyboardButton("✏️ Редактировать БД", callback_data="edit_databases"),
+        ],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_backup_db"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_settings_extensions_menu(update, context):
     """Показать меню расширений в настройках"""
@@ -3274,23 +3475,38 @@ def show_settings_extensions_menu(update, context):
 
     keyboard = []
 
-    if extension_manager.is_extension_enabled('stock_load_monitor'):
-        keyboard.append([InlineKeyboardButton("📦 Загрузка остатков 1С", callback_data='settings_ext_stock_load')])
+    if extension_manager.is_extension_enabled("stock_load_monitor"):
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "📦 Загрузка остатков 1С", callback_data="settings_ext_stock_load"
+                )
+            ]
+        )
 
     if extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
-        keyboard.append([InlineKeyboardButton("📦 Остатки поставщиков", callback_data='settings_ext_supplier_stock')])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "📦 Остатки поставщиков", callback_data="settings_ext_supplier_stock"
+                )
+            ]
+        )
 
-    keyboard.extend([
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ])
+    keyboard.extend(
+        [
+            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            [
+                InlineKeyboardButton("↩️ Назад", callback_data="settings_main"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_snapshot_transfer_settings(update, context):
     """Показать настройки мониторинга передач снэпшотов"""
@@ -3350,11 +3566,13 @@ def show_snapshot_transfer_settings(update, context):
                 }
 
             if len(recent_transfers) < 8:
-                recent_transfers.append({
-                    "host_name": host,
-                    "status": status or "—",
-                    "received_at": received or "—",
-                })
+                recent_transfers.append(
+                    {
+                        "host_name": host,
+                        "status": status or "—",
+                        "received_at": received or "—",
+                    }
+                )
     except Exception as exc:
         debug_logger(f"⚠️ Не удалось загрузить результаты передач снэпшотов: {exc}")
     finally:
@@ -3364,8 +3582,8 @@ def show_snapshot_transfer_settings(update, context):
     message += "\n📋 *Хосты передач снэпшотов*\n\n"
     if hosts:
         for idx, (host_name, cfg) in enumerate(hosts.items(), 1):
-            enabled = cfg.get('enabled', True)
-            start_time = cfg.get('start_time', '00:00')
+            enabled = cfg.get("enabled", True)
+            start_time = cfg.get("start_time", "00:00")
             host_state = "🟢" if enabled else "🔴"
 
             latest = transfer_rows.get(host_name, {})
@@ -3409,16 +3627,14 @@ def show_snapshot_transfer_settings(update, context):
         message += "Пока нет данных о распарсенных письмах.\n"
 
     keyboard = [
-        [InlineKeyboardButton("📋 Хосты", callback_data='settings_snapshot_hosts')],
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_snapshot_patterns')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+        [InlineKeyboardButton("📋 Хосты", callback_data="settings_snapshot_hosts")],
+        [InlineKeyboardButton("🔍 Паттерны", callback_data="settings_snapshot_patterns")],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
@@ -3435,8 +3651,8 @@ def show_extensions_settings_menu(update, context):
     keyboard = []
 
     for ext_id, status_info in extensions_status.items():
-        enabled = status_info['enabled']
-        ext_info = status_info['info']
+        enabled = status_info["enabled"]
+        ext_info = status_info["info"]
 
         status_icon = "🟢" if enabled else "🔴"
         toggle_text = "🔴 Выключить" if enabled else "🟢 Включить"
@@ -3445,27 +3661,30 @@ def show_extensions_settings_menu(update, context):
         message += f"   {ext_info['description']}\n"
         message += f"   Статус: {'Включено' if enabled else 'Отключено'}\n\n"
 
-        keyboard.append([
-            InlineKeyboardButton(
-                f"{toggle_text} {ext_info['name']}",
-                callback_data=f'settings_ext_toggle_{ext_id}'
-            )
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{toggle_text} {ext_info['name']}",
+                    callback_data=f"settings_ext_toggle_{ext_id}",
+                )
+            ]
+        )
 
-    keyboard.extend([
-        [InlineKeyboardButton("📊 Включить все", callback_data='settings_ext_enable_all')],
-        [InlineKeyboardButton("📋 Отключить все", callback_data='settings_ext_disable_all')],
+    keyboard.extend(
         [
-            InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            [InlineKeyboardButton("📊 Включить все", callback_data="settings_ext_enable_all")],
+            [InlineKeyboardButton("📋 Отключить все", callback_data="settings_ext_disable_all")],
+            [
+                InlineKeyboardButton("↩️ Назад", callback_data="settings_extensions"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
         ]
-    ])
+    )
 
     query.edit_message_text(
-        text=message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        text=message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_mail_backup_settings(update, context):
     """Показать настройки бэкапов почты в разделе расширений"""
@@ -3501,16 +3720,17 @@ def show_mail_backup_settings(update, context):
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_mail')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("🔍 Паттерны", callback_data="settings_patterns_mail")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_extensions"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_stock_load_settings(update, context):
     """Показать настройки загрузки остатков 1С в разделе расширений."""
@@ -3547,46 +3767,47 @@ def show_stock_load_settings(update, context):
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_stock')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("🔍 Паттерны", callback_data="settings_patterns_stock")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_extensions"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_supplier_stock_settings(update, context):
     """Показать настройки получения файлов остатков поставщиков."""
     query = update.callback_query
     query.answer()
 
-    context.user_data.pop('supplier_stock_edit', None)
-    context.user_data.pop('supplier_stock_archive_cleanup_back', None)
-    context.user_data.pop('supplier_stock_archive_cleanup_back', None)
-    context.user_data.pop('supplier_stock_add_source', None)
-    context.user_data.pop('supplier_stock_mail_edit', None)
-    context.user_data.pop('supplier_stock_mail_add_source', None)
-    context.user_data.pop('supplier_stock_processing_add', None)
-    context.user_data.pop('supplier_stock_processing_stage', None)
-    context.user_data.pop('supplier_stock_processing_data', None)
-    context.user_data.pop('supplier_stock_processing_edit', None)
-    context.user_data.pop('supplier_stock_processing_edit_id', None)
-    context.user_data.pop('supplier_stock_source_settings_id', None)
-    context.user_data.pop('supplier_stock_mail_source_settings_id', None)
-    context.user_data.pop('supplier_stock_source_field', None)
-    context.user_data.pop('supplier_stock_source_field_id', None)
-    context.user_data.pop('supplier_stock_mail_source_field', None)
-    context.user_data.pop('supplier_stock_mail_source_field_id', None)
-    context.user_data.pop('supplier_stock_resource_settings_id', None)
-    context.user_data.pop('supplier_stock_resource_field', None)
-    context.user_data.pop('supplier_stock_resource_field_id', None)
-    context.user_data.pop('supplier_stock_resource_add', None)
-    context.user_data.pop('supplier_stock_resource_stage', None)
-    context.user_data.pop('supplier_stock_resource_data', None)
-    context.user_data.pop('supplier_stock_ftp_field', None)
+    context.user_data.pop("supplier_stock_edit", None)
+    context.user_data.pop("supplier_stock_archive_cleanup_back", None)
+    context.user_data.pop("supplier_stock_archive_cleanup_back", None)
+    context.user_data.pop("supplier_stock_add_source", None)
+    context.user_data.pop("supplier_stock_mail_edit", None)
+    context.user_data.pop("supplier_stock_mail_add_source", None)
+    context.user_data.pop("supplier_stock_processing_add", None)
+    context.user_data.pop("supplier_stock_processing_stage", None)
+    context.user_data.pop("supplier_stock_processing_data", None)
+    context.user_data.pop("supplier_stock_processing_edit", None)
+    context.user_data.pop("supplier_stock_processing_edit_id", None)
+    context.user_data.pop("supplier_stock_source_settings_id", None)
+    context.user_data.pop("supplier_stock_mail_source_settings_id", None)
+    context.user_data.pop("supplier_stock_source_field", None)
+    context.user_data.pop("supplier_stock_source_field_id", None)
+    context.user_data.pop("supplier_stock_mail_source_field", None)
+    context.user_data.pop("supplier_stock_mail_source_field_id", None)
+    context.user_data.pop("supplier_stock_resource_settings_id", None)
+    context.user_data.pop("supplier_stock_resource_field", None)
+    context.user_data.pop("supplier_stock_resource_field_id", None)
+    context.user_data.pop("supplier_stock_resource_add", None)
+    context.user_data.pop("supplier_stock_resource_stage", None)
+    context.user_data.pop("supplier_stock_resource_data", None)
+    context.user_data.pop("supplier_stock_ftp_field", None)
 
     config = get_supplier_stock_config()
     download = config.get("download", {})
@@ -3613,19 +3834,20 @@ def show_supplier_stock_settings(update, context):
     )
 
     keyboard = [
-        [InlineKeyboardButton("🌐 Скачивание файлов", callback_data='supplier_stock_download')],
-        [InlineKeyboardButton("📧 Почтовые сообщения", callback_data='supplier_stock_mail')],
-        [InlineKeyboardButton("🗓 Период отчётов", callback_data='supplier_stock_report_period')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("🌐 Скачивание файлов", callback_data="supplier_stock_download")],
+        [InlineKeyboardButton("📧 Почтовые сообщения", callback_data="supplier_stock_mail")],
+        [InlineKeyboardButton("🗓 Период отчётов", callback_data="supplier_stock_report_period")],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_extensions"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def _format_supplier_stock_timestamp(value: str | None) -> str:
     """Сформировать читаемое время запуска."""
@@ -3636,6 +3858,7 @@ def _format_supplier_stock_timestamp(value: str | None) -> str:
     except ValueError:
         return str(value)
 
+
 def _supplier_stock_status_label(status: str | None, fallback: str = "неизвестно") -> str:
     """Сформировать короткую метку статуса."""
     if status == "success":
@@ -3645,6 +3868,7 @@ def _supplier_stock_status_label(status: str | None, fallback: str = "неизв
     if status == "skipped":
         return "⚪️ пропущено"
     return f"🟡 {fallback}"
+
 
 def _supplier_stock_processing_status(processing: dict | None) -> str:
     """Определить статус обработки."""
@@ -3666,6 +3890,7 @@ def _supplier_stock_processing_status(processing: dict | None) -> str:
         return "⚪️ пропущено"
     return "🟡 частично"
 
+
 def _supplier_stock_transfer_status(transfer: dict | None) -> str:
     """Определить статус выгрузки."""
     if not transfer:
@@ -3678,9 +3903,7 @@ def _supplier_stock_transfer_status(transfer: dict | None) -> str:
     items = transfer.get("items") or []
     ftp_items = transfer.get("ftp_ork", {}).get("items") or []
     statuses = [
-        item.get("status")
-        for item in list(items) + list(ftp_items)
-        if isinstance(item, dict)
+        item.get("status") for item in list(items) + list(ftp_items) if isinstance(item, dict)
     ]
     if not statuses:
         return "🟡 нет файлов"
@@ -3690,8 +3913,10 @@ def _supplier_stock_transfer_status(transfer: dict | None) -> str:
         return "🔴 ошибка"
     return "🟡 частично"
 
+
 def _supplier_stock_stage_label(is_ok: bool) -> str:
     return "ОК" if is_ok else "не ОК"
+
 
 def _supplier_stock_processing_ok(processing: dict | None) -> bool:
     if not processing:
@@ -3704,6 +3929,7 @@ def _supplier_stock_processing_ok(processing: dict | None) -> bool:
         return False
     return all(status == "success" for status in statuses)
 
+
 def _supplier_stock_transfer_ok(transfer: dict | None) -> bool:
     if not transfer:
         return False
@@ -3713,13 +3939,12 @@ def _supplier_stock_transfer_ok(transfer: dict | None) -> bool:
     items = transfer.get("items") or []
     ftp_items = transfer.get("ftp_ork", {}).get("items") or []
     statuses = [
-        item.get("status")
-        for item in list(items) + list(ftp_items)
-        if isinstance(item, dict)
+        item.get("status") for item in list(items) + list(ftp_items) if isinstance(item, dict)
     ]
     if not statuses:
         return False
     return status == "success" and all(item_status == "success" for item_status in statuses)
+
 
 def _build_supplier_stock_daily_summary(
     reports: list[dict],
@@ -3738,16 +3963,19 @@ def _build_supplier_stock_daily_summary(
         transfer_ok = _supplier_stock_transfer_ok(
             processing_info.get("transfer") if processing_info else None
         )
-        summary.append({
-            "entry": entry,
-            "source_id": source_id,
-            "source_name": entry.get("source_name") or source_id,
-            "source_kind": source_kind,
-            "receive_ok": receive_ok,
-            "processing_ok": processing_ok,
-            "transfer_ok": transfer_ok,
-        })
+        summary.append(
+            {
+                "entry": entry,
+                "source_id": source_id,
+                "source_name": entry.get("source_name") or source_id,
+                "source_kind": source_kind,
+                "receive_ok": receive_ok,
+                "processing_ok": processing_ok,
+                "transfer_ok": transfer_ok,
+            }
+        )
     return summary
+
 
 def _supplier_stock_processing_mode_label(value: str | None) -> str:
     """Сформировать читаемую метку режима обработки."""
@@ -3755,6 +3983,7 @@ def _supplier_stock_processing_mode_label(value: str | None) -> str:
     if mode == "iek_json":
         return "IEK JSON"
     return "Табличный"
+
 
 def show_supplier_stock_reports(update, context, source_kind: str = "download") -> None:
     """Показать результаты загрузки, обработки и выгрузки остатков поставщиков."""
@@ -3765,13 +3994,15 @@ def show_supplier_stock_reports(update, context, source_kind: str = "download") 
         query.edit_message_text(
             "📦 Остатки поставщиков отключены в настройках.",
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]]
+                [[InlineKeyboardButton("🏠 На главную", callback_data="main_menu")]]
             ),
         )
         return
 
     reporting_days = 1
-    reports = get_supplier_stock_reports(limit=None, period_days=reporting_days, source_kind=source_kind)
+    reports = get_supplier_stock_reports(
+        limit=None, period_days=reporting_days, source_kind=source_kind
+    )
     title = "полученные скачиванием" if source_kind == "download" else "полученные по почте"
     message_lines = [
         "📦 *Остатки поставщиков — результаты*",
@@ -3790,13 +4021,15 @@ def show_supplier_stock_reports(update, context, source_kind: str = "download") 
             receive_label = _supplier_stock_stage_label(entry["receive_ok"])
             processing_label = _supplier_stock_stage_label(entry["processing_ok"])
             transfer_label = _supplier_stock_stage_label(entry["transfer_ok"])
-            message_lines.extend([
-                "",
-                f"• *{source_name}*",
-                f"  📥 Загрузка: {receive_label}",
-                f"  🧩 Обработка: {processing_label}",
-                f"  📤 Выгрузка: {transfer_label}",
-            ])
+            message_lines.extend(
+                [
+                    "",
+                    f"• *{source_name}*",
+                    f"  📥 Загрузка: {receive_label}",
+                    f"  🧩 Обработка: {processing_label}",
+                    f"  📤 Выгрузка: {transfer_label}",
+                ]
+            )
 
     def _split_message(lines: list[str], max_length: int = 3500) -> list[str]:
         chunks: list[str] = []
@@ -3818,8 +4051,8 @@ def show_supplier_stock_reports(update, context, source_kind: str = "download") 
     message_chunks = _split_message(message_lines)
     keyboard = [
         [
-            InlineKeyboardButton("⬇️ Скачивание", callback_data='supplier_stock_reports_download'),
-            InlineKeyboardButton("📧 Почта", callback_data='supplier_stock_reports_mail'),
+            InlineKeyboardButton("⬇️ Скачивание", callback_data="supplier_stock_reports_download"),
+            InlineKeyboardButton("📧 Почта", callback_data="supplier_stock_reports_mail"),
         ],
     ]
     entry_map: dict[str, dict] = {}
@@ -3833,36 +4066,44 @@ def show_supplier_stock_reports(update, context, source_kind: str = "download") 
             row = [
                 InlineKeyboardButton(
                     f"📊 {source_label}",
-                    callback_data=f'supplier_stock_report_source_day|{source_kind}|{source_id}',
+                    callback_data=f"supplier_stock_report_source_day|{source_kind}|{source_id}",
                 )
             ]
-            if not (item.get("receive_ok") and item.get("processing_ok") and item.get("transfer_ok")):
+            if not (
+                item.get("receive_ok") and item.get("processing_ok") and item.get("transfer_ok")
+            ):
                 row.append(
                     InlineKeyboardButton(
                         "❗ Детали",
-                        callback_data=f'supplier_stock_report_entry|{entry_key}',
+                        callback_data=f"supplier_stock_report_entry|{entry_key}",
                     )
                 )
             keyboard.append(row)
         context.user_data["supplier_stock_report_entries"] = entry_map
         context.user_data["supplier_stock_report_entries_kind"] = source_kind
-    keyboard.extend([
-        [InlineKeyboardButton("🔄 Обновить", callback_data=f'supplier_stock_reports_{source_kind}')],
-        [InlineKeyboardButton("🛠️ Настройки", callback_data='settings_ext_supplier_stock')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
-    ])
+    keyboard.extend(
+        [
+            [
+                InlineKeyboardButton(
+                    "🔄 Обновить", callback_data=f"supplier_stock_reports_{source_kind}"
+                )
+            ],
+            [InlineKeyboardButton("🛠️ Настройки", callback_data="settings_ext_supplier_stock")],
+            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+        ]
+    )
 
     query.edit_message_text(
         message_chunks[0] if message_chunks else "\n".join(message_lines),
-        parse_mode='Markdown',
+        parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
     for chunk in message_chunks[1:]:
         context.bot.send_message(
             chat_id=query.message.chat_id,
             text=chunk,
-            parse_mode='Markdown',
+            parse_mode="Markdown",
         )
 
 
@@ -3889,20 +4130,26 @@ def show_supplier_stock_report_sources(update, context, source_kind: str = "down
         message_lines.append("⚪️ Источников за период нет.")
     else:
         for entry in sources:
-            source_name = entry.get("source_name") or entry.get("source_id") or "неизвестный источник"
+            source_name = (
+                entry.get("source_name") or entry.get("source_id") or "неизвестный источник"
+            )
             time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
-            message_lines.extend([
-                "",
-                f"• *{_escape_pattern_text(source_name)}* ({_escape_pattern_text(time_label)})",
-                f"  📥 Загрузка: {entry.get('receive', {}).get('icon', '⚪️')}",
-                f"  🧩 Обработка: {entry.get('processing', {}).get('icon', '⚪️')}",
-                f"  📤 Выгрузка: {entry.get('transfer', {}).get('icon', '⚪️')}",
-            ])
+            message_lines.extend(
+                [
+                    "",
+                    f"• *{_escape_pattern_text(source_name)}* ({_escape_pattern_text(time_label)})",
+                    f"  📥 Загрузка: {entry.get('receive', {}).get('icon', '⚪️')}",
+                    f"  🧩 Обработка: {entry.get('processing', {}).get('icon', '⚪️')}",
+                    f"  📤 Выгрузка: {entry.get('transfer', {}).get('icon', '⚪️')}",
+                ]
+            )
 
     keyboard = [
         [
-            InlineKeyboardButton("⬇️ Скачивание", callback_data='supplier_stock_reports_sources_download'),
-            InlineKeyboardButton("📧 Почта", callback_data='supplier_stock_reports_sources_mail'),
+            InlineKeyboardButton(
+                "⬇️ Скачивание", callback_data="supplier_stock_reports_sources_download"
+            ),
+            InlineKeyboardButton("📧 Почта", callback_data="supplier_stock_reports_sources_mail"),
         ],
     ]
     if sources:
@@ -3914,7 +4161,7 @@ def show_supplier_stock_report_sources(update, context, source_kind: str = "down
             row.append(
                 InlineKeyboardButton(
                     f"📊 {source_id}",
-                    callback_data=f'supplier_stock_report_source|{source_kind}|{source_id}',
+                    callback_data=f"supplier_stock_report_source|{source_kind}|{source_id}",
                 )
             )
             if len(row) == 2:
@@ -3922,15 +4169,21 @@ def show_supplier_stock_report_sources(update, context, source_kind: str = "down
                 row = []
         if row:
             keyboard.append(row)
-    keyboard.extend([
-        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_{source_kind}')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
-    ])
+    keyboard.extend(
+        [
+            [
+                InlineKeyboardButton(
+                    "↩️ Назад", callback_data=f"supplier_stock_reports_{source_kind}"
+                )
+            ],
+            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+        ]
+    )
 
     query.edit_message_text(
         "\n".join(message_lines),
-        parse_mode='Markdown',
+        parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -3949,9 +4202,15 @@ def show_supplier_stock_report_source_stats(
     if not source_id:
         query.edit_message_text(
             "⚪️ Источник не выбран.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_sources_{source_kind}')],
-            ]),
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "↩️ Назад", callback_data=f"supplier_stock_reports_sources_{source_kind}"
+                        )
+                    ],
+                ]
+            ),
         )
         return
 
@@ -3984,25 +4243,31 @@ def show_supplier_stock_report_source_stats(
     else:
         for entry in entries[:10]:
             time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
-            message_lines.extend([
-                "",
-                f"• {_escape_pattern_text(time_label)}",
-                f"  📥 {entry.get('receive', {}).get('icon', '⚪️')}",
-                f"  🧩 {entry.get('processing', {}).get('icon', '⚪️')}",
-                f"  📤 {entry.get('transfer', {}).get('icon', '⚪️')}",
-            ])
+            message_lines.extend(
+                [
+                    "",
+                    f"• {_escape_pattern_text(time_label)}",
+                    f"  📥 {entry.get('receive', {}).get('icon', '⚪️')}",
+                    f"  🧩 {entry.get('processing', {}).get('icon', '⚪️')}",
+                    f"  📤 {entry.get('transfer', {}).get('icon', '⚪️')}",
+                ]
+            )
             if entry.get("error"):
                 message_lines.append(f"  ❗ Ошибка: {_escape_pattern_text(entry.get('error'))}")
 
     keyboard = [
-        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_sources_{source_kind}')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+        [
+            InlineKeyboardButton(
+                "↩️ Назад", callback_data=f"supplier_stock_reports_sources_{source_kind}"
+            )
+        ],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
     ]
 
     query.edit_message_text(
         "\n".join(message_lines),
-        parse_mode='Markdown',
+        parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -4018,9 +4283,15 @@ def show_supplier_stock_report_entry_details(update, context, entry_key: str) ->
     if not summary:
         query.edit_message_text(
             "⚪️ Детали недоступны, обновите результаты.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_{source_kind}')],
-            ]),
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "↩️ Назад", callback_data=f"supplier_stock_reports_{source_kind}"
+                        )
+                    ],
+                ]
+            ),
         )
         return
 
@@ -4053,27 +4324,30 @@ def show_supplier_stock_report_entry_details(update, context, entry_key: str) ->
         message_lines.append(f"\n❗ Ошибка: {_escape_pattern_text(entry.get('error'))}")
 
     keyboard = [
-        [InlineKeyboardButton(
-            "📊 История источника",
-            callback_data=f'supplier_stock_report_source_day|{source_kind}|{source_id}',
-        )],
-        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_{source_kind}')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+        [
+            InlineKeyboardButton(
+                "📊 История источника",
+                callback_data=f"supplier_stock_report_source_day|{source_kind}|{source_id}",
+            )
+        ],
+        [InlineKeyboardButton("↩️ Назад", callback_data=f"supplier_stock_reports_{source_kind}")],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
     ]
 
     query.edit_message_text(
         "\n".join(message_lines),
-        parse_mode='Markdown',
+        parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
 
 def show_supplier_stock_download_settings(update, context):
     """Показать настройки скачивания файлов остатков поставщиков."""
     query = update.callback_query
     query.answer()
 
-    context.user_data.pop('supplier_stock_edit', None)
+    context.user_data.pop("supplier_stock_edit", None)
 
     config = get_supplier_stock_config()
     download = config.get("download", {})
@@ -4098,37 +4372,42 @@ def show_supplier_stock_download_settings(update, context):
     )
 
     keyboard = [
-        [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_temp_dir')],
-        [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_archive_dir')],
-        [InlineKeyboardButton("🧹 Период очистки архива", callback_data='supplier_stock_archive_cleanup_download')],
-        [InlineKeyboardButton("⏰ Расписание", callback_data='supplier_stock_schedule')],
-        [InlineKeyboardButton("📦 Источники", callback_data='supplier_stock_sources')],
-        [InlineKeyboardButton("📤 Ресурсы выгрузки", callback_data='supplier_stock_resources')],
-        [InlineKeyboardButton("📡 FTP ОРК", callback_data='supplier_stock_ftp')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("📁 Временный каталог", callback_data="supplier_stock_temp_dir")],
+        [InlineKeyboardButton("🗄️ Каталог архива", callback_data="supplier_stock_archive_dir")],
+        [
+            InlineKeyboardButton(
+                "🧹 Период очистки архива", callback_data="supplier_stock_archive_cleanup_download"
+            )
+        ],
+        [InlineKeyboardButton("⏰ Расписание", callback_data="supplier_stock_schedule")],
+        [InlineKeyboardButton("📦 Источники", callback_data="supplier_stock_sources")],
+        [InlineKeyboardButton("📤 Ресурсы выгрузки", callback_data="supplier_stock_resources")],
+        [InlineKeyboardButton("📡 FTP ОРК", callback_data="supplier_stock_ftp")],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_supplier_stock"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_supplier_stock_mail_settings(update, context):
     """Показать настройки получения остатков через почту."""
     query = update.callback_query
     query.answer()
 
-    context.user_data.pop('supplier_stock_mail_edit', None)
-    context.user_data.pop('supplier_stock_archive_cleanup_back', None)
-    context.user_data.pop('supplier_stock_mail_add_source', None)
-    context.user_data.pop('supplier_stock_mail_source_stage', None)
-    context.user_data.pop('supplier_stock_mail_source_data', None)
-    context.user_data.pop('supplier_stock_mail_edit_source', None)
-    context.user_data.pop('supplier_stock_mail_edit_source_stage', None)
-    context.user_data.pop('supplier_stock_mail_edit_source_id', None)
+    context.user_data.pop("supplier_stock_mail_edit", None)
+    context.user_data.pop("supplier_stock_archive_cleanup_back", None)
+    context.user_data.pop("supplier_stock_mail_add_source", None)
+    context.user_data.pop("supplier_stock_mail_source_stage", None)
+    context.user_data.pop("supplier_stock_mail_source_data", None)
+    context.user_data.pop("supplier_stock_mail_edit_source", None)
+    context.user_data.pop("supplier_stock_mail_edit_source_stage", None)
+    context.user_data.pop("supplier_stock_mail_edit_source_id", None)
 
     config = get_supplier_stock_config()
     mail_settings = config.get("mail", {})
@@ -4151,22 +4430,30 @@ def show_supplier_stock_mail_settings(update, context):
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔁 Включить/выключить", callback_data='supplier_stock_mail_toggle')],
-        [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_mail_temp_dir')],
-        [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_mail_archive_dir')],
-        [InlineKeyboardButton("🧹 Период очистки архива", callback_data='supplier_stock_archive_cleanup_mail')],
-        [InlineKeyboardButton("📎 Правила вложений", callback_data='supplier_stock_mail_sources')],
-        [InlineKeyboardButton("📤 Ресурсы выгрузки", callback_data='supplier_stock_resources')],
-        [InlineKeyboardButton("📡 FTP ОРК", callback_data='supplier_stock_ftp')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("🔁 Включить/выключить", callback_data="supplier_stock_mail_toggle")],
+        [
+            InlineKeyboardButton(
+                "📁 Временный каталог", callback_data="supplier_stock_mail_temp_dir"
+            )
+        ],
+        [InlineKeyboardButton("🗄️ Каталог архива", callback_data="supplier_stock_mail_archive_dir")],
+        [
+            InlineKeyboardButton(
+                "🧹 Период очистки архива", callback_data="supplier_stock_archive_cleanup_mail"
+            )
+        ],
+        [InlineKeyboardButton("📎 Правила вложений", callback_data="supplier_stock_mail_sources")],
+        [InlineKeyboardButton("📤 Ресурсы выгрузки", callback_data="supplier_stock_resources")],
+        [InlineKeyboardButton("📡 FTP ОРК", callback_data="supplier_stock_ftp")],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_supplier_stock"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
@@ -4175,12 +4462,12 @@ def show_supplier_stock_resources_menu(update, context):
     query = update.callback_query
     query.answer()
 
-    context.user_data.pop('supplier_stock_resource_settings_id', None)
-    context.user_data.pop('supplier_stock_resource_field', None)
-    context.user_data.pop('supplier_stock_resource_field_id', None)
-    context.user_data.pop('supplier_stock_resource_add', None)
-    context.user_data.pop('supplier_stock_resource_stage', None)
-    context.user_data.pop('supplier_stock_resource_data', None)
+    context.user_data.pop("supplier_stock_resource_settings_id", None)
+    context.user_data.pop("supplier_stock_resource_field", None)
+    context.user_data.pop("supplier_stock_resource_field_id", None)
+    context.user_data.pop("supplier_stock_resource_add", None)
+    context.user_data.pop("supplier_stock_resource_stage", None)
+    context.user_data.pop("supplier_stock_resource_data", None)
 
     config = get_supplier_stock_config()
     resources = config.get("resources", [])
@@ -4190,7 +4477,9 @@ def show_supplier_stock_resources_menu(update, context):
     else:
         message_lines = ["📤 *Ресурсы выгрузки*\n"]
         for index, resource in enumerate(resources, start=1):
-            name = _escape_pattern_text(resource.get("name") or resource.get("id") or f"Ресурс {index}")
+            name = _escape_pattern_text(
+                resource.get("name") or resource.get("id") or f"Ресурс {index}"
+            )
             unc_path = _escape_pattern_text(resource.get("unc_path") or "не задано")
             login = _escape_pattern_text(resource.get("login") or "не задано")
             enabled = resource.get("enabled", True)
@@ -4205,7 +4494,7 @@ def show_supplier_stock_resources_menu(update, context):
         message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить ресурс", callback_data='supplier_stock_resource_add')],
+        [InlineKeyboardButton("➕ Добавить ресурс", callback_data="supplier_stock_resource_add")],
     ]
 
     for resource in resources:
@@ -4214,33 +4503,35 @@ def show_supplier_stock_resources_menu(update, context):
             continue
         enabled = resource.get("enabled", True)
         toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
-        keyboard.append([
-            InlineKeyboardButton(
-                f"⚙️ {resource.get('name', resource_id)}",
-                callback_data=f'supplier_stock_resource_settings|{resource_id}'
-            ),
-            InlineKeyboardButton(
-                toggle_text,
-                callback_data=f'supplier_stock_resource_toggle_{resource_id}'
-            ),
-        ])
-        keyboard.append([
-            InlineKeyboardButton(
-                "🗑️",
-                callback_data=f'supplier_stock_resource_delete_{resource_id}'
-            ),
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"⚙️ {resource.get('name', resource_id)}",
+                    callback_data=f"supplier_stock_resource_settings|{resource_id}",
+                ),
+                InlineKeyboardButton(
+                    toggle_text, callback_data=f"supplier_stock_resource_toggle_{resource_id}"
+                ),
+            ]
+        )
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "🗑️", callback_data=f"supplier_stock_resource_delete_{resource_id}"
+                ),
+            ]
+        )
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data="main_menu")])
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_supplier_stock"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
@@ -4249,9 +4540,9 @@ def show_supplier_stock_resource_settings(update, context, resource_id: str) -> 
     query = update.callback_query
     query.answer()
 
-    context.user_data['supplier_stock_resource_settings_id'] = resource_id
-    context.user_data.pop('supplier_stock_resource_field', None)
-    context.user_data.pop('supplier_stock_resource_field_id', None)
+    context.user_data["supplier_stock_resource_settings_id"] = resource_id
+    context.user_data.pop("supplier_stock_resource_field", None)
+    context.user_data.pop("supplier_stock_resource_field_id", None)
 
     config = get_supplier_stock_config()
     resources = config.get("resources", [])
@@ -4260,9 +4551,9 @@ def show_supplier_stock_resource_settings(update, context, resource_id: str) -> 
     if not resource:
         query.edit_message_text(
             "❌ Ресурс не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_resources")]]
+            ),
         )
         return
 
@@ -4283,25 +4574,36 @@ def show_supplier_stock_resource_settings(update, context, resource_id: str) -> 
 
     keyboard = [
         [
-            InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_resource_field|{resource_id}|name'),
-            InlineKeyboardButton("📂 UNC путь", callback_data=f'supplier_stock_resource_field|{resource_id}|unc_path'),
+            InlineKeyboardButton(
+                "✏️ Название", callback_data=f"supplier_stock_resource_field|{resource_id}|name"
+            ),
+            InlineKeyboardButton(
+                "📂 UNC путь", callback_data=f"supplier_stock_resource_field|{resource_id}|unc_path"
+            ),
         ],
         [
-            InlineKeyboardButton("👤 Логин", callback_data=f'supplier_stock_resource_field|{resource_id}|login'),
-            InlineKeyboardButton("🔐 Пароль", callback_data=f'supplier_stock_resource_field|{resource_id}|password'),
+            InlineKeyboardButton(
+                "👤 Логин", callback_data=f"supplier_stock_resource_field|{resource_id}|login"
+            ),
+            InlineKeyboardButton(
+                "🔐 Пароль", callback_data=f"supplier_stock_resource_field|{resource_id}|password"
+            ),
         ],
-        [InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_resource_toggle_{resource_id}')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [
-            InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton(
+                "🔁 Включить/выключить",
+                callback_data=f"supplier_stock_resource_toggle_{resource_id}",
+            )
+        ],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_resources"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
         ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
@@ -4310,7 +4612,7 @@ def show_supplier_stock_ftp_settings(update, context) -> None:
     query = update.callback_query
     query.answer()
 
-    context.user_data.pop('supplier_stock_ftp_field', None)
+    context.user_data.pop("supplier_stock_ftp_field", None)
 
     config = get_supplier_stock_config()
     ftp_settings = config.get("ftp_ork", {})
@@ -4328,22 +4630,21 @@ def show_supplier_stock_ftp_settings(update, context) -> None:
 
     keyboard = [
         [
-            InlineKeyboardButton("🌐 HOST FTP", callback_data='supplier_stock_ftp_field|host'),
-            InlineKeyboardButton("👤 Логин FTP", callback_data='supplier_stock_ftp_field|login'),
+            InlineKeyboardButton("🌐 HOST FTP", callback_data="supplier_stock_ftp_field|host"),
+            InlineKeyboardButton("👤 Логин FTP", callback_data="supplier_stock_ftp_field|login"),
         ],
-        [InlineKeyboardButton("🔐 Пароль FTP", callback_data='supplier_stock_ftp_field|password')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("🔐 Пароль FTP", callback_data="supplier_stock_ftp_field|password")],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
         [
-            InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_supplier_stock"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
         ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_supplier_stock_processing_menu(
     update,
@@ -4358,28 +4659,29 @@ def show_supplier_stock_processing_menu(
     query = update.callback_query
     query.answer()
 
-    context.user_data.pop('supplier_stock_processing_add', None)
-    context.user_data.pop('supplier_stock_processing_stage', None)
-    context.user_data.pop('supplier_stock_processing_data', None)
-    context.user_data.pop('supplier_stock_processing_edit', None)
-    context.user_data.pop('supplier_stock_processing_edit_id', None)
-    context.user_data.pop('supplier_stock_processing_variant_index', None)
-    context.user_data.pop('supplier_stock_processing_data_columns_expected', None)
-    context.user_data.pop('supplier_stock_processing_data_columns', None)
-    context.user_data.pop('supplier_stock_processing_output_names_expected', None)
-    context.user_data.pop('supplier_stock_processing_output_names', None)
-    context.user_data.pop('supplier_stock_processing_rule_dirty', None)
-    context.user_data['supplier_stock_processing_source_id'] = source_id
-    context.user_data['supplier_stock_processing_source_kind'] = source_kind
-    context.user_data['supplier_stock_processing_back'] = back_callback
-    context.user_data['supplier_stock_processing_action_prefix'] = action_prefix
-    context.user_data['supplier_stock_processing_title'] = title
+    context.user_data.pop("supplier_stock_processing_add", None)
+    context.user_data.pop("supplier_stock_processing_stage", None)
+    context.user_data.pop("supplier_stock_processing_data", None)
+    context.user_data.pop("supplier_stock_processing_edit", None)
+    context.user_data.pop("supplier_stock_processing_edit_id", None)
+    context.user_data.pop("supplier_stock_processing_variant_index", None)
+    context.user_data.pop("supplier_stock_processing_data_columns_expected", None)
+    context.user_data.pop("supplier_stock_processing_data_columns", None)
+    context.user_data.pop("supplier_stock_processing_output_names_expected", None)
+    context.user_data.pop("supplier_stock_processing_output_names", None)
+    context.user_data.pop("supplier_stock_processing_rule_dirty", None)
+    context.user_data["supplier_stock_processing_source_id"] = source_id
+    context.user_data["supplier_stock_processing_source_kind"] = source_kind
+    context.user_data["supplier_stock_processing_back"] = back_callback
+    context.user_data["supplier_stock_processing_action_prefix"] = action_prefix
+    context.user_data["supplier_stock_processing_title"] = title
 
     config = get_supplier_stock_config()
     rules = config.get("processing", {}).get("rules", [])
     if source_id is not None:
         rules = [
-            rule for rule in rules
+            rule
+            for rule in rules
             if _processing_rule_matches_source(rule, source_id, source_kind, config)
         ]
 
@@ -4393,7 +4695,9 @@ def show_supplier_stock_processing_menu(
             enabled = rule.get("enabled", True)
             active = rule.get("active", False)
             status_icon = "🟢" if enabled else "🔴"
-            processing_text = "обработка" if rule.get("requires_processing", True) else "без обработки"
+            processing_text = (
+                "обработка" if rule.get("requires_processing", True) else "без обработки"
+            )
             active_text = "да" if active else "нет"
             message_lines.append(
                 (
@@ -4406,7 +4710,7 @@ def show_supplier_stock_processing_menu(
         message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить правило", callback_data=f'{action_prefix}|add')],
+        [InlineKeyboardButton("➕ Добавить правило", callback_data=f"{action_prefix}|add")],
     ]
 
     for rule in rules:
@@ -4417,38 +4721,38 @@ def show_supplier_stock_processing_menu(
         active = rule.get("active", False)
         toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
         active_text = "⛔️ Отключить активность" if active else "⭐ Включить активность"
-        keyboard.append([
-            InlineKeyboardButton(
-                f"✏️ {rule.get('name', rule_id)}",
-                callback_data=f'{action_prefix}|edit|{rule_id}'
-            ),
-            InlineKeyboardButton(
-                f"{toggle_text}",
-                callback_data=f'{action_prefix}|toggle|{rule_id}'
-            ),
-            InlineKeyboardButton(
-                "🗑️",
-                callback_data=f'{action_prefix}|delete|{rule_id}'
-            ),
-        ])
-        keyboard.append([
-            InlineKeyboardButton(
-                active_text,
-                callback_data=f'{action_prefix}|activate|{rule_id}'
-            ),
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"✏️ {rule.get('name', rule_id)}",
+                    callback_data=f"{action_prefix}|edit|{rule_id}",
+                ),
+                InlineKeyboardButton(
+                    f"{toggle_text}", callback_data=f"{action_prefix}|toggle|{rule_id}"
+                ),
+                InlineKeyboardButton("🗑️", callback_data=f"{action_prefix}|delete|{rule_id}"),
+            ]
+        )
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    active_text, callback_data=f"{action_prefix}|activate|{rule_id}"
+                ),
+            ]
+        )
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data="main_menu")])
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def _default_processing_variant() -> dict:
     return {
@@ -4479,11 +4783,13 @@ def _default_processing_variant() -> dict:
         },
     }
 
+
 def _ensure_processing_variant(data: dict, index: int) -> dict:
     variants = data.setdefault("variants", [])
     while len(variants) <= index:
         variants.append(_default_processing_variant())
     return variants[index]
+
 
 def _set_supplier_stock_processing_active_rule(
     rules: list[dict],
@@ -4495,12 +4801,15 @@ def _set_supplier_stock_processing_active_rule(
     for rule in rules:
         if source_id is not None and str(rule.get("source_id")) != str(source_id):
             continue
-        if source_kind and not _processing_rule_matches_source(rule, source_id, source_kind, config):
+        if source_kind and not _processing_rule_matches_source(
+            rule, source_id, source_kind, config
+        ):
             continue
         if str(rule.get("id")) == str(rule_id):
             rule["active"] = not rule.get("active", False)
             if rule["active"]:
                 rule["enabled"] = True
+
 
 def _sync_processing_variants_count(data: dict, count: int) -> None:
     variants = data.setdefault("variants", [])
@@ -4508,6 +4817,7 @@ def _sync_processing_variants_count(data: dict, count: int) -> None:
         data["variants"] = variants[:count]
     while len(data["variants"]) < count:
         data["variants"].append(_default_processing_variant())
+
 
 def _sync_variant_columns(variant: dict, count: int) -> None:
     variant["data_columns_count"] = count
@@ -4523,6 +4833,7 @@ def _sync_variant_columns(variant: dict, count: int) -> None:
     while len(filters) < count:
         filters.append(True)
     variant["use_article_filter_columns"] = filters[:count]
+
 
 def _remove_variant_column(variant: dict, index: int) -> bool:
     columns_count = variant.get("data_columns_count") or max(
@@ -4545,6 +4856,7 @@ def _remove_variant_column(variant: dict, index: int) -> bool:
     variant["use_article_filter_columns"] = filters
     _sync_variant_columns(variant, max(columns_count - 1, 0))
     return True
+
 
 def _fill_processing_rule_from_source(data: dict) -> None:
     source_id = data.get("source_id")
@@ -4569,8 +4881,10 @@ def _fill_processing_rule_from_source(data: dict) -> None:
     if source_kind and not data.get("source_kind"):
         data["source_kind"] = source_kind
 
+
 def _find_supplier_source(sources: list[dict], source_id: str) -> dict | None:
     return next((item for item in sources if str(item.get("id")) == str(source_id)), None)
+
 
 def _resolve_processing_rule_source(data: dict, config: dict) -> tuple[str | None, dict | None]:
     source_id = data.get("source_id")
@@ -4602,6 +4916,7 @@ def _resolve_processing_rule_source(data: dict, config: dict) -> tuple[str | Non
             return "mail", mail_source
     return None, None
 
+
 def _processing_rule_matches_source(
     rule: dict,
     source_id: str | None,
@@ -4614,6 +4929,7 @@ def _processing_rule_matches_source(
         return True
     resolved_kind, _ = _resolve_processing_rule_source(rule, config)
     return resolved_kind == source_kind
+
 
 def _processing_rule_summary(data: dict) -> str:
     requires_processing = data.get("requires_processing", True)
@@ -4633,6 +4949,7 @@ def _processing_rule_summary(data: dict) -> str:
     else:
         lines.append(f"• Имя файла на выходе: `{output_name}`")
     return "\n".join(lines)
+
 
 def show_supplier_stock_processing_rule_menu(update, context) -> None:
     query = update.callback_query
@@ -4654,99 +4971,133 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
 
     toggle_text = "✅ Требуется обработка" if requires_processing else "⛔️ Обработка не требуется"
 
-    keyboard = [[InlineKeyboardButton("— Настройки правила —", callback_data='supplier_stock_noop')]]
+    keyboard = [
+        [InlineKeyboardButton("— Настройки правила —", callback_data="supplier_stock_noop")]
+    ]
     if not data.get("source_id"):
-        keyboard.extend([
-            [InlineKeyboardButton("✏️ Название", callback_data='supplier_stock_processing_rule|field|name')],
-            [InlineKeyboardButton("📄 Файл источника", callback_data='supplier_stock_processing_rule|field|source_file')],
-        ])
-    keyboard.append([InlineKeyboardButton(toggle_text, callback_data='supplier_stock_processing_rule|toggle_processing')])
+        keyboard.extend(
+            [
+                [
+                    InlineKeyboardButton(
+                        "✏️ Название", callback_data="supplier_stock_processing_rule|field|name"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "📄 Файл источника",
+                        callback_data="supplier_stock_processing_rule|field|source_file",
+                    )
+                ],
+            ]
+        )
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                toggle_text, callback_data="supplier_stock_processing_rule|toggle_processing"
+            )
+        ]
+    )
 
     if requires_processing:
         variant = _ensure_processing_variant(data, variant_index or 0)
         orc = variant.get("orc", {})
         orc_enabled = orc.get("enabled", False)
         orc_text = "да" if orc_enabled else "нет"
-        keyboard.extend([
-            [InlineKeyboardButton("📍 Первая строка с данными", callback_data='supplier_stock_processing_rule|field|data_row')],
+        keyboard.extend(
             [
-                InlineKeyboardButton(
-                    "🔎 Номер колонки с артикулом",
-                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_col'
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🧪 Условия отбора артикулов",
-                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_filter'
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🧪 Условия отбора по еще одной колонке",
-                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|extra_filter'
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🏷️ Префикс в артикуле",
-                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_prefix'
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🏷️ Постфикс артикула",
-                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_postfix'
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🧹 Изменение входящего артикула",
-                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_transform'
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "📊 Колонки с данными",
-                    callback_data=f'supplier_stock_processing_columns|menu|{variant_index}'
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🧾 Формат файла на выходе",
-                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_format'
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    f"📦 Файл для ОРК: {orc_text}",
-                    callback_data=f'supplier_stock_processing_variant|toggle_orc|{variant_index}'
-                )
-            ],
-        ])
+                [
+                    InlineKeyboardButton(
+                        "📍 Первая строка с данными",
+                        callback_data="supplier_stock_processing_rule|field|data_row",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🔎 Номер колонки с артикулом",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|article_col",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🧪 Условия отбора артикулов",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|article_filter",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🧪 Условия отбора по еще одной колонке",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|extra_filter",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🏷️ Префикс в артикуле",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|article_prefix",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🏷️ Постфикс артикула",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|article_postfix",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🧹 Изменение входящего артикула",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|article_transform",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "📊 Колонки с данными",
+                        callback_data=f"supplier_stock_processing_columns|menu|{variant_index}",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🧾 Формат файла на выходе",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|output_format",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        f"📦 Файл для ОРК: {orc_text}",
+                        callback_data=f"supplier_stock_processing_variant|toggle_orc|{variant_index}",
+                    )
+                ],
+            ]
+        )
         if orc_enabled:
-            keyboard.append([
-                InlineKeyboardButton(
-                    "⚙️ Настройки файла ОРК",
-                    callback_data=f'supplier_stock_processing_orc|menu|{variant_index}'
-                )
-            ])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        "⚙️ Настройки файла ОРК",
+                        callback_data=f"supplier_stock_processing_orc|menu|{variant_index}",
+                    )
+                ]
+            )
     else:
-        keyboard.append([
-            InlineKeyboardButton("📄 Имя файла на выходе", callback_data='supplier_stock_processing_rule|field|output_name')
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "📄 Имя файла на выходе",
+                    callback_data="supplier_stock_processing_rule|field|output_name",
+                )
+            ]
+        )
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|back'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data="main_menu")])
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_processing_rule|back"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_supplier_stock_processing_variant_menu(update, context, variant_index: int) -> None:
     query = update.callback_query
@@ -4754,7 +5105,7 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
 
     data = context.user_data.get("supplier_stock_processing_rule_data", {})
     variant = _ensure_processing_variant(data, variant_index)
-    context.user_data['supplier_stock_processing_rule_data'] = data
+    context.user_data["supplier_stock_processing_rule_data"] = data
 
     article_col = variant.get("article_col") or "не задано"
     article_filter = _escape_pattern_text(variant.get("article_filter") or "не задано")
@@ -4819,82 +5170,152 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
             output_label = f"№{orc_output_index}"
             if data_columns_count and orc_output_index <= data_columns_count:
                 names = variant.get("output_names", [])
-                name_value = names[orc_output_index - 1] if orc_output_index - 1 < len(names) else ""
+                name_value = (
+                    names[orc_output_index - 1] if orc_output_index - 1 < len(names) else ""
+                )
                 if name_value:
                     output_label = f"{orc_output_index}. {_escape_pattern_text(name_value)}"
             message += f"\n• Файл источника (выход): `{output_label}`"
 
     keyboard = [
-        [InlineKeyboardButton("— Настройки файла —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("🔎 Номер колонки с артикулом", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_col')],
-        [InlineKeyboardButton("🧪 Условия отбора артикулов", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_filter')],
+        [InlineKeyboardButton("— Настройки файла —", callback_data="supplier_stock_noop")],
+        [
+            InlineKeyboardButton(
+                "🔎 Номер колонки с артикулом",
+                callback_data=f"supplier_stock_processing_variant|field|{variant_index}|article_col",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🧪 Условия отбора артикулов",
+                callback_data=f"supplier_stock_processing_variant|field|{variant_index}|article_filter",
+            )
+        ],
         [
             InlineKeyboardButton(
                 "🧪 Условия отбора по еще одной колонке",
-                callback_data=f'supplier_stock_processing_variant|field|{variant_index}|extra_filter'
+                callback_data=f"supplier_stock_processing_variant|field|{variant_index}|extra_filter",
             )
         ],
-        [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_prefix')],
-        [InlineKeyboardButton("🏷️ Постфикс артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_postfix')],
-        [InlineKeyboardButton("🧹 Изменение входящего артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_transform')],
+        [
+            InlineKeyboardButton(
+                "🏷️ Префикс в артикуле",
+                callback_data=f"supplier_stock_processing_variant|field|{variant_index}|article_prefix",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🏷️ Постфикс артикула",
+                callback_data=f"supplier_stock_processing_variant|field|{variant_index}|article_postfix",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🧹 Изменение входящего артикула",
+                callback_data=f"supplier_stock_processing_variant|field|{variant_index}|article_transform",
+            )
+        ],
     ]
 
-    keyboard.append([InlineKeyboardButton("— Колонки с данными —", callback_data='supplier_stock_noop')])
-    keyboard.append([
-        InlineKeyboardButton("➕ Добавить колонку", callback_data=f'supplier_stock_processing_variant|add_column|{variant_index}')
-    ])
+    keyboard.append(
+        [InlineKeyboardButton("— Колонки с данными —", callback_data="supplier_stock_noop")]
+    )
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                "➕ Добавить колонку",
+                callback_data=f"supplier_stock_processing_variant|add_column|{variant_index}",
+            )
+        ]
+    )
 
     if data_columns_count:
         for idx in range(data_columns_count):
             label = variant.get("data_columns", [])
             value = label[idx] if idx < len(label) else "не задано"
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"📈 Колонка {idx + 1}: {value or 'не задано'}",
-                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|data_column|{idx}'
-                )
-            ])
-        keyboard.append([InlineKeyboardButton("— Имена файлов —", callback_data='supplier_stock_noop')])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"📈 Колонка {idx + 1}: {value or 'не задано'}",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|data_column|{idx}",
+                    )
+                ]
+            )
+        keyboard.append(
+            [InlineKeyboardButton("— Имена файлов —", callback_data="supplier_stock_noop")]
+        )
         for idx in range(data_columns_count):
             names = variant.get("output_names", [])
             name_value = names[idx] if idx < len(names) else "не задано"
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"📄 Имя файла {idx + 1}: {name_value or 'не задано'}",
-                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_name|{idx}'
-                )
-            ])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"📄 Имя файла {idx + 1}: {name_value or 'не задано'}",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|output_name|{idx}",
+                    )
+                ]
+            )
 
-    keyboard.extend([
-        [InlineKeyboardButton("🧾 Формат файла на выходе", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_format')],
-        [InlineKeyboardButton(f"📦 Файл для ОРК: {orc_text}", callback_data=f'supplier_stock_processing_variant|toggle_orc|{variant_index}')],
-    ])
-
-    if orc_enabled:
-        keyboard.extend([
-            [InlineKeyboardButton("— Файл для ОРК —", callback_data='supplier_stock_noop')],
-            [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_prefix')],
-            [InlineKeyboardButton("📦 Stor", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_stor')],
-            [InlineKeyboardButton("📈 Колонка с данными", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_column')],
+    keyboard.extend(
+        [
             [
                 InlineKeyboardButton(
-                    "🧾 Формат файла ОРК на выходе",
-                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_output_format'
+                    "🧾 Формат файла на выходе",
+                    callback_data=f"supplier_stock_processing_variant|field|{variant_index}|output_format",
                 )
             ],
-        ])
+            [
+                InlineKeyboardButton(
+                    f"📦 Файл для ОРК: {orc_text}",
+                    callback_data=f"supplier_stock_processing_variant|toggle_orc|{variant_index}",
+                )
+            ],
+        ]
+    )
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    if orc_enabled:
+        keyboard.extend(
+            [
+                [InlineKeyboardButton("— Файл для ОРК —", callback_data="supplier_stock_noop")],
+                [
+                    InlineKeyboardButton(
+                        "🏷️ Префикс в артикуле",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|orc_prefix",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "📦 Stor",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|orc_stor",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "📈 Колонка с данными",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|orc_column",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🧾 Формат файла ОРК на выходе",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|orc_output_format",
+                    )
+                ],
+            ]
+        )
+
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data="main_menu")])
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_processing_rule|menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_supplier_stock_processing_columns_menu(update, context, variant_index: int) -> None:
     query = update.callback_query
@@ -4902,7 +5323,7 @@ def show_supplier_stock_processing_columns_menu(update, context, variant_index: 
 
     data = context.user_data.get("supplier_stock_processing_rule_data", {})
     variant = _ensure_processing_variant(data, variant_index)
-    context.user_data['supplier_stock_processing_rule_data'] = data
+    context.user_data["supplier_stock_processing_rule_data"] = data
 
     data_columns_count = variant.get("data_columns_count") or max(
         len(variant.get("data_columns", [])),
@@ -4940,57 +5361,76 @@ def show_supplier_stock_processing_columns_menu(update, context, variant_index: 
         else "⛔️ Не использовать условия отбора артикулов"
     )
     keyboard = [
-        [InlineKeyboardButton("— Колонки с данными —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton(toggle_text, callback_data=f'supplier_stock_processing_columns|toggle_article_filter|{variant_index}')],
-        [InlineKeyboardButton("➕ Добавить колонку", callback_data=f'supplier_stock_processing_columns|add_column|{variant_index}')],
+        [InlineKeyboardButton("— Колонки с данными —", callback_data="supplier_stock_noop")],
+        [
+            InlineKeyboardButton(
+                toggle_text,
+                callback_data=f"supplier_stock_processing_columns|toggle_article_filter|{variant_index}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "➕ Добавить колонку",
+                callback_data=f"supplier_stock_processing_columns|add_column|{variant_index}",
+            )
+        ],
     ]
 
     if data_columns_count:
         for idx in range(data_columns_count):
             value = columns[idx] if idx < len(columns) else "не задано"
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"📈 Колонка {idx + 1}: {value or 'не задано'}",
-                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|data_column|{idx}'
-                ),
-                InlineKeyboardButton(
-                    "🗑️",
-                    callback_data=f'supplier_stock_processing_columns|remove_column|{variant_index}|{idx}'
-                ),
-            ])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"📈 Колонка {idx + 1}: {value or 'не задано'}",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|data_column|{idx}",
+                    ),
+                    InlineKeyboardButton(
+                        "🗑️",
+                        callback_data=f"supplier_stock_processing_columns|remove_column|{variant_index}|{idx}",
+                    ),
+                ]
+            )
             filter_enabled = column_filters[idx] if idx < len(column_filters) else True
             filter_toggle_text = (
                 f"✅ Фильтр артикулов {idx + 1}"
                 if filter_enabled
                 else f"⛔️ Фильтр артикулов {idx + 1}"
             )
-            keyboard.append([
-                InlineKeyboardButton(
-                    filter_toggle_text,
-                    callback_data=f'supplier_stock_processing_columns|tac|{variant_index}|{idx}'
-                )
-            ])
-        keyboard.append([InlineKeyboardButton("— Имена файлов —", callback_data='supplier_stock_noop')])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        filter_toggle_text,
+                        callback_data=f"supplier_stock_processing_columns|tac|{variant_index}|{idx}",
+                    )
+                ]
+            )
+        keyboard.append(
+            [InlineKeyboardButton("— Имена файлов —", callback_data="supplier_stock_noop")]
+        )
         for idx in range(data_columns_count):
             name_value = names[idx] if idx < len(names) else "не задано"
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"📄 Имя файла {idx + 1}: {name_value or 'не задано'}",
-                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_name|{idx}'
-                )
-            ])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"📄 Имя файла {idx + 1}: {name_value or 'не задано'}",
+                        callback_data=f"supplier_stock_processing_variant|field|{variant_index}|output_name|{idx}",
+                    )
+                ]
+            )
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data="main_menu")])
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_processing_rule|menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_supplier_stock_processing_orc_menu(update, context, variant_index: int) -> None:
     query = update.callback_query
@@ -4998,7 +5438,7 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
 
     data = context.user_data.get("supplier_stock_processing_rule_data", {})
     variant = _ensure_processing_variant(data, variant_index)
-    context.user_data['supplier_stock_processing_rule_data'] = data
+    context.user_data["supplier_stock_processing_rule_data"] = data
 
     orc = variant.get("orc", {})
     orc_prefix = _escape_pattern_text(orc.get("prefix") or "не задано")
@@ -5046,82 +5486,118 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
         if orc_output_index:
             output_label = f"№{orc_output_index}"
             if orc_output_index <= data_columns_count:
-                name_value = output_names[orc_output_index - 1] if orc_output_index - 1 < len(output_names) else ""
+                name_value = (
+                    output_names[orc_output_index - 1]
+                    if orc_output_index - 1 < len(output_names)
+                    else ""
+                )
                 if name_value:
                     output_label = f"{orc_output_index}. {_escape_pattern_text(name_value)}"
         message_lines.append(f"• Файл источника (выход): `{output_label}`")
     message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("— Файл для ОРК —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_prefix')],
-        [InlineKeyboardButton("📦 Stor", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_stor')],
-        [InlineKeyboardButton("📈 Колонка с данными", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_column')],
+        [InlineKeyboardButton("— Файл для ОРК —", callback_data="supplier_stock_noop")],
+        [
+            InlineKeyboardButton(
+                "🏷️ Префикс в артикуле",
+                callback_data=f"supplier_stock_processing_variant|field|{variant_index}|orc_prefix",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📦 Stor",
+                callback_data=f"supplier_stock_processing_variant|field|{variant_index}|orc_stor",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📈 Колонка с данными",
+                callback_data=f"supplier_stock_processing_variant|field|{variant_index}|orc_column",
+            )
+        ],
         [
             InlineKeyboardButton(
                 "📄 Имя выходного файла ОРК",
-                callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_output_name'
+                callback_data=f"supplier_stock_processing_variant|field|{variant_index}|orc_output_name",
             )
         ],
         [
             InlineKeyboardButton(
                 "🧾 Формат файла ОРК на выходе",
-                callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_output_format'
+                callback_data=f"supplier_stock_processing_variant|field|{variant_index}|orc_output_format",
             )
         ],
     ]
 
     if input_count > 1:
-        keyboard.append([InlineKeyboardButton("— Файл источника (вход) —", callback_data='supplier_stock_noop')])
+        keyboard.append(
+            [InlineKeyboardButton("— Файл источника (вход) —", callback_data="supplier_stock_noop")]
+        )
         for idx in range(1, input_count + 1):
             selected = "✅" if orc_input_index == idx else "📥"
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"{selected} Вход {idx}",
-                    callback_data=f'supplier_stock_processing_orc|set_input|{variant_index}|{idx}'
-                )
-            ])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"{selected} Вход {idx}",
+                        callback_data=f"supplier_stock_processing_orc|set_input|{variant_index}|{idx}",
+                    )
+                ]
+            )
         if orc_input_index:
-            keyboard.append([
-                InlineKeyboardButton(
-                    "🚫 Сбросить выбор входа",
-                    callback_data=f'supplier_stock_processing_orc|clear_input|{variant_index}'
-                )
-            ])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        "🚫 Сбросить выбор входа",
+                        callback_data=f"supplier_stock_processing_orc|clear_input|{variant_index}",
+                    )
+                ]
+            )
 
     if data_columns_count > 1:
-        keyboard.append([InlineKeyboardButton("— Файл источника (выход) —", callback_data='supplier_stock_noop')])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "— Файл источника (выход) —", callback_data="supplier_stock_noop"
+                )
+            ]
+        )
         for idx in range(1, data_columns_count + 1):
             name_value = output_names[idx - 1] if idx - 1 < len(output_names) else ""
             label = f"Выход {idx}"
             if name_value:
                 label = f"{idx}. {name_value}"
             selected = "✅" if orc_output_index == idx else "📤"
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"{selected} {label}",
-                    callback_data=f'supplier_stock_processing_orc|set_output|{variant_index}|{idx}'
-                )
-            ])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"{selected} {label}",
+                        callback_data=f"supplier_stock_processing_orc|set_output|{variant_index}|{idx}",
+                    )
+                ]
+            )
         if orc_output_index:
-            keyboard.append([
-                InlineKeyboardButton(
-                    "🚫 Сбросить выбор выхода",
-                    callback_data=f'supplier_stock_processing_orc|clear_output|{variant_index}'
-                )
-            ])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        "🚫 Сбросить выбор выхода",
+                        callback_data=f"supplier_stock_processing_orc|clear_output|{variant_index}",
+                    )
+                ]
+            )
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data="main_menu")])
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_processing_rule|menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def supplier_stock_start_processing_rule_menu(
     update,
@@ -5134,10 +5610,10 @@ def supplier_stock_start_processing_rule_menu(
     query = update.callback_query
     query.answer()
 
-    context.user_data.pop('supplier_stock_processing_stage', None)
-    context.user_data.pop('supplier_stock_processing_data', None)
-    context.user_data.pop('supplier_stock_processing_add', None)
-    context.user_data.pop('supplier_stock_processing_edit', None)
+    context.user_data.pop("supplier_stock_processing_stage", None)
+    context.user_data.pop("supplier_stock_processing_data", None)
+    context.user_data.pop("supplier_stock_processing_add", None)
+    context.user_data.pop("supplier_stock_processing_edit", None)
 
     config = get_supplier_stock_config()
     rules = config.get("processing", {}).get("rules", [])
@@ -5147,17 +5623,17 @@ def supplier_stock_start_processing_rule_menu(
         if not rule:
             query.edit_message_text(
                 "❌ Правило не найдено.",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]]
+                ),
             )
             return
-        context.user_data['supplier_stock_processing_rule_edit_id'] = rule_id
-        context.user_data['supplier_stock_processing_rule_add'] = False
+        context.user_data["supplier_stock_processing_rule_edit_id"] = rule_id
+        context.user_data["supplier_stock_processing_rule_add"] = False
         data = dict(rule)
     else:
-        context.user_data['supplier_stock_processing_rule_edit_id'] = None
-        context.user_data['supplier_stock_processing_rule_add'] = True
+        context.user_data["supplier_stock_processing_rule_edit_id"] = None
+        context.user_data["supplier_stock_processing_rule_add"] = True
         data = {
             "name": "",
             "source_file": "",
@@ -5168,16 +5644,17 @@ def supplier_stock_start_processing_rule_menu(
             "variants": [],
         }
     if source_id:
-        data['source_id'] = source_id
-        context.user_data['supplier_stock_processing_source_id'] = source_id
+        data["source_id"] = source_id
+        context.user_data["supplier_stock_processing_source_id"] = source_id
     if source_kind:
-        data['source_kind'] = source_kind
-        context.user_data['supplier_stock_processing_source_kind'] = source_kind
+        data["source_kind"] = source_kind
+        context.user_data["supplier_stock_processing_source_kind"] = source_kind
     _fill_processing_rule_from_source(data)
-    context.user_data['supplier_stock_processing_rule_data'] = data
-    context.user_data['supplier_stock_processing_back'] = back_callback
-    context.user_data['supplier_stock_processing_rule_dirty'] = False
+    context.user_data["supplier_stock_processing_rule_data"] = data
+    context.user_data["supplier_stock_processing_back"] = back_callback
+    context.user_data["supplier_stock_processing_rule_dirty"] = False
     show_supplier_stock_processing_rule_menu(update, context)
+
 
 def supplier_stock_start_processing_field_edit(
     update,
@@ -5193,15 +5670,21 @@ def supplier_stock_start_processing_field_edit(
     if rule_data.get("source_id") and field in ("name", "source_file"):
         query.edit_message_text(
             "ℹ️ Название и файл источника берутся из настроек источника.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "↩️ Назад", callback_data="supplier_stock_processing_rule|menu"
+                        )
+                    ]
+                ]
+            ),
         )
         return
 
-    context.user_data['supplier_stock_processing_field'] = field
-    context.user_data['supplier_stock_processing_variant_index'] = variant_index
-    context.user_data['supplier_stock_processing_item_index'] = item_index
+    context.user_data["supplier_stock_processing_field"] = field
+    context.user_data["supplier_stock_processing_variant_index"] = variant_index
+    context.user_data["supplier_stock_processing_item_index"] = item_index
 
     prompts = {
         "name": "Введите название правила:",
@@ -5215,8 +5698,8 @@ def supplier_stock_start_processing_field_edit(
             "• $1 ~ /^[0-9]/ && $col+0 > 0\n"
             "• $1 ~ /^[A-Z].*/ && $4 ~ /^[0-9]+$/\n"
             "• grep -E '^DKS [0-9A-Z]{6,},'\n"
-            "• gsub(/^\\./, \"\", art); gsub(/[A-Za-z]+$/, \"\", art);\n"
-            "• ($3+0 > 0) && ($4 == \"Москва\")"
+            '• gsub(/^\\./, "", art); gsub(/[A-Za-z]+$/, "", art);\n'
+            '• ($3+0 > 0) && ($4 == "Москва")'
         ),
         "extra_filter": (
             "Введите номер колонки и условие отбора (regex) через ';'.\n"
@@ -5291,7 +5774,13 @@ def supplier_stock_start_processing_field_edit(
                 current_value = names[item_index]
         elif field == "output_format":
             current_value = variant.get("output_format")
-        elif field in ("orc_prefix", "orc_stor", "orc_column", "orc_output_name", "orc_output_format"):
+        elif field in (
+            "orc_prefix",
+            "orc_stor",
+            "orc_column",
+            "orc_output_name",
+            "orc_output_format",
+        ):
             orc = variant.get("orc", {})
             if field == "orc_prefix":
                 current_value = orc.get("prefix")
@@ -5317,16 +5806,17 @@ def supplier_stock_start_processing_field_edit(
             current_value = rule_data.get("output_name")
 
     current_hint = _format_current_hint(current_value)
-    back_callback = 'supplier_stock_processing_rule|menu'
+    back_callback = "supplier_stock_processing_rule|menu"
     if variant_index is not None:
-        back_callback = f'supplier_stock_processing_variant|menu|{variant_index}'
+        back_callback = f"supplier_stock_processing_variant|menu|{variant_index}"
     _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
         f"{prompt}\n\nТекущее значение: {current_hint}",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]]
+        ),
     )
+
 
 def _validate_processing_rule(data: dict) -> list[str]:
     missing = []
@@ -5361,6 +5851,7 @@ def _validate_processing_rule(data: dict) -> list[str]:
                     missing.append(f"Stor ОРК (файл {idx + 1})")
     return missing
 
+
 def _save_processing_rule_data(update, context) -> bool:
     query = update.callback_query
     data = context.user_data.get("supplier_stock_processing_rule_data", {})
@@ -5373,9 +5864,10 @@ def _save_processing_rule_data(update, context) -> bool:
     if missing:
         query.answer("Заполните: " + ", ".join(missing), show_alert=True)
         return False
-    edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id') or data.get("id")
+    edit_id = context.user_data.get("supplier_stock_processing_rule_edit_id") or data.get("id")
     _save_supplier_stock_processing_rule(context, data, edit_id=edit_id)
     return True
+
 
 def _persist_processing_rule_data(context) -> None:
     data = context.user_data.get("supplier_stock_processing_rule_data", {})
@@ -5383,37 +5875,41 @@ def _persist_processing_rule_data(context) -> None:
     if source_id:
         data["source_id"] = source_id
     _fill_processing_rule_from_source(data)
-    edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id') or data.get("id")
+    edit_id = context.user_data.get("supplier_stock_processing_rule_edit_id") or data.get("id")
     _save_supplier_stock_processing_rule(context, data, edit_id=edit_id, keep_context=True)
     if not edit_id:
-        context.user_data['supplier_stock_processing_rule_edit_id'] = data.get('id')
-        context.user_data['supplier_stock_processing_rule_add'] = False
+        context.user_data["supplier_stock_processing_rule_edit_id"] = data.get("id")
+        context.user_data["supplier_stock_processing_rule_add"] = False
     elif data.get("id"):
-        context.user_data['supplier_stock_processing_rule_edit_id'] = data.get("id")
-    context.user_data['supplier_stock_processing_rule_data'] = data
+        context.user_data["supplier_stock_processing_rule_edit_id"] = data.get("id")
+    context.user_data["supplier_stock_processing_rule_data"] = data
+
 
 def _show_processing_rule_back_menu(update, context, back_callback: str) -> None:
-    if back_callback == 'settings_ext_supplier_stock':
+    if back_callback == "settings_ext_supplier_stock":
         show_supplier_stock_settings(update, context)
         return
-    if back_callback == 'supplier_stock_processing':
-        show_supplier_stock_processing_menu(update, context, action_prefix="supplier_stock_processing")
+    if back_callback == "supplier_stock_processing":
+        show_supplier_stock_processing_menu(
+            update, context, action_prefix="supplier_stock_processing"
+        )
         return
-    if back_callback.startswith('supplier_stock_source_settings|'):
-        source_id = back_callback.split('|', 1)[1]
+    if back_callback.startswith("supplier_stock_source_settings|"):
+        source_id = back_callback.split("|", 1)[1]
         show_supplier_stock_source_settings(update, context, source_id)
         return
-    if back_callback.startswith('supplier_stock_mail_source_settings|'):
-        source_id = back_callback.split('|', 1)[1]
+    if back_callback.startswith("supplier_stock_mail_source_settings|"):
+        source_id = back_callback.split("|", 1)[1]
         show_supplier_stock_mail_source_settings(update, context, source_id)
         return
 
     update.callback_query.edit_message_text(
         "✅ Настройки сохранены.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]]
+        ),
     )
+
 
 def supplier_stock_save_processing_rule(update, context) -> None:
     query = update.callback_query
@@ -5421,27 +5917,30 @@ def supplier_stock_save_processing_rule(update, context) -> None:
 
     if not _save_processing_rule_data(update, context):
         return
-    context.user_data['supplier_stock_processing_rule_dirty'] = False
-    back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
+    context.user_data["supplier_stock_processing_rule_dirty"] = False
+    back_callback = context.user_data.get(
+        "supplier_stock_processing_back", "supplier_stock_processing"
+    )
     query.edit_message_text(
         "✅ Настройки сохранены.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]]
+        ),
     )
+
 
 def show_supplier_stock_mail_sources_menu(update, context):
     """Показать список правил вложений для почты."""
     query = update.callback_query
     query.answer()
 
-    context.user_data.pop('supplier_stock_mail_source_settings_id', None)
-    context.user_data.pop('supplier_stock_mail_add_source', None)
-    context.user_data.pop('supplier_stock_mail_source_stage', None)
-    context.user_data.pop('supplier_stock_mail_source_data', None)
-    context.user_data.pop('supplier_stock_mail_edit_source', None)
-    context.user_data.pop('supplier_stock_mail_edit_source_stage', None)
-    context.user_data.pop('supplier_stock_mail_edit_source_id', None)
+    context.user_data.pop("supplier_stock_mail_source_settings_id", None)
+    context.user_data.pop("supplier_stock_mail_add_source", None)
+    context.user_data.pop("supplier_stock_mail_source_stage", None)
+    context.user_data.pop("supplier_stock_mail_source_data", None)
+    context.user_data.pop("supplier_stock_mail_edit_source", None)
+    context.user_data.pop("supplier_stock_mail_edit_source_stage", None)
+    context.user_data.pop("supplier_stock_mail_edit_source_id", None)
 
     config = get_supplier_stock_config()
     sources = config.get("mail", {}).get("sources", [])
@@ -5451,7 +5950,9 @@ def show_supplier_stock_mail_sources_menu(update, context):
     else:
         message_lines = ["📎 *Правила вложений*\n"]
         for index, source in enumerate(sources, start=1):
-            name = _escape_pattern_text(source.get("name") or source.get("id") or f"Правило {index}")
+            name = _escape_pattern_text(
+                source.get("name") or source.get("id") or f"Правило {index}"
+            )
             sender = _escape_pattern_text(source.get("sender_pattern") or "любой")
             subject = _escape_pattern_text(source.get("subject_pattern") or "любой")
             mime_pattern = _escape_pattern_text(source.get("mime_pattern") or "application/.*")
@@ -5477,7 +5978,11 @@ def show_supplier_stock_mail_sources_menu(update, context):
         message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить правило", callback_data='supplier_stock_mail_source_add')],
+        [
+            InlineKeyboardButton(
+                "➕ Добавить правило", callback_data="supplier_stock_mail_source_add"
+            )
+        ],
     ]
 
     for source in sources:
@@ -5488,45 +5993,48 @@ def show_supplier_stock_mail_sources_menu(update, context):
         unpack_enabled = source.get("unpack_archive", False)
         toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
         unpack_text = "📦 Распаковка: вкл" if unpack_enabled else "📦 Распаковка: выкл"
-        keyboard.append([
-            InlineKeyboardButton(
-                f"⚙️ {source.get('name', source_id)}",
-                callback_data=f'supplier_stock_mail_source_settings|{source_id}'
-            ),
-            InlineKeyboardButton(
-                f"{toggle_text}",
-                callback_data=f'supplier_stock_mail_source_toggle_{source_id}'
-            ),
-        ])
-        keyboard.append([
-            InlineKeyboardButton(
-                unpack_text,
-                callback_data=f'supplier_stock_mail_source_unpack_toggle_{source_id}'
-            ),
-            InlineKeyboardButton(
-                "🗑️",
-                callback_data=f'supplier_stock_mail_source_delete_{source_id}'
-            ),
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"⚙️ {source.get('name', source_id)}",
+                    callback_data=f"supplier_stock_mail_source_settings|{source_id}",
+                ),
+                InlineKeyboardButton(
+                    f"{toggle_text}", callback_data=f"supplier_stock_mail_source_toggle_{source_id}"
+                ),
+            ]
+        )
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    unpack_text,
+                    callback_data=f"supplier_stock_mail_source_unpack_toggle_{source_id}",
+                ),
+                InlineKeyboardButton(
+                    "🗑️", callback_data=f"supplier_stock_mail_source_delete_{source_id}"
+                ),
+            ]
+        )
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data="main_menu")])
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_supplier_stock_schedule_menu(update, context):
     """Показать меню расписания загрузки остатков поставщиков."""
     query = update.callback_query
     query.answer()
 
-    context.user_data.pop('supplier_stock_edit', None)
+    context.user_data.pop("supplier_stock_edit", None)
 
     config = get_supplier_stock_config()
     schedule = config.get("download", {}).get("schedule", {})
@@ -5541,31 +6049,36 @@ def show_supplier_stock_schedule_menu(update, context):
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔁 Включить/выключить", callback_data='supplier_stock_schedule_toggle')],
-        [InlineKeyboardButton("🕒 Изменить время", callback_data='supplier_stock_schedule_time')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [
+            InlineKeyboardButton(
+                "🔁 Включить/выключить", callback_data="supplier_stock_schedule_toggle"
+            )
+        ],
+        [InlineKeyboardButton("🕒 Изменить время", callback_data="supplier_stock_schedule_time")],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_download"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_supplier_stock_sources_menu(update, context):
     """Показать список источников файлов остатков."""
     query = update.callback_query
     query.answer()
 
-    context.user_data.pop('supplier_stock_source_settings_id', None)
-    context.user_data.pop('supplier_stock_add_source', None)
-    context.user_data.pop('supplier_stock_source_stage', None)
-    context.user_data.pop('supplier_stock_source_data', None)
-    context.user_data.pop('supplier_stock_edit_source', None)
-    context.user_data.pop('supplier_stock_edit_source_stage', None)
-    context.user_data.pop('supplier_stock_edit_source_id', None)
+    context.user_data.pop("supplier_stock_source_settings_id", None)
+    context.user_data.pop("supplier_stock_add_source", None)
+    context.user_data.pop("supplier_stock_source_stage", None)
+    context.user_data.pop("supplier_stock_source_data", None)
+    context.user_data.pop("supplier_stock_edit_source", None)
+    context.user_data.pop("supplier_stock_edit_source_stage", None)
+    context.user_data.pop("supplier_stock_edit_source_id", None)
 
     config = get_supplier_stock_config()
     sources = config.get("download", {}).get("sources", [])
@@ -5575,11 +6088,15 @@ def show_supplier_stock_sources_menu(update, context):
     else:
         message_lines = ["📦 *Источники файлов остатков*\n"]
         for index, source in enumerate(sources, start=1):
-            name = _escape_pattern_text(source.get("name") or source.get("id") or f"Источник {index}")
+            name = _escape_pattern_text(
+                source.get("name") or source.get("id") or f"Источник {index}"
+            )
             url = _escape_pattern_text(source.get("url") or "URL не задан")
             output_name = _escape_pattern_text(source.get("output_name") or "не задано")
             method = _escape_pattern_text(source.get("method") or "http")
-            processing_mode = _escape_pattern_text(_supplier_stock_processing_mode_label(source.get("processing_mode")))
+            processing_mode = _escape_pattern_text(
+                _supplier_stock_processing_mode_label(source.get("processing_mode"))
+            )
             enabled = source.get("enabled", True)
             unpack_enabled = source.get("unpack_archive", False)
             status_icon = "🟢" if enabled else "🔴"
@@ -5597,7 +6114,7 @@ def show_supplier_stock_sources_menu(update, context):
         message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить источник", callback_data='supplier_stock_source_add')],
+        [InlineKeyboardButton("➕ Добавить источник", callback_data="supplier_stock_source_add")],
     ]
 
     for source in sources:
@@ -5608,49 +6125,51 @@ def show_supplier_stock_sources_menu(update, context):
         unpack_enabled = source.get("unpack_archive", False)
         toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
         unpack_text = "📦 Распаковка: вкл" if unpack_enabled else "📦 Распаковка: выкл"
-        keyboard.append([
-            InlineKeyboardButton(
-                f"⚙️ {source.get('name', source_id)}",
-                callback_data=f'supplier_stock_source_settings|{source_id}'
-            ),
-            InlineKeyboardButton(
-                f"{toggle_text}",
-                callback_data=f'supplier_stock_source_toggle_{source_id}'
-            ),
-        ])
-        keyboard.append([
-            InlineKeyboardButton(
-                unpack_text,
-                callback_data=f'supplier_stock_source_unpack_toggle_{source_id}'
-            ),
-            InlineKeyboardButton(
-                "🗑️",
-                callback_data=f'supplier_stock_source_delete_{source_id}'
-            ),
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"⚙️ {source.get('name', source_id)}",
+                    callback_data=f"supplier_stock_source_settings|{source_id}",
+                ),
+                InlineKeyboardButton(
+                    f"{toggle_text}", callback_data=f"supplier_stock_source_toggle_{source_id}"
+                ),
+            ]
+        )
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    unpack_text, callback_data=f"supplier_stock_source_unpack_toggle_{source_id}"
+                ),
+                InlineKeyboardButton(
+                    "🗑️", callback_data=f"supplier_stock_source_delete_{source_id}"
+                ),
+            ]
+        )
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data="main_menu")])
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_download"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_supplier_stock_source_settings(update, context, source_id: str):
     """Показать настройки конкретного источника остатков."""
     query = update.callback_query
     query.answer()
 
-    context.user_data['supplier_stock_source_settings_id'] = source_id
-    context.user_data.pop('supplier_stock_source_field', None)
-    context.user_data.pop('supplier_stock_source_field_id', None)
-    context.user_data.pop('supplier_stock_source_iek_field', None)
-    context.user_data.pop('supplier_stock_source_iek_field_id', None)
+    context.user_data["supplier_stock_source_settings_id"] = source_id
+    context.user_data.pop("supplier_stock_source_field", None)
+    context.user_data.pop("supplier_stock_source_field_id", None)
+    context.user_data.pop("supplier_stock_source_iek_field", None)
+    context.user_data.pop("supplier_stock_source_iek_field_id", None)
 
     config = get_supplier_stock_config()
     sources = config.get("download", {}).get("sources", [])
@@ -5659,9 +6178,9 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
     if not source:
         query.edit_message_text(
             "❌ Источник не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
         )
         return
 
@@ -5678,12 +6197,18 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
             f"{discover.get('url', '')} | {discover.get('pattern', '')} | {discover.get('prefix', '')}"
         )
     vars_map = source.get("vars") or {}
-    vars_text = ", ".join([f"{key}={value}" for key, value in vars_map.items()]) if vars_map else "не задано"
+    vars_text = (
+        ", ".join([f"{key}={value}" for key, value in vars_map.items()])
+        if vars_map
+        else "не задано"
+    )
     auth_state = "задано" if source.get("auth") else "не задано"
     pre_request = source.get("pre_request") or {}
     pre_request_text = "не задано"
     if pre_request:
-        pre_request_text = _escape_pattern_text(f"{pre_request.get('url', '')} | {pre_request.get('data', '')}")
+        pre_request_text = _escape_pattern_text(
+            f"{pre_request.get('url', '')} | {pre_request.get('data', '')}"
+        )
     options = []
     if source.get("include_headers"):
         options.append("headers")
@@ -5700,7 +6225,8 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
 
     rules = config.get("processing", {}).get("rules", [])
     matched_rules = [
-        rule for rule in rules
+        rule
+        for rule in rules
         if _processing_rule_matches_source(rule, source_id, "download", config)
     ]
     iek_section: list[str] = []
@@ -5713,7 +6239,13 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
             ", ".join([f"{key}={value}" for key, value in stores.items()]) or "не задано"
         )
         orc_text = _escape_pattern_text(
-            ", ".join([f"{item.get('key')}={item.get('stor')}" for item in orc_stores if isinstance(item, dict)])
+            ", ".join(
+                [
+                    f"{item.get('key')}={item.get('stor')}"
+                    for item in orc_stores
+                    if isinstance(item, dict)
+                ]
+            )
             or "не задано"
         )
         outputs_text = _escape_pattern_text(
@@ -5734,7 +6266,7 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
         ]
 
     message_lines = [
-        f"⚙️ *Источник остатков*\n",
+        "⚙️ *Источник остатков*\n",
         f"{status_icon} *{name}*",
         f"• URL: `{url}`",
         f"• Файл: `{output_name}`",
@@ -5752,13 +6284,17 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
     ]
     if iek_section:
         message_lines.extend(["", *iek_section])
-    message_lines.extend([
-        "\n🧩 *Обработка файлов*",
-        f"Правил: {len(matched_rules)}",
-    ])
+    message_lines.extend(
+        [
+            "\n🧩 *Обработка файлов*",
+            f"Правил: {len(matched_rules)}",
+        ]
+    )
     if matched_rules:
         for index, rule in enumerate(matched_rules, start=1):
-            rule_name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"Правило {index}")
+            rule_name = _escape_pattern_text(
+                rule.get("name") or rule.get("id") or f"Правило {index}"
+            )
             source_file = _escape_pattern_text(rule.get("source_file") or "не задано")
             enabled = rule.get("enabled", True)
             status = "🟢" if enabled else "🔴"
@@ -5768,54 +6304,100 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
     message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("— Настройки источника —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("— Настройки источника —", callback_data="supplier_stock_noop")],
         [
-            InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_source_field|{source_id}|name'),
-            InlineKeyboardButton("🔗 URL", callback_data=f'supplier_stock_source_field|{source_id}|url'),
+            InlineKeyboardButton(
+                "✏️ Название", callback_data=f"supplier_stock_source_field|{source_id}|name"
+            ),
+            InlineKeyboardButton(
+                "🔗 URL", callback_data=f"supplier_stock_source_field|{source_id}|url"
+            ),
         ],
         [
-            InlineKeyboardButton("🔎 Поиск ссылки", callback_data=f'supplier_stock_source_field|{source_id}|discover'),
-            InlineKeyboardButton("🧩 Переменные", callback_data=f'supplier_stock_source_field|{source_id}|vars'),
+            InlineKeyboardButton(
+                "🔎 Поиск ссылки", callback_data=f"supplier_stock_source_field|{source_id}|discover"
+            ),
+            InlineKeyboardButton(
+                "🧩 Переменные", callback_data=f"supplier_stock_source_field|{source_id}|vars"
+            ),
         ],
         [
-            InlineKeyboardButton("📄 Имя файла", callback_data=f'supplier_stock_source_field|{source_id}|output_name'),
-            InlineKeyboardButton("🔐 Авторизация", callback_data=f'supplier_stock_source_field|{source_id}|auth'),
+            InlineKeyboardButton(
+                "📄 Имя файла", callback_data=f"supplier_stock_source_field|{source_id}|output_name"
+            ),
+            InlineKeyboardButton(
+                "🔐 Авторизация", callback_data=f"supplier_stock_source_field|{source_id}|auth"
+            ),
         ],
         [
-            InlineKeyboardButton("📬 Предзапрос", callback_data=f'supplier_stock_source_field|{source_id}|pre_request'),
-            InlineKeyboardButton("⚙️ Опции", callback_data=f'supplier_stock_source_field|{source_id}|options'),
+            InlineKeyboardButton(
+                "📬 Предзапрос",
+                callback_data=f"supplier_stock_source_field|{source_id}|pre_request",
+            ),
+            InlineKeyboardButton(
+                "⚙️ Опции", callback_data=f"supplier_stock_source_field|{source_id}|options"
+            ),
         ],
         [
-            InlineKeyboardButton("🧩 Тип обработки", callback_data=f'supplier_stock_source_field|{source_id}|processing_mode'),
-            InlineKeyboardButton("📂 Подкаталог выгрузки", callback_data=f'supplier_stock_source_field|{source_id}|upload_subdir'),
+            InlineKeyboardButton(
+                "🧩 Тип обработки",
+                callback_data=f"supplier_stock_source_field|{source_id}|processing_mode",
+            ),
+            InlineKeyboardButton(
+                "📂 Подкаталог выгрузки",
+                callback_data=f"supplier_stock_source_field|{source_id}|upload_subdir",
+            ),
         ],
     ]
     if processing_mode == "iek_json":
-        keyboard.append([
-            InlineKeyboardButton("⚙️ IEK JSON", callback_data=f'supplier_stock_source_iek_settings|{source_id}')
-        ])
-    keyboard.extend([
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "⚙️ IEK JSON", callback_data=f"supplier_stock_source_iek_settings|{source_id}"
+                )
+            ]
+        )
+    keyboard.extend(
         [
-            InlineKeyboardButton("📁 Индивидуальный каталог", callback_data=f'supplier_stock_source_individual|{source_id}'),
-        ],
-        [
-            InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_source_toggle_{source_id}'),
-            InlineKeyboardButton(f"📦 Распаковка: {unpack_text}", callback_data=f'supplier_stock_source_unpack_toggle_{source_id}')
-        ],
-        [InlineKeyboardButton("— Обработка файлов —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("📋 Правила обработки", callback_data=f'supplier_stock_processing_source|{source_id}|menu')],
-        [InlineKeyboardButton("➕ Добавить правило", callback_data=f'supplier_stock_processing_source|{source_id}|add')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [
-            InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-        ],
-    ])
+            [
+                InlineKeyboardButton(
+                    "📁 Индивидуальный каталог",
+                    callback_data=f"supplier_stock_source_individual|{source_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔁 Включить/выключить",
+                    callback_data=f"supplier_stock_source_toggle_{source_id}",
+                ),
+                InlineKeyboardButton(
+                    f"📦 Распаковка: {unpack_text}",
+                    callback_data=f"supplier_stock_source_unpack_toggle_{source_id}",
+                ),
+            ],
+            [InlineKeyboardButton("— Обработка файлов —", callback_data="supplier_stock_noop")],
+            [
+                InlineKeyboardButton(
+                    "📋 Правила обработки",
+                    callback_data=f"supplier_stock_processing_source|{source_id}|menu",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "➕ Добавить правило",
+                    callback_data=f"supplier_stock_processing_source|{source_id}|add",
+                )
+            ],
+            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            [
+                InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
@@ -5831,9 +6413,9 @@ def show_supplier_stock_source_individual_settings(update, context, source_id: s
     if not source:
         query.edit_message_text(
             "❌ Источник не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
         )
         return
 
@@ -5854,19 +6436,37 @@ def show_supplier_stock_source_individual_settings(update, context, source_id: s
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_source_individual_toggle_{source_id}')],
         [
-            InlineKeyboardButton("📂 UNC путь", callback_data=f'supplier_stock_source_field|{source_id}|individual_path'),
-            InlineKeyboardButton("👤 Логин", callback_data=f'supplier_stock_source_field|{source_id}|individual_login'),
+            InlineKeyboardButton(
+                "🔁 Включить/выключить",
+                callback_data=f"supplier_stock_source_individual_toggle_{source_id}",
+            )
         ],
-        [InlineKeyboardButton("🔐 Пароль", callback_data=f'supplier_stock_source_field|{source_id}|individual_password')],
-        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}')],
+        [
+            InlineKeyboardButton(
+                "📂 UNC путь",
+                callback_data=f"supplier_stock_source_field|{source_id}|individual_path",
+            ),
+            InlineKeyboardButton(
+                "👤 Логин",
+                callback_data=f"supplier_stock_source_field|{source_id}|individual_login",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "🔐 Пароль",
+                callback_data=f"supplier_stock_source_field|{source_id}|individual_password",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "↩️ Назад", callback_data=f"supplier_stock_source_settings|{source_id}"
+            )
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
@@ -5882,9 +6482,9 @@ def show_supplier_stock_source_iek_settings(update, context, source_id: str) -> 
     if not source:
         query.edit_message_text(
             "❌ Источник не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
         )
         return
 
@@ -5893,9 +6493,17 @@ def show_supplier_stock_source_iek_settings(update, context, source_id: str) -> 
     orc_stores = iek_settings.get("orc_stores", [])
     outputs = iek_settings.get("outputs", {})
 
-    stores_text = _escape_pattern_text(", ".join([f"{key}={value}" for key, value in stores.items()]) or "не задано")
+    stores_text = _escape_pattern_text(
+        ", ".join([f"{key}={value}" for key, value in stores.items()]) or "не задано"
+    )
     orc_text = _escape_pattern_text(
-        ", ".join([f"{item.get('key')}={item.get('stor')}" for item in orc_stores if isinstance(item, dict)])
+        ", ".join(
+            [
+                f"{item.get('key')}={item.get('stor')}"
+                for item in orc_stores
+                if isinstance(item, dict)
+            ]
+        )
         or "не задано"
     )
     outputs_text = _escape_pattern_text(
@@ -5918,33 +6526,62 @@ def show_supplier_stock_source_iek_settings(update, context, source_id: str) -> 
     )
 
     keyboard = [
-        [InlineKeyboardButton("🗺️ Склады", callback_data=f'supplier_stock_source_iek_field|{source_id}|stores')],
-        [InlineKeyboardButton("📍 МСК склады", callback_data=f'supplier_stock_source_iek_field|{source_id}|msk_stores')],
-        [InlineKeyboardButton("📍 НСК склад", callback_data=f'supplier_stock_source_iek_field|{source_id}|nsk_store')],
-        [InlineKeyboardButton("🧾 ORK stor", callback_data=f'supplier_stock_source_iek_field|{source_id}|orc_stores')],
-        [InlineKeyboardButton("🏷️ Префикс артикула", callback_data=f'supplier_stock_source_iek_field|{source_id}|prefix')],
-        [InlineKeyboardButton("📄 Файлы", callback_data=f'supplier_stock_source_iek_field|{source_id}|outputs')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [
-            InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton(
+                "🗺️ Склады", callback_data=f"supplier_stock_source_iek_field|{source_id}|stores"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📍 МСК склады",
+                callback_data=f"supplier_stock_source_iek_field|{source_id}|msk_stores",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📍 НСК склад",
+                callback_data=f"supplier_stock_source_iek_field|{source_id}|nsk_store",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🧾 ORK stor",
+                callback_data=f"supplier_stock_source_iek_field|{source_id}|orc_stores",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🏷️ Префикс артикула",
+                callback_data=f"supplier_stock_source_iek_field|{source_id}|prefix",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📄 Файлы", callback_data=f"supplier_stock_source_iek_field|{source_id}|outputs"
+            )
+        ],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [
+            InlineKeyboardButton(
+                "↩️ Назад", callback_data=f"supplier_stock_source_settings|{source_id}"
+            ),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
         ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_supplier_stock_mail_source_settings(update, context, source_id: str):
     """Показать настройки правила вложений."""
     query = update.callback_query
     query.answer()
 
-    context.user_data['supplier_stock_mail_source_settings_id'] = source_id
-    context.user_data.pop('supplier_stock_mail_source_field', None)
-    context.user_data.pop('supplier_stock_mail_source_field_id', None)
+    context.user_data["supplier_stock_mail_source_settings_id"] = source_id
+    context.user_data.pop("supplier_stock_mail_source_field", None)
+    context.user_data.pop("supplier_stock_mail_source_field_id", None)
 
     config = get_supplier_stock_config()
     sources = config.get("mail", {}).get("sources", [])
@@ -5953,9 +6590,9 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
     if not source:
         query.edit_message_text(
             "❌ Правило не найдено.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail_sources")]]
+            ),
         )
         return
 
@@ -5978,8 +6615,7 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
 
     rules = config.get("processing", {}).get("rules", [])
     matched_rules = [
-        rule for rule in rules
-        if _processing_rule_matches_source(rule, source_id, "mail", config)
+        rule for rule in rules if _processing_rule_matches_source(rule, source_id, "mail", config)
     ]
 
     message_lines = [
@@ -6000,7 +6636,9 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
     ]
     if matched_rules:
         for index, rule in enumerate(matched_rules, start=1):
-            rule_name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"Правило {index}")
+            rule_name = _escape_pattern_text(
+                rule.get("name") or rule.get("id") or f"Правило {index}"
+            )
             source_file = _escape_pattern_text(rule.get("source_file") or "не задано")
             enabled_rule = rule.get("enabled", True)
             status = "🟢" if enabled_rule else "🔴"
@@ -6010,44 +6648,79 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
     message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("— Настройки правила —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("— Настройки правила —", callback_data="supplier_stock_noop")],
         [
-            InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_mail_field|{source_id}|name'),
-            InlineKeyboardButton("👤 Отправитель", callback_data=f'supplier_stock_mail_field|{source_id}|sender'),
+            InlineKeyboardButton(
+                "✏️ Название", callback_data=f"supplier_stock_mail_field|{source_id}|name"
+            ),
+            InlineKeyboardButton(
+                "👤 Отправитель", callback_data=f"supplier_stock_mail_field|{source_id}|sender"
+            ),
         ],
         [
-            InlineKeyboardButton("📝 Тема", callback_data=f'supplier_stock_mail_field|{source_id}|subject'),
-            InlineKeyboardButton("🧾 MIME", callback_data=f'supplier_stock_mail_field|{source_id}|mime'),
+            InlineKeyboardButton(
+                "📝 Тема", callback_data=f"supplier_stock_mail_field|{source_id}|subject"
+            ),
+            InlineKeyboardButton(
+                "🧾 MIME", callback_data=f"supplier_stock_mail_field|{source_id}|mime"
+            ),
         ],
         [
-            InlineKeyboardButton("📄 Имя файла", callback_data=f'supplier_stock_mail_field|{source_id}|filename'),
-            InlineKeyboardButton("🔢 Кол-во вложений", callback_data=f'supplier_stock_mail_field|{source_id}|expected'),
+            InlineKeyboardButton(
+                "📄 Имя файла", callback_data=f"supplier_stock_mail_field|{source_id}|filename"
+            ),
+            InlineKeyboardButton(
+                "🔢 Кол-во вложений",
+                callback_data=f"supplier_stock_mail_field|{source_id}|expected",
+            ),
         ],
         [
-            InlineKeyboardButton("📦 Шаблон файла", callback_data=f'supplier_stock_mail_field|{source_id}|output'),
+            InlineKeyboardButton(
+                "📦 Шаблон файла", callback_data=f"supplier_stock_mail_field|{source_id}|output"
+            ),
         ],
         [
-            InlineKeyboardButton("📂 Подкаталог выгрузки", callback_data=f'supplier_stock_mail_field|{source_id}|upload_subdir'),
-            InlineKeyboardButton("📁 Индивидуальный каталог", callback_data=f'supplier_stock_mail_source_individual|{source_id}'),
+            InlineKeyboardButton(
+                "📂 Подкаталог выгрузки",
+                callback_data=f"supplier_stock_mail_field|{source_id}|upload_subdir",
+            ),
+            InlineKeyboardButton(
+                "📁 Индивидуальный каталог",
+                callback_data=f"supplier_stock_mail_source_individual|{source_id}",
+            ),
         ],
         [
-            InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_mail_source_toggle_{source_id}'),
-            InlineKeyboardButton(f"📦 Распаковка: {unpack_text}", callback_data=f'supplier_stock_mail_source_unpack_toggle_{source_id}')
+            InlineKeyboardButton(
+                "🔁 Включить/выключить",
+                callback_data=f"supplier_stock_mail_source_toggle_{source_id}",
+            ),
+            InlineKeyboardButton(
+                f"📦 Распаковка: {unpack_text}",
+                callback_data=f"supplier_stock_mail_source_unpack_toggle_{source_id}",
+            ),
         ],
-        [InlineKeyboardButton("— Обработка файлов —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("📋 Правила обработки", callback_data=f'supplier_stock_processing_mail|{source_id}|menu')],
-        [InlineKeyboardButton("➕ Добавить правило", callback_data=f'supplier_stock_processing_mail|{source_id}|add')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("— Обработка файлов —", callback_data="supplier_stock_noop")],
         [
-            InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton(
+                "📋 Правила обработки",
+                callback_data=f"supplier_stock_processing_mail|{source_id}|menu",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "➕ Добавить правило",
+                callback_data=f"supplier_stock_processing_mail|{source_id}|add",
+            )
+        ],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail_sources"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
         ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
@@ -6063,9 +6736,9 @@ def show_supplier_stock_mail_source_individual_settings(update, context, source_
     if not source:
         query.edit_message_text(
             "❌ Правило не найдено.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail_sources")]]
+            ),
         )
         return
 
@@ -6086,20 +6759,38 @@ def show_supplier_stock_mail_source_individual_settings(update, context, source_
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_mail_source_individual_toggle_{source_id}')],
         [
-            InlineKeyboardButton("📂 UNC путь", callback_data=f'supplier_stock_mail_field|{source_id}|individual_path'),
-            InlineKeyboardButton("👤 Логин", callback_data=f'supplier_stock_mail_field|{source_id}|individual_login'),
+            InlineKeyboardButton(
+                "🔁 Включить/выключить",
+                callback_data=f"supplier_stock_mail_source_individual_toggle_{source_id}",
+            )
         ],
-        [InlineKeyboardButton("🔐 Пароль", callback_data=f'supplier_stock_mail_field|{source_id}|individual_password')],
-        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_mail_source_settings|{source_id}')],
+        [
+            InlineKeyboardButton(
+                "📂 UNC путь",
+                callback_data=f"supplier_stock_mail_field|{source_id}|individual_path",
+            ),
+            InlineKeyboardButton(
+                "👤 Логин", callback_data=f"supplier_stock_mail_field|{source_id}|individual_login"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "🔐 Пароль",
+                callback_data=f"supplier_stock_mail_field|{source_id}|individual_password",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "↩️ Назад", callback_data=f"supplier_stock_mail_source_settings|{source_id}"
+            )
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def supplier_stock_start_source_field_edit(update, context, source_id: str, field: str) -> None:
     """Запросить изменение конкретного поля источника."""
@@ -6113,14 +6804,14 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
     if not source:
         query.edit_message_text(
             "❌ Источник не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
         )
         return
 
-    context.user_data['supplier_stock_source_field'] = field
-    context.user_data['supplier_stock_source_field_id'] = source_id
+    context.user_data["supplier_stock_source_field"] = field
+    context.user_data["supplier_stock_source_field_id"] = source_id
 
     prompts = {
         "name": "Введите название источника (или '-' чтобы оставить):",
@@ -6146,12 +6837,16 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
         "output_name": source.get("output_name") or "-",
         "auth": "задано" if source.get("auth") else "-",
         "pre_request": source.get("pre_request") or "-",
-        "options": "headers/append" if (source.get("include_headers") or source.get("append")) else "-",
+        "options": (
+            "headers/append" if (source.get("include_headers") or source.get("append")) else "-"
+        ),
         "processing_mode": source.get("processing_mode") or "table",
         "upload_subdir": source.get("upload_subdir") or "-",
         "individual_path": (source.get("individual_directory") or {}).get("unc_path") or "-",
         "individual_login": (source.get("individual_directory") or {}).get("login") or "-",
-        "individual_password": "задано" if (source.get("individual_directory") or {}).get("password") else "-",
+        "individual_password": (
+            "задано" if (source.get("individual_directory") or {}).get("password") else "-"
+        ),
     }
 
     prompt = prompts.get(field, "Введите значение:")
@@ -6161,11 +6856,18 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
     _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
         f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_source_settings|{source_id}')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена", callback_data=f"supplier_stock_source_settings|{source_id}"
+                    )
+                ]
+            ]
+        ),
     )
+
 
 def supplier_stock_start_source_iek_field_edit(update, context, source_id: str, field: str) -> None:
     """Запросить изменение параметров IEK JSON."""
@@ -6179,14 +6881,14 @@ def supplier_stock_start_source_iek_field_edit(update, context, source_id: str, 
     if not source:
         query.edit_message_text(
             "❌ Источник не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
         )
         return
 
-    context.user_data['supplier_stock_source_iek_field'] = field
-    context.user_data['supplier_stock_source_iek_field_id'] = source_id
+    context.user_data["supplier_stock_source_iek_field"] = field
+    context.user_data["supplier_stock_source_iek_field_id"] = source_id
 
     prompts = {
         "stores": "Введите склады в формате key=uuid через запятую:",
@@ -6215,15 +6917,24 @@ def supplier_stock_start_source_iek_field_edit(update, context, source_id: str, 
     _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
         f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_source_iek_settings|{source_id}')],
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена", callback_data=f"supplier_stock_source_iek_settings|{source_id}"
+                    )
+                ],
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+            ]
+        ),
     )
 
-def supplier_stock_start_mail_source_field_edit(update, context, source_id: str, field: str) -> None:
+
+def supplier_stock_start_mail_source_field_edit(
+    update, context, source_id: str, field: str
+) -> None:
     """Запросить изменение конкретного поля правила вложений."""
     query = update.callback_query
     query.answer()
@@ -6235,14 +6946,14 @@ def supplier_stock_start_mail_source_field_edit(update, context, source_id: str,
     if not source:
         query.edit_message_text(
             "❌ Правило не найдено.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail_sources")]]
+            ),
         )
         return
 
-    context.user_data['supplier_stock_mail_source_field'] = field
-    context.user_data['supplier_stock_mail_source_field_id'] = source_id
+    context.user_data["supplier_stock_mail_source_field"] = field
+    context.user_data["supplier_stock_mail_source_field_id"] = source_id
 
     prompts = {
         "name": "Введите название правила (или '-' чтобы оставить):",
@@ -6269,7 +6980,9 @@ def supplier_stock_start_mail_source_field_edit(update, context, source_id: str,
         "upload_subdir": source.get("upload_subdir") or "-",
         "individual_path": (source.get("individual_directory") or {}).get("unc_path") or "-",
         "individual_login": (source.get("individual_directory") or {}).get("login") or "-",
-        "individual_password": "задано" if (source.get("individual_directory") or {}).get("password") else "-",
+        "individual_password": (
+            "задано" if (source.get("individual_directory") or {}).get("password") else "-"
+        ),
     }
 
     prompt = prompts.get(field, "Введите значение:")
@@ -6277,10 +6990,17 @@ def supplier_stock_start_mail_source_field_edit(update, context, source_id: str,
     _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
         f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_mail_source_settings|{source_id}')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена",
+                        callback_data=f"supplier_stock_mail_source_settings|{source_id}",
+                    )
+                ]
+            ]
+        ),
     )
 
 
@@ -6289,16 +7009,16 @@ def supplier_stock_start_resource_wizard(update, context) -> None:
     query = update.callback_query
     query.answer()
 
-    context.user_data['supplier_stock_resource_stage'] = 'name'
-    context.user_data['supplier_stock_resource_data'] = {}
-    context.user_data['supplier_stock_resource_add'] = True
+    context.user_data["supplier_stock_resource_stage"] = "name"
+    context.user_data["supplier_stock_resource_data"] = {}
+    context.user_data["supplier_stock_resource_add"] = True
 
     query.edit_message_text(
         "➕ *Новый ресурс выгрузки*\n\nВведите название ресурса:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_resources')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_resources")]]
+        ),
     )
 
 
@@ -6314,14 +7034,14 @@ def supplier_stock_start_resource_field_edit(update, context, resource_id: str, 
     if not resource:
         query.edit_message_text(
             "❌ Ресурс не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_resources")]]
+            ),
         )
         return
 
-    context.user_data['supplier_stock_resource_field'] = field
-    context.user_data['supplier_stock_resource_field_id'] = resource_id
+    context.user_data["supplier_stock_resource_field"] = field
+    context.user_data["supplier_stock_resource_field_id"] = resource_id
 
     prompts = {
         "name": "Введите название ресурса (или '-' чтобы оставить):",
@@ -6342,10 +7062,16 @@ def supplier_stock_start_resource_field_edit(update, context, resource_id: str, 
     _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
         f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_resource_settings|{resource_id}')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена", callback_data=f"supplier_stock_resource_settings|{resource_id}"
+                    )
+                ]
+            ]
+        ),
     )
 
 
@@ -6354,7 +7080,7 @@ def supplier_stock_start_ftp_field_edit(update, context, field: str) -> None:
     query = update.callback_query
     query.answer()
 
-    context.user_data['supplier_stock_ftp_field'] = field
+    context.user_data["supplier_stock_ftp_field"] = field
     prompts = {
         "host": "Введите HOST FTP (или '-' чтобы оставить):",
         "login": "Введите логин FTP (или '-' чтобы оставить, 'none' чтобы очистить):",
@@ -6373,11 +7099,12 @@ def supplier_stock_start_ftp_field_edit(update, context, field: str) -> None:
     _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
         f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_ftp')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_ftp")]]
+        ),
     )
+
 
 def supplier_stock_start_processing_wizard(
     update,
@@ -6390,31 +7117,32 @@ def supplier_stock_start_processing_wizard(
     query = update.callback_query
     query.answer()
 
-    context.user_data.pop('supplier_stock_edit', None)
-    context.user_data.pop('supplier_stock_add_source', None)
-    context.user_data.pop('supplier_stock_edit_source', None)
-    context.user_data.pop('supplier_stock_mail_edit', None)
-    context.user_data.pop('supplier_stock_mail_add_source', None)
-    context.user_data.pop('supplier_stock_mail_edit_source', None)
-    context.user_data['supplier_stock_processing_stage'] = 'name'
-    context.user_data['supplier_stock_processing_data'] = {}
-    context.user_data['supplier_stock_processing_add'] = True
-    context.user_data['supplier_stock_processing_source_id'] = source_id
-    context.user_data['supplier_stock_processing_source_kind'] = source_kind
-    context.user_data['supplier_stock_processing_back'] = back_callback
+    context.user_data.pop("supplier_stock_edit", None)
+    context.user_data.pop("supplier_stock_add_source", None)
+    context.user_data.pop("supplier_stock_edit_source", None)
+    context.user_data.pop("supplier_stock_mail_edit", None)
+    context.user_data.pop("supplier_stock_mail_add_source", None)
+    context.user_data.pop("supplier_stock_mail_edit_source", None)
+    context.user_data["supplier_stock_processing_stage"] = "name"
+    context.user_data["supplier_stock_processing_data"] = {}
+    context.user_data["supplier_stock_processing_add"] = True
+    context.user_data["supplier_stock_processing_source_id"] = source_id
+    context.user_data["supplier_stock_processing_source_kind"] = source_kind
+    context.user_data["supplier_stock_processing_back"] = back_callback
 
     if source_id:
-        context.user_data['supplier_stock_processing_data']['source_id'] = source_id
+        context.user_data["supplier_stock_processing_data"]["source_id"] = source_id
     if source_kind:
-        context.user_data['supplier_stock_processing_data']['source_kind'] = source_kind
+        context.user_data["supplier_stock_processing_data"]["source_kind"] = source_kind
 
     query.edit_message_text(
         "➕ *Новое правило обработки*\n\nВведите название правила:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback)]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data=back_callback)]]
+        ),
     )
+
 
 def supplier_stock_start_processing_edit_wizard(
     update,
@@ -6428,12 +7156,12 @@ def supplier_stock_start_processing_edit_wizard(
     query = update.callback_query
     query.answer()
 
-    context.user_data.pop('supplier_stock_edit', None)
-    context.user_data.pop('supplier_stock_add_source', None)
-    context.user_data.pop('supplier_stock_edit_source', None)
-    context.user_data.pop('supplier_stock_mail_edit', None)
-    context.user_data.pop('supplier_stock_mail_add_source', None)
-    context.user_data.pop('supplier_stock_mail_edit_source', None)
+    context.user_data.pop("supplier_stock_edit", None)
+    context.user_data.pop("supplier_stock_add_source", None)
+    context.user_data.pop("supplier_stock_edit_source", None)
+    context.user_data.pop("supplier_stock_mail_edit", None)
+    context.user_data.pop("supplier_stock_mail_add_source", None)
+    context.user_data.pop("supplier_stock_mail_edit_source", None)
     config = get_supplier_stock_config()
     rules = config.get("processing", {}).get("rules", [])
     rule = next((item for item in rules if str(item.get("id")) == rule_id), None)
@@ -6441,127 +7169,132 @@ def supplier_stock_start_processing_edit_wizard(
     if not rule:
         query.edit_message_text(
             "❌ Правило не найдено.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]]
+            ),
         )
         return
 
-    context.user_data['supplier_stock_processing_edit'] = True
-    context.user_data['supplier_stock_processing_edit_id'] = rule_id
-    context.user_data['supplier_stock_processing_data'] = dict(rule)
-    context.user_data['supplier_stock_processing_stage'] = 'edit_name'
-    context.user_data['supplier_stock_processing_source_id'] = source_id
-    context.user_data['supplier_stock_processing_source_kind'] = source_kind
-    context.user_data['supplier_stock_processing_back'] = back_callback
+    context.user_data["supplier_stock_processing_edit"] = True
+    context.user_data["supplier_stock_processing_edit_id"] = rule_id
+    context.user_data["supplier_stock_processing_data"] = dict(rule)
+    context.user_data["supplier_stock_processing_stage"] = "edit_name"
+    context.user_data["supplier_stock_processing_source_id"] = source_id
+    context.user_data["supplier_stock_processing_source_kind"] = source_kind
+    context.user_data["supplier_stock_processing_back"] = back_callback
 
     if source_id:
-        context.user_data['supplier_stock_processing_data']['source_id'] = source_id
+        context.user_data["supplier_stock_processing_data"]["source_id"] = source_id
     if source_kind:
-        context.user_data['supplier_stock_processing_data']['source_kind'] = source_kind
+        context.user_data["supplier_stock_processing_data"]["source_kind"] = source_kind
 
     query.edit_message_text(
         f"✏️ *Редактирование правила обработки*\n\n"
         f"Текущее имя: `{_escape_pattern_text(rule.get('name'))}`\n"
         "Введите новое имя (или '-' чтобы оставить текущее):",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback)]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data=back_callback)]]
+        ),
     )
+
 
 def supplier_stock_handle_processing_input(update, context):
     """Обработка ввода мастера настройки обработки."""
-    stage = context.user_data.get('supplier_stock_processing_stage')
-    data = context.user_data.get('supplier_stock_processing_data', {})
+    stage = context.user_data.get("supplier_stock_processing_stage")
+    data = context.user_data.get("supplier_stock_processing_data", {})
     raw_input = update.message.text or ""
     user_input = raw_input.rstrip("\n")
     user_input_stripped = user_input.strip()
-    source_id = context.user_data.get('supplier_stock_processing_source_id')
-    source_kind = context.user_data.get('supplier_stock_processing_source_kind')
+    source_id = context.user_data.get("supplier_stock_processing_source_id")
+    source_kind = context.user_data.get("supplier_stock_processing_source_kind")
     if source_id:
-        data['source_id'] = source_id
+        data["source_id"] = source_id
     if source_kind:
-        data['source_kind'] = source_kind
-    back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
+        data["source_kind"] = source_kind
+    back_callback = context.user_data.get(
+        "supplier_stock_processing_back", "supplier_stock_processing"
+    )
 
-    if context.user_data.get('supplier_stock_processing_field'):
-        field = context.user_data.pop('supplier_stock_processing_field')
-        variant_index = context.user_data.pop('supplier_stock_processing_variant_index', None)
-        item_index = context.user_data.pop('supplier_stock_processing_item_index', None)
-        rule_data = context.user_data.get('supplier_stock_processing_rule_data', {})
+    if context.user_data.get("supplier_stock_processing_field"):
+        field = context.user_data.pop("supplier_stock_processing_field")
+        variant_index = context.user_data.pop("supplier_stock_processing_variant_index", None)
+        item_index = context.user_data.pop("supplier_stock_processing_item_index", None)
+        rule_data = context.user_data.get("supplier_stock_processing_rule_data", {})
         if source_id:
-            rule_data['source_id'] = source_id
+            rule_data["source_id"] = source_id
         if source_kind:
-            rule_data['source_kind'] = source_kind
+            rule_data["source_kind"] = source_kind
         variant_fields = {
-            'article_col',
-            'article_filter',
-            'extra_filter',
-            'article_prefix',
-            'article_postfix',
-            'article_transform',
-            'data_columns_count',
-            'data_column',
-            'output_name',
-            'output_format',
-            'orc_prefix',
-            'orc_stor',
-            'orc_column',
-            'orc_output_name',
-            'orc_output_format',
+            "article_col",
+            "article_filter",
+            "extra_filter",
+            "article_prefix",
+            "article_postfix",
+            "article_transform",
+            "data_columns_count",
+            "data_column",
+            "output_name",
+            "output_format",
+            "orc_prefix",
+            "orc_stor",
+            "orc_column",
+            "orc_output_name",
+            "orc_output_format",
         }
         if variant_index is not None and field in variant_fields:
             variant = _ensure_processing_variant(rule_data, variant_index)
-            if field == 'article_col':
+            if field == "article_col":
                 article_col = _parse_positive_int(user_input_stripped)
                 if article_col is None:
                     update.message.reply_text("❌ Введите целое число больше 0.")
                     return None
-                variant['article_col'] = article_col
-            elif field == 'article_filter':
-                if user_input_stripped not in ('-', ''):
-                    variant['article_filter'] = user_input_stripped
+                variant["article_col"] = article_col
+            elif field == "article_filter":
+                if user_input_stripped not in ("-", ""):
+                    variant["article_filter"] = user_input_stripped
                     if variant.get("use_article_filter") is None:
                         variant["use_article_filter"] = True
                 else:
-                    variant.pop('article_filter', None)
-            elif field == 'extra_filter':
-                if user_input_stripped in ('-', ''):
-                    variant.pop('extra_filter', None)
-                    variant.pop('extra_filter_col', None)
+                    variant.pop("article_filter", None)
+            elif field == "extra_filter":
+                if user_input_stripped in ("-", ""):
+                    variant.pop("extra_filter", None)
+                    variant.pop("extra_filter_col", None)
                 else:
-                    if ';' not in user_input_stripped:
+                    if ";" not in user_input_stripped:
                         update.message.reply_text("❌ Укажите номер колонки и условие через ';'.")
                         return None
-                    col_part, filter_part = user_input_stripped.split(';', 1)
+                    col_part, filter_part = user_input_stripped.split(";", 1)
                     extra_filter_col = _parse_positive_int(col_part.strip())
                     extra_filter_value = filter_part.strip()
                     if extra_filter_col is None:
-                        update.message.reply_text("❌ Номер колонки должен быть целым числом больше 0.")
+                        update.message.reply_text(
+                            "❌ Номер колонки должен быть целым числом больше 0."
+                        )
                         return None
                     if not extra_filter_value:
                         update.message.reply_text("❌ Укажите условие отбора после ';'.")
                         return None
-                    variant['extra_filter_col'] = extra_filter_col
-                    variant['extra_filter'] = extra_filter_value
-            elif field == 'article_prefix':
-                if user_input_stripped in ('-', ''):
-                    variant['article_prefix'] = ""
+                    variant["extra_filter_col"] = extra_filter_col
+                    variant["extra_filter"] = extra_filter_value
+            elif field == "article_prefix":
+                if user_input_stripped in ("-", ""):
+                    variant["article_prefix"] = ""
                 else:
-                    variant['article_prefix'] = user_input
-            elif field == 'article_postfix':
+                    variant["article_prefix"] = user_input
+            elif field == "article_postfix":
                 raw_value = user_input
                 if raw_value == "":
-                    variant['article_postfix'] = ""
+                    variant["article_postfix"] = ""
                 elif raw_value.strip() == "-":
-                    variant['article_postfix'] = ""
+                    variant["article_postfix"] = ""
                 else:
-                    variant['article_postfix'] = raw_value
-            elif field == 'article_transform':
+                    variant["article_postfix"] = raw_value
+            elif field == "article_transform":
                 raw_value = user_input
-                if raw_value.strip() in ('', '-'):
-                    variant['article_transform'] = {
+                if raw_value.strip() in ("", "-"):
+                    variant["article_transform"] = {
                         "pattern": "",
                         "replacement": "",
                     }
@@ -6574,19 +7307,21 @@ def supplier_stock_handle_processing_input(update, context):
                         pattern_value = raw_value.strip()
                         replacement_value = ""
                     if not pattern_value:
-                        update.message.reply_text("❌ Укажите regex-паттерн для изменения артикула.")
+                        update.message.reply_text(
+                            "❌ Укажите regex-паттерн для изменения артикула."
+                        )
                         return None
-                    variant['article_transform'] = {
+                    variant["article_transform"] = {
                         "pattern": pattern_value,
                         "replacement": replacement_value,
                     }
-            elif field == 'data_columns_count':
+            elif field == "data_columns_count":
                 columns_count = _parse_positive_int(user_input_stripped)
                 if columns_count is None:
                     update.message.reply_text("❌ Введите целое число больше 0.")
                     return None
                 _sync_variant_columns(variant, columns_count)
-            elif field == 'data_column':
+            elif field == "data_column":
                 col_value = _parse_positive_int(user_input_stripped)
                 if col_value is None:
                     update.message.reply_text("❌ Введите целое число больше 0.")
@@ -6596,144 +7331,161 @@ def supplier_stock_handle_processing_input(update, context):
                     update.message.reply_text("❌ Неверный индекс колонки.")
                     return None
                 columns[item_index] = col_value
-                variant['data_columns'] = columns
-            elif field == 'output_name':
+                variant["data_columns"] = columns
+            elif field == "output_name":
                 if not user_input_stripped:
-                    update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+                    update.message.reply_text(
+                        "❌ Имя файла не может быть пустым. Попробуйте снова:"
+                    )
                     return None
                 names = list(variant.get("output_names", []))
                 if item_index is None or item_index >= len(names):
                     update.message.reply_text("❌ Неверный индекс файла.")
                     return None
                 names[item_index] = user_input_stripped
-                variant['output_names'] = names
-            elif field == 'output_format':
+                variant["output_names"] = names
+            elif field == "output_format":
                 format_value = user_input_stripped.lower()
-                if format_value not in ('xls', 'xlsx', 'csv'):
+                if format_value not in ("xls", "xlsx", "csv"):
                     update.message.reply_text("❌ Допустимые форматы: xls, xlsx, csv.")
                     return None
-                variant['output_format'] = format_value
-            elif field == 'orc_prefix':
+                variant["output_format"] = format_value
+            elif field == "orc_prefix":
                 orc = variant.get("orc", {})
-                if user_input_stripped in ('-', ''):
-                    orc['prefix'] = ""
+                if user_input_stripped in ("-", ""):
+                    orc["prefix"] = ""
                 else:
-                    orc['prefix'] = user_input
-                variant['orc'] = orc
-            elif field == 'orc_stor':
+                    orc["prefix"] = user_input
+                variant["orc"] = orc
+            elif field == "orc_stor":
                 if not user_input_stripped:
                     update.message.reply_text("❌ Stor не может быть пустым. Попробуйте снова:")
                     return None
                 orc = variant.get("orc", {})
-                orc['stor'] = user_input_stripped
-                variant['orc'] = orc
-            elif field == 'orc_column':
+                orc["stor"] = user_input_stripped
+                variant["orc"] = orc
+            elif field == "orc_column":
                 col_value = _parse_positive_int(user_input_stripped)
                 if col_value is None:
                     update.message.reply_text("❌ Введите целое число больше 0.")
                     return None
                 orc = variant.get("orc", {})
-                orc['column'] = col_value
-                variant['orc'] = orc
-            elif field == 'orc_output_name':
+                orc["column"] = col_value
+                variant["orc"] = orc
+            elif field == "orc_output_name":
                 orc = variant.get("orc", {})
-                if user_input_stripped in ('-', ''):
-                    orc.pop('output_name', None)
+                if user_input_stripped in ("-", ""):
+                    orc.pop("output_name", None)
                 else:
-                    orc['output_name'] = user_input_stripped
-                variant['orc'] = orc
-            elif field == 'orc_output_format':
-                if user_input_stripped in ('-', ''):
+                    orc["output_name"] = user_input_stripped
+                variant["orc"] = orc
+            elif field == "orc_output_format":
+                if user_input_stripped in ("-", ""):
                     orc = variant.get("orc", {})
-                    orc.pop('output_format', None)
-                    variant['orc'] = orc
+                    orc.pop("output_format", None)
+                    variant["orc"] = orc
                 else:
                     format_value = user_input_stripped.lower()
-                    if format_value not in ('xls', 'xlsx', 'csv'):
+                    if format_value not in ("xls", "xlsx", "csv"):
                         update.message.reply_text("❌ Допустимые форматы: xls, xlsx, csv.")
                         return None
                     orc = variant.get("orc", {})
-                    orc['output_format'] = format_value
-                    variant['orc'] = orc
-            rule_data['variants'][variant_index] = variant
+                    orc["output_format"] = format_value
+                    variant["orc"] = orc
+            rule_data["variants"][variant_index] = variant
         else:
-            if field == 'name':
+            if field == "name":
                 if not user_input_stripped:
                     update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
                     return None
-                rule_data['name'] = user_input_stripped
-            elif field == 'source_file':
+                rule_data["name"] = user_input_stripped
+            elif field == "source_file":
                 if not user_input_stripped:
-                    update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+                    update.message.reply_text(
+                        "❌ Имя файла не может быть пустым. Попробуйте снова:"
+                    )
                     return None
-                rule_data['source_file'] = user_input_stripped
-            elif field == 'data_row':
+                rule_data["source_file"] = user_input_stripped
+            elif field == "data_row":
                 data_row = _parse_positive_int(user_input_stripped)
                 if data_row is None:
                     update.message.reply_text("❌ Введите целое число больше 0.")
                     return None
-                rule_data['data_row'] = data_row
-            elif field == 'output_name':
+                rule_data["data_row"] = data_row
+            elif field == "output_name":
                 if not user_input_stripped:
-                    update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+                    update.message.reply_text(
+                        "❌ Имя файла не может быть пустым. Попробуйте снова:"
+                    )
                     return None
-                rule_data['output_name'] = user_input_stripped
+                rule_data["output_name"] = user_input_stripped
             else:
                 update.message.reply_text("❌ Не удалось определить вариант настройки.")
                 return None
-        context.user_data['supplier_stock_processing_rule_data'] = rule_data
-        context.user_data['supplier_stock_processing_rule_dirty'] = True
+        context.user_data["supplier_stock_processing_rule_data"] = rule_data
+        context.user_data["supplier_stock_processing_rule_dirty"] = True
         _supplier_stock_close_prompt_message(context)
         if variant_index is None:
             update.message.reply_text(
                 "✅ Готово.",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu')]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "↩️ Назад", callback_data="supplier_stock_processing_rule|menu"
+                            )
+                        ]
+                    ]
+                ),
             )
         else:
             update.message.reply_text(
                 "✅ Готово.",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_processing_variant|menu|{variant_index}')]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "↩️ Назад",
+                                callback_data=f"supplier_stock_processing_variant|menu|{variant_index}",
+                            )
+                        ]
+                    ]
+                ),
             )
         _persist_processing_rule_data(context)
         return None
 
-    if stage == 'name':
+    if stage == "name":
         if not user_input_stripped:
             update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
             return None
-        data['name'] = user_input_stripped
-        data['id'] = _slugify_supplier_source_id(user_input_stripped)
-        context.user_data['supplier_stock_processing_stage'] = 'source_file'
-        context.user_data['supplier_stock_processing_data'] = data
+        data["name"] = user_input_stripped
+        data["id"] = _slugify_supplier_source_id(user_input_stripped)
+        context.user_data["supplier_stock_processing_stage"] = "source_file"
+        context.user_data["supplier_stock_processing_data"] = data
         update.message.reply_text("Введите файл источника (например: supplier_1_orig.xls):")
         return None
 
-    if stage == 'edit_name':
-        if user_input_stripped and user_input_stripped not in ('-',):
-            data['name'] = user_input_stripped
-        context.user_data['supplier_stock_processing_stage'] = 'edit_source_file'
-        context.user_data['supplier_stock_processing_data'] = data
+    if stage == "edit_name":
+        if user_input_stripped and user_input_stripped not in ("-",):
+            data["name"] = user_input_stripped
+        context.user_data["supplier_stock_processing_stage"] = "edit_source_file"
+        context.user_data["supplier_stock_processing_data"] = data
         update.message.reply_text(
             f"Текущий файл источника: {data.get('source_file', '-')}\n"
             "Введите новый файл источника (или '-' чтобы оставить текущее):"
         )
         return None
 
-    if stage == 'edit_source_file':
-        if user_input_stripped and user_input_stripped not in ('-',):
-            data['source_file'] = user_input_stripped
-        context.user_data['supplier_stock_processing_stage'] = 'edit_reconfigure'
-        context.user_data['supplier_stock_processing_data'] = data
-        update.message.reply_text(
-            "Перенастроить обработку? (да/нет):"
-        )
+    if stage == "edit_source_file":
+        if user_input_stripped and user_input_stripped not in ("-",):
+            data["source_file"] = user_input_stripped
+        context.user_data["supplier_stock_processing_stage"] = "edit_reconfigure"
+        context.user_data["supplier_stock_processing_data"] = data
+        update.message.reply_text("Перенастроить обработку? (да/нет):")
         return None
 
-    if stage == 'edit_reconfigure':
+    if stage == "edit_reconfigure":
         reconfigure = _parse_yes_no(user_input_stripped)
         if reconfigure is None:
             update.message.reply_text("❌ Ответьте 'да' или 'нет'.")
@@ -6742,262 +7494,269 @@ def supplier_stock_handle_processing_input(update, context):
             _save_supplier_stock_processing_rule(context, data, edit_id=data.get("id"))
             update.message.reply_text(
                 "✅ Правило обновлено.",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]]
+                ),
             )
             return None
-        data.pop('variants', None)
-        data.pop('variants_count', None)
-        data.pop('data_row', None)
-        data.pop('requires_processing', None)
-        context.user_data['supplier_stock_processing_stage'] = 'needs_processing'
-        context.user_data['supplier_stock_processing_data'] = data
+        data.pop("variants", None)
+        data.pop("variants_count", None)
+        data.pop("data_row", None)
+        data.pop("requires_processing", None)
+        context.user_data["supplier_stock_processing_stage"] = "needs_processing"
+        context.user_data["supplier_stock_processing_data"] = data
         update.message.reply_text("Требуется обработка файла? (да/нет):")
         return None
 
-    if stage == 'source_file':
+    if stage == "source_file":
         if not user_input_stripped:
             update.message.reply_text("❌ Файл источника не может быть пустым. Попробуйте снова:")
             return None
-        data['source_file'] = user_input_stripped
-        context.user_data['supplier_stock_processing_stage'] = 'needs_processing'
-        context.user_data['supplier_stock_processing_data'] = data
+        data["source_file"] = user_input_stripped
+        context.user_data["supplier_stock_processing_stage"] = "needs_processing"
+        context.user_data["supplier_stock_processing_data"] = data
         update.message.reply_text("Требуется обработка файла? (да/нет):")
         return None
 
-    if stage == 'needs_processing':
+    if stage == "needs_processing":
         needs_processing = _parse_yes_no(user_input_stripped)
         if needs_processing is None:
             update.message.reply_text("❌ Ответьте 'да' или 'нет'.")
             return None
-        data['requires_processing'] = needs_processing
+        data["requires_processing"] = needs_processing
         if not needs_processing:
-            edit_id = data.get("id") if context.user_data.get('supplier_stock_processing_edit') else None
+            edit_id = (
+                data.get("id") if context.user_data.get("supplier_stock_processing_edit") else None
+            )
             _save_supplier_stock_processing_rule(context, data, edit_id=edit_id)
-            done_text = "✅ Правило обновлено." if context.user_data.get('supplier_stock_processing_edit') else "✅ Правило добавлено."
+            done_text = (
+                "✅ Правило обновлено."
+                if context.user_data.get("supplier_stock_processing_edit")
+                else "✅ Правило добавлено."
+            )
             update.message.reply_text(
                 done_text,
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]]
+                ),
             )
             return None
-        context.user_data['supplier_stock_processing_stage'] = 'variants_count'
-        context.user_data['supplier_stock_processing_data'] = data
+        context.user_data["supplier_stock_processing_stage"] = "variants_count"
+        context.user_data["supplier_stock_processing_data"] = data
         update.message.reply_text("Сколько вариантов конечных файлов требуется? (число):")
         return None
 
-    if stage == 'variants_count':
+    if stage == "variants_count":
         variants_count = _parse_positive_int(user_input_stripped)
         if variants_count is None:
             update.message.reply_text("❌ Введите целое число больше 0.")
             return None
-        data['variants_count'] = variants_count
-        data['variants'] = []
-        context.user_data['supplier_stock_processing_variant_index'] = 0
-        context.user_data['supplier_stock_processing_stage'] = 'data_row'
-        context.user_data['supplier_stock_processing_data'] = data
+        data["variants_count"] = variants_count
+        data["variants"] = []
+        context.user_data["supplier_stock_processing_variant_index"] = 0
+        context.user_data["supplier_stock_processing_stage"] = "data_row"
+        context.user_data["supplier_stock_processing_data"] = data
         update.message.reply_text("Введите номер первой строки с данными (например: 2):")
         return None
 
-    if stage == 'data_row':
+    if stage == "data_row":
         data_row = _parse_positive_int(user_input_stripped)
         if data_row is None:
             update.message.reply_text("❌ Введите целое число больше 0.")
             return None
-        data['data_row'] = data_row
-        context.user_data['supplier_stock_processing_stage'] = 'variant_article_col'
-        context.user_data['supplier_stock_processing_data'] = data
+        data["data_row"] = data_row
+        context.user_data["supplier_stock_processing_stage"] = "variant_article_col"
+        context.user_data["supplier_stock_processing_data"] = data
         update.message.reply_text("Введите номер колонки с артикулом:")
         return None
 
-    if stage == 'variant_article_col':
+    if stage == "variant_article_col":
         article_col = _parse_positive_int(user_input_stripped)
         if article_col is None:
             update.message.reply_text("❌ Введите целое число больше 0.")
             return None
-        context.user_data['supplier_stock_processing_current_variant'] = {
+        context.user_data["supplier_stock_processing_current_variant"] = {
             "article_col": article_col,
         }
-        context.user_data['supplier_stock_processing_stage'] = 'variant_article_filter'
+        context.user_data["supplier_stock_processing_stage"] = "variant_article_filter"
         update.message.reply_text(
             "Введите условия отбора артикулов (regex) или '-' для всех.\n\n"
             "Примеры условий:\n"
             "• $1 ~ /^[0-9]/ && $col+0 > 0\n"
             "• $1 ~ /^[A-Z].*/ && $4 ~ /^[0-9]+$/\n"
             "• grep -E '^DKS [0-9A-Z]{6,},'\n"
-            "• gsub(/^\./, \"\", art); gsub(/[A-Za-z]+$/, \"\", art);\n"
-            "• ($3+0 > 0) && ($4 == \"Москва\")"
+            '• gsub(/^\./, "", art); gsub(/[A-Za-z]+$/, "", art);\n'
+            '• ($3+0 > 0) && ($4 == "Москва")'
         )
         return None
 
-    if stage == 'variant_article_filter':
-        variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        if user_input_stripped not in ('-', ''):
-            variant['article_filter'] = user_input_stripped
-        context.user_data['supplier_stock_processing_current_variant'] = variant
-        context.user_data['supplier_stock_processing_stage'] = 'variant_prefix'
+    if stage == "variant_article_filter":
+        variant = context.user_data.get("supplier_stock_processing_current_variant", {})
+        if user_input_stripped not in ("-", ""):
+            variant["article_filter"] = user_input_stripped
+        context.user_data["supplier_stock_processing_current_variant"] = variant
+        context.user_data["supplier_stock_processing_stage"] = "variant_prefix"
         update.message.reply_text(
             "Введите префикс артикула (или '-' если не нужен). "
             "Пробелы в конце сохраняются, либо используйте \\s."
         )
         return None
 
-    if stage == 'variant_prefix':
-        variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        if user_input_stripped in ('-', ''):
-            variant['article_prefix'] = ""
+    if stage == "variant_prefix":
+        variant = context.user_data.get("supplier_stock_processing_current_variant", {})
+        if user_input_stripped in ("-", ""):
+            variant["article_prefix"] = ""
         else:
-            variant['article_prefix'] = user_input
-        context.user_data['supplier_stock_processing_current_variant'] = variant
-        context.user_data['supplier_stock_processing_stage'] = 'variant_postfix'
+            variant["article_prefix"] = user_input
+        context.user_data["supplier_stock_processing_current_variant"] = variant
+        context.user_data["supplier_stock_processing_stage"] = "variant_postfix"
         update.message.reply_text(
-            "Введите постфикс артикула (или '-' если не нужен). "
-            "Пробелы в конце сохраняются."
+            "Введите постфикс артикула (или '-' если не нужен). " "Пробелы в конце сохраняются."
         )
         return None
 
-    if stage == 'variant_postfix':
-        variant = context.user_data.get('supplier_stock_processing_current_variant', {})
+    if stage == "variant_postfix":
+        variant = context.user_data.get("supplier_stock_processing_current_variant", {})
         raw_value = user_input
         if raw_value == "":
-            variant['article_postfix'] = ""
+            variant["article_postfix"] = ""
         elif raw_value.strip() == "-":
-            variant['article_postfix'] = ""
+            variant["article_postfix"] = ""
         else:
-            variant['article_postfix'] = raw_value
-        context.user_data['supplier_stock_processing_current_variant'] = variant
-        context.user_data['supplier_stock_processing_stage'] = 'data_columns_count'
+            variant["article_postfix"] = raw_value
+        context.user_data["supplier_stock_processing_current_variant"] = variant
+        context.user_data["supplier_stock_processing_stage"] = "data_columns_count"
         update.message.reply_text("Сколько колонок с данными нужно использовать? (число):")
         return None
 
-    if stage == 'data_columns_count':
+    if stage == "data_columns_count":
         columns_count = _parse_positive_int(user_input_stripped)
         if columns_count is None:
             update.message.reply_text("❌ Введите целое число больше 0.")
             return None
-        context.user_data['supplier_stock_processing_data_columns_expected'] = columns_count
-        context.user_data['supplier_stock_processing_data_columns'] = []
-        context.user_data['supplier_stock_processing_stage'] = 'data_column'
+        context.user_data["supplier_stock_processing_data_columns_expected"] = columns_count
+        context.user_data["supplier_stock_processing_data_columns"] = []
+        context.user_data["supplier_stock_processing_stage"] = "data_column"
         update.message.reply_text("Введите номер колонки с данными 1 из %d:" % columns_count)
         return None
 
-    if stage == 'data_column':
+    if stage == "data_column":
         col_value = _parse_positive_int(user_input_stripped)
         if col_value is None:
             update.message.reply_text("❌ Введите целое число больше 0.")
             return None
-        columns = context.user_data.get('supplier_stock_processing_data_columns', [])
+        columns = context.user_data.get("supplier_stock_processing_data_columns", [])
         columns.append(col_value)
-        context.user_data['supplier_stock_processing_data_columns'] = columns
-        expected = context.user_data.get('supplier_stock_processing_data_columns_expected', 0)
+        context.user_data["supplier_stock_processing_data_columns"] = columns
+        expected = context.user_data.get("supplier_stock_processing_data_columns_expected", 0)
         if len(columns) < expected:
             update.message.reply_text(
                 "Введите номер колонки с данными %d из %d:" % (len(columns) + 1, expected)
             )
             return None
-        variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        variant['data_columns'] = columns
-        context.user_data['supplier_stock_processing_current_variant'] = variant
-        context.user_data['supplier_stock_processing_output_names_expected'] = expected
-        context.user_data['supplier_stock_processing_output_names'] = []
-        context.user_data['supplier_stock_processing_stage'] = 'output_name'
+        variant = context.user_data.get("supplier_stock_processing_current_variant", {})
+        variant["data_columns"] = columns
+        context.user_data["supplier_stock_processing_current_variant"] = variant
+        context.user_data["supplier_stock_processing_output_names_expected"] = expected
+        context.user_data["supplier_stock_processing_output_names"] = []
+        context.user_data["supplier_stock_processing_stage"] = "output_name"
         update.message.reply_text(
             "Введите имя выходного файла для колонки 1 из %d "
             "(можно использовать {index}, {name}, {filename}):" % expected
         )
         return None
 
-    if stage == 'output_name':
+    if stage == "output_name":
         if not user_input_stripped:
             update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
             return None
-        names = context.user_data.get('supplier_stock_processing_output_names', [])
+        names = context.user_data.get("supplier_stock_processing_output_names", [])
         names.append(user_input_stripped)
-        context.user_data['supplier_stock_processing_output_names'] = names
-        expected = context.user_data.get('supplier_stock_processing_output_names_expected', 0)
+        context.user_data["supplier_stock_processing_output_names"] = names
+        expected = context.user_data.get("supplier_stock_processing_output_names_expected", 0)
         if len(names) < expected:
             update.message.reply_text(
                 "Введите имя выходного файла для колонки %d из %d "
                 "(можно использовать {index}, {name}, {filename}):" % (len(names) + 1, expected)
             )
             return None
-        variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        variant['output_names'] = names
-        context.user_data['supplier_stock_processing_current_variant'] = variant
-        context.user_data['supplier_stock_processing_stage'] = 'output_format'
+        variant = context.user_data.get("supplier_stock_processing_current_variant", {})
+        variant["output_names"] = names
+        context.user_data["supplier_stock_processing_current_variant"] = variant
+        context.user_data["supplier_stock_processing_stage"] = "output_format"
         update.message.reply_text("Введите формат выходного файла (xls, xlsx, csv):")
         return None
 
-    if stage == 'output_format':
+    if stage == "output_format":
         format_value = user_input_stripped.lower()
-        if format_value not in ('xls', 'xlsx', 'csv'):
+        if format_value not in ("xls", "xlsx", "csv"):
             update.message.reply_text("❌ Допустимые форматы: xls, xlsx, csv.")
             return None
-        variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        variant['output_format'] = format_value
-        context.user_data['supplier_stock_processing_current_variant'] = variant
-        context.user_data['supplier_stock_processing_stage'] = 'orc_required'
+        variant = context.user_data.get("supplier_stock_processing_current_variant", {})
+        variant["output_format"] = format_value
+        context.user_data["supplier_stock_processing_current_variant"] = variant
+        context.user_data["supplier_stock_processing_stage"] = "orc_required"
         update.message.reply_text("Нужно формировать отдельный файл для ОРК? (да/нет):")
         return None
 
-    if stage == 'orc_required':
+    if stage == "orc_required":
         orc_required = _parse_yes_no(user_input_stripped)
         if orc_required is None:
             update.message.reply_text("❌ Ответьте 'да' или 'нет'.")
             return None
-        variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        variant['orc'] = {"enabled": orc_required}
-        context.user_data['supplier_stock_processing_current_variant'] = variant
+        variant = context.user_data.get("supplier_stock_processing_current_variant", {})
+        variant["orc"] = {"enabled": orc_required}
+        context.user_data["supplier_stock_processing_current_variant"] = variant
         if not orc_required:
             return _supplier_stock_finish_variant(update, context, data)
-        context.user_data['supplier_stock_processing_stage'] = 'orc_prefix'
+        context.user_data["supplier_stock_processing_stage"] = "orc_prefix"
         update.message.reply_text(
             "Введите префикс артикула для файла ОРК (или '-' если не нужен). "
             "Пробелы в конце сохраняются."
         )
         return None
 
-    if stage == 'orc_prefix':
-        variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        if user_input_stripped in ('-', ''):
-            variant['orc']['prefix'] = ""
+    if stage == "orc_prefix":
+        variant = context.user_data.get("supplier_stock_processing_current_variant", {})
+        if user_input_stripped in ("-", ""):
+            variant["orc"]["prefix"] = ""
         else:
-            variant['orc']['prefix'] = user_input
-        context.user_data['supplier_stock_processing_current_variant'] = variant
-        context.user_data['supplier_stock_processing_stage'] = 'orc_stor'
+            variant["orc"]["prefix"] = user_input
+        context.user_data["supplier_stock_processing_current_variant"] = variant
+        context.user_data["supplier_stock_processing_stage"] = "orc_stor"
         update.message.reply_text("Введите параметр Stor для файла ОРК:")
         return None
 
-    if stage == 'orc_stor':
+    if stage == "orc_stor":
         if not user_input_stripped:
             update.message.reply_text("❌ Stor не может быть пустым. Попробуйте снова:")
             return None
-        variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        variant['orc']['stor'] = user_input_stripped
-        context.user_data['supplier_stock_processing_current_variant'] = variant
+        variant = context.user_data.get("supplier_stock_processing_current_variant", {})
+        variant["orc"]["stor"] = user_input_stripped
+        context.user_data["supplier_stock_processing_current_variant"] = variant
         return _supplier_stock_finish_variant(update, context, data)
 
     update.message.reply_text("❌ Не удалось определить шаг мастера. Попробуйте снова.")
     return None
+
 
 def supplier_stock_start_source_wizard(update, context):
     """Запуск мастера добавления источника остатков."""
     query = update.callback_query
     query.answer()
 
-    context.user_data['supplier_stock_source_stage'] = 'name'
-    context.user_data['supplier_stock_source_data'] = {}
-    context.user_data['supplier_stock_add_source'] = True
+    context.user_data["supplier_stock_source_stage"] = "name"
+    context.user_data["supplier_stock_source_data"] = {}
+    context.user_data["supplier_stock_add_source"] = True
 
     query.edit_message_text(
         "➕ *Новый источник остатков*\n\nВведите название источника:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_sources')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_sources")]]
+        ),
     )
+
 
 def supplier_stock_start_edit_wizard(update, context, source_id: str):
     """Запуск мастера редактирования источника остатков."""
@@ -7011,68 +7770,73 @@ def supplier_stock_start_edit_wizard(update, context, source_id: str):
     if not source:
         query.edit_message_text(
             "❌ Источник не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
         )
         return
 
-    context.user_data['supplier_stock_edit_source'] = True
-    context.user_data['supplier_stock_edit_source_stage'] = 'name'
-    context.user_data['supplier_stock_edit_source_id'] = source_id
+    context.user_data["supplier_stock_edit_source"] = True
+    context.user_data["supplier_stock_edit_source_stage"] = "name"
+    context.user_data["supplier_stock_edit_source_id"] = source_id
 
     query.edit_message_text(
         f"✏️ *Редактирование источника*\n\nТекущее имя: `{_escape_pattern_text(source.get('name'))}`\n"
         "Введите новое имя (или '-' чтобы оставить текущее):",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_sources')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_sources")]]
+        ),
     )
+
 
 def supplier_stock_handle_input(update, context):
     """Обработчик ввода для настроек остатков поставщиков."""
-    if context.user_data.get('supplier_stock_source_iek_field'):
+    if context.user_data.get("supplier_stock_source_iek_field"):
         return supplier_stock_handle_source_iek_field_input(update, context)
-    if context.user_data.get('supplier_stock_resource_field'):
+    if context.user_data.get("supplier_stock_resource_field"):
         return supplier_stock_handle_resource_field_input(update, context)
-    if context.user_data.get('supplier_stock_resource_add'):
+    if context.user_data.get("supplier_stock_resource_add"):
         return supplier_stock_handle_resource_input(update, context)
-    if context.user_data.get('supplier_stock_ftp_field'):
+    if context.user_data.get("supplier_stock_ftp_field"):
         return supplier_stock_handle_ftp_input(update, context)
-    if context.user_data.get('supplier_stock_source_field'):
+    if context.user_data.get("supplier_stock_source_field"):
         return supplier_stock_handle_source_field_input(update, context)
-    if context.user_data.get('supplier_stock_mail_source_field'):
+    if context.user_data.get("supplier_stock_mail_source_field"):
         return supplier_stock_handle_mail_source_field_input(update, context)
-    if context.user_data.get('supplier_stock_processing_field'):
+    if context.user_data.get("supplier_stock_processing_field"):
         return supplier_stock_handle_processing_input(update, context)
-    if context.user_data.get('supplier_stock_edit'):
+    if context.user_data.get("supplier_stock_edit"):
         return supplier_stock_handle_edit_input(update, context)
-    if context.user_data.get('supplier_stock_processing_add') or context.user_data.get('supplier_stock_processing_edit'):
+    if context.user_data.get("supplier_stock_processing_add") or context.user_data.get(
+        "supplier_stock_processing_edit"
+    ):
         return supplier_stock_handle_processing_input(update, context)
-    if context.user_data.get('supplier_stock_mail_edit'):
+    if context.user_data.get("supplier_stock_mail_edit"):
         return supplier_stock_handle_mail_edit_input(update, context)
-    if context.user_data.get('supplier_stock_mail_edit_source'):
+    if context.user_data.get("supplier_stock_mail_edit_source"):
         return supplier_stock_handle_mail_source_edit_input(update, context)
-    if context.user_data.get('supplier_stock_mail_add_source'):
+    if context.user_data.get("supplier_stock_mail_add_source"):
         return supplier_stock_handle_mail_source_input(update, context)
-    if context.user_data.get('supplier_stock_edit_source'):
+    if context.user_data.get("supplier_stock_edit_source"):
         return supplier_stock_handle_source_edit_input(update, context)
-    if context.user_data.get('supplier_stock_add_source'):
+    if context.user_data.get("supplier_stock_add_source"):
         return supplier_stock_handle_source_input(update, context)
     return None
+
 
 def _supplier_stock_remember_prompt_message(context, query):
     """Запомнить сообщение с запросом ввода параметра."""
     if not query or not query.message:
         return
-    context.user_data['supplier_stock_prompt_message_id'] = query.message.message_id
-    context.user_data['supplier_stock_prompt_chat_id'] = query.message.chat_id
+    context.user_data["supplier_stock_prompt_message_id"] = query.message.message_id
+    context.user_data["supplier_stock_prompt_chat_id"] = query.message.chat_id
+
 
 def _supplier_stock_close_prompt_message(context):
     """Удалить сообщение с запросом ввода параметра."""
-    message_id = context.user_data.pop('supplier_stock_prompt_message_id', None)
-    chat_id = context.user_data.pop('supplier_stock_prompt_chat_id', None)
+    message_id = context.user_data.pop("supplier_stock_prompt_message_id", None)
+    chat_id = context.user_data.pop("supplier_stock_prompt_chat_id", None)
     if not message_id or not chat_id:
         return
     try:
@@ -7080,9 +7844,10 @@ def _supplier_stock_close_prompt_message(context):
     except Exception:
         pass
 
+
 def supplier_stock_handle_edit_input(update, context):
     """Обработка ввода для изменения настроек остатков поставщиков."""
-    field = context.user_data.get('supplier_stock_edit')
+    field = context.user_data.get("supplier_stock_edit")
     if not field:
         return None
 
@@ -7094,42 +7859,42 @@ def supplier_stock_handle_edit_input(update, context):
     user_input = message.text.strip()
     config = get_supplier_stock_config()
 
-    if field == 'temp_dir':
+    if field == "temp_dir":
         if not user_input:
             update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
             return None
-        config['download']['temp_dir'] = user_input
+        config["download"]["temp_dir"] = user_input
         save_supplier_stock_config(config)
-        context.user_data.pop('supplier_stock_edit', None)
+        context.user_data.pop("supplier_stock_edit", None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Временный каталог обновлен.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_download")]]
+            ),
         )
         return None
 
-    if field == 'schedule_time':
+    if field == "schedule_time":
         schedule_times = parse_supplier_stock_schedule_times(user_input)
         if not schedule_times:
             update.message.reply_text(
                 "❌ Неверный формат времени. Используйте HH:MM и разделители: пробел, запятая или ;"
             )
             return None
-        config['download']['schedule']['time'] = ', '.join(schedule_times)
+        config["download"]["schedule"]["time"] = ", ".join(schedule_times)
         save_supplier_stock_config(config)
-        context.user_data.pop('supplier_stock_edit', None)
+        context.user_data.pop("supplier_stock_edit", None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Время расписания обновлено.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_schedule')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_schedule")]]
+            ),
         )
         return None
 
-    if field == 'archive_cleanup_days':
+    if field == "archive_cleanup_days":
         try:
             cleanup_days = int(user_input)
         except ValueError:
@@ -7140,18 +7905,20 @@ def supplier_stock_handle_edit_input(update, context):
             return None
         config["archive_cleanup_days"] = cleanup_days
         save_supplier_stock_config(config)
-        context.user_data.pop('supplier_stock_edit', None)
-        back_callback = context.user_data.pop('supplier_stock_archive_cleanup_back', 'supplier_stock_download')
+        context.user_data.pop("supplier_stock_edit", None)
+        back_callback = context.user_data.pop(
+            "supplier_stock_archive_cleanup_back", "supplier_stock_download"
+        )
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Период очистки архива обновлен.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]]
+            ),
         )
         return None
 
-    if field == 'report_period_days':
+    if field == "report_period_days":
         try:
             period_days = int(user_input)
         except ValueError:
@@ -7162,93 +7929,96 @@ def supplier_stock_handle_edit_input(update, context):
             return None
         config.setdefault("reporting", {})["period_days"] = period_days
         save_supplier_stock_config(config)
-        context.user_data.pop('supplier_stock_edit', None)
+        context.user_data.pop("supplier_stock_edit", None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Период отчётов обновлён.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_supplier_stock")]]
+            ),
         )
         return None
 
-    if field == 'archive_dir':
+    if field == "archive_dir":
         if not user_input:
             update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
             return None
-        config['download']['archive_dir'] = user_input
+        config["download"]["archive_dir"] = user_input
         save_supplier_stock_config(config)
-        context.user_data.pop('supplier_stock_edit', None)
+        context.user_data.pop("supplier_stock_edit", None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Каталог архива обновлен.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_download")]]
+            ),
         )
         return None
 
     return None
 
+
 def supplier_stock_handle_mail_edit_input(update, context):
     """Обработка ввода для общих настроек почты остатков."""
-    field = context.user_data.get('supplier_stock_mail_edit')
+    field = context.user_data.get("supplier_stock_mail_edit")
     if not field:
         return None
 
     user_input = update.message.text.strip()
     config = get_supplier_stock_config()
 
-    if field == 'temp_dir':
+    if field == "temp_dir":
         if not user_input:
             update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
             return None
         config["mail"]["temp_dir"] = user_input
         save_supplier_stock_config(config)
-        context.user_data.pop('supplier_stock_mail_edit', None)
+        context.user_data.pop("supplier_stock_mail_edit", None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Временный каталог обновлен.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail")]]
+            ),
         )
         return None
 
-    if field == 'archive_dir':
+    if field == "archive_dir":
         if not user_input:
             update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
             return None
         config["mail"]["archive_dir"] = user_input
         save_supplier_stock_config(config)
-        context.user_data.pop('supplier_stock_mail_edit', None)
+        context.user_data.pop("supplier_stock_mail_edit", None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Каталог архива обновлен.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail")]]
+            ),
         )
         return None
 
     return None
+
 
 def supplier_stock_start_mail_source_wizard(update, context):
     """Запуск мастера добавления правила вложений почты."""
     query = update.callback_query
     query.answer()
 
-    context.user_data['supplier_stock_mail_source_stage'] = 'name'
-    context.user_data['supplier_stock_mail_source_data'] = {}
-    context.user_data['supplier_stock_mail_add_source'] = True
+    context.user_data["supplier_stock_mail_source_stage"] = "name"
+    context.user_data["supplier_stock_mail_source_data"] = {}
+    context.user_data["supplier_stock_mail_add_source"] = True
 
     query.edit_message_text(
         "➕ *Новое правило вложений*\n\nВведите название правила:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail_sources')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_mail_sources")]]
+        ),
     )
+
 
 def supplier_stock_start_mail_edit_wizard(update, context, source_id: str):
     """Запуск мастера редактирования правила вложений почты."""
@@ -7262,135 +8032,135 @@ def supplier_stock_start_mail_edit_wizard(update, context, source_id: str):
     if not source:
         query.edit_message_text(
             "❌ Правило не найдено.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail_sources")]]
+            ),
         )
         return
 
-    context.user_data['supplier_stock_mail_edit_source'] = True
-    context.user_data['supplier_stock_mail_edit_source_stage'] = 'name'
-    context.user_data['supplier_stock_mail_edit_source_id'] = source_id
+    context.user_data["supplier_stock_mail_edit_source"] = True
+    context.user_data["supplier_stock_mail_edit_source_stage"] = "name"
+    context.user_data["supplier_stock_mail_edit_source_id"] = source_id
 
     query.edit_message_text(
         f"✏️ *Редактирование правила*\n\n"
         f"Текущее имя: `{_escape_pattern_text(source.get('name'))}`\n"
         "Введите новое имя (или '-' чтобы оставить текущее):",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail_sources')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="supplier_stock_mail_sources")]]
+        ),
     )
+
 
 def supplier_stock_handle_mail_source_input(update, context):
     """Обработка ввода в мастере добавления правила вложений."""
-    stage = context.user_data.get('supplier_stock_mail_source_stage')
-    source_data = context.user_data.get('supplier_stock_mail_source_data', {})
+    stage = context.user_data.get("supplier_stock_mail_source_stage")
+    source_data = context.user_data.get("supplier_stock_mail_source_data", {})
     user_input = update.message.text.strip()
 
-    if stage == 'name':
+    if stage == "name":
         if not user_input:
             update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
             return None
-        source_data['name'] = user_input
-        source_data['id'] = _slugify_supplier_source_id(user_input)
-        context.user_data['supplier_stock_mail_source_stage'] = 'sender'
-        context.user_data['supplier_stock_mail_source_data'] = source_data
+        source_data["name"] = user_input
+        source_data["id"] = _slugify_supplier_source_id(user_input)
+        context.user_data["supplier_stock_mail_source_stage"] = "sender"
+        context.user_data["supplier_stock_mail_source_data"] = source_data
         update.message.reply_text(
             "Введите regex или адрес отправителя (например: sender@example.com) "
             "или '-' чтобы принимать любые письма:"
         )
         return None
 
-    if stage == 'sender':
-        if user_input not in ('-', ''):
-            source_data['sender_pattern'] = user_input
-        context.user_data['supplier_stock_mail_source_stage'] = 'subject'
-        context.user_data['supplier_stock_mail_source_data'] = source_data
+    if stage == "sender":
+        if user_input not in ("-", ""):
+            source_data["sender_pattern"] = user_input
+        context.user_data["supplier_stock_mail_source_stage"] = "subject"
+        context.user_data["supplier_stock_mail_source_data"] = source_data
         update.message.reply_text(
             "Введите regex для темы письма или '-' чтобы принимать любую тему:"
         )
         return None
 
-    if stage == 'subject':
-        if user_input not in ('-', ''):
-            source_data['subject_pattern'] = user_input
-        context.user_data['supplier_stock_mail_source_stage'] = 'mime'
-        context.user_data['supplier_stock_mail_source_data'] = source_data
+    if stage == "subject":
+        if user_input not in ("-", ""):
+            source_data["subject_pattern"] = user_input
+        context.user_data["supplier_stock_mail_source_stage"] = "mime"
+        context.user_data["supplier_stock_mail_source_data"] = source_data
         update.message.reply_text(
             "Введите MIME-фильтр (например: application/vnd.ms-excel) "
             "или '-' чтобы использовать application/.*:"
         )
         return None
 
-    if stage == 'mime':
-        if user_input not in ('-', ''):
-            source_data['mime_pattern'] = user_input
-        context.user_data['supplier_stock_mail_source_stage'] = 'filename'
-        context.user_data['supplier_stock_mail_source_data'] = source_data
+    if stage == "mime":
+        if user_input not in ("-", ""):
+            source_data["mime_pattern"] = user_input
+        context.user_data["supplier_stock_mail_source_stage"] = "filename"
+        context.user_data["supplier_stock_mail_source_data"] = source_data
         update.message.reply_text(
             "Введите regex для имени вложения или '-' чтобы принимать любые файлы:"
         )
         return None
 
-    if stage == 'filename':
-        if user_input not in ('-', ''):
-            source_data['filename_pattern'] = user_input
-        context.user_data['supplier_stock_mail_source_stage'] = 'expected'
-        context.user_data['supplier_stock_mail_source_data'] = source_data
-        update.message.reply_text(
-            "Введите количество ожидаемых вложений (например: 1 или 2):"
-        )
+    if stage == "filename":
+        if user_input not in ("-", ""):
+            source_data["filename_pattern"] = user_input
+        context.user_data["supplier_stock_mail_source_stage"] = "expected"
+        context.user_data["supplier_stock_mail_source_data"] = source_data
+        update.message.reply_text("Введите количество ожидаемых вложений (например: 1 или 2):")
         return None
 
-    if stage == 'expected':
+    if stage == "expected":
         expected = _parse_expected_attachments(user_input)
         if expected is None:
             update.message.reply_text("❌ Введите целое число больше 0.")
             return None
-        source_data['expected_attachments'] = expected
-        context.user_data['supplier_stock_mail_source_stage'] = 'output'
-        context.user_data['supplier_stock_mail_source_data'] = source_data
+        source_data["expected_attachments"] = expected
+        context.user_data["supplier_stock_mail_source_stage"] = "output"
+        context.user_data["supplier_stock_mail_source_data"] = source_data
         update.message.reply_text(
             "Введите шаблон имени выходного файла "
             "(например: supplier_{index}_orig.xls, доступны {index}, {name}):"
         )
         return None
 
-    if stage == 'output':
+    if stage == "output":
         if not user_input:
             update.message.reply_text("❌ Шаблон не может быть пустым. Попробуйте снова:")
             return None
-        source_data['output_template'] = user_input
-        source_data.setdefault('enabled', True)
-        source_data.setdefault('unpack_archive', False)
+        source_data["output_template"] = user_input
+        source_data.setdefault("enabled", True)
+        source_data.setdefault("unpack_archive", False)
 
         config = get_supplier_stock_config()
-        sources = config['mail'].get('sources', [])
-        source_data['id'] = _unique_supplier_source_id(source_data.get('id', 'source'), sources)
+        sources = config["mail"].get("sources", [])
+        source_data["id"] = _unique_supplier_source_id(source_data.get("id", "source"), sources)
         sources.append(source_data)
-        config['mail']['sources'] = sources
+        config["mail"]["sources"] = sources
         save_supplier_stock_config(config)
 
-        context.user_data.pop('supplier_stock_mail_add_source', None)
-        context.user_data.pop('supplier_stock_mail_source_stage', None)
-        context.user_data.pop('supplier_stock_mail_source_data', None)
+        context.user_data.pop("supplier_stock_mail_add_source", None)
+        context.user_data.pop("supplier_stock_mail_source_stage", None)
+        context.user_data.pop("supplier_stock_mail_source_data", None)
 
         update.message.reply_text(
             "✅ Правило добавлено.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail_sources")]]
+            ),
         )
         return None
 
     update.message.reply_text("❌ Не удалось определить шаг мастера. Попробуйте снова.")
     return None
 
+
 def supplier_stock_handle_mail_source_edit_input(update, context):
     """Обработка ввода при редактировании правила вложений."""
-    stage = context.user_data.get('supplier_stock_mail_edit_source_stage')
-    source_id = context.user_data.get('supplier_stock_mail_edit_source_id')
+    stage = context.user_data.get("supplier_stock_mail_edit_source_stage")
+    source_id = context.user_data.get("supplier_stock_mail_edit_source_id")
     user_input = update.message.text.strip()
 
     config = get_supplier_stock_config()
@@ -7398,17 +8168,20 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
     source = next((item for item in sources if str(item.get("id")) == source_id), None)
 
     if not source:
-        update.message.reply_text("❌ Правило не найдено.", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
-        ]))
+        update.message.reply_text(
+            "❌ Правило не найдено.",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail_sources")]]
+            ),
+        )
         return None
 
-    if stage == 'name':
-        if user_input and user_input not in ('-',):
-            source['name'] = user_input
+    if stage == "name":
+        if user_input and user_input not in ("-",):
+            source["name"] = user_input
             config["mail"]["sources"] = sources
             save_supplier_stock_config(config)
-        context.user_data['supplier_stock_mail_edit_source_stage'] = 'sender'
+        context.user_data["supplier_stock_mail_edit_source_stage"] = "sender"
         current_sender = source.get("sender_pattern") or "-"
         update.message.reply_text(
             "Введите regex/адрес отправителя, '-' чтобы оставить текущее или 'none' чтобы очистить.\n"
@@ -7416,14 +8189,14 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         )
         return None
 
-    if stage == 'sender':
-        if user_input.lower() in ('none', 'нет'):
-            source.pop('sender_pattern', None)
-        elif user_input not in ('-',):
-            source['sender_pattern'] = user_input
+    if stage == "sender":
+        if user_input.lower() in ("none", "нет"):
+            source.pop("sender_pattern", None)
+        elif user_input not in ("-",):
+            source["sender_pattern"] = user_input
         config["mail"]["sources"] = sources
         save_supplier_stock_config(config)
-        context.user_data['supplier_stock_mail_edit_source_stage'] = 'subject'
+        context.user_data["supplier_stock_mail_edit_source_stage"] = "subject"
         current_subject = source.get("subject_pattern") or "-"
         update.message.reply_text(
             "Введите regex для темы письма, '-' чтобы оставить текущее или 'none' чтобы очистить.\n"
@@ -7431,14 +8204,14 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         )
         return None
 
-    if stage == 'subject':
-        if user_input.lower() in ('none', 'нет'):
-            source.pop('subject_pattern', None)
-        elif user_input not in ('-',):
-            source['subject_pattern'] = user_input
+    if stage == "subject":
+        if user_input.lower() in ("none", "нет"):
+            source.pop("subject_pattern", None)
+        elif user_input not in ("-",):
+            source["subject_pattern"] = user_input
         config["mail"]["sources"] = sources
         save_supplier_stock_config(config)
-        context.user_data['supplier_stock_mail_edit_source_stage'] = 'mime'
+        context.user_data["supplier_stock_mail_edit_source_stage"] = "mime"
         current_mime = source.get("mime_pattern") or "-"
         update.message.reply_text(
             "Введите MIME-фильтр, '-' чтобы оставить текущее или 'none' чтобы очистить.\n"
@@ -7446,14 +8219,14 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         )
         return None
 
-    if stage == 'mime':
-        if user_input.lower() in ('none', 'нет'):
-            source.pop('mime_pattern', None)
-        elif user_input not in ('-',):
-            source['mime_pattern'] = user_input
+    if stage == "mime":
+        if user_input.lower() in ("none", "нет"):
+            source.pop("mime_pattern", None)
+        elif user_input not in ("-",):
+            source["mime_pattern"] = user_input
         config["mail"]["sources"] = sources
         save_supplier_stock_config(config)
-        context.user_data['supplier_stock_mail_edit_source_stage'] = 'filename'
+        context.user_data["supplier_stock_mail_edit_source_stage"] = "filename"
         current_filename = source.get("filename_pattern") or "-"
         update.message.reply_text(
             "Введите regex для имени вложения, '-' чтобы оставить текущее или 'none' чтобы очистить.\n"
@@ -7461,14 +8234,14 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         )
         return None
 
-    if stage == 'filename':
-        if user_input.lower() in ('none', 'нет'):
-            source.pop('filename_pattern', None)
-        elif user_input not in ('-',):
-            source['filename_pattern'] = user_input
+    if stage == "filename":
+        if user_input.lower() in ("none", "нет"):
+            source.pop("filename_pattern", None)
+        elif user_input not in ("-",):
+            source["filename_pattern"] = user_input
         config["mail"]["sources"] = sources
         save_supplier_stock_config(config)
-        context.user_data['supplier_stock_mail_edit_source_stage'] = 'expected'
+        context.user_data["supplier_stock_mail_edit_source_stage"] = "expected"
         current_expected = source.get("expected_attachments", 1)
         update.message.reply_text(
             "Введите количество ожидаемых вложений, '-' чтобы оставить текущее.\n"
@@ -7476,16 +8249,16 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         )
         return None
 
-    if stage == 'expected':
-        if user_input not in ('-',):
+    if stage == "expected":
+        if user_input not in ("-",):
             expected = _parse_expected_attachments(user_input)
             if expected is None:
                 update.message.reply_text("❌ Введите целое число больше 0 или '-'.")
                 return None
-            source['expected_attachments'] = expected
+            source["expected_attachments"] = expected
         config["mail"]["sources"] = sources
         save_supplier_stock_config(config)
-        context.user_data['supplier_stock_mail_edit_source_stage'] = 'output'
+        context.user_data["supplier_stock_mail_edit_source_stage"] = "output"
         current_output = source.get("output_template") or "-"
         update.message.reply_text(
             "Введите шаблон имени выходного файла, '-' чтобы оставить текущее.\n"
@@ -7493,31 +8266,32 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         )
         return None
 
-    if stage == 'output':
-        if user_input and user_input not in ('-',):
-            source['output_template'] = user_input
+    if stage == "output":
+        if user_input and user_input not in ("-",):
+            source["output_template"] = user_input
         config["mail"]["sources"] = sources
         save_supplier_stock_config(config)
 
-        context.user_data.pop('supplier_stock_mail_edit_source', None)
-        context.user_data.pop('supplier_stock_mail_edit_source_stage', None)
-        context.user_data.pop('supplier_stock_mail_edit_source_id', None)
+        context.user_data.pop("supplier_stock_mail_edit_source", None)
+        context.user_data.pop("supplier_stock_mail_edit_source_stage", None)
+        context.user_data.pop("supplier_stock_mail_edit_source_id", None)
 
         update.message.reply_text(
             "✅ Правило обновлено.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail_sources")]]
+            ),
         )
         return None
 
     update.message.reply_text("❌ Не удалось определить шаг редактирования. Попробуйте снова.")
     return None
 
+
 def supplier_stock_handle_source_field_input(update, context):
     """Обработка ввода при редактировании отдельного поля источника."""
-    field = context.user_data.get('supplier_stock_source_field')
-    source_id = context.user_data.get('supplier_stock_source_field_id')
+    field = context.user_data.get("supplier_stock_source_field")
+    source_id = context.user_data.get("supplier_stock_source_field_id")
     user_input = (update.message.text or "").strip()
 
     if not field or not source_id:
@@ -7528,32 +8302,35 @@ def supplier_stock_handle_source_field_input(update, context):
     source = next((item for item in sources if str(item.get("id")) == source_id), None)
 
     if not source:
-        update.message.reply_text("❌ Источник не найден.", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
-        ]))
+        update.message.reply_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
+        )
         return None
 
-    if field == 'name':
-        if user_input in ('-', ''):
+    if field == "name":
+        if user_input in ("-", ""):
             pass
         elif not user_input:
             update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
             return None
         else:
-            source['name'] = user_input
-    elif field == 'url':
-        if user_input in ('-', ''):
+            source["name"] = user_input
+    elif field == "url":
+        if user_input in ("-", ""):
             pass
         elif not user_input:
             update.message.reply_text("❌ URL не может быть пустым. Попробуйте снова:")
             return None
         else:
-            source['url'] = user_input
-    elif field == 'discover':
-        if user_input in ('-', ''):
+            source["url"] = user_input
+    elif field == "discover":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            source.pop('discover', None)
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("discover", None)
         else:
             discover = _parse_supplier_discover(user_input)
             if discover is None:
@@ -7561,42 +8338,46 @@ def supplier_stock_handle_source_field_input(update, context):
                     "❌ Формат должен быть URL | regex | prefix, '-' или 'none'. Попробуйте снова:"
                 )
                 return None
-            source['discover'] = discover
-    elif field == 'vars':
-        if user_input in ('-', ''):
+            source["discover"] = discover
+    elif field == "vars":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            source.pop('vars', None)
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("vars", None)
         else:
             vars_map = _parse_supplier_vars(user_input)
             if vars_map is None:
-                update.message.reply_text("❌ Формат должен быть key=value, разделители запятая/новая строка.")
+                update.message.reply_text(
+                    "❌ Формат должен быть key=value, разделители запятая/новая строка."
+                )
                 return None
-            source['vars'] = vars_map
-    elif field == 'output_name':
-        if user_input in ('-', ''):
+            source["vars"] = vars_map
+    elif field == "output_name":
+        if user_input in ("-", ""):
             pass
         elif not user_input:
             update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
             return None
         else:
-            source['output_name'] = user_input
-    elif field == 'auth':
-        if user_input in ('-', ''):
+            source["output_name"] = user_input
+    elif field == "auth":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            source.pop('auth', None)
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("auth", None)
         else:
-            if ':' not in user_input:
-                update.message.reply_text("❌ Формат должен быть login:password или 'none'. Попробуйте снова:")
+            if ":" not in user_input:
+                update.message.reply_text(
+                    "❌ Формат должен быть login:password или 'none'. Попробуйте снова:"
+                )
                 return None
-            username, password = user_input.split(':', 1)
-            source['auth'] = {'username': username, 'password': password}
-    elif field == 'pre_request':
-        if user_input in ('-', ''):
+            username, password = user_input.split(":", 1)
+            source["auth"] = {"username": username, "password": password}
+    elif field == "pre_request":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            source.pop('pre_request', None)
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("pre_request", None)
         else:
             pre_request = _parse_supplier_pre_request(user_input)
             if pre_request is None:
@@ -7604,13 +8385,13 @@ def supplier_stock_handle_source_field_input(update, context):
                     "❌ Формат должен быть URL | данные, '-' или 'none'. Попробуйте снова:"
                 )
                 return None
-            source['pre_request'] = pre_request
-    elif field == 'options':
-        if user_input in ('-', ''):
+            source["pre_request"] = pre_request
+    elif field == "options":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            source.pop('include_headers', None)
-            source.pop('append', None)
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("include_headers", None)
+            source.pop("append", None)
         else:
             options = _parse_supplier_options(user_input)
             if options is None:
@@ -7619,48 +8400,48 @@ def supplier_stock_handle_source_field_input(update, context):
                 )
                 return None
             source.update(options)
-    elif field == 'processing_mode':
-        if user_input in ('-', ''):
+    elif field == "processing_mode":
+        if user_input in ("-", ""):
             pass
         else:
             mode = _normalize_supplier_processing_mode(user_input)
             if not mode:
                 update.message.reply_text("❌ Допустимые значения: table, iek_json.")
                 return None
-            source['processing_mode'] = mode
+            source["processing_mode"] = mode
             if mode == "iek_json":
                 source.setdefault("iek_json", {})
-    elif field == 'upload_subdir':
-        if user_input in ('-', ''):
+    elif field == "upload_subdir":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            source.pop('upload_subdir', None)
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("upload_subdir", None)
         else:
-            source['upload_subdir'] = user_input
-    elif field == 'individual_path':
-        individual_dir = source.setdefault('individual_directory', {})
-        if user_input in ('-', ''):
+            source["upload_subdir"] = user_input
+    elif field == "individual_path":
+        individual_dir = source.setdefault("individual_directory", {})
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            individual_dir.pop('unc_path', None)
+        elif user_input.lower() in ("none", "нет"):
+            individual_dir.pop("unc_path", None)
         else:
-            individual_dir['unc_path'] = user_input
-    elif field == 'individual_login':
-        individual_dir = source.setdefault('individual_directory', {})
-        if user_input in ('-', ''):
+            individual_dir["unc_path"] = user_input
+    elif field == "individual_login":
+        individual_dir = source.setdefault("individual_directory", {})
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            individual_dir.pop('login', None)
+        elif user_input.lower() in ("none", "нет"):
+            individual_dir.pop("login", None)
         else:
-            individual_dir['login'] = user_input
-    elif field == 'individual_password':
-        individual_dir = source.setdefault('individual_directory', {})
-        if user_input in ('-', ''):
+            individual_dir["login"] = user_input
+    elif field == "individual_password":
+        individual_dir = source.setdefault("individual_directory", {})
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            individual_dir.pop('password', None)
+        elif user_input.lower() in ("none", "нет"):
+            individual_dir.pop("password", None)
         else:
-            individual_dir['password'] = user_input
+            individual_dir["password"] = user_input
     else:
         update.message.reply_text("❌ Не удалось определить поле настройки.")
         return None
@@ -7668,22 +8449,29 @@ def supplier_stock_handle_source_field_input(update, context):
     config["download"]["sources"] = sources
     save_supplier_stock_config(config)
 
-    context.user_data.pop('supplier_stock_source_field', None)
-    context.user_data.pop('supplier_stock_source_field_id', None)
+    context.user_data.pop("supplier_stock_source_field", None)
+    context.user_data.pop("supplier_stock_source_field_id", None)
     _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
         "✅ Настройка обновлена.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}')]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "↩️ Назад", callback_data=f"supplier_stock_source_settings|{source_id}"
+                    )
+                ]
+            ]
+        ),
     )
     return None
 
+
 def supplier_stock_handle_source_iek_field_input(update, context):
     """Обработка ввода при редактировании параметров IEK JSON."""
-    field = context.user_data.get('supplier_stock_source_iek_field')
-    source_id = context.user_data.get('supplier_stock_source_iek_field_id')
+    field = context.user_data.get("supplier_stock_source_iek_field")
+    source_id = context.user_data.get("supplier_stock_source_iek_field_id")
     user_input = (update.message.text or "").strip()
 
     if not field or not source_id:
@@ -7694,9 +8482,12 @@ def supplier_stock_handle_source_iek_field_input(update, context):
     source = next((item for item in sources if str(item.get("id")) == source_id), None)
 
     if not source:
-        update.message.reply_text("❌ Источник не найден.", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
-        ]))
+        update.message.reply_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
+        )
         return None
 
     iek_settings = source.setdefault("iek_json", {})
@@ -7704,16 +8495,23 @@ def supplier_stock_handle_source_iek_field_input(update, context):
     if user_input in ("-", ""):
         config["download"]["sources"] = sources
         save_supplier_stock_config(config)
-        context.user_data.pop('supplier_stock_source_iek_field', None)
-        context.user_data.pop('supplier_stock_source_iek_field_id', None)
+        context.user_data.pop("supplier_stock_source_iek_field", None)
+        context.user_data.pop("supplier_stock_source_iek_field_id", None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Настройка обновлена.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_iek_settings|{source_id}')],
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "↩️ Назад",
+                            callback_data=f"supplier_stock_source_iek_settings|{source_id}",
+                        )
+                    ],
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+                ]
+            ),
         )
         return None
     if field == "stores":
@@ -7722,7 +8520,9 @@ def supplier_stock_handle_source_iek_field_input(update, context):
         else:
             parsed = _parse_supplier_vars(user_input)
             if parsed is None:
-                update.message.reply_text("❌ Формат должен быть key=uuid через запятую/новую строку.")
+                update.message.reply_text(
+                    "❌ Формат должен быть key=uuid через запятую/новую строку."
+                )
                 return None
             iek_settings["stores"] = parsed
     elif field == "msk_stores":
@@ -7732,7 +8532,9 @@ def supplier_stock_handle_source_iek_field_input(update, context):
             if not user_input:
                 update.message.reply_text("❌ Список не может быть пустым.")
                 return None
-            iek_settings["msk_stores"] = [item.strip() for item in re.split(r"[,\n]+", user_input) if item.strip()]
+            iek_settings["msk_stores"] = [
+                item.strip() for item in re.split(r"[,\n]+", user_input) if item.strip()
+            ]
     elif field == "nsk_store":
         if user_input.lower() in ("none", "нет"):
             iek_settings["nsk_store"] = ""
@@ -7747,9 +8549,13 @@ def supplier_stock_handle_source_iek_field_input(update, context):
         else:
             parsed = _parse_supplier_vars(user_input)
             if parsed is None:
-                update.message.reply_text("❌ Формат должен быть key=stor через запятую/новую строку.")
+                update.message.reply_text(
+                    "❌ Формат должен быть key=stor через запятую/новую строку."
+                )
                 return None
-            iek_settings["orc_stores"] = [{"key": key, "stor": value} for key, value in parsed.items()]
+            iek_settings["orc_stores"] = [
+                {"key": key, "stor": value} for key, value in parsed.items()
+            ]
     elif field == "prefix":
         iek_settings["prefix"] = "" if user_input.lower() in ("none", "нет") else user_input
     elif field == "outputs":
@@ -7758,7 +8564,9 @@ def supplier_stock_handle_source_iek_field_input(update, context):
         else:
             parsed = _parse_supplier_vars(user_input)
             if parsed is None:
-                update.message.reply_text("❌ Формат должен быть orig=..., msk=..., nsk=..., orc=... через запятую.")
+                update.message.reply_text(
+                    "❌ Формат должен быть orig=..., msk=..., nsk=..., orc=... через запятую."
+                )
                 return None
             iek_settings["outputs"] = parsed
     else:
@@ -7769,24 +8577,31 @@ def supplier_stock_handle_source_iek_field_input(update, context):
     config["download"]["sources"] = sources
     save_supplier_stock_config(config)
 
-    context.user_data.pop('supplier_stock_source_iek_field', None)
-    context.user_data.pop('supplier_stock_source_iek_field_id', None)
+    context.user_data.pop("supplier_stock_source_iek_field", None)
+    context.user_data.pop("supplier_stock_source_iek_field_id", None)
     _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
         "✅ Настройка обновлена.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_iek_settings|{source_id}')],
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "↩️ Назад", callback_data=f"supplier_stock_source_iek_settings|{source_id}"
+                    )
+                ],
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+            ]
+        ),
     )
     return None
 
+
 def supplier_stock_handle_mail_source_field_input(update, context):
     """Обработка ввода при редактировании отдельного поля правила вложений."""
-    field = context.user_data.get('supplier_stock_mail_source_field')
-    source_id = context.user_data.get('supplier_stock_mail_source_field_id')
+    field = context.user_data.get("supplier_stock_mail_source_field")
+    source_id = context.user_data.get("supplier_stock_mail_source_field_id")
     user_input = (update.message.text or "").strip()
 
     if not field or not source_id:
@@ -7797,95 +8612,98 @@ def supplier_stock_handle_mail_source_field_input(update, context):
     source = next((item for item in sources if str(item.get("id")) == source_id), None)
 
     if not source:
-        update.message.reply_text("❌ Правило не найдено.", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
-        ]))
+        update.message.reply_text(
+            "❌ Правило не найдено.",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail_sources")]]
+            ),
+        )
         return None
 
-    if field == 'name':
-        if user_input in ('-', ''):
+    if field == "name":
+        if user_input in ("-", ""):
             pass
         elif not user_input:
             update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
             return None
         else:
-            source['name'] = user_input
-    elif field == 'sender':
-        if user_input in ('-', ''):
+            source["name"] = user_input
+    elif field == "sender":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            source.pop('sender_pattern', None)
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("sender_pattern", None)
         else:
-            source['sender_pattern'] = user_input
-    elif field == 'subject':
-        if user_input in ('-', ''):
+            source["sender_pattern"] = user_input
+    elif field == "subject":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            source.pop('subject_pattern', None)
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("subject_pattern", None)
         else:
-            source['subject_pattern'] = user_input
-    elif field == 'mime':
-        if user_input in ('-', ''):
+            source["subject_pattern"] = user_input
+    elif field == "mime":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            source.pop('mime_pattern', None)
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("mime_pattern", None)
         else:
-            source['mime_pattern'] = user_input
-    elif field == 'filename':
-        if user_input in ('-', ''):
+            source["mime_pattern"] = user_input
+    elif field == "filename":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            source.pop('filename_pattern', None)
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("filename_pattern", None)
         else:
-            source['filename_pattern'] = user_input
-    elif field == 'expected':
-        if user_input in ('-', ''):
+            source["filename_pattern"] = user_input
+    elif field == "expected":
+        if user_input in ("-", ""):
             pass
         else:
             expected = _parse_expected_attachments(user_input)
             if expected is None:
                 update.message.reply_text("❌ Введите целое число больше 0.")
                 return None
-            source['expected_attachments'] = expected
-    elif field == 'output':
-        if user_input in ('-', ''):
+            source["expected_attachments"] = expected
+    elif field == "output":
+        if user_input in ("-", ""):
             pass
         elif not user_input:
             update.message.reply_text("❌ Шаблон не может быть пустым. Попробуйте снова:")
             return None
         else:
-            source['output_template'] = user_input
-    elif field == 'upload_subdir':
-        if user_input in ('-', ''):
+            source["output_template"] = user_input
+    elif field == "upload_subdir":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            source.pop('upload_subdir', None)
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("upload_subdir", None)
         else:
-            source['upload_subdir'] = user_input
-    elif field == 'individual_path':
-        individual_dir = source.setdefault('individual_directory', {})
-        if user_input in ('-', ''):
+            source["upload_subdir"] = user_input
+    elif field == "individual_path":
+        individual_dir = source.setdefault("individual_directory", {})
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            individual_dir.pop('unc_path', None)
+        elif user_input.lower() in ("none", "нет"):
+            individual_dir.pop("unc_path", None)
         else:
-            individual_dir['unc_path'] = user_input
-    elif field == 'individual_login':
-        individual_dir = source.setdefault('individual_directory', {})
-        if user_input in ('-', ''):
+            individual_dir["unc_path"] = user_input
+    elif field == "individual_login":
+        individual_dir = source.setdefault("individual_directory", {})
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            individual_dir.pop('login', None)
+        elif user_input.lower() in ("none", "нет"):
+            individual_dir.pop("login", None)
         else:
-            individual_dir['login'] = user_input
-    elif field == 'individual_password':
-        individual_dir = source.setdefault('individual_directory', {})
-        if user_input in ('-', ''):
+            individual_dir["login"] = user_input
+    elif field == "individual_password":
+        individual_dir = source.setdefault("individual_directory", {})
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            individual_dir.pop('password', None)
+        elif user_input.lower() in ("none", "нет"):
+            individual_dir.pop("password", None)
         else:
-            individual_dir['password'] = user_input
+            individual_dir["password"] = user_input
     else:
         update.message.reply_text("❌ Не удалось определить поле настройки.")
         return None
@@ -7893,74 +8711,82 @@ def supplier_stock_handle_mail_source_field_input(update, context):
     config["mail"]["sources"] = sources
     save_supplier_stock_config(config)
 
-    context.user_data.pop('supplier_stock_mail_source_field', None)
-    context.user_data.pop('supplier_stock_mail_source_field_id', None)
+    context.user_data.pop("supplier_stock_mail_source_field", None)
+    context.user_data.pop("supplier_stock_mail_source_field_id", None)
     _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
         "✅ Настройка обновлена.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_mail_source_settings|{source_id}')]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "↩️ Назад", callback_data=f"supplier_stock_mail_source_settings|{source_id}"
+                    )
+                ]
+            ]
+        ),
     )
     return None
 
 
 def supplier_stock_handle_resource_input(update, context):
     """Обработка ввода в мастере добавления ресурса выгрузки."""
-    stage = context.user_data.get('supplier_stock_resource_stage')
-    resource_data = context.user_data.get('supplier_stock_resource_data', {})
+    stage = context.user_data.get("supplier_stock_resource_stage")
+    resource_data = context.user_data.get("supplier_stock_resource_data", {})
     user_input = (update.message.text or "").strip()
 
-    if stage == 'name':
+    if stage == "name":
         if not user_input:
             update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
             return None
-        resource_data['name'] = user_input
-        resource_data['id'] = _slugify_supplier_source_id(user_input)
-        context.user_data['supplier_stock_resource_stage'] = 'unc_path'
-        context.user_data['supplier_stock_resource_data'] = resource_data
+        resource_data["name"] = user_input
+        resource_data["id"] = _slugify_supplier_source_id(user_input)
+        context.user_data["supplier_stock_resource_stage"] = "unc_path"
+        context.user_data["supplier_stock_resource_data"] = resource_data
         update.message.reply_text("Введите UNC путь корневого каталога:")
         return None
 
-    if stage == 'unc_path':
+    if stage == "unc_path":
         if not user_input:
             update.message.reply_text("❌ UNC путь не может быть пустым. Попробуйте снова:")
             return None
-        resource_data['unc_path'] = user_input
-        context.user_data['supplier_stock_resource_stage'] = 'login'
-        context.user_data['supplier_stock_resource_data'] = resource_data
+        resource_data["unc_path"] = user_input
+        context.user_data["supplier_stock_resource_stage"] = "login"
+        context.user_data["supplier_stock_resource_data"] = resource_data
         update.message.reply_text("Введите логин ресурса (или '-' чтобы пропустить):")
         return None
 
-    if stage == 'login':
-        if user_input not in ('-', ''):
-            resource_data['login'] = user_input
-        context.user_data['supplier_stock_resource_stage'] = 'password'
-        context.user_data['supplier_stock_resource_data'] = resource_data
+    if stage == "login":
+        if user_input not in ("-", ""):
+            resource_data["login"] = user_input
+        context.user_data["supplier_stock_resource_stage"] = "password"
+        context.user_data["supplier_stock_resource_data"] = resource_data
         update.message.reply_text("Введите пароль ресурса (или '-' чтобы пропустить):")
         return None
 
-    if stage == 'password':
-        if user_input not in ('-', ''):
-            resource_data['password'] = user_input
-        resource_data.setdefault('enabled', True)
+    if stage == "password":
+        if user_input not in ("-", ""):
+            resource_data["password"] = user_input
+        resource_data.setdefault("enabled", True)
         config = get_supplier_stock_config()
         resources = config.get("resources", [])
-        resource_data['id'] = _unique_supplier_source_id(resource_data.get('id', 'resource'), resources)
+        resource_data["id"] = _unique_supplier_source_id(
+            resource_data.get("id", "resource"), resources
+        )
         resources.append(resource_data)
         config["resources"] = resources
         save_supplier_stock_config(config)
 
-        context.user_data.pop('supplier_stock_resource_add', None)
-        context.user_data.pop('supplier_stock_resource_stage', None)
-        context.user_data.pop('supplier_stock_resource_data', None)
+        context.user_data.pop("supplier_stock_resource_add", None)
+        context.user_data.pop("supplier_stock_resource_stage", None)
+        context.user_data.pop("supplier_stock_resource_data", None)
 
         update.message.reply_text(
             "✅ Ресурс добавлен.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_resources")]]
+            ),
         )
         return None
 
@@ -7970,8 +8796,8 @@ def supplier_stock_handle_resource_input(update, context):
 
 def supplier_stock_handle_resource_field_input(update, context):
     """Обработка ввода при редактировании ресурса выгрузки."""
-    field = context.user_data.get('supplier_stock_resource_field')
-    resource_id = context.user_data.get('supplier_stock_resource_field_id')
+    field = context.user_data.get("supplier_stock_resource_field")
+    resource_id = context.user_data.get("supplier_stock_resource_field_id")
     user_input = (update.message.text or "").strip()
 
     if not field or not resource_id:
@@ -7982,41 +8808,44 @@ def supplier_stock_handle_resource_field_input(update, context):
     resource = next((item for item in resources if str(item.get("id")) == resource_id), None)
 
     if not resource:
-        update.message.reply_text("❌ Ресурс не найден.", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')]
-        ]))
+        update.message.reply_text(
+            "❌ Ресурс не найден.",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_resources")]]
+            ),
+        )
         return None
 
-    if field == 'name':
-        if user_input in ('-', ''):
+    if field == "name":
+        if user_input in ("-", ""):
             pass
         elif not user_input:
             update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
             return None
         else:
-            resource['name'] = user_input
-    elif field == 'unc_path':
-        if user_input in ('-', ''):
+            resource["name"] = user_input
+    elif field == "unc_path":
+        if user_input in ("-", ""):
             pass
         elif not user_input:
             update.message.reply_text("❌ UNC путь не может быть пустым. Попробуйте снова:")
             return None
         else:
-            resource['unc_path'] = user_input
-    elif field == 'login':
-        if user_input in ('-', ''):
+            resource["unc_path"] = user_input
+    elif field == "login":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            resource.pop('login', None)
+        elif user_input.lower() in ("none", "нет"):
+            resource.pop("login", None)
         else:
-            resource['login'] = user_input
-    elif field == 'password':
-        if user_input in ('-', ''):
+            resource["login"] = user_input
+    elif field == "password":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            resource.pop('password', None)
+        elif user_input.lower() in ("none", "нет"):
+            resource.pop("password", None)
         else:
-            resource['password'] = user_input
+            resource["password"] = user_input
     else:
         update.message.reply_text("❌ Не удалось определить поле настройки.")
         return None
@@ -8024,22 +8853,28 @@ def supplier_stock_handle_resource_field_input(update, context):
     config["resources"] = resources
     save_supplier_stock_config(config)
 
-    context.user_data.pop('supplier_stock_resource_field', None)
-    context.user_data.pop('supplier_stock_resource_field_id', None)
+    context.user_data.pop("supplier_stock_resource_field", None)
+    context.user_data.pop("supplier_stock_resource_field_id", None)
     _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
         "✅ Настройка обновлена.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_resource_settings|{resource_id}')]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "↩️ Назад", callback_data=f"supplier_stock_resource_settings|{resource_id}"
+                    )
+                ]
+            ]
+        ),
     )
     return None
 
 
 def supplier_stock_handle_ftp_input(update, context):
     """Обработка ввода для настроек FTP ОРК."""
-    field = context.user_data.get('supplier_stock_ftp_field')
+    field = context.user_data.get("supplier_stock_ftp_field")
     user_input = (update.message.text or "").strip()
 
     if not field:
@@ -8048,28 +8883,28 @@ def supplier_stock_handle_ftp_input(update, context):
     config = get_supplier_stock_config()
     ftp_settings = config.get("ftp_ork", {})
 
-    if field == 'host':
-        if user_input in ('-', ''):
+    if field == "host":
+        if user_input in ("-", ""):
             pass
         elif not user_input:
             update.message.reply_text("❌ HOST FTP не может быть пустым. Попробуйте снова:")
             return None
         else:
-            ftp_settings['host'] = user_input
-    elif field == 'login':
-        if user_input in ('-', ''):
+            ftp_settings["host"] = user_input
+    elif field == "login":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            ftp_settings.pop('login', None)
+        elif user_input.lower() in ("none", "нет"):
+            ftp_settings.pop("login", None)
         else:
-            ftp_settings['login'] = user_input
-    elif field == 'password':
-        if user_input in ('-', ''):
+            ftp_settings["login"] = user_input
+    elif field == "password":
+        if user_input in ("-", ""):
             pass
-        elif user_input.lower() in ('none', 'нет'):
-            ftp_settings.pop('password', None)
+        elif user_input.lower() in ("none", "нет"):
+            ftp_settings.pop("password", None)
         else:
-            ftp_settings['password'] = user_input
+            ftp_settings["password"] = user_input
     else:
         update.message.reply_text("❌ Не удалось определить поле настройки.")
         return None
@@ -8077,31 +8912,32 @@ def supplier_stock_handle_ftp_input(update, context):
     config["ftp_ork"] = ftp_settings
     save_supplier_stock_config(config)
 
-    context.user_data.pop('supplier_stock_ftp_field', None)
+    context.user_data.pop("supplier_stock_ftp_field", None)
     _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
         "✅ Настройка обновлена.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_ftp')]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_ftp")]]
+        ),
     )
     return None
 
+
 def supplier_stock_handle_source_input(update, context):
     """Обработка ввода в мастере добавления источника."""
-    stage = context.user_data.get('supplier_stock_source_stage')
-    source_data = context.user_data.get('supplier_stock_source_data', {})
+    stage = context.user_data.get("supplier_stock_source_stage")
+    source_data = context.user_data.get("supplier_stock_source_data", {})
     user_input = update.message.text.strip()
 
-    if stage == 'name':
+    if stage == "name":
         if not user_input:
             update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
             return None
-        source_data['name'] = user_input
-        source_data['id'] = _slugify_supplier_source_id(user_input)
-        context.user_data['supplier_stock_source_stage'] = 'url'
-        context.user_data['supplier_stock_source_data'] = source_data
+        source_data["name"] = user_input
+        source_data["id"] = _slugify_supplier_source_id(user_input)
+        context.user_data["supplier_stock_source_stage"] = "url"
+        context.user_data["supplier_stock_source_data"] = source_data
         update.message.reply_text(
             "Введите URL для скачивания. "
             "Можно использовать переменные формата подстановки вида {abc} "
@@ -8109,13 +8945,13 @@ def supplier_stock_handle_source_input(update, context):
         )
         return None
 
-    if stage == 'url':
+    if stage == "url":
         if not user_input:
             update.message.reply_text("❌ URL не может быть пустым. Попробуйте снова:")
             return None
-        source_data['url'] = user_input
-        context.user_data['supplier_stock_source_stage'] = 'discover'
-        context.user_data['supplier_stock_source_data'] = source_data
+        source_data["url"] = user_input
+        context.user_data["supplier_stock_source_stage"] = "discover"
+        context.user_data["supplier_stock_source_data"] = source_data
         update.message.reply_text(
             "Если нужно искать ссылку на странице, введите URL, regex и префикс через '|'.\n"
             "Пример: http://site/page | ostatki_msk_ot_[^\"']*\\.xls | http://site/f/\n"
@@ -8123,18 +8959,18 @@ def supplier_stock_handle_source_input(update, context):
         )
         return None
 
-    if stage == 'discover':
-        if user_input not in ('-', ''):
+    if stage == "discover":
+        if user_input not in ("-", ""):
             discover = _parse_supplier_discover(user_input)
             if discover is None:
                 update.message.reply_text(
                     "❌ Формат должен быть URL | regex | prefix (префикс можно оставить пустым)."
                 )
                 return None
-            source_data['discover'] = discover
+            source_data["discover"] = discover
 
-        context.user_data['supplier_stock_source_stage'] = 'vars'
-        context.user_data['supplier_stock_source_data'] = source_data
+        context.user_data["supplier_stock_source_stage"] = "vars"
+        context.user_data["supplier_stock_source_data"] = source_data
         update.message.reply_text(
             "Введите ранее указанные переменные подстановки в формате key=value через запятую "
             "(пример: abc=DKC_Maga_Del_1200_$(date '%d.%m.%Y').zip). "
@@ -8142,44 +8978,46 @@ def supplier_stock_handle_source_input(update, context):
         )
         return None
 
-    if stage == 'vars':
-        if user_input not in ('-', ''):
+    if stage == "vars":
+        if user_input not in ("-", ""):
             vars_map = _parse_supplier_vars(user_input)
             if vars_map is None:
-                update.message.reply_text("❌ Формат должен быть key=value, разделители запятая/новая строка.")
+                update.message.reply_text(
+                    "❌ Формат должен быть key=value, разделители запятая/новая строка."
+                )
                 return None
-            source_data['vars'] = vars_map
+            source_data["vars"] = vars_map
 
-        context.user_data['supplier_stock_source_stage'] = 'output_name'
-        context.user_data['supplier_stock_source_data'] = source_data
-        update.message.reply_text(
-            "Введите имя файла назначения (например: dkc_orig.zip):"
-        )
+        context.user_data["supplier_stock_source_stage"] = "output_name"
+        context.user_data["supplier_stock_source_data"] = source_data
+        update.message.reply_text("Введите имя файла назначения (например: dkc_orig.zip):")
         return None
 
-    if stage == 'output_name':
+    if stage == "output_name":
         if not user_input:
             update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
             return None
-        source_data['output_name'] = user_input
-        context.user_data['supplier_stock_source_stage'] = 'auth'
-        context.user_data['supplier_stock_source_data'] = source_data
+        source_data["output_name"] = user_input
+        context.user_data["supplier_stock_source_stage"] = "auth"
+        context.user_data["supplier_stock_source_data"] = source_data
         update.message.reply_text(
             "Введите логин и пароль через двоеточие (login:password) "
             "или '-' чтобы пропустить и сохранить:"
         )
         return None
 
-    if stage == 'auth':
-        if user_input not in ('-', 'нет', 'Нет', 'none', 'None'):
-            if ':' not in user_input:
-                update.message.reply_text("❌ Формат должен быть login:password или '-'. Попробуйте снова:")
+    if stage == "auth":
+        if user_input not in ("-", "нет", "Нет", "none", "None"):
+            if ":" not in user_input:
+                update.message.reply_text(
+                    "❌ Формат должен быть login:password или '-'. Попробуйте снова:"
+                )
                 return None
-            username, password = user_input.split(':', 1)
-            source_data['auth'] = {'username': username, 'password': password}
+            username, password = user_input.split(":", 1)
+            source_data["auth"] = {"username": username, "password": password}
 
-        context.user_data['supplier_stock_source_stage'] = 'pre_request'
-        context.user_data['supplier_stock_source_data'] = source_data
+        context.user_data["supplier_stock_source_stage"] = "pre_request"
+        context.user_data["supplier_stock_source_data"] = source_data
         update.message.reply_text(
             "Если нужен предварительный POST-запрос для авторизации, "
             "введите URL и данные через '|'.\n"
@@ -8188,18 +9026,18 @@ def supplier_stock_handle_source_input(update, context):
         )
         return None
 
-    if stage == 'pre_request':
-        if user_input not in ('-', ''):
+    if stage == "pre_request":
+        if user_input not in ("-", ""):
             pre_request = _parse_supplier_pre_request(user_input)
             if pre_request is None:
                 update.message.reply_text(
                     "❌ Формат должен быть URL | данные. Попробуйте снова или введите '-'."
                 )
                 return None
-            source_data['pre_request'] = pre_request
+            source_data["pre_request"] = pre_request
 
-        context.user_data['supplier_stock_source_stage'] = 'options'
-        context.user_data['supplier_stock_source_data'] = source_data
+        context.user_data["supplier_stock_source_stage"] = "options"
+        context.user_data["supplier_stock_source_data"] = source_data
         update.message.reply_text(
             "Введите дополнительные параметры сохранения: headers (с заголовками), append (дописывать).\n"
             "Пример: headers, append\n"
@@ -8207,8 +9045,8 @@ def supplier_stock_handle_source_input(update, context):
         )
         return None
 
-    if stage == 'options':
-        if user_input not in ('-', ''):
+    if stage == "options":
+        if user_input not in ("-", ""):
             options = _parse_supplier_options(user_input)
             if options is None:
                 update.message.reply_text(
@@ -8217,36 +9055,37 @@ def supplier_stock_handle_source_input(update, context):
                 return None
             source_data.update(options)
 
-        source_data.setdefault('method', 'http')
-        source_data.setdefault('enabled', True)
-        source_data.setdefault('unpack_archive', False)
+        source_data.setdefault("method", "http")
+        source_data.setdefault("enabled", True)
+        source_data.setdefault("unpack_archive", False)
 
         config = get_supplier_stock_config()
-        sources = config['download'].get('sources', [])
-        source_data['id'] = _unique_supplier_source_id(source_data.get('id', 'source'), sources)
+        sources = config["download"].get("sources", [])
+        source_data["id"] = _unique_supplier_source_id(source_data.get("id", "source"), sources)
         sources.append(source_data)
-        config['download']['sources'] = sources
+        config["download"]["sources"] = sources
         save_supplier_stock_config(config)
 
-        context.user_data.pop('supplier_stock_add_source', None)
-        context.user_data.pop('supplier_stock_source_stage', None)
-        context.user_data.pop('supplier_stock_source_data', None)
+        context.user_data.pop("supplier_stock_add_source", None)
+        context.user_data.pop("supplier_stock_source_stage", None)
+        context.user_data.pop("supplier_stock_source_data", None)
 
         update.message.reply_text(
             "✅ Источник добавлен.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
         )
         return None
 
     update.message.reply_text("❌ Не удалось определить шаг мастера. Попробуйте снова.")
     return None
 
+
 def supplier_stock_handle_source_edit_input(update, context):
     """Обработка ввода при редактировании источника остатков."""
-    stage = context.user_data.get('supplier_stock_edit_source_stage')
-    source_id = context.user_data.get('supplier_stock_edit_source_id')
+    stage = context.user_data.get("supplier_stock_edit_source_stage")
+    source_id = context.user_data.get("supplier_stock_edit_source_id")
     user_input = update.message.text.strip()
 
     config = get_supplier_stock_config()
@@ -8254,17 +9093,20 @@ def supplier_stock_handle_source_edit_input(update, context):
     source = next((item for item in sources if str(item.get("id")) == source_id), None)
 
     if not source:
-        update.message.reply_text("❌ Источник не найден.", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
-        ]))
+        update.message.reply_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
+        )
         return None
 
-    if stage == 'name':
-        if user_input and user_input not in ('-',):
-            source['name'] = user_input
+    if stage == "name":
+        if user_input and user_input not in ("-",):
+            source["name"] = user_input
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
-        context.user_data['supplier_stock_edit_source_stage'] = 'url'
+        context.user_data["supplier_stock_edit_source_stage"] = "url"
         update.message.reply_text(
             "Введите новый URL (или '-' чтобы оставить текущее). "
             "Можно использовать переменные формата подстановки вида {abc} "
@@ -8273,12 +9115,12 @@ def supplier_stock_handle_source_edit_input(update, context):
         )
         return None
 
-    if stage == 'url':
-        if user_input and user_input not in ('-',):
-            source['url'] = user_input
+    if stage == "url":
+        if user_input and user_input not in ("-",):
+            source["url"] = user_input
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
-        context.user_data['supplier_stock_edit_source_stage'] = 'discover'
+        context.user_data["supplier_stock_edit_source_stage"] = "discover"
         update.message.reply_text(
             "Введите параметры поиска ссылки на странице в формате URL | regex | prefix, "
             "'-' чтобы оставить текущее или 'none' чтобы очистить.\n"
@@ -8286,23 +9128,23 @@ def supplier_stock_handle_source_edit_input(update, context):
         )
         return None
 
-    if stage == 'discover':
-        if user_input.lower() in ('none', 'нет'):
-            source.pop('discover', None)
+    if stage == "discover":
+        if user_input.lower() in ("none", "нет"):
+            source.pop("discover", None)
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
-        elif user_input not in ('-',):
+        elif user_input not in ("-",):
             discover = _parse_supplier_discover(user_input)
             if discover is None:
                 update.message.reply_text(
                     "❌ Формат должен быть URL | regex | prefix, '-' или 'none'. Попробуйте снова:"
                 )
                 return None
-            source['discover'] = discover
+            source["discover"] = discover
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
 
-        context.user_data['supplier_stock_edit_source_stage'] = 'vars'
+        context.user_data["supplier_stock_edit_source_stage"] = "vars"
         update.message.reply_text(
             "Введите ранее указанные переменные подстановки в формате key=value через запятую "
             "(пример: abc=DKC_Maga_Del_1200_$(date '%d.%m.%Y').zip). "
@@ -8310,52 +9152,56 @@ def supplier_stock_handle_source_edit_input(update, context):
         )
         return None
 
-    if stage == 'vars':
-        if user_input.lower() in ('none', 'нет'):
-            source.pop('vars', None)
+    if stage == "vars":
+        if user_input.lower() in ("none", "нет"):
+            source.pop("vars", None)
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
-        elif user_input not in ('-',):
+        elif user_input not in ("-",):
             vars_map = _parse_supplier_vars(user_input)
             if vars_map is None:
-                update.message.reply_text("❌ Формат должен быть key=value, разделители запятая/новая строка.")
+                update.message.reply_text(
+                    "❌ Формат должен быть key=value, разделители запятая/новая строка."
+                )
                 return None
-            source['vars'] = vars_map
+            source["vars"] = vars_map
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
 
-        context.user_data['supplier_stock_edit_source_stage'] = 'output_name'
+        context.user_data["supplier_stock_edit_source_stage"] = "output_name"
         update.message.reply_text(
             f"Текущий файл назначения: {source.get('output_name')}\n"
             "Введите новое имя файла назначения (или '-' чтобы оставить текущее):"
         )
         return None
 
-    if stage == 'output_name':
-        if user_input and user_input not in ('-',):
-            source['output_name'] = user_input
+    if stage == "output_name":
+        if user_input and user_input not in ("-",):
+            source["output_name"] = user_input
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
-        context.user_data['supplier_stock_edit_source_stage'] = 'auth'
+        context.user_data["supplier_stock_edit_source_stage"] = "auth"
         update.message.reply_text(
             "Введите логин и пароль через двоеточие (login:password), "
             "'-' чтобы оставить текущее или 'none' чтобы очистить:"
         )
         return None
 
-    if stage == 'auth':
-        if user_input.lower() in ('none', 'нет'):
-            source.pop('auth', None)
-        elif user_input not in ('-',):
-            if ':' not in user_input:
-                update.message.reply_text("❌ Формат должен быть login:password, '-' или 'none'. Попробуйте снова:")
+    if stage == "auth":
+        if user_input.lower() in ("none", "нет"):
+            source.pop("auth", None)
+        elif user_input not in ("-",):
+            if ":" not in user_input:
+                update.message.reply_text(
+                    "❌ Формат должен быть login:password, '-' или 'none'. Попробуйте снова:"
+                )
                 return None
-            username, password = user_input.split(':', 1)
-            source['auth'] = {'username': username, 'password': password}
+            username, password = user_input.split(":", 1)
+            source["auth"] = {"username": username, "password": password}
 
         config["download"]["sources"] = sources
         save_supplier_stock_config(config)
-        context.user_data['supplier_stock_edit_source_stage'] = 'pre_request'
+        context.user_data["supplier_stock_edit_source_stage"] = "pre_request"
         current_pre = source.get("pre_request") or {}
         current_pre_url = current_pre.get("url", "-")
         current_pre_data = current_pre.get("data", "-")
@@ -8366,22 +9212,22 @@ def supplier_stock_handle_source_edit_input(update, context):
         )
         return None
 
-    if stage == 'pre_request':
-        if user_input.lower() in ('none', 'нет'):
-            source.pop('pre_request', None)
-        elif user_input not in ('-',):
+    if stage == "pre_request":
+        if user_input.lower() in ("none", "нет"):
+            source.pop("pre_request", None)
+        elif user_input not in ("-",):
             pre_request = _parse_supplier_pre_request(user_input)
             if pre_request is None:
                 update.message.reply_text(
                     "❌ Формат должен быть URL | данные, '-' или 'none'. Попробуйте снова:"
                 )
                 return None
-            source['pre_request'] = pre_request
+            source["pre_request"] = pre_request
 
         config["download"]["sources"] = sources
         save_supplier_stock_config(config)
 
-        context.user_data['supplier_stock_edit_source_stage'] = 'options'
+        context.user_data["supplier_stock_edit_source_stage"] = "options"
         current_options = []
         if source.get("include_headers"):
             current_options.append("headers")
@@ -8395,11 +9241,11 @@ def supplier_stock_handle_source_edit_input(update, context):
         )
         return None
 
-    if stage == 'options':
-        if user_input.lower() in ('none', 'нет'):
-            source.pop('include_headers', None)
-            source.pop('append', None)
-        elif user_input not in ('-',):
+    if stage == "options":
+        if user_input.lower() in ("none", "нет"):
+            source.pop("include_headers", None)
+            source.pop("append", None)
+        elif user_input not in ("-",):
             options = _parse_supplier_options(user_input)
             if options is None:
                 update.message.reply_text(
@@ -8411,27 +9257,29 @@ def supplier_stock_handle_source_edit_input(update, context):
         config["download"]["sources"] = sources
         save_supplier_stock_config(config)
 
-        context.user_data.pop('supplier_stock_edit_source', None)
-        context.user_data.pop('supplier_stock_edit_source_stage', None)
-        context.user_data.pop('supplier_stock_edit_source_id', None)
+        context.user_data.pop("supplier_stock_edit_source", None)
+        context.user_data.pop("supplier_stock_edit_source_stage", None)
+        context.user_data.pop("supplier_stock_edit_source_id", None)
 
         update.message.reply_text(
             "✅ Источник обновлен.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
         )
         return None
 
     update.message.reply_text("❌ Не удалось определить шаг редактирования. Попробуйте снова.")
     return None
 
+
 def _slugify_supplier_source_id(value: str) -> str:
-    raw = re.sub(r'[^a-zA-Z0-9]+', '_', value.strip().lower())
-    return raw.strip('_') or 'source'
+    raw = re.sub(r"[^a-zA-Z0-9]+", "_", value.strip().lower())
+    return raw.strip("_") or "source"
+
 
 def _unique_supplier_source_id(source_id: str, sources: list[dict]) -> str:
-    existing = {str(item.get('id')) for item in sources if item.get('id')}
+    existing = {str(item.get("id")) for item in sources if item.get("id")}
     if source_id not in existing:
         return source_id
     index = 2
@@ -8439,15 +9287,17 @@ def _unique_supplier_source_id(source_id: str, sources: list[dict]) -> str:
         index += 1
     return f"{source_id}_{index}"
 
+
 def _parse_yes_no(value: str) -> bool | None:
     if not value:
         return None
     lowered = value.strip().lower()
-    if lowered in ('да', 'yes', 'y', 'true', '1'):
+    if lowered in ("да", "yes", "y", "true", "1"):
         return True
-    if lowered in ('нет', 'no', 'n', 'false', '0'):
+    if lowered in ("нет", "no", "n", "false", "0"):
         return False
     return None
+
 
 def _normalize_supplier_processing_mode(value: str) -> str | None:
     if not value:
@@ -8459,12 +9309,14 @@ def _normalize_supplier_processing_mode(value: str) -> str | None:
         return "iek_json"
     return None
 
+
 def _parse_positive_int(value: str) -> int | None:
     try:
         parsed = int(value)
     except (TypeError, ValueError):
         return None
     return parsed if parsed > 0 else None
+
 
 def _save_supplier_stock_processing_rule(
     context,
@@ -8478,79 +9330,83 @@ def _save_supplier_stock_processing_rule(
         updated = False
         for index, rule in enumerate(rules):
             if str(rule.get("id")) == str(edit_id):
-                data['id'] = edit_id
-                data.setdefault('enabled', rule.get('enabled', True))
-                data.setdefault('active', rule.get('active', False))
+                data["id"] = edit_id
+                data.setdefault("enabled", rule.get("enabled", True))
+                data.setdefault("active", rule.get("active", False))
                 rules[index] = data
                 updated = True
                 break
         if not updated:
-            data['id'] = edit_id
-            data.setdefault('enabled', True)
-            data.setdefault('active', False)
+            data["id"] = edit_id
+            data.setdefault("enabled", True)
+            data.setdefault("active", False)
             rules.append(data)
     else:
-        data.setdefault('enabled', True)
-        data.setdefault('active', False)
-        data['id'] = _unique_supplier_source_id(data.get('id', 'rule'), rules)
+        data.setdefault("enabled", True)
+        data.setdefault("active", False)
+        data["id"] = _unique_supplier_source_id(data.get("id", "rule"), rules)
         rules.append(data)
     config.setdefault("processing", {})["rules"] = rules
     save_supplier_stock_config(config)
     if not keep_context:
-        context.user_data.pop('supplier_stock_processing_add', None)
-        context.user_data.pop('supplier_stock_processing_edit', None)
-        context.user_data.pop('supplier_stock_processing_stage', None)
-        context.user_data.pop('supplier_stock_processing_data', None)
-        context.user_data.pop('supplier_stock_processing_edit_id', None)
-        context.user_data.pop('supplier_stock_processing_variant_index', None)
-        context.user_data.pop('supplier_stock_processing_data_columns_expected', None)
-        context.user_data.pop('supplier_stock_processing_data_columns', None)
-        context.user_data.pop('supplier_stock_processing_output_names_expected', None)
-        context.user_data.pop('supplier_stock_processing_output_names', None)
-        context.user_data.pop('supplier_stock_processing_current_variant', None)
+        context.user_data.pop("supplier_stock_processing_add", None)
+        context.user_data.pop("supplier_stock_processing_edit", None)
+        context.user_data.pop("supplier_stock_processing_stage", None)
+        context.user_data.pop("supplier_stock_processing_data", None)
+        context.user_data.pop("supplier_stock_processing_edit_id", None)
+        context.user_data.pop("supplier_stock_processing_variant_index", None)
+        context.user_data.pop("supplier_stock_processing_data_columns_expected", None)
+        context.user_data.pop("supplier_stock_processing_data_columns", None)
+        context.user_data.pop("supplier_stock_processing_output_names_expected", None)
+        context.user_data.pop("supplier_stock_processing_output_names", None)
+        context.user_data.pop("supplier_stock_processing_current_variant", None)
+
 
 def _supplier_stock_finish_variant(update, context, data: dict):
-    variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-    data.setdefault('variants', []).append(variant)
-    total = data.get('variants_count', 1)
-    current_index = context.user_data.get('supplier_stock_processing_variant_index', 0) + 1
+    variant = context.user_data.get("supplier_stock_processing_current_variant", {})
+    data.setdefault("variants", []).append(variant)
+    total = data.get("variants_count", 1)
+    current_index = context.user_data.get("supplier_stock_processing_variant_index", 0) + 1
     if current_index < total:
-        context.user_data['supplier_stock_processing_variant_index'] = current_index
-        context.user_data['supplier_stock_processing_stage'] = 'variant_article_col'
-        context.user_data.pop('supplier_stock_processing_data_columns_expected', None)
-        context.user_data.pop('supplier_stock_processing_data_columns', None)
-        context.user_data.pop('supplier_stock_processing_output_names_expected', None)
-        context.user_data.pop('supplier_stock_processing_output_names', None)
-        context.user_data.pop('supplier_stock_processing_current_variant', None)
+        context.user_data["supplier_stock_processing_variant_index"] = current_index
+        context.user_data["supplier_stock_processing_stage"] = "variant_article_col"
+        context.user_data.pop("supplier_stock_processing_data_columns_expected", None)
+        context.user_data.pop("supplier_stock_processing_data_columns", None)
+        context.user_data.pop("supplier_stock_processing_output_names_expected", None)
+        context.user_data.pop("supplier_stock_processing_output_names", None)
+        context.user_data.pop("supplier_stock_processing_current_variant", None)
         update.message.reply_text(
             f"Настройка варианта {current_index + 1} из {total}.\n"
             "Введите номер колонки с артикулом:"
         )
         return None
 
-    edit_id = data.get("id") if context.user_data.get('supplier_stock_processing_edit') else None
+    edit_id = data.get("id") if context.user_data.get("supplier_stock_processing_edit") else None
     _save_supplier_stock_processing_rule(context, data, edit_id=edit_id)
-    back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
+    back_callback = context.user_data.get(
+        "supplier_stock_processing_back", "supplier_stock_processing"
+    )
     update.message.reply_text(
         "✅ Правило обработки сохранено.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]]
+        ),
     )
     return None
+
 
 def _parse_supplier_vars(raw_value: str) -> dict | None:
     if not raw_value:
         return {}
-    parts = re.split(r'[,\n]+', raw_value)
+    parts = re.split(r"[,\n]+", raw_value)
     result = {}
     for part in parts:
         part = part.strip()
         if not part:
             continue
-        if '=' not in part:
+        if "=" not in part:
             return None
-        key, value = part.split('=', 1)
+        key, value = part.split("=", 1)
         key = key.strip()
         value = value.strip()
         if not key:
@@ -8558,35 +9414,38 @@ def _parse_supplier_vars(raw_value: str) -> dict | None:
         result[key] = value
     return result
 
+
 def _parse_supplier_pre_request(raw_value: str) -> dict | None:
     if not raw_value:
         return None
-    if '|' in raw_value:
-        url, data = raw_value.split('|', 1)
-    elif '\n' in raw_value:
-        url, data = raw_value.split('\n', 1)
+    if "|" in raw_value:
+        url, data = raw_value.split("|", 1)
+    elif "\n" in raw_value:
+        url, data = raw_value.split("\n", 1)
     else:
         return None
     url = url.strip()
     data = data.strip()
     if not url:
         return None
-    if data in ('-', ''):
-        data = ''
+    if data in ("-", ""):
+        data = ""
     return {"url": url, "data": data}
+
 
 def _parse_supplier_discover(raw_value: str) -> dict | None:
     if not raw_value:
         return None
-    parts = [part.strip() for part in raw_value.split('|')]
+    parts = [part.strip() for part in raw_value.split("|")]
     if len(parts) < 2:
         return None
     url = parts[0]
     pattern = parts[1]
-    prefix = parts[2] if len(parts) > 2 else ''
+    prefix = parts[2] if len(parts) > 2 else ""
     if not url or not pattern:
         return None
     return {"url": url, "pattern": pattern, "prefix": prefix}
+
 
 def _parse_supplier_options(raw_value: str) -> dict | None:
     if not raw_value:
@@ -8604,6 +9463,7 @@ def _parse_supplier_options(raw_value: str) -> dict | None:
             return None
     return options
 
+
 def _parse_expected_attachments(raw_value: str) -> int | None:
     if not raw_value:
         return None
@@ -8613,6 +9473,7 @@ def _parse_expected_attachments(raw_value: str) -> int | None:
         return None
     return value if value > 0 else None
 
+
 def _enable_all_extensions_settings(query):
     enabled = 0
     for ext_id in extension_manager.get_extensions_status():
@@ -8620,6 +9481,7 @@ def _enable_all_extensions_settings(query):
         if success:
             enabled += 1
     query.answer(f"✅ Включено {enabled} расширений")
+
 
 def _disable_all_extensions_settings(query):
     disabled = 0
@@ -8629,55 +9491,66 @@ def _disable_all_extensions_settings(query):
             disabled += 1
     query.answer(f"✅ Отключено {disabled} расширений")
 
+
 def show_db_patterns_menu(update, context):
     """Показать паттерны для БД"""
-    context.user_data['patterns_filter'] = 'db'
-    context.user_data['patterns_back'] = 'settings_ext_backup_db'
-    context.user_data['patterns_add'] = 'add_pattern'
-    context.user_data['patterns_title'] = "🗃️ *Паттерны бэкапов БД*"
+    context.user_data["patterns_filter"] = "db"
+    context.user_data["patterns_back"] = "settings_ext_backup_db"
+    context.user_data["patterns_add"] = "add_pattern"
+    context.user_data["patterns_title"] = "🗃️ *Паттерны бэкапов БД*"
     view_patterns_handler(update, context)
+
 
 def show_db_patterns_menu_from_backup(update, context):
     """Показать паттерны БД из меню бэкапов БД."""
-    context.user_data['patterns_filter'] = 'db'
-    context.user_data['patterns_back'] = 'backup_databases'
-    context.user_data['patterns_add'] = 'add_pattern'
-    context.user_data['patterns_title'] = "🗃️ *Паттерны бэкапов БД*"
+    context.user_data["patterns_filter"] = "db"
+    context.user_data["patterns_back"] = "backup_databases"
+    context.user_data["patterns_add"] = "add_pattern"
+    context.user_data["patterns_title"] = "🗃️ *Паттерны бэкапов БД*"
     view_patterns_handler(update, context)
+
 
 def show_proxmox_patterns_menu(update, context):
     """Показать паттерны для Proxmox"""
-    back_callback = context.user_data.pop('patterns_back_override', None) or 'settings_ext_backup_proxmox'
-    context.user_data['patterns_filter'] = 'proxmox'
-    context.user_data['patterns_back'] = back_callback
-    context.user_data['patterns_add'] = 'add_proxmox_pattern'
-    context.user_data['patterns_title'] = "🖥️ *Паттерны бэкапов Proxmox*"
+    back_callback = (
+        context.user_data.pop("patterns_back_override", None) or "settings_ext_backup_proxmox"
+    )
+    context.user_data["patterns_filter"] = "proxmox"
+    context.user_data["patterns_back"] = back_callback
+    context.user_data["patterns_add"] = "add_proxmox_pattern"
+    context.user_data["patterns_title"] = "🖥️ *Паттерны бэкапов Proxmox*"
     view_patterns_handler(update, context)
+
 
 def show_zfs_patterns_menu(update, context):
     """Показать паттерны для ZFS"""
-    context.user_data['patterns_filter'] = 'zfs'
-    context.user_data['patterns_back'] = 'settings_zfs'
-    context.user_data['patterns_add'] = 'add_zfs_pattern'
-    context.user_data['patterns_title'] = "🧊 *Паттерны ZFS*"
+    context.user_data["patterns_filter"] = "zfs"
+    context.user_data["patterns_back"] = "settings_zfs"
+    context.user_data["patterns_add"] = "add_zfs_pattern"
+    context.user_data["patterns_title"] = "🧊 *Паттерны ZFS*"
     view_patterns_handler(update, context)
+
 
 def show_mail_patterns_menu(update, context):
     """Показать паттерны для бэкапов почты"""
-    back_callback = context.user_data.pop('patterns_back_override', None) or 'settings_ext_backup_mail'
-    context.user_data['patterns_filter'] = 'mail'
-    context.user_data['patterns_back'] = back_callback
-    context.user_data['patterns_add'] = 'add_mail_pattern'
-    context.user_data['patterns_title'] = "📬 *Паттерны бэкапов почты*"
+    back_callback = (
+        context.user_data.pop("patterns_back_override", None) or "settings_ext_backup_mail"
+    )
+    context.user_data["patterns_filter"] = "mail"
+    context.user_data["patterns_back"] = back_callback
+    context.user_data["patterns_add"] = "add_mail_pattern"
+    context.user_data["patterns_title"] = "📬 *Паттерны бэкапов почты*"
     view_patterns_handler(update, context)
+
 
 def show_stock_load_patterns_menu(update, context):
     """Показать паттерны для загрузки остатков."""
-    context.user_data['patterns_filter'] = 'stock_load'
-    context.user_data['patterns_back'] = 'settings_ext_stock_load'
-    context.user_data['patterns_add'] = 'add_stock_pattern'
-    context.user_data['patterns_title'] = "📦 *Паттерны загрузки остатков*"
+    context.user_data["patterns_filter"] = "stock_load"
+    context.user_data["patterns_back"] = "settings_ext_stock_load"
+    context.user_data["patterns_add"] = "add_stock_pattern"
+    context.user_data["patterns_title"] = "📦 *Паттерны загрузки остатков*"
     view_patterns_handler(update, context)
+
 
 def show_backup_proxmox_settings(update, context):
     """Показать настройки бэкапов Proxmox"""
@@ -8695,20 +9568,25 @@ def show_backup_proxmox_settings(update, context):
     message += "Выберите действие:"
 
     keyboard = [
-        [InlineKeyboardButton("📋 Список хостов", callback_data='settings_proxmox_list')],
-        [InlineKeyboardButton("➕ Добавить хост", callback_data='settings_proxmox_add')],
-        [InlineKeyboardButton("✏️/🗑️ Редактировать и удалить паттерны", callback_data='settings_patterns_proxmox')],
-        [InlineKeyboardButton("➕ Добавить паттерн", callback_data='add_proxmox_pattern')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_proxmox'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("📋 Список хостов", callback_data="settings_proxmox_list")],
+        [InlineKeyboardButton("➕ Добавить хост", callback_data="settings_proxmox_add")],
+        [
+            InlineKeyboardButton(
+                "✏️/🗑️ Редактировать и удалить паттерны", callback_data="settings_patterns_proxmox"
+            )
+        ],
+        [InlineKeyboardButton("➕ Добавить паттерн", callback_data="add_proxmox_pattern")],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_backup_proxmox"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_proxmox_hosts_list(update, context):
     """Показать список хостов Proxmox"""
@@ -8725,7 +9603,7 @@ def show_proxmox_hosts_list(update, context):
             host_value = proxmox_hosts.get(host_name)
             enabled = True
             if isinstance(host_value, dict):
-                enabled = host_value.get('enabled', True)
+                enabled = host_value.get("enabled", True)
             status_icon = "🟢" if enabled else "🔴"
             message += f"{status_icon} `{host_name}`\n"
 
@@ -8734,54 +9612,61 @@ def show_proxmox_hosts_list(update, context):
         host_value = proxmox_hosts.get(host_name)
         enabled = True
         if isinstance(host_value, dict):
-            enabled = host_value.get('enabled', True)
+            enabled = host_value.get("enabled", True)
         toggle_text = "⛔️ Отключить" if enabled else "✅ Включить"
-        keyboard.append([
-            InlineKeyboardButton(
-                f"✏️ {host_name}",
-                callback_data=f"settings_proxmox_edit_{host_name}"
-            ),
-            InlineKeyboardButton(
-                f"🗑️ {host_name}",
-                callback_data=f"settings_proxmox_delete_{host_name}"
-            ),
-        ])
-        keyboard.append([
-            InlineKeyboardButton(
-                f"{toggle_text} {host_name}",
-                callback_data=f"settings_proxmox_toggle_{host_name}"
-            )
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"✏️ {host_name}", callback_data=f"settings_proxmox_edit_{host_name}"
+                ),
+                InlineKeyboardButton(
+                    f"🗑️ {host_name}", callback_data=f"settings_proxmox_delete_{host_name}"
+                ),
+            ]
+        )
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{toggle_text} {host_name}",
+                    callback_data=f"settings_proxmox_toggle_{host_name}",
+                )
+            ]
+        )
 
-    keyboard.append([
-        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    keyboard.append(
+        [
+            InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_backup_proxmox"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def add_proxmox_host_handler(update, context):
     """Добавить хост Proxmox"""
     query = update.callback_query
     query.answer()
 
-    context.user_data['adding_proxmox_host'] = True
+    context.user_data["adding_proxmox_host"] = True
 
     query.edit_message_text(
-        "➕ *Добавление Proxmox хоста*\n\n"
-        "Введите имя хоста (как в письмах бэкапов):",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_backup_proxmox'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        "➕ *Добавление Proxmox хоста*\n\n" "Введите имя хоста (как в письмах бэкапов):",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("❌ Отмена", callback_data="settings_backup_proxmox"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def delete_proxmox_host(update, context, host_name):
     """Удалить хост Proxmox"""
@@ -8793,30 +9678,39 @@ def delete_proxmox_host(update, context, host_name):
     if host_name not in proxmox_hosts:
         query.edit_message_text(
             "❌ Хост не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data="settings_backup_proxmox"),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
     proxmox_hosts.pop(host_name, None)
-    settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+    settings_manager.set_setting("PROXMOX_HOSTS", proxmox_hosts)
 
     query.edit_message_text(
         f"✅ Хост `{host_name}` удалён.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_backup_proxmox"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def handle_proxmox_host_input(update, context):
     """Обработчик добавления хоста Proxmox"""
-    if 'adding_proxmox_host' not in context.user_data:
+    if "adding_proxmox_host" not in context.user_data:
         return
 
     host_name = update.message.text.strip()
@@ -8830,20 +9724,25 @@ def handle_proxmox_host_input(update, context):
         update.message.reply_text("❌ Такой хост уже есть. Введите другой:")
         return
 
-    proxmox_hosts[host_name] = {'enabled': True}
-    settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+    proxmox_hosts[host_name] = {"enabled": True}
+    settings_manager.set_setting("PROXMOX_HOSTS", proxmox_hosts)
 
     update.message.reply_text(
         f"✅ Хост `{host_name}` добавлен.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_backup_proxmox"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
 
-    context.user_data.pop('adding_proxmox_host', None)
+    context.user_data.pop("adding_proxmox_host", None)
+
 
 def edit_proxmox_host_handler(update, context, host_name):
     """Начать редактирование хоста Proxmox"""
@@ -8855,32 +9754,41 @@ def edit_proxmox_host_handler(update, context, host_name):
     if host_name not in proxmox_hosts:
         query.edit_message_text(
             "❌ Хост не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data="settings_backup_proxmox"),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
-    context.user_data['editing_proxmox_host'] = True
-    context.user_data['editing_proxmox_host_name'] = host_name
+    context.user_data["editing_proxmox_host"] = True
+    context.user_data["editing_proxmox_host_name"] = host_name
 
     query.edit_message_text(
         "✏️ *Редактирование хоста Proxmox*\n\n"
         f"Текущий хост: `{host_name}`\n\n"
         "Введите новое имя хоста:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_backup_proxmox'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("❌ Отмена", callback_data="settings_backup_proxmox"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def handle_proxmox_host_edit_input(update, context):
     """Обработчик редактирования хоста Proxmox"""
-    if 'editing_proxmox_host' not in context.user_data:
+    if "editing_proxmox_host" not in context.user_data:
         return
 
     new_host_name = update.message.text.strip()
@@ -8890,11 +9798,11 @@ def handle_proxmox_host_edit_input(update, context):
 
     proxmox_hosts = _get_proxmox_hosts_for_settings()
 
-    old_host_name = context.user_data.get('editing_proxmox_host_name')
+    old_host_name = context.user_data.get("editing_proxmox_host_name")
     if not old_host_name or old_host_name not in proxmox_hosts:
         update.message.reply_text("❌ Хост не найден.")
-        context.user_data.pop('editing_proxmox_host', None)
-        context.user_data.pop('editing_proxmox_host_name', None)
+        context.user_data.pop("editing_proxmox_host", None)
+        context.user_data.pop("editing_proxmox_host_name", None)
         return
 
     if new_host_name in proxmox_hosts and new_host_name != old_host_name:
@@ -8903,22 +9811,27 @@ def handle_proxmox_host_edit_input(update, context):
 
     host_value = proxmox_hosts.pop(old_host_name, None)
     if not isinstance(host_value, dict):
-        host_value = {'enabled': True}
+        host_value = {"enabled": True}
     proxmox_hosts[new_host_name] = host_value
-    settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+    settings_manager.set_setting("PROXMOX_HOSTS", proxmox_hosts)
 
     update.message.reply_text(
         f"✅ Хост обновлён: `{new_host_name}`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_backup_proxmox"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
 
-    context.user_data.pop('editing_proxmox_host', None)
-    context.user_data.pop('editing_proxmox_host_name', None)
+    context.user_data.pop("editing_proxmox_host", None)
+    context.user_data.pop("editing_proxmox_host_name", None)
+
 
 def toggle_proxmox_host(update, context, host_name):
     """Включить/отключить мониторинг хоста Proxmox"""
@@ -8930,35 +9843,44 @@ def toggle_proxmox_host(update, context, host_name):
     if host_name not in proxmox_hosts:
         query.edit_message_text(
             "❌ Хост не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data="settings_backup_proxmox"),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
     host_value = proxmox_hosts.get(host_name)
     if isinstance(host_value, dict):
-        enabled = host_value.get('enabled', True)
+        enabled = host_value.get("enabled", True)
     else:
         enabled = True
-        host_value = {'enabled': True}
+        host_value = {"enabled": True}
 
-    host_value['enabled'] = not enabled
+    host_value["enabled"] = not enabled
     proxmox_hosts[host_name] = host_value
-    settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+    settings_manager.set_setting("PROXMOX_HOSTS", proxmox_hosts)
 
-    status_text = "включен" if host_value['enabled'] else "отключен"
+    status_text = "включен" if host_value["enabled"] else "отключен"
     query.edit_message_text(
         f"✅ Мониторинг хоста `{host_name}` {status_text}.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_backup_proxmox"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def show_zfs_settings(update, context):
     """Показать настройки ZFS"""
@@ -8967,6 +9889,7 @@ def show_zfs_settings(update, context):
 
     show_zfs_main_menu(update, context)
 
+
 def show_zfs_main_menu(update, context):
     """Показать меню ZFS из главного меню"""
     query = update.callback_query
@@ -8974,22 +9897,24 @@ def show_zfs_main_menu(update, context):
 
     status_lines = _build_zfs_current_status_lines()
     keyboard = [
-        [InlineKeyboardButton("📋 Хосты", callback_data='settings_zfs_list')],
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_zfs')],
-        [InlineKeyboardButton("⏰ Время старта", callback_data='set_silent_start')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("📋 Хосты", callback_data="settings_zfs_list")],
+        [InlineKeyboardButton("🔍 Паттерны", callback_data="settings_patterns_zfs")],
+        [InlineKeyboardButton("⏰ Время старта", callback_data="set_silent_start")],
+        [
+            InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
-        "\n".join(status_lines),
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        "\n".join(status_lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_zfs_status_summary(update, context):
     """Совместимость: перенаправить в меню ZFS-мониторинга по почтовым паттернам."""
     show_zfs_main_menu(update, context)
+
 
 def show_zfs_servers_list(update, context):
     """Показать список ZFS серверов"""
@@ -9004,7 +9929,7 @@ def show_zfs_servers_list(update, context):
     else:
         for server_name in sorted(zfs_servers.keys()):
             server_value = zfs_servers.get(server_name, {})
-            enabled = bool(server_value.get('enabled', True))
+            enabled = bool(server_value.get("enabled", True))
             status_icon = "🟢" if enabled else "🔴"
             message += (
                 f"{status_icon} `{server_name}`\n"
@@ -9014,57 +9939,61 @@ def show_zfs_servers_list(update, context):
     keyboard = []
     for server_name in sorted(zfs_servers.keys()):
         server_value = zfs_servers.get(server_name, {})
-        enabled = bool(server_value.get('enabled', True))
+        enabled = bool(server_value.get("enabled", True))
         toggle_text = "⛔️ Отключить" if enabled else "✅ Включить"
-        keyboard.append([
-            InlineKeyboardButton(
-                f"✏️ Имя: {server_name}",
-                callback_data=f"settings_zfs_edit_name_{server_name}"
-            ),
-        ])
-        keyboard.append([
-            InlineKeyboardButton(
-                f"🗑️ {server_name}",
-                callback_data=f"settings_zfs_delete_{server_name}"
-            ),
-            InlineKeyboardButton(
-                f"{toggle_text} {server_name}",
-                callback_data=f"settings_zfs_toggle_{server_name}"
-            ),
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"✏️ Имя: {server_name}", callback_data=f"settings_zfs_edit_name_{server_name}"
+                ),
+            ]
+        )
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"🗑️ {server_name}", callback_data=f"settings_zfs_delete_{server_name}"
+                ),
+                InlineKeyboardButton(
+                    f"{toggle_text} {server_name}",
+                    callback_data=f"settings_zfs_toggle_{server_name}",
+                ),
+            ]
+        )
 
-    keyboard.append([
-        InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_zfs_add')
-    ])
+    keyboard.append([InlineKeyboardButton("➕ Добавить сервер", callback_data="settings_zfs_add")])
 
-    keyboard.append([
-        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    keyboard.append(
+        [
+            InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def add_zfs_server_handler(update, context):
     """Добавить ZFS сервер"""
     query = update.callback_query
     query.answer()
 
-    context.user_data['adding_zfs_server'] = True
-    context.user_data['zfs_server_stage'] = 'name'
+    context.user_data["adding_zfs_server"] = True
+    context.user_data["zfs_server_stage"] = "name"
 
     query.edit_message_text(
-        "➕ *Добавление ZFS сервера*\n\n"
-        "Введите имя хоста:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        "➕ *Добавление ZFS сервера*\n\n" "Введите имя хоста:",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("❌ Отмена", callback_data="settings_zfs"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
 
 
@@ -9074,7 +10003,7 @@ def _build_zfs_current_status_lines() -> list[str]:
     allowed_servers = {
         name
         for name, server_value in zfs_servers.items()
-        if not isinstance(server_value, dict) or server_value.get('enabled', True)
+        if not isinstance(server_value, dict) or server_value.get("enabled", True)
     }
 
     lines: list[str] = ["🧊 *Мониторинг ZFS*", ""]
@@ -9151,6 +10080,7 @@ def _build_zfs_current_status_lines() -> list[str]:
     lines.append("Выберите раздел:")
     return lines
 
+
 def delete_zfs_server(update, context, server_name):
     """Удалить ZFS сервер"""
     query = update.callback_query
@@ -9161,39 +10091,48 @@ def delete_zfs_server(update, context, server_name):
     if server_name not in zfs_servers:
         query.edit_message_text(
             "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data="settings_zfs"),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
     zfs_servers.pop(server_name, None)
-    settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+    settings_manager.set_setting("ZFS_SERVERS", zfs_servers)
     _delete_zfs_monitoring_state(server_name)
     _delete_zfs_server_statuses(server_name)
 
     query.edit_message_text(
         f"✅ Сервер `{server_name}` удалён.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_zfs"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def handle_zfs_server_input(update, context):
     """Обработчик добавления ZFS сервера"""
-    if 'adding_zfs_server' not in context.user_data:
+    if "adding_zfs_server" not in context.user_data:
         return
 
     user_input = update.message.text.strip()
-    stage = context.user_data.get('zfs_server_stage', 'name')
+    stage = context.user_data.get("zfs_server_stage", "name")
     zfs_servers = get_zfs_servers_config()
 
-    if stage == 'name':
+    if stage == "name":
         if not user_input:
             update.message.reply_text("❌ Имя сервера не может быть пустым. Попробуйте снова:")
             return
@@ -9204,29 +10143,32 @@ def handle_zfs_server_input(update, context):
 
         host_name = user_input
         zfs_servers[host_name] = {
-            'ip': '',
-            'threshold': 15,
-            'enabled': True,
+            "ip": "",
+            "threshold": 15,
+            "enabled": True,
         }
-        settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+        settings_manager.set_setting("ZFS_SERVERS", zfs_servers)
         _set_zfs_monitoring_state(host_name, True)
 
         update.message.reply_text(
-            "✅ Сервер добавлен.\n"
-            f"Имя: `{host_name}`\n"
-            "Источник данных: письма/паттерны ZFS",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            "✅ Сервер добавлен.\n" f"Имя: `{host_name}`\n" "Источник данных: письма/паттерны ZFS",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data="settings_zfs"),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
 
-        context.user_data.pop('adding_zfs_server', None)
-        context.user_data.pop('zfs_server_stage', None)
-        context.user_data.pop('zfs_new_server_name', None)
-        context.user_data.pop('zfs_new_server_ip', None)
+        context.user_data.pop("adding_zfs_server", None)
+        context.user_data.pop("zfs_server_stage", None)
+        context.user_data.pop("zfs_new_server_name", None)
+        context.user_data.pop("zfs_new_server_ip", None)
+
 
 def edit_zfs_server_name_handler(update, context, server_name):
     """Начать редактирование имени ZFS сервера"""
@@ -9238,32 +10180,41 @@ def edit_zfs_server_name_handler(update, context, server_name):
     if server_name not in zfs_servers:
         query.edit_message_text(
             "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data="settings_zfs"),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
-    context.user_data['editing_zfs_server_name'] = True
-    context.user_data['editing_zfs_server_old_name'] = server_name
+    context.user_data["editing_zfs_server_name"] = True
+    context.user_data["editing_zfs_server_old_name"] = server_name
 
     query.edit_message_text(
         "✏️ *Редактирование ZFS сервера*\n\n"
         f"Текущее имя: `{server_name}`\n\n"
         "Введите новое имя сервера:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("❌ Отмена", callback_data="settings_zfs"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def handle_zfs_server_name_edit_input(update, context):
     """Обработчик редактирования имени ZFS сервера"""
-    if 'editing_zfs_server_name' not in context.user_data:
+    if "editing_zfs_server_name" not in context.user_data:
         return
 
     new_name = update.message.text.strip()
@@ -9273,11 +10224,11 @@ def handle_zfs_server_name_edit_input(update, context):
 
     zfs_servers = get_zfs_servers_config()
 
-    old_name = context.user_data.get('editing_zfs_server_old_name')
+    old_name = context.user_data.get("editing_zfs_server_old_name")
     if not old_name or old_name not in zfs_servers:
         update.message.reply_text("❌ Сервер не найден.")
-        context.user_data.pop('editing_zfs_server_name', None)
-        context.user_data.pop('editing_zfs_server_old_name', None)
+        context.user_data.pop("editing_zfs_server_name", None)
+        context.user_data.pop("editing_zfs_server_old_name", None)
         return
 
     if new_name in zfs_servers and new_name != old_name:
@@ -9286,24 +10237,29 @@ def handle_zfs_server_name_edit_input(update, context):
 
     server_value = zfs_servers.pop(old_name, None)
     if not isinstance(server_value, dict):
-        server_value = {'enabled': True, 'ip': '', 'threshold': 15}
+        server_value = {"enabled": True, "ip": "", "threshold": 15}
     zfs_servers[new_name] = server_value
-    settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+    settings_manager.set_setting("ZFS_SERVERS", zfs_servers)
     _rename_zfs_server_statuses(old_name, new_name)
     _rename_zfs_monitoring_state(old_name, new_name)
 
     update.message.reply_text(
         f"✅ Сервер обновлён: `{new_name}`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_zfs"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
 
-    context.user_data.pop('editing_zfs_server_name', None)
-    context.user_data.pop('editing_zfs_server_old_name', None)
+    context.user_data.pop("editing_zfs_server_name", None)
+    context.user_data.pop("editing_zfs_server_old_name", None)
+
 
 def edit_zfs_server_ip_handler(update, context, server_name):
     """Начать редактирование IP ZFS сервера."""
@@ -9315,26 +10271,31 @@ def edit_zfs_server_ip_handler(update, context, server_name):
         query.edit_message_text("❌ Сервер не найден.")
         return
 
-    context.user_data['editing_zfs_server_ip'] = True
-    context.user_data['editing_zfs_server_ip_name'] = server_name
-    current_ip = str(zfs_servers.get(server_name, {}).get('ip', '')).strip()
+    context.user_data["editing_zfs_server_ip"] = True
+    context.user_data["editing_zfs_server_ip_name"] = server_name
+    current_ip = str(zfs_servers.get(server_name, {}).get("ip", "")).strip()
 
     query.edit_message_text(
         "🌐 *Редактирование IP ZFS сервера*\n\n"
         f"Хост: `{server_name}`\n"
         f"Текущий IP: `{current_ip or 'не задан'}`\n\n"
         "Введите новый IP:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs_list'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("❌ Отмена", callback_data="settings_zfs_list"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def handle_zfs_server_ip_edit_input(update, context):
     """Обработчик изменения IP ZFS сервера."""
-    if 'editing_zfs_server_ip' not in context.user_data:
+    if "editing_zfs_server_ip" not in context.user_data:
         return
 
     new_ip = update.message.text.strip()
@@ -9342,25 +10303,30 @@ def handle_zfs_server_ip_edit_input(update, context):
         update.message.reply_text("❌ IP адрес не может быть пустым.")
         return
 
-    server_name = str(context.user_data.get('editing_zfs_server_ip_name', '')).strip()
+    server_name = str(context.user_data.get("editing_zfs_server_ip_name", "")).strip()
     zfs_servers = get_zfs_servers_config()
     if server_name not in zfs_servers:
         update.message.reply_text("❌ Сервер не найден.")
     else:
-        zfs_servers[server_name]['ip'] = new_ip
-        settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+        zfs_servers[server_name]["ip"] = new_ip
+        settings_manager.set_setting("ZFS_SERVERS", zfs_servers)
         update.message.reply_text(
             f"✅ IP для `{server_name}` обновлен: `{new_ip}`",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs_list'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data="settings_zfs_list"),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
 
-    context.user_data.pop('editing_zfs_server_ip', None)
-    context.user_data.pop('editing_zfs_server_ip_name', None)
+    context.user_data.pop("editing_zfs_server_ip", None)
+    context.user_data.pop("editing_zfs_server_ip_name", None)
+
 
 def edit_zfs_server_threshold_handler(update, context, server_name):
     """Начать редактирование порога свободного места ZFS сервера."""
@@ -9372,26 +10338,31 @@ def edit_zfs_server_threshold_handler(update, context, server_name):
         query.edit_message_text("❌ Сервер не найден.")
         return
 
-    threshold = int(zfs_servers.get(server_name, {}).get('threshold', 15))
-    context.user_data['editing_zfs_server_threshold'] = True
-    context.user_data['editing_zfs_server_threshold_name'] = server_name
+    threshold = int(zfs_servers.get(server_name, {}).get("threshold", 15))
+    context.user_data["editing_zfs_server_threshold"] = True
+    context.user_data["editing_zfs_server_threshold_name"] = server_name
 
     query.edit_message_text(
         "🎯 *Редактирование порога ZFS*\n\n"
         f"Хост: `{server_name}`\n"
         f"Текущий порог: `{threshold}%`\n\n"
         "Введите новый порог (1..95):",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs_list'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("❌ Отмена", callback_data="settings_zfs_list"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def handle_zfs_server_threshold_edit_input(update, context):
     """Обработчик изменения порога ZFS сервера."""
-    if 'editing_zfs_server_threshold' not in context.user_data:
+    if "editing_zfs_server_threshold" not in context.user_data:
         return
 
     try:
@@ -9404,25 +10375,30 @@ def handle_zfs_server_threshold_edit_input(update, context):
         update.message.reply_text("❌ Порог должен быть в диапазоне 1..95.")
         return
 
-    server_name = str(context.user_data.get('editing_zfs_server_threshold_name', '')).strip()
+    server_name = str(context.user_data.get("editing_zfs_server_threshold_name", "")).strip()
     zfs_servers = get_zfs_servers_config()
     if server_name not in zfs_servers:
         update.message.reply_text("❌ Сервер не найден.")
     else:
-        zfs_servers[server_name]['threshold'] = threshold
-        settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+        zfs_servers[server_name]["threshold"] = threshold
+        settings_manager.set_setting("ZFS_SERVERS", zfs_servers)
         update.message.reply_text(
             f"✅ Порог для `{server_name}` обновлен: `{threshold}%`",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs_list'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data="settings_zfs_list"),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
 
-    context.user_data.pop('editing_zfs_server_threshold', None)
-    context.user_data.pop('editing_zfs_server_threshold_name', None)
+    context.user_data.pop("editing_zfs_server_threshold", None)
+    context.user_data.pop("editing_zfs_server_threshold_name", None)
+
 
 def toggle_zfs_server(update, context, server_name):
     """Включить/отключить мониторинг ZFS сервера"""
@@ -9434,36 +10410,45 @@ def toggle_zfs_server(update, context, server_name):
     if server_name not in zfs_servers:
         query.edit_message_text(
             "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data="settings_zfs"),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
     server_value = zfs_servers.get(server_name)
     if isinstance(server_value, dict):
-        enabled = server_value.get('enabled', True)
+        enabled = server_value.get("enabled", True)
     else:
         enabled = True
-        server_value = {'enabled': True, 'ip': '', 'threshold': 15}
+        server_value = {"enabled": True, "ip": "", "threshold": 15}
 
-    server_value['enabled'] = not enabled
+    server_value["enabled"] = not enabled
     zfs_servers[server_name] = server_value
-    settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
-    _set_zfs_monitoring_state(server_name, bool(server_value['enabled']))
+    settings_manager.set_setting("ZFS_SERVERS", zfs_servers)
+    _set_zfs_monitoring_state(server_name, bool(server_value["enabled"]))
 
-    status_text = "включен" if server_value['enabled'] else "отключен"
+    status_text = "включен" if server_value["enabled"] else "отключен"
     query.edit_message_text(
         f"✅ Мониторинг сервера `{server_name}` {status_text}.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs_list'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_zfs_list"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def _delete_zfs_server_statuses(server_name: str) -> None:
     """Удалить статусы ZFS сервера из БД бэкапов."""
@@ -9474,16 +10459,14 @@ def _delete_zfs_server_statuses(server_name: str) -> None:
     conn = sqlite3.connect(str(db_path))
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            "DELETE FROM zfs_pool_status WHERE server_name = ?",
-            (server_name,)
-        )
+        cursor.execute("DELETE FROM zfs_pool_status WHERE server_name = ?", (server_name,))
         conn.commit()
     except Exception as exc:
         if "no such table: zfs_pool_status" not in str(exc):
             debug_logger(f"⚠️ Не удалось удалить статусы ZFS сервера: {exc}")
     finally:
         conn.close()
+
 
 def _rename_zfs_server_statuses(old_name: str, new_name: str) -> None:
     """Переименовать статусы ZFS сервера в БД бэкапов."""
@@ -9495,8 +10478,7 @@ def _rename_zfs_server_statuses(old_name: str, new_name: str) -> None:
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE zfs_pool_status SET server_name = ? WHERE server_name = ?",
-            (new_name, old_name)
+            "UPDATE zfs_pool_status SET server_name = ? WHERE server_name = ?", (new_name, old_name)
         )
         conn.commit()
     except Exception as exc:
@@ -9504,6 +10486,7 @@ def _rename_zfs_server_statuses(old_name: str, new_name: str) -> None:
             debug_logger(f"⚠️ Не удалось переименовать статусы ZFS сервера: {exc}")
     finally:
         conn.close()
+
 
 def _ensure_zfs_monitoring_state_table(cursor: sqlite3.Cursor) -> None:
     cursor.execute(
@@ -9515,6 +10498,7 @@ def _ensure_zfs_monitoring_state_table(cursor: sqlite3.Cursor) -> None:
         )
         """
     )
+
 
 def _get_zfs_monitoring_state_map() -> dict[str, bool]:
     db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
@@ -9537,6 +10521,7 @@ def _get_zfs_monitoring_state_map() -> dict[str, bool]:
         return {}
     finally:
         conn.close()
+
 
 def _set_zfs_monitoring_state(server_name: str, enabled: bool) -> None:
     db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
@@ -9562,6 +10547,7 @@ def _set_zfs_monitoring_state(server_name: str, enabled: bool) -> None:
     finally:
         conn.close()
 
+
 def _delete_zfs_monitoring_state(server_name: str) -> None:
     db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
     if not db_path or not str(server_name).strip():
@@ -9578,6 +10564,7 @@ def _delete_zfs_monitoring_state(server_name: str) -> None:
     finally:
         conn.close()
 
+
 def _rename_zfs_monitoring_state(old_name: str, new_name: str) -> None:
     if not old_name.strip() or not new_name.strip():
         return
@@ -9589,88 +10576,104 @@ def _rename_zfs_monitoring_state(old_name: str, new_name: str) -> None:
     _set_zfs_monitoring_state(new_name, state_map[old_name])
     _delete_zfs_monitoring_state(old_name)
 
+
 def add_database_category_handler(update, context):
     """Обработчик добавления категории БД"""
     query = update.callback_query
     query.answer()
-    
+
     query.edit_message_text(
         "➕ *Добавление категории баз данных*\n\n"
         "Эта функция находится в разработке.\n"
         "Скоро здесь можно будет добавлять новые категории БД для мониторинга.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
             [
-                InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
-                InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-                InlineKeyboardButton("✖️ Закрыть", callback_data='close'),
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_backup_db"),
+                    InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ]
             ]
-        ])
+        ),
     )
+
 
 def edit_database_category_handler(update, context):
     """Обработчик редактирования категории БД"""
     query = update.callback_query
     query.answer()
-    
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-    
+
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
+
     if not db_config:
-        keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='backup_db_add_category')]]
+        keyboard = [
+            [InlineKeyboardButton("➕ Добавить категорию", callback_data="backup_db_add_category")]
+        ]
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([InlineKeyboardButton(f"✏️ {category}", callback_data=f'edit_category_{category}')])
-    
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
-        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close'),
-    ])
-    
-    query.edit_message_text(
-        "✏️ *Редактирование категорий баз данных*\n\n"
-        "Выберите категорию для редактирования:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+            keyboard.append(
+                [InlineKeyboardButton(f"✏️ {category}", callback_data=f"edit_category_{category}")]
+            )
+
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_backup_db"),
+            InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
     )
+
+    query.edit_message_text(
+        "✏️ *Редактирование категорий баз данных*\n\n" "Выберите категорию для редактирования:",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
 
 def delete_database_category_handler(update, context):
     """Обработчик удаления категории БД"""
     query = update.callback_query
     query.answer()
-    
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-    
+
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
+
     if not db_config:
-        keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='backup_db_add_category')]]
+        keyboard = [
+            [InlineKeyboardButton("➕ Добавить категорию", callback_data="backup_db_add_category")]
+        ]
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([InlineKeyboardButton(f"🗑️ {category}", callback_data=f'delete_category_{category}')])
-    
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
-        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close'),
-    ])
-    
-    query.edit_message_text(
-        "🗑️ *Удаление категории баз данных*\n\n"
-        "Выберите категорию для удаления:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+            keyboard.append(
+                [InlineKeyboardButton(f"🗑️ {category}", callback_data=f"delete_category_{category}")]
+            )
+
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_backup_db"),
+            InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
     )
+
+    query.edit_message_text(
+        "🗑️ *Удаление категории баз данных*\n\n" "Выберите категорию для удаления:",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
 
 def view_all_databases_handler(update, context):
     """Обработчик просмотра всех БД"""
     query = update.callback_query
     query.answer()
-    
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-    
+
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
+
     message = "📋 *Все базы данных для мониторинга*\n\n"
-    
+
     if not db_config:
         message += "❌ *Нет настроенных баз данных*\n\n"
         message += "Добавьте категории и базы данных в настройках."
@@ -9684,31 +10687,34 @@ def view_all_databases_handler(update, context):
                 message += f"   • {safe_db_name}\n"
                 total_dbs += 1
             message += "\n"
-        
+
         message += f"*Итого:* {total_dbs} баз данных в {len(db_config)} категориях"
-    
+
     query.edit_message_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
             [
-                InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
-                InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-                InlineKeyboardButton("✖️ Закрыть", callback_data='close'),
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_backup_db"),
+                    InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ]
             ]
-        ])
+        ),
     )
+
 
 def manage_chats_handler(update, context):
     """Управление чатами - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ КНОПКИ СПИСКА ВСЕХ ЧАТОВ"""
     query = update.callback_query
     query.answer()
-    
-    chat_ids = settings_manager.get_setting('CHAT_IDS', [])
-    
+
+    chat_ids = settings_manager.get_setting("CHAT_IDS", [])
+
     message = "💬 *Управление чатами*\n\n"
     message += f"Текущее количество чатов: {len(chat_ids)}\n\n"
-    
+
     if chat_ids:
         message += "*Текущие чаты:*\n"
         for i, chat_id in enumerate(chat_ids[:5], 1):
@@ -9717,21 +10723,22 @@ def manage_chats_handler(update, context):
             message += f"... и еще {len(chat_ids) - 5} чатов\n"
     else:
         message += "❌ *Чаты не настроены*\n"
-    
+
     message += "\nВыберите действие:"
-    
+
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить чат", callback_data='add_chat')],
-        [InlineKeyboardButton("🗑️ Удалить чат", callback_data='remove_chat')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_telegram'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("➕ Добавить чат", callback_data="add_chat")],
+        [InlineKeyboardButton("🗑️ Удалить чат", callback_data="remove_chat")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_telegram"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_server_timeouts(update, context):
     """Таймауты серверов с текущими значениями.
@@ -9746,12 +10753,12 @@ def show_server_timeouts(update, context):
     query = update.callback_query
     query.answer()
 
-    windows_2025_timeout = settings_manager.get_setting('WINDOWS_2025_TIMEOUT', 35)
-    domain_timeout = settings_manager.get_setting('DOMAIN_SERVERS_TIMEOUT', 20)
-    admin_timeout = settings_manager.get_setting('ADMIN_SERVERS_TIMEOUT', 25)
-    standard_timeout = settings_manager.get_setting('STANDARD_WINDOWS_TIMEOUT', 30)
-    linux_timeout = settings_manager.get_setting('LINUX_TIMEOUT', 15)
-    ping_timeout = settings_manager.get_setting('PING_TIMEOUT', 10)
+    windows_2025_timeout = settings_manager.get_setting("WINDOWS_2025_TIMEOUT", 35)
+    domain_timeout = settings_manager.get_setting("DOMAIN_SERVERS_TIMEOUT", 20)
+    admin_timeout = settings_manager.get_setting("ADMIN_SERVERS_TIMEOUT", 25)
+    standard_timeout = settings_manager.get_setting("STANDARD_WINDOWS_TIMEOUT", 30)
+    linux_timeout = settings_manager.get_setting("LINUX_TIMEOUT", 15)
+    ping_timeout = settings_manager.get_setting("PING_TIMEOUT", 10)
 
     message = (
         "⏰ *Таймауты серверов*\n\n"
@@ -9765,148 +10772,165 @@ def show_server_timeouts(update, context):
     )
 
     keyboard = [
-        [InlineKeyboardButton("🖥️ Windows 2025", callback_data='set_windows_2025_timeout')],
-        [InlineKeyboardButton("🌐 Доменные серверы", callback_data='set_domain_servers_timeout')],
-        [InlineKeyboardButton("🔧 Admin серверы", callback_data='set_admin_servers_timeout')],
-        [InlineKeyboardButton("💻 Стандартные Windows", callback_data='set_standard_windows_timeout')],
-        [InlineKeyboardButton("🐧 Linux серверы", callback_data='set_linux_timeout')],
-        [InlineKeyboardButton("📡 Ping серверы", callback_data='set_ping_timeout')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_monitoring'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("🖥️ Windows 2025", callback_data="set_windows_2025_timeout")],
+        [InlineKeyboardButton("🌐 Доменные серверы", callback_data="set_domain_servers_timeout")],
+        [InlineKeyboardButton("🔧 Admin серверы", callback_data="set_admin_servers_timeout")],
+        [
+            InlineKeyboardButton(
+                "💻 Стандартные Windows", callback_data="set_standard_windows_timeout"
+            )
+        ],
+        [InlineKeyboardButton("🐧 Linux серверы", callback_data="set_linux_timeout")],
+        [InlineKeyboardButton("📡 Ping серверы", callback_data="set_ping_timeout")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_monitoring"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     try:
         query.edit_message_text(
-            message,
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
         )
     except (BadRequest, TelegramError) as exc:
         debug_logger(f"⚠️ show_server_timeouts edit_message_text Markdown failed: {exc}")
         query.edit_message_text(
-            message.replace('*', ''),
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            message.replace("*", ""), reply_markup=InlineKeyboardMarkup(keyboard)
         )
+
 
 def add_server_handler(update, context):
     """Добавить сервер - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
     query = update.callback_query
     query.answer()
-    
+
     # Сохраняем состояние добавления сервера
-    context.user_data['adding_server'] = True
-    context.user_data['server_stage'] = 'ip'
-    
+    context.user_data["adding_server"] = True
+    context.user_data["server_stage"] = "ip"
+
     message = (
-        "➕ *Добавление сервера*\n\n"
-        "Введите IP-адрес сервера:\n\n"
-        "_Пример: 192.168.9.000_"
+        "➕ *Добавление сервера*\n\n" "Введите IP-адрес сервера:\n\n" "_Пример: 192.168.9.000_"
     )
-    
+
     query.edit_message_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="settings_servers")]]
+        ),
     )
+
 
 def handle_server_input(update, context):
     """Обработчик ввода данных сервера"""
-    if 'adding_server' not in context.user_data or not context.user_data['adding_server']:
+    if "adding_server" not in context.user_data or not context.user_data["adding_server"]:
         return
-    
+
     user_input = update.message.text
-    stage = context.user_data.get('server_stage', 'ip')
-    
+    stage = context.user_data.get("server_stage", "ip")
+
     try:
-        if stage == 'ip':
+        if stage == "ip":
             # Проверка IP-адреса
             import re
-            ip_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+
+            ip_pattern = r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$"
             if not re.match(ip_pattern, user_input):
                 update.message.reply_text("❌ Неверный формат IP-адреса. Попробуйте снова:")
                 return
-            
-            context.user_data['server_ip'] = user_input
-            context.user_data['server_stage'] = 'name'
-            
+
+            context.user_data["server_ip"] = user_input
+            context.user_data["server_stage"] = "name"
+
             update.message.reply_text(
-                "📝 Введите имя сервера:\n\n"
-                "_Пример: web-server-01_",
-                parse_mode='Markdown'
+                "📝 Введите имя сервера:\n\n" "_Пример: web-server-01_", parse_mode="Markdown"
             )
-            
-        elif stage == 'name':
-            context.user_data['server_name'] = user_input
-            context.user_data['server_stage'] = 'type'
-            
+
+        elif stage == "name":
+            context.user_data["server_name"] = user_input
+            context.user_data["server_stage"] = "type"
+
             keyboard = [
-                [InlineKeyboardButton("🖥️ Windows (RDP)", callback_data='server_type_rdp')],
-                [InlineKeyboardButton("🐧 Linux (SSH)", callback_data='server_type_ssh')],
-                [InlineKeyboardButton("📡 Ping Only", callback_data='server_type_ping')],
-                [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers')]
+                [InlineKeyboardButton("🖥️ Windows (RDP)", callback_data="server_type_rdp")],
+                [InlineKeyboardButton("🐧 Linux (SSH)", callback_data="server_type_ssh")],
+                [InlineKeyboardButton("📡 Ping Only", callback_data="server_type_ping")],
+                [InlineKeyboardButton("❌ Отмена", callback_data="settings_servers")],
             ]
-            
+
             update.message.reply_text(
-                "🔧 Выберите тип сервера:",
-                reply_markup=InlineKeyboardMarkup(keyboard)
+                "🔧 Выберите тип сервера:", reply_markup=InlineKeyboardMarkup(keyboard)
             )
-            
+
     except Exception as e:
         update.message.reply_text(f"❌ Ошибка: {e}")
         # Сбрасываем состояние при ошибке
-        context.user_data['adding_server'] = False
+        context.user_data["adding_server"] = False
+
 
 def handle_server_type(update, context):
     """Обработчик выбора типа сервера"""
     query = update.callback_query
     query.answer()
-    
-    if 'adding_server' not in context.user_data:
+
+    if "adding_server" not in context.user_data:
         return
-    
-    server_type = query.data.replace('server_type_', '')
-    server_ip = context.user_data.get('server_ip')
-    server_name = context.user_data.get('server_name')
-    
+
+    server_type = query.data.replace("server_type_", "")
+    server_ip = context.user_data.get("server_ip")
+    server_name = context.user_data.get("server_name")
+
     try:
         # Добавляем сервер в базу
         success = settings_manager.add_server(server_ip, server_name, server_type)
-        
+
         if success:
             message = f"✅ *Сервер добавлен!*\n\n• IP: `{server_ip}`\n• Имя: `{server_name}`\n• Тип: `{server_type}`"
-            
+
             # Очищаем состояние
-            context.user_data['adding_server'] = False
-            context.user_data.pop('server_ip', None)
-            context.user_data.pop('server_name', None)
-            context.user_data.pop('server_stage', None)
+            context.user_data["adding_server"] = False
+            context.user_data.pop("server_ip", None)
+            context.user_data.pop("server_name", None)
+            context.user_data.pop("server_stage", None)
         else:
             message = "❌ Ошибка при добавлении сервера"
-        
+
         query.edit_message_text(
             message,
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад к серверам", callback_data='settings_servers'),
-                 InlineKeyboardButton("➕ Добавить еще", callback_data='settings_add_server')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "↩️ Назад к серверам", callback_data="settings_servers"
+                        ),
+                        InlineKeyboardButton(
+                            "➕ Добавить еще", callback_data="settings_add_server"
+                        ),
+                    ]
+                ]
+            ),
         )
-        
+
     except Exception as e:
         query.edit_message_text(f"❌ Ошибка: {e}")
+
 
 def view_all_databases_handler(update, context):
     """Просмотр всех БД - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
     query = update.callback_query
     query.answer()
-    
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
 
     if not db_config:
         message = "📋 *Все базы данных*\n\n❌ *Нет настроенных баз данных*"
-        keyboard = [[InlineKeyboardButton("➕ Добавить категорию БД", callback_data='settings_db_add_category')]]
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "➕ Добавить категорию БД", callback_data="settings_db_add_category"
+                )
+            ]
+        ]
     else:
         message = (
             "🛠️ *Управление базами данных*\n\n"
@@ -9921,93 +10945,110 @@ def view_all_databases_handler(update, context):
             if not isinstance(databases, dict):
                 databases = {}
             total_dbs += len(databases)
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"📁 {category} ({len(databases)})",
-                    callback_data=_build_db_category_callback(context, "settings_db_edit_", category)
-                )
-            ])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"📁 {category} ({len(databases)})",
+                        callback_data=_build_db_category_callback(
+                            context, "settings_db_edit_", category
+                        ),
+                    )
+                ]
+            )
 
         message += f"\n\n*Итого:* {total_dbs} баз данных в {len(db_config)} категориях"
 
-    keyboard.append([InlineKeyboardButton("➕ Добавить новую БД", callback_data='settings_db_add_new')])
-    back_callback = context.user_data.get('settings_db_back') or 'settings_ext_backup_db'
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    keyboard.append(
+        [InlineKeyboardButton("➕ Добавить новую БД", callback_data="settings_db_add_new")]
+    )
+    back_callback = context.user_data.get("settings_db_back") or "settings_ext_backup_db"
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+            InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def add_new_database_from_manage_handler(update, context):
     """Быстрое добавление новой БД из экрана 'Управление базами'."""
     query = update.callback_query
     query.answer()
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
 
     if not db_config:
         query.edit_message_text(
-            "➕ *Добавление новой БД*\n\n"
-            "Сначала нужно создать хотя бы одну категорию БД.",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all')]
-            ])
+            "➕ *Добавление новой БД*\n\n" "Сначала нужно создать хотя бы одну категорию БД.",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "➕ Добавить категорию", callback_data="settings_db_add_category"
+                        )
+                    ],
+                    [InlineKeyboardButton("↩️ Назад", callback_data="settings_db_view_all")],
+                ]
+            ),
         )
         return
 
     keyboard = []
     for category in db_config.keys():
-        keyboard.append([
-            InlineKeyboardButton(
-                f"📁 {category}",
-                callback_data=_build_db_category_callback(context, "settings_db_add_db_", category)
-            )
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"📁 {category}",
+                    callback_data=_build_db_category_callback(
+                        context, "settings_db_add_db_", category
+                    ),
+                )
+            ]
+        )
 
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all')])
+    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data="settings_db_view_all")])
 
     query.edit_message_text(
-        "➕ *Добавить новую БД*\n\n"
-        "Выберите категорию, куда добавить базу:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        "➕ *Добавить новую БД*\n\n" "Выберите категорию, куда добавить базу:",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
 
 def add_database_category_handler(update, context):
     """Добавить категорию БД - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
     query = update.callback_query
     query.answer()
-    
-    context.user_data['adding_db_category'] = True
-    
+
+    context.user_data["adding_db_category"] = True
+
     message = (
         "➕ *Добавление категории БД*\n\n"
         "Введите название новой категории:\n\n"
         "_Пример: company, client, backup_"
     )
-    
+
     query.edit_message_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="settings_db_main")]]
+        ),
     )
+
 
 def manage_database_categories_handler(update, context):
     """Список категорий БД с быстрым редактированием и удалением."""
     query = update.callback_query
     query.answer()
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     categories = sorted(db_config.keys()) if isinstance(db_config, dict) else []
     total_categories = len(categories)
     back_callback = _get_settings_db_back_callback(context)
@@ -10018,126 +11059,162 @@ def manage_database_categories_handler(update, context):
         f"Всего категорий: *{total_categories}*",
     ]
 
-    keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')]]
+    keyboard = [
+        [InlineKeyboardButton("➕ Добавить категорию", callback_data="settings_db_add_category")]
+    ]
     if not categories:
         lines.extend(["", "Категории пока не добавлены."])
     else:
         lines.extend(["", "Выберите категорию для действия:"])
         for category in categories:
-            db_count = len(db_config.get(category, {})) if isinstance(db_config.get(category), dict) else 0
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"✏️ {category} ({db_count})",
-                    callback_data=_build_db_category_callback(context, "settings_db_rename_", category)
-                ),
-                InlineKeyboardButton(
-                    "🗑️",
-                    callback_data=_build_db_category_callback(context, "settings_db_delete_", category)
-                )
-            ])
+            db_count = (
+                len(db_config.get(category, {})) if isinstance(db_config.get(category), dict) else 0
+            )
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"✏️ {category} ({db_count})",
+                        callback_data=_build_db_category_callback(
+                            context, "settings_db_rename_", category
+                        ),
+                    ),
+                    InlineKeyboardButton(
+                        "🗑️",
+                        callback_data=_build_db_category_callback(
+                            context, "settings_db_delete_", category
+                        ),
+                    ),
+                ]
+            )
 
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+            InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        "\n".join(lines),
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        "\n".join(lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def edit_databases_handler(update, context):
     """Показать список категорий для переименования."""
     query = update.callback_query
     query.answer()
-    
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-    
+
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
+
     if not db_config:
-        keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')]]
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "➕ Добавить категорию", callback_data="settings_db_add_category"
+                )
+            ]
+        ]
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"✏️ {category}",
-                    callback_data=_build_db_category_callback(context, "settings_db_rename_", category)
-                )
-            ])
-    
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')])
-    
-    query.edit_message_text(
-        "✏️ *Редактирование категорий баз данных*\n\n"
-        "Выберите категорию для переименования:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"✏️ {category}",
+                        callback_data=_build_db_category_callback(
+                            context, "settings_db_rename_", category
+                        ),
+                    )
+                ]
+            )
+
+    keyboard.append(
+        [InlineKeyboardButton("↩️ Назад", callback_data="settings_db_manage_categories")]
     )
+
+    query.edit_message_text(
+        "✏️ *Редактирование категорий баз данных*\n\n" "Выберите категорию для переименования:",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
 
 def start_database_category_edit_handler(update, context, category):
     """Запуск переименования существующей категории БД."""
     query = update.callback_query
     query.answer()
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     if category not in db_config:
         query.edit_message_text(
             "❌ Категория не найдена.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_db_manage_categories")]]
+            ),
         )
         return
 
-    context.user_data['editing_db_category'] = True
-    context.user_data['editing_db_category_old_name'] = category
+    context.user_data["editing_db_category"] = True
+    context.user_data["editing_db_category_old_name"] = category
 
     query.edit_message_text(
         "✏️ *Переименование категории БД*\n\n"
         f"Текущее название: *{_escape_pattern_text(category)}*\n\n"
         "Введите новое название категории:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_manage_categories')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="settings_db_manage_categories")]]
+        ),
     )
+
 
 def delete_database_category_handler(update, context):
     """Удалить категорию БД - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
     query = update.callback_query
     query.answer()
-    
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-    
+
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
+
     if not db_config:
-        keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')]]
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "➕ Добавить категорию", callback_data="settings_db_add_category"
+                )
+            ]
+        ]
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"🗑️ {category}",
-                    callback_data=_build_db_category_callback(context, "settings_db_delete_", category)
-                )
-            ])
-    
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')])
-    
-    query.edit_message_text(
-        "🗑️ *Удаление категории БД*\n\n"
-        "Выберите категорию для удаления:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"🗑️ {category}",
+                        callback_data=_build_db_category_callback(
+                            context, "settings_db_delete_", category
+                        ),
+                    )
+                ]
+            )
+
+    keyboard.append(
+        [InlineKeyboardButton("↩️ Назад", callback_data="settings_db_manage_categories")]
     )
+
+    query.edit_message_text(
+        "🗑️ *Удаление категории БД*\n\n" "Выберите категорию для удаления:",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
 
 def edit_database_category_details(update, context, category):
     """Показать детали категории БД"""
     query = update.callback_query
     query.answer()
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     databases = db_config.get(category)
     if databases is not None and not isinstance(databases, dict):
         databases = {}
@@ -10145,9 +11222,9 @@ def edit_database_category_details(update, context, category):
     if databases is None:
         query.edit_message_text(
             "❌ Категория не найдена.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_db_main")]]
+            ),
         )
         return
 
@@ -10164,80 +11241,92 @@ def edit_database_category_details(update, context, category):
 
     message += "\nВыберите действие:"
 
-    keyboard = [[
-        InlineKeyboardButton(
-            "➕ Добавить БД",
-            callback_data=_build_db_category_callback(context, "settings_db_add_db_", category)
-        )
-    ]]
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "➕ Добавить БД",
+                callback_data=_build_db_category_callback(context, "settings_db_add_db_", category),
+            )
+        ]
+    ]
     for db_key, db_name in databases.items():
-        encoded_backup_type = quote(str(category), safe='')
-        encoded_db_name = quote(str(db_key), safe='')
-        toggle_callback = _build_db_monitor_toggle_callback(context, encoded_backup_type, encoded_db_name)
+        encoded_backup_type = quote(str(category), safe="")
+        encoded_db_name = quote(str(db_key), safe="")
+        toggle_callback = _build_db_monitor_toggle_callback(
+            context, encoded_backup_type, encoded_db_name
+        )
         is_disabled = (category, db_key) in _get_disabled_db_monitors_settings()
         toggle_text = "✅ Вкл" if is_disabled else "⛔ Выкл"
 
         button_text = f"✏️ {db_name}"
-        keyboard.append([
-            InlineKeyboardButton(
-                button_text,
-                callback_data=_build_db_entry_callback(context, "settings_db_edit_db_", category, db_key)
-            ),
-            InlineKeyboardButton(toggle_text, callback_data=toggle_callback),
-            InlineKeyboardButton(
-                f"🗑️ {db_name}",
-                callback_data=_build_db_entry_callback(context, "settings_db_delete_db_", category, db_key)
-            )
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    button_text,
+                    callback_data=_build_db_entry_callback(
+                        context, "settings_db_edit_db_", category, db_key
+                    ),
+                ),
+                InlineKeyboardButton(toggle_text, callback_data=toggle_callback),
+                InlineKeyboardButton(
+                    f"🗑️ {db_name}",
+                    callback_data=_build_db_entry_callback(
+                        context, "settings_db_delete_db_", category, db_key
+                    ),
+                ),
+            ]
+        )
 
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_db_view_all"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def add_database_entry_handler(update, context, category):
     """Запуск добавления базы данных в категорию"""
     query = update.callback_query
     query.answer()
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     if category not in db_config:
         query.edit_message_text(
             "❌ Категория не найдена.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_db_main")]]
+            ),
         )
         return
 
     # Инициализируем состояние добавления БД
-    context.user_data['adding_db_entry'] = True
-    context.user_data['db_entry_category'] = category
-    context.user_data.pop('db_entry_key', None)
+    context.user_data["adding_db_entry"] = True
+    context.user_data["db_entry_category"] = category
+    context.user_data.pop("db_entry_key", None)
 
     query.edit_message_text(
         "➕ *Добавление базы данных*\n\n"
         f"Категория: *{category}*\n\n"
         "Введите ключ базы данных (латиница/цифры/символы `_`, `-`, `.`):\n\n"
         "_Пример: trade, client_db_01_",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="settings_db_main")]]
+        ),
     )
+
 
 def edit_database_entry_handler(update, context, category, db_key):
     """Запуск редактирования базы данных"""
     query = update.callback_query
     query.answer()
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     databases = db_config.get(category, {})
     if not isinstance(databases, dict):
         databases = {}
@@ -10246,33 +11335,34 @@ def edit_database_entry_handler(update, context, category, db_key):
     if db_key not in databases:
         query.edit_message_text(
             "❌ База данных не найдена.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_db_main")]]
+            ),
         )
         return
 
-    context.user_data['editing_db_entry'] = True
-    context.user_data['db_entry_category'] = category
-    context.user_data['db_entry_key'] = db_key
+    context.user_data["editing_db_entry"] = True
+    context.user_data["db_entry_category"] = category
+    context.user_data["db_entry_key"] = db_key
 
     query.edit_message_text(
         "✏️ *Редактирование базы данных*\n\n"
         f"Категория: *{category}*\n"
         f"Ключ: `{db_key}`\n"
         "Введите новый ключ:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="settings_db_main")]]
+        ),
     )
+
 
 def delete_database_entry_confirmation(update, context, category, db_key):
     """Подтверждение удаления базы данных"""
     query = update.callback_query
     query.answer()
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     databases = db_config.get(category, {})
     if not isinstance(databases, dict):
         databases = {}
@@ -10281,9 +11371,9 @@ def delete_database_entry_confirmation(update, context, category, db_key):
     if db_name is None:
         query.edit_message_text(
             "❌ База данных не найдена.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_db_main")]]
+            ),
         )
         return
 
@@ -10292,25 +11382,32 @@ def delete_database_entry_confirmation(update, context, category, db_key):
         f"Категория: *{category}*\n"
         f"База: `{db_name}`\n\n"
         "Удалить?",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                "✅ Удалить",
-                callback_data=_build_db_entry_callback(
-                    context, "settings_db_delete_db_confirm_", category, db_key
-                )
-            )],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "✅ Удалить",
+                        callback_data=_build_db_entry_callback(
+                            context, "settings_db_delete_db_confirm_", category, db_key
+                        ),
+                    )
+                ],
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_db_view_all"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def delete_database_entry_execute(update, context, category, db_key):
     """Удаление базы данных"""
     query = update.callback_query
     query.answer()
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     databases = db_config.get(category, {})
     if not isinstance(databases, dict):
         databases = {}
@@ -10319,24 +11416,26 @@ def delete_database_entry_execute(update, context, category, db_key):
     if db_name is None:
         query.edit_message_text(
             "❌ База данных не найдена.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_db_main")]]
+            ),
         )
         return
 
     db_config[category] = databases
-    settings_manager.set_setting('DATABASE_CONFIG', db_config)
+    settings_manager.set_setting("DATABASE_CONFIG", db_config)
 
     query.edit_message_text(
-        "✅ *База данных удалена!*\n\n"
-        f"Категория: *{category}*\n"
-        f"База: `{db_name}`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        "✅ *База данных удалена!*\n\n" f"Категория: *{category}*\n" f"База: `{db_name}`",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_db_view_all"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ]
+            ]
+        ),
     )
 
 
@@ -10345,27 +11444,27 @@ def settings_toggle_database_monitoring(update, context, encoded_backup_type, en
     query = update.callback_query
     query.answer()
 
-    backup_type = unquote(str(encoded_backup_type or '')).strip()
-    db_name = unquote(str(encoded_db_name or '')).strip()
+    backup_type = unquote(str(encoded_backup_type or "")).strip()
+    db_name = unquote(str(encoded_db_name or "")).strip()
     if not backup_type or not db_name:
         query.edit_message_text(
             "❌ Не удалось переключить мониторинг: пустой тип или имя БД.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_db_main")]]
+            ),
         )
         return
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     databases = db_config.get(backup_type, {})
     if not isinstance(databases, dict):
         databases = {}
     if db_name not in databases:
         query.edit_message_text(
             "❌ База данных не найдена в настройках.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_db_main")]]
+            ),
         )
         return
 
@@ -10378,167 +11477,210 @@ def settings_toggle_database_monitoring(update, context, encoded_backup_type, en
             f"• База: `{db_name}`\n"
             f"• Статус: {status_text}"
         ),
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                "↩️ Назад",
-                callback_data=_build_db_category_callback(context, "settings_db_edit_", backup_type)
-            )],
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "↩️ Назад",
+                        callback_data=_build_db_category_callback(
+                            context, "settings_db_edit_", backup_type
+                        ),
+                    )
+                ],
+                [
+                    InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def delete_database_category_confirmation(update, context, category):
     """Подтверждение удаления категории БД"""
     query = update.callback_query
     query.answer()
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     if category not in db_config:
         query.edit_message_text(
             "❌ Категория не найдена.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_db_main")]]
+            ),
         )
         return
 
-    message = (
-        "🗑️ *Удаление категории БД*\n\n"
-        f"Категория: *{category}*\n"
-        "Подтвердите удаление:"
-    )
+    message = "🗑️ *Удаление категории БД*\n\n" f"Категория: *{category}*\n" "Подтвердите удаление:"
 
     query.edit_message_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                "✅ Удалить",
-                callback_data=_build_db_category_callback(context, "settings_db_delete_confirm_", category)
-            )],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "✅ Удалить",
+                        callback_data=_build_db_category_callback(
+                            context, "settings_db_delete_confirm_", category
+                        ),
+                    )
+                ],
+                [InlineKeyboardButton("↩️ Назад", callback_data="settings_db_manage_categories")],
+            ]
+        ),
     )
+
 
 def delete_database_category_execute(update, context, category):
     """Удалить категорию БД"""
     query = update.callback_query
     query.answer()
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     if category not in db_config:
         query.edit_message_text(
             "❌ Категория не найдена.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="settings_db_manage_categories")]]
+            ),
         )
         return
 
     db_config.pop(category, None)
-    settings_manager.set_setting('DATABASE_CONFIG', db_config)
+    settings_manager.set_setting("DATABASE_CONFIG", db_config)
 
     query.edit_message_text(
         f"✅ Категория *{category}* удалена.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_db_manage_categories"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ]
+            ]
+        ),
     )
-    
+
+
 def not_implemented_handler(update, context, feature_name=""):
     """Обработчик для функций в разработке"""
     query = update.callback_query
     query.answer()
-    
-    message = f"🛠️ *Функция в разработке*\n\n"
+
+    message = "🛠️ *Функция в разработке*\n\n"
     if feature_name:
         message += f"Функция '{feature_name}' находится в разработке.\n"
     message += "Скоро здесь будет доступна новая функциональность."
-    
+
     # Определяем откуда пришел запрос для кнопки "Назад"
-    back_button = 'settings_main'
-    if hasattr(query, 'data'):
-        if 'telegram' in query.data:
-            back_button = 'settings_telegram'
-        elif 'backup' in query.data:
-            back_button = 'settings_backup'
-        elif 'servers' in query.data:
-            back_button = 'settings_servers'
-        elif 'monitoring' in query.data:
-            back_button = 'settings_monitoring'
-    
+    back_button = "settings_main"
+    if hasattr(query, "data"):
+        if "telegram" in query.data:
+            back_button = "settings_telegram"
+        elif "backup" in query.data:
+            back_button = "settings_backup"
+        elif "servers" in query.data:
+            back_button = "settings_servers"
+        elif "monitoring" in query.data:
+            back_button = "settings_monitoring"
+
     query.edit_message_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_button),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data=back_button),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ]
+            ]
+        ),
     )
+
 
 def handle_db_category_input(update, context):
     """Обработчик ввода категории БД"""
-    if 'adding_db_category' not in context.user_data:
+    if "adding_db_category" not in context.user_data:
         return
-    
+
     category_name = update.message.text.strip()
-    
+
     try:
         # Получаем текущую конфигурацию БД
-        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-        
+        db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
+
         # Добавляем новую категорию
         if category_name not in db_config:
             db_config[category_name] = {}
-            settings_manager.set_setting('DATABASE_CONFIG', db_config)
-            
+            settings_manager.set_setting("DATABASE_CONFIG", db_config)
+
             update.message.reply_text(
                 f"✅ *Категория '{category_name}' добавлена!*\n\n"
                 "Теперь вы можете добавить базы данных в эту категорию.",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton(
-                        "✏️ Добавить БД",
-                        callback_data=_build_db_category_callback(context, 'settings_db_edit_', category_name)
-                    ),
-                     InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')]
-                ])
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "✏️ Добавить БД",
+                                callback_data=_build_db_category_callback(
+                                    context, "settings_db_edit_", category_name
+                                ),
+                            ),
+                            InlineKeyboardButton(
+                                "↩️ Назад", callback_data="settings_db_manage_categories"
+                            ),
+                        ]
+                    ]
+                ),
             )
         else:
             update.message.reply_text(
                 f"❌ Категория '{category_name}' уже существует!",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "↩️ Назад", callback_data="settings_db_manage_categories"
+                            )
+                        ]
+                    ]
+                ),
             )
-    
+
     except Exception as e:
         update.message.reply_text(f"❌ Ошибка: {e}")
-    
+
     # Очищаем состояние
-    context.user_data['adding_db_category'] = False
+    context.user_data["adding_db_category"] = False
+
 
 def handle_db_category_rename_input(update, context):
     """Обработчик переименования категории БД."""
-    if 'editing_db_category' not in context.user_data:
+    if "editing_db_category" not in context.user_data:
         return
 
-    old_name = context.user_data.get('editing_db_category_old_name')
-    new_name = (update.message.text or '').strip()
+    old_name = context.user_data.get("editing_db_category_old_name")
+    new_name = (update.message.text or "").strip()
 
     try:
-        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
 
         if not old_name or old_name not in db_config:
             update.message.reply_text(
                 "❌ Исходная категория не найдена.",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "↩️ Назад", callback_data="settings_db_manage_categories"
+                            )
+                        ]
+                    ]
+                ),
             )
             return
 
@@ -10551,39 +11693,49 @@ def handle_db_category_rename_input(update, context):
             return
 
         if new_name in db_config:
-            update.message.reply_text(f"❌ Категория '{new_name}' уже существует. Введите другое название:")
+            update.message.reply_text(
+                f"❌ Категория '{new_name}' уже существует. Введите другое название:"
+            )
             return
 
         updated_config = dict(db_config)
         updated_config[new_name] = updated_config.pop(old_name)
-        settings_manager.set_setting('DATABASE_CONFIG', updated_config)
+        settings_manager.set_setting("DATABASE_CONFIG", updated_config)
 
         update.message.reply_text(
             f"✅ Категория '{old_name}' переименована в '{new_name}'.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ К управлению категориями", callback_data='settings_db_manage_categories')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "↩️ К управлению категориями",
+                            callback_data="settings_db_manage_categories",
+                        )
+                    ]
+                ]
+            ),
         )
     except Exception as e:
         update.message.reply_text(f"❌ Ошибка: {e}")
     finally:
-        context.user_data.pop('editing_db_category', None)
-        context.user_data.pop('editing_db_category_old_name', None)
+        context.user_data.pop("editing_db_category", None)
+        context.user_data.pop("editing_db_category_old_name", None)
+
 
 def handle_db_entry_input(update, context):
     """Обработчик добавления базы данных"""
-    if 'adding_db_entry' not in context.user_data:
+    if "adding_db_entry" not in context.user_data:
         return
 
     user_input = update.message.text.strip()
-    category = context.user_data.get('db_entry_category')
+    category = context.user_data.get("db_entry_category")
 
     if not category:
         update.message.reply_text("❌ Категория не найдена. Попробуйте снова.")
-        context.user_data['adding_db_entry'] = False
+        context.user_data["adding_db_entry"] = False
         return
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     databases = db_config.get(category, {})
     if not isinstance(databases, dict):
         databases = {}
@@ -10594,7 +11746,7 @@ def handle_db_entry_input(update, context):
         update.message.reply_text("❌ Ключ не может быть пустым. Попробуйте снова:")
         return
 
-    if ' ' in user_input:
+    if " " in user_input:
         update.message.reply_text("❌ Ключ не должен содержать пробелы. Попробуйте снова:")
         return
 
@@ -10604,50 +11756,55 @@ def handle_db_entry_input(update, context):
 
     databases[user_input] = user_input
     db_config[category] = databases
-    settings_manager.set_setting('DATABASE_CONFIG', db_config)
+    settings_manager.set_setting("DATABASE_CONFIG", db_config)
 
     update.message.reply_text(
-        "✅ *База данных добавлена!*\n\n"
-        f"Категория: *{category}*\n"
-        f"Ключ: `{user_input}`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton(
-                 "✏️ Добавить еще",
-                 callback_data=_build_db_category_callback(context, 'settings_db_add_db_', category)
-             )]
-        ])
+        "✅ *База данных добавлена!*\n\n" f"Категория: *{category}*\n" f"Ключ: `{user_input}`",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_db_main"),
+                    InlineKeyboardButton(
+                        "✏️ Добавить еще",
+                        callback_data=_build_db_category_callback(
+                            context, "settings_db_add_db_", category
+                        ),
+                    ),
+                ]
+            ]
+        ),
     )
 
-    context.user_data.pop('adding_db_entry', None)
-    context.user_data.pop('db_entry_category', None)
-    context.user_data.pop('db_entry_key', None)
+    context.user_data.pop("adding_db_entry", None)
+    context.user_data.pop("db_entry_category", None)
+    context.user_data.pop("db_entry_key", None)
+
 
 def handle_db_entry_edit_input(update, context):
     """Обработчик редактирования базы данных"""
-    if 'editing_db_entry' not in context.user_data:
+    if "editing_db_entry" not in context.user_data:
         return
 
     user_input = update.message.text.strip()
-    category = context.user_data.get('db_entry_category')
-    db_key = context.user_data.get('db_entry_key')
+    category = context.user_data.get("db_entry_category")
+    db_key = context.user_data.get("db_entry_key")
 
     if not category or not db_key:
         update.message.reply_text("❌ Не удалось определить базу данных. Попробуйте снова.")
-        context.user_data['editing_db_entry'] = False
+        context.user_data["editing_db_entry"] = False
         return
 
     if not user_input:
         update.message.reply_text("❌ Ключ не может быть пустым. Попробуйте снова:")
         return
 
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     databases = db_config.get(category, {})
 
     if db_key not in databases:
         update.message.reply_text("❌ База данных не найдена.")
-        context.user_data['editing_db_entry'] = False
+        context.user_data["editing_db_entry"] = False
         return
 
     if user_input in databases and user_input != db_key:
@@ -10657,735 +11814,831 @@ def handle_db_entry_edit_input(update, context):
     databases.pop(db_key, None)
     databases[user_input] = user_input
     db_config[category] = databases
-    settings_manager.set_setting('DATABASE_CONFIG', db_config)
+    settings_manager.set_setting("DATABASE_CONFIG", db_config)
 
     update.message.reply_text(
         "✅ *База данных обновлена!*\n\n"
         f"Категория: *{category}*\n"
         f"Новый ключ: `{user_input}`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton(
-                 "✏️ Редактировать еще",
-                 callback_data=_build_db_category_callback(context, 'settings_db_edit_', category)
-             )]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="settings_db_main"),
+                    InlineKeyboardButton(
+                        "✏️ Редактировать еще",
+                        callback_data=_build_db_category_callback(
+                            context, "settings_db_edit_", category
+                        ),
+                    ),
+                ]
+            ]
+        ),
     )
 
-    context.user_data.pop('editing_db_entry', None)
-    context.user_data.pop('db_entry_category', None)
-    context.user_data.pop('db_entry_key', None)
-    
+    context.user_data.pop("editing_db_entry", None)
+    context.user_data.pop("db_entry_category", None)
+    context.user_data.pop("db_entry_key", None)
+
+
 def show_windows_auth_settings(update, context):
     """Показать настройки аутентификации Windows - ОСНОВНОЕ МЕНЮ"""
     query = update.callback_query
     query.answer()
-    
+
     # Получаем статистику по учетным данным
     credentials = settings_manager.get_windows_credentials()
     server_types = settings_manager.get_windows_server_types()
-    
+
     # Группируем по типам серверов
     stats = {}
     for cred in credentials:
-        server_type = cred['server_type']
+        server_type = cred["server_type"]
         if server_type not in stats:
             stats[server_type] = 0
         stats[server_type] += 1
-    
+
     message = "🖥️ *Управление аутентификацией Windows*\n\n"
     message += f"• Всего учетных записей: {len(credentials)}\n"
     message += f"• Типов серверов: {len(server_types)}\n\n"
-    
+
     if stats:
         message += "*Учетные данные по типам:*\n"
         for server_type, count in stats.items():
             message += f"• {server_type}: {count} учетных записей\n"
     else:
         message += "❌ *Учетные данные не настроены*\n"
-    
+
     message += "\nВыберите действие:"
-    
+
     keyboard = [
-        [InlineKeyboardButton("👥 Просмотр всех учетных записей", callback_data='windows_auth_list')],
-        [InlineKeyboardButton("➕ Добавить учетную запись", callback_data='windows_auth_add')],
-        [InlineKeyboardButton("📊 Учетные данные по типам", callback_data='windows_auth_by_type')],
-        [InlineKeyboardButton("⚙️ Управление типами серверов", callback_data='windows_auth_manage_types')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_auth'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [
+            InlineKeyboardButton(
+                "👥 Просмотр всех учетных записей", callback_data="windows_auth_list"
+            )
+        ],
+        [InlineKeyboardButton("➕ Добавить учетную запись", callback_data="windows_auth_add")],
+        [InlineKeyboardButton("📊 Учетные данные по типам", callback_data="windows_auth_by_type")],
+        [
+            InlineKeyboardButton(
+                "⚙️ Управление типами серверов", callback_data="windows_auth_manage_types"
+            )
+        ],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_auth"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
-    query.edit_message_text(
-        message,
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+
+    query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard))
+
 
 def show_windows_auth_list(update, context):
     """Показать список всех учетных записей Windows"""
     query = update.callback_query
     query.answer()
-    
+
     credentials = settings_manager.get_windows_credentials()
-    
+
     message = "👥 *Все учетные записи Windows*\n\n"
-    
+
     if not credentials:
         message += "❌ *Учетные записи не найдены*\n"
     else:
         for i, cred in enumerate(credentials, 1):
-            status = "🟢" if cred['enabled'] else "🔴"
+            status = "🟢" if cred["enabled"] else "🔴"
             message += f"{status} *{cred['server_type']}* (приоритет: {cred['priority']})\n"
             message += f"   Пользователь: `{cred['username']}`\n"
             message += f"   Пароль: `{'*' * 8}`\n"
             message += f"   ID: {cred['id']}\n\n"
-    
+
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить учетную запись", callback_data='windows_auth_add')],
-        [InlineKeyboardButton("✏️ Редактировать", callback_data='windows_auth_edit')],
-        [InlineKeyboardButton("🗑️ Удалить", callback_data='windows_auth_delete')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("➕ Добавить учетную запись", callback_data="windows_auth_add")],
+        [InlineKeyboardButton("✏️ Редактировать", callback_data="windows_auth_edit")],
+        [InlineKeyboardButton("🗑️ Удалить", callback_data="windows_auth_delete")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="windows_auth_main"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_windows_auth_add(update, context):
     """Показать форму добавления учетной записи Windows"""
     query = update.callback_query
     query.answer()
-    
+
     # Начинаем процесс добавления
-    context.user_data['adding_windows_cred'] = True
-    context.user_data['cred_stage'] = 'username'
-    
+    context.user_data["adding_windows_cred"] = True
+    context.user_data["cred_stage"] = "username"
+
     message = (
         "➕ *Добавление учетной записи Windows*\n\n"
         "Введите имя пользователя:\n\n"
         "_Пример: Administrator_"
     )
-    
+
     query.edit_message_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="windows_auth_main")]]
+        ),
     )
+
 
 def show_windows_auth_by_type(update, context):
     """Показать учетные данные по типам серверов"""
     query = update.callback_query
     query.answer()
-    
+
     server_types = settings_manager.get_windows_server_types()
-    
+
     message = "📊 *Учетные данные по типам серверов*\n\n"
-    
+
     if not server_types:
         message += "❌ *Типы серверов не настроены*\n"
     else:
         for server_type in server_types:
             credentials = settings_manager.get_windows_credentials(server_type)
             message += f"*{server_type}* ({len(credentials)} учетных записей):\n"
-            
+
             for cred in credentials[:3]:  # Показываем первые 3
-                status = "🟢" if cred['enabled'] else "🔴"
+                status = "🟢" if cred["enabled"] else "🔴"
                 message += f"  {status} {cred['username']} (приоритет: {cred['priority']})\n"
-            
+
             if len(credentials) > 3:
                 message += f"  ... и еще {len(credentials) - 3} учетных записей\n"
             message += "\n"
-    
+
     keyboard = [
-        [InlineKeyboardButton("👥 Просмотр всех", callback_data='windows_auth_list')],
-        [InlineKeyboardButton("➕ Добавить учетную запись", callback_data='windows_auth_add')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("👥 Просмотр всех", callback_data="windows_auth_list")],
+        [InlineKeyboardButton("➕ Добавить учетную запись", callback_data="windows_auth_add")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="windows_auth_main"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
-    
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def handle_windows_credential_input(update, context):
     """Обработчик ввода данных учетной записи Windows"""
-    if 'adding_windows_cred' not in context.user_data:
+    if "adding_windows_cred" not in context.user_data:
         return
-    
+
     user_input = update.message.text
-    stage = context.user_data.get('cred_stage')
-    
+    stage = context.user_data.get("cred_stage")
+
     try:
-        if stage == 'username':
-            context.user_data['cred_username'] = user_input
-            context.user_data['cred_stage'] = 'password'
-            
+        if stage == "username":
+            context.user_data["cred_username"] = user_input
+            context.user_data["cred_stage"] = "password"
+
             update.message.reply_text(
-                "🔒 Введите пароль:\n\n"
-                "_Пароль будет сохранен в зашифрованном виде_",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
-                ])
+                "🔒 Введите пароль:\n\n" "_Пароль будет сохранен в зашифрованном виде_",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("❌ Отмена", callback_data="windows_auth_main")]]
+                ),
             )
-            
-        elif stage == 'password':
-            context.user_data['cred_password'] = user_input
-            context.user_data['cred_stage'] = 'server_type'
-            
+
+        elif stage == "password":
+            context.user_data["cred_password"] = user_input
+            context.user_data["cred_stage"] = "server_type"
+
             # Предлагаем стандартные типы серверов
             keyboard = [
-                [InlineKeyboardButton("🖥️ Windows 2025", callback_data='cred_type_windows_2025')],
-                [InlineKeyboardButton("🌐 Доменные серверы", callback_data='cred_type_domain_servers')],
-                [InlineKeyboardButton("🔧 Admin серверы", callback_data='cred_type_admin_servers')],
-                [InlineKeyboardButton("💻 Стандартные Windows", callback_data='cred_type_standard_windows')],
-                [InlineKeyboardButton("⚙️ Другой тип", callback_data='cred_type_custom')],
-                [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+                [InlineKeyboardButton("🖥️ Windows 2025", callback_data="cred_type_windows_2025")],
+                [
+                    InlineKeyboardButton(
+                        "🌐 Доменные серверы", callback_data="cred_type_domain_servers"
+                    )
+                ],
+                [InlineKeyboardButton("🔧 Admin серверы", callback_data="cred_type_admin_servers")],
+                [
+                    InlineKeyboardButton(
+                        "💻 Стандартные Windows", callback_data="cred_type_standard_windows"
+                    )
+                ],
+                [InlineKeyboardButton("⚙️ Другой тип", callback_data="cred_type_custom")],
+                [InlineKeyboardButton("❌ Отмена", callback_data="windows_auth_main")],
             ]
-            
+
             update.message.reply_text(
                 "🖥️ Выберите тип серверов для этих учетных данных:",
-                reply_markup=InlineKeyboardMarkup(keyboard)
+                reply_markup=InlineKeyboardMarkup(keyboard),
             )
-            
-        elif stage == 'server_type_custom':
-            context.user_data['cred_server_type'] = user_input
-            context.user_data['cred_stage'] = 'priority'
-            
+
+        elif stage == "server_type_custom":
+            context.user_data["cred_server_type"] = user_input
+            context.user_data["cred_stage"] = "priority"
+
             update.message.reply_text(
                 "📊 Введите приоритет (число):\n\n"
                 "_Учетные данные с более высоким приоритетом будут использоваться первыми_",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
-                ])
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("❌ Отмена", callback_data="windows_auth_main")]]
+                ),
             )
-            
-        elif stage == 'priority':
+
+        elif stage == "priority":
             try:
                 priority = int(user_input)
-                context.user_data['cred_priority'] = priority
-                
+                context.user_data["cred_priority"] = priority
+
                 # Сохраняем учетные данные
-                username = context.user_data['cred_username']
-                password = context.user_data['cred_password']
-                server_type = context.user_data['cred_server_type']
-                
+                username = context.user_data["cred_username"]
+                password = context.user_data["cred_password"]
+                server_type = context.user_data["cred_server_type"]
+
                 success = settings_manager.add_windows_credential(
                     username, password, server_type, priority
                 )
-                
+
                 if success:
                     # Очищаем контекст
-                    for key in ['adding_windows_cred', 'cred_stage', 'cred_username', 
-                               'cred_password', 'cred_server_type', 'cred_priority']:
+                    for key in [
+                        "adding_windows_cred",
+                        "cred_stage",
+                        "cred_username",
+                        "cred_password",
+                        "cred_server_type",
+                        "cred_priority",
+                    ]:
                         context.user_data.pop(key, None)
-                    
+
                     update.message.reply_text(
                         f"✅ *Учетная запись добавлена!*\n\n"
                         f"• Пользователь: `{username}`\n"
                         f"• Тип серверов: `{server_type}`\n"
                         f"• Приоритет: `{priority}`",
-                        parse_mode='Markdown',
-                        reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("➕ Добавить еще", callback_data='windows_auth_add'),
-                             InlineKeyboardButton("👥 Просмотр всех", callback_data='windows_auth_list')],
-                            [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main')]
-                        ])
+                        parse_mode="Markdown",
+                        reply_markup=InlineKeyboardMarkup(
+                            [
+                                [
+                                    InlineKeyboardButton(
+                                        "➕ Добавить еще", callback_data="windows_auth_add"
+                                    ),
+                                    InlineKeyboardButton(
+                                        "👥 Просмотр всех", callback_data="windows_auth_list"
+                                    ),
+                                ],
+                                [
+                                    InlineKeyboardButton(
+                                        "↩️ Назад", callback_data="windows_auth_main"
+                                    )
+                                ],
+                            ]
+                        ),
                     )
                 else:
                     update.message.reply_text("❌ Ошибка при сохранении учетных данных")
-                    
+
             except ValueError:
                 update.message.reply_text("❌ Приоритет должен быть числом. Попробуйте снова:")
-                
+
     except Exception as e:
         update.message.reply_text(f"❌ Ошибка: {e}")
         # Сбрасываем состояние при ошибке
-        context.user_data['adding_windows_cred'] = False
+        context.user_data["adding_windows_cred"] = False
+
 
 def handle_credential_type_selection(update, context):
     """Обработчик выбора типа сервера для учетных данных"""
     query = update.callback_query
     query.answer()
-    
-    if 'adding_windows_cred' not in context.user_data:
+
+    if "adding_windows_cred" not in context.user_data:
         return
-    
-    cred_type = query.data.replace('cred_type_', '')
-    
+
+    cred_type = query.data.replace("cred_type_", "")
+
     type_mapping = {
-        'windows_2025': 'windows_2025',
-        'domain_servers': 'domain_servers', 
-        'admin_servers': 'admin_servers',
-        'standard_windows': 'standard_windows'
+        "windows_2025": "windows_2025",
+        "domain_servers": "domain_servers",
+        "admin_servers": "admin_servers",
+        "standard_windows": "standard_windows",
     }
-    
-    if cred_type == 'custom':
-        context.user_data['cred_stage'] = 'server_type_custom'
+
+    if cred_type == "custom":
+        context.user_data["cred_stage"] = "server_type_custom"
         query.edit_message_text(
-            "✏️ Введите название типа серверов:\n\n"
-            "_Пример: backup_servers, web_servers_",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
-            ])
+            "✏️ Введите название типа серверов:\n\n" "_Пример: backup_servers, web_servers_",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("❌ Отмена", callback_data="windows_auth_main")]]
+            ),
         )
     else:
-        context.user_data['cred_server_type'] = type_mapping.get(cred_type, cred_type)
-        context.user_data['cred_stage'] = 'priority'
-        
+        context.user_data["cred_server_type"] = type_mapping.get(cred_type, cred_type)
+        context.user_data["cred_stage"] = "priority"
+
         query.edit_message_text(
             "📊 Введите приоритет (число):\n\n"
             "_Учетные данные с более высоким приоритетом будут использоваться первыми_",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("❌ Отмена", callback_data="windows_auth_main")]]
+            ),
         )
+
 
 def show_windows_auth_manage_types(update, context):
     """Управление типами серверов - ОБНОВЛЕННАЯ ВЕРСИЯ С НАСТРОЙКАМИ"""
     query = update.callback_query
     query.answer()
-    
+
     server_types = settings_manager.get_windows_server_types()
-    
+
     message = "⚙️ *Управление типами серверов*\n\n"
-    
+
     if not server_types:
         message += "❌ *Типы серверов не настроены*\n"
     else:
         message += "*Существующие типы:*\n"
         for server_type in server_types:
             credentials = settings_manager.get_windows_credentials(server_type)
-            enabled_count = sum(1 for cred in credentials if cred['enabled'])
-            message += f"• *{server_type}*: {enabled_count}/{len(credentials)} активных учетных записей\n"
-    
+            enabled_count = sum(1 for cred in credentials if cred["enabled"])
+            message += (
+                f"• *{server_type}*: {enabled_count}/{len(credentials)} активных учетных записей\n"
+            )
+
     message += "\n*Доступные действия:*\n"
     message += "• *Переименовать тип* - изменить название типа серверов\n"
     message += "• *Объединить типы* - объединить два типа в один\n"
     message += "• *Удалить тип* - удалить тип (учетные записи сохранятся)\n"
-    
+
     keyboard = []
-    
+
     # Кнопки для каждого типа серверов
     for server_type in server_types:
-        keyboard.append([
-            InlineKeyboardButton(f"✏️ {server_type}", callback_data=f'manage_type_edit_{server_type}'),
-            InlineKeyboardButton(f"🔄 {server_type}", callback_data=f'manage_type_merge_{server_type}')
-        ])
-    
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"✏️ {server_type}", callback_data=f"manage_type_edit_{server_type}"
+                ),
+                InlineKeyboardButton(
+                    f"🔄 {server_type}", callback_data=f"manage_type_merge_{server_type}"
+                ),
+            ]
+        )
+
     # Общие действия
-    keyboard.extend([
-        [InlineKeyboardButton("➕ Создать новый тип", callback_data='manage_type_create')],
-        [InlineKeyboardButton("🗑️ Удалить тип", callback_data='manage_type_delete')],
-        [InlineKeyboardButton("📊 Статистика по типам", callback_data='manage_type_stats')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ])
-    
-    query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+    keyboard.extend(
+        [
+            [InlineKeyboardButton("➕ Создать новый тип", callback_data="manage_type_create")],
+            [InlineKeyboardButton("🗑️ Удалить тип", callback_data="manage_type_delete")],
+            [InlineKeyboardButton("📊 Статистика по типам", callback_data="manage_type_stats")],
+            [
+                InlineKeyboardButton("↩️ Назад", callback_data="windows_auth_main"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
+        ]
     )
+
+    query.edit_message_text(
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 
 def handle_server_type_management(update, context):
     """Обработчик управления типами серверов"""
     query = update.callback_query
     data = query.data
-    
-    if data == 'manage_type_create':
+
+    if data == "manage_type_create":
         create_server_type_handler(update, context)
-    elif data == 'manage_type_delete':
+    elif data == "manage_type_delete":
         delete_server_type_handler(update, context)
-    elif data == 'manage_type_stats':
+    elif data == "manage_type_stats":
         show_server_type_stats(update, context)
-    elif data.startswith('manage_type_edit_'):
-        server_type = data.replace('manage_type_edit_', '')
+    elif data.startswith("manage_type_edit_"):
+        server_type = data.replace("manage_type_edit_", "")
         edit_server_type_handler(update, context, server_type)
-    elif data.startswith('manage_type_merge_'):
-        server_type = data.replace('manage_type_merge_', '')
+    elif data.startswith("manage_type_merge_"):
+        server_type = data.replace("manage_type_merge_", "")
         merge_server_type_handler(update, context, server_type)
-       
+
 
 def create_server_type_handler(update, context):
     """Создание нового типа серверов"""
     query = update.callback_query
     query.answer()
-    
-    context.user_data['creating_server_type'] = True
-    
+
+    context.user_data["creating_server_type"] = True
+
     query.edit_message_text(
         "➕ *Создание нового типа серверов*\n\n"
         "Введите название для нового типа:\n\n"
         "_Пример: web_servers, database_servers, backup_servers_",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="windows_auth_manage_types")]]
+        ),
     )
+
 
 def edit_server_type_handler(update, context, old_type):
     """Редактирование типа серверов"""
     query = update.callback_query
     query.answer()
-    
-    context.user_data['editing_server_type'] = True
-    context.user_data['old_server_type'] = old_type
-    
+
+    context.user_data["editing_server_type"] = True
+    context.user_data["old_server_type"] = old_type
+
     credentials = settings_manager.get_windows_credentials(old_type)
-    
+
     query.edit_message_text(
         f"✏️ *Редактирование типа серверов*\n\n"
         f"Текущее название: *{old_type}*\n"
         f"Количество учетных записей: {len(credentials)}\n\n"
         "Введите новое название для этого типа:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="windows_auth_manage_types")]]
+        ),
     )
+
 
 def merge_server_type_handler(update, context, source_type):
     """Объединение типов серверов"""
     query = update.callback_query
     query.answer()
-    
+
     server_types = settings_manager.get_windows_server_types()
     # Исключаем текущий тип из списка для объединения
     target_types = [t for t in server_types if t != source_type]
-    
+
     if not target_types:
         query.answer("❌ Нет других типов для объединения")
         return
-    
-    message = f"🔄 *Объединение типов серверов*\n\n"
+
+    message = "🔄 *Объединение типов серверов*\n\n"
     message += f"Источник: *{source_type}*\n"
     message += f"Учетных записей: {len(settings_manager.get_windows_credentials(source_type))}\n\n"
     message += "Выберите целевой тип для объединения:"
-    
+
     keyboard = []
     for target_type in target_types:
         cred_count = len(settings_manager.get_windows_credentials(target_type))
-        keyboard.append([
-            InlineKeyboardButton(
-                f"🔄 {target_type} ({cred_count})", 
-                callback_data=f'merge_confirm_{source_type}_{target_type}'
-            )
-        ])
-    
-    keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')])
-    
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"🔄 {target_type} ({cred_count})",
+                    callback_data=f"merge_confirm_{source_type}_{target_type}",
+                )
+            ]
+        )
+
+    keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="windows_auth_manage_types")])
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def delete_server_type_handler(update, context):
     """Удаление типа серверов"""
     query = update.callback_query
     query.answer()
-    
+
     server_types = settings_manager.get_windows_server_types()
-    
+
     message = "🗑️ *Удаление типа серверов*\n\n"
     message += "Выберите тип для удаления:\n\n"
     message += "*Внимание:* При удалении типа все учетные записи этого типа будут перемещены в тип 'default'"
-    
+
     keyboard = []
     for server_type in server_types:
-        if server_type != 'default':  # Не позволяем удалить тип 'default'
+        if server_type != "default":  # Не позволяем удалить тип 'default'
             cred_count = len(settings_manager.get_windows_credentials(server_type))
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"🗑️ {server_type} ({cred_count})", 
-                    callback_data=f'delete_type_confirm_{server_type}'
-                )
-            ])
-    
-    keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')])
-    
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"🗑️ {server_type} ({cred_count})",
+                        callback_data=f"delete_type_confirm_{server_type}",
+                    )
+                ]
+            )
+
+    keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="windows_auth_manage_types")])
+
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_server_type_stats(update, context):
     """Показать статистику по типам серверов"""
     query = update.callback_query
     query.answer()
-    
+
     server_types = settings_manager.get_windows_server_types()
-    
+
     message = "📊 *Статистика по типам серверов*\n\n"
-    
+
     total_credentials = 0
     for server_type in server_types:
         credentials = settings_manager.get_windows_credentials(server_type)
-        enabled_count = sum(1 for cred in credentials if cred['enabled'])
+        enabled_count = sum(1 for cred in credentials if cred["enabled"])
         total_credentials += len(credentials)
-        
+
         message += f"*{server_type}*\n"
         message += f"• Всего учетных записей: {len(credentials)}\n"
         message += f"• Активных: {enabled_count}\n"
         message += f"• Неактивных: {len(credentials) - enabled_count}\n\n"
-    
-    message += f"*Общая статистика:*\n"
+
+    message += "*Общая статистика:*\n"
     message += f"• Типов серверов: {len(server_types)}\n"
     message += f"• Всего учетных записей: {total_credentials}\n"
     message += f"• Среднее на тип: {total_credentials / len(server_types):.1f} учетных записей"
-    
+
     query.edit_message_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔄 Обновить", callback_data='manage_type_stats')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_manage_types'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🔄 Обновить", callback_data="manage_type_stats")],
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data="windows_auth_manage_types"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def merge_server_types_confirmation(update, context, source_type, target_type):
     """Подтверждение объединения типов серверов"""
     query = update.callback_query
     query.answer()
-    
+
     source_creds = settings_manager.get_windows_credentials(source_type)
     target_creds = settings_manager.get_windows_credentials(target_type)
-    
-    message = f"🔄 *Подтверждение объединения*\n\n"
+
+    message = "🔄 *Подтверждение объединения*\n\n"
     message += f"*Источник:* {source_type}\n"
     message += f"• Учетных записей: {len(source_creds)}\n\n"
     message += f"*Цель:* {target_type}\n"
     message += f"• Учетных записей: {len(target_creds)}\n\n"
-    message += f"*После объединения:*\n"
+    message += "*После объединения:*\n"
     message += f"• Тип {source_type} будет удален\n"
     message += f"• Все учетные записи будут перемещены в {target_type}\n"
     message += f"• Итоговое количество: {len(source_creds) + len(target_creds)} учетных записей\n\n"
     message += "Вы уверены, что хотите выполнить объединение?"
-    
+
     query.edit_message_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
             [
-                InlineKeyboardButton("✅ Да, объединить", callback_data=f'merge_execute_{source_type}_{target_type}'),
-                InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')
+                [
+                    InlineKeyboardButton(
+                        "✅ Да, объединить",
+                        callback_data=f"merge_execute_{source_type}_{target_type}",
+                    ),
+                    InlineKeyboardButton("❌ Отмена", callback_data="windows_auth_manage_types"),
+                ]
             ]
-        ])
+        ),
     )
+
 
 def delete_server_type_confirmation(update, context, server_type):
     """Подтверждение удаления типа серверов"""
     query = update.callback_query
     query.answer()
-    
+
     credentials = settings_manager.get_windows_credentials(server_type)
-    
-    message = f"🗑️ *Подтверждение удаления*\n\n"
+
+    message = "🗑️ *Подтверждение удаления*\n\n"
     message += f"Тип: *{server_type}*\n"
     message += f"Учетных записей: {len(credentials)}\n\n"
     message += "*Внимание:* Все учетные записи этого типа будут перемещены в тип 'default'\n\n"
     message += "Вы уверены, что хотите удалить этот тип?"
-    
+
     query.edit_message_text(
         message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
             [
-                InlineKeyboardButton("✅ Да, удалить", callback_data=f'delete_type_execute_{server_type}'),
-                InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')
+                [
+                    InlineKeyboardButton(
+                        "✅ Да, удалить", callback_data=f"delete_type_execute_{server_type}"
+                    ),
+                    InlineKeyboardButton("❌ Отмена", callback_data="windows_auth_manage_types"),
+                ]
             ]
-        ])
+        ),
     )
+
 
 def execute_server_type_merge(update, context, source_type, target_type):
     """Выполнение объединения типов серверов"""
     query = update.callback_query
     query.answer()
-    
+
     try:
         # Получаем учетные данные исходного типа
         source_credentials = settings_manager.get_windows_credentials(source_type)
-        
+
         # Обновляем тип для каждой учетной записи
         for cred in source_credentials:
-            settings_manager.update_windows_credential(
-                cred['id'], 
-                server_type=target_type
-            )
-        
-        message = f"✅ *Типы серверов объединены!*\n\n"
+            settings_manager.update_windows_credential(cred["id"], server_type=target_type)
+
+        message = "✅ *Типы серверов объединены!*\n\n"
         message += f"• Тип *{source_type}* удален\n"
         message += f"• Все учетные записи перемещены в *{target_type}*\n"
         message += f"• Перемещено учетных записей: {len(source_credentials)}"
-        
+
         query.edit_message_text(
             message,
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ К управлению типами", callback_data='windows_auth_manage_types')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "↩️ К управлению типами", callback_data="windows_auth_manage_types"
+                        )
+                    ]
+                ]
+            ),
         )
-        
+
     except Exception as e:
         query.edit_message_text(f"❌ Ошибка при объединении типов: {str(e)}")
+
 
 def execute_server_type_delete(update, context, server_type):
     """Выполнение удаления типа серверов"""
     query = update.callback_query
     query.answer()
-    
+
     try:
         # Получаем учетные данные удаляемого типа
         credentials = settings_manager.get_windows_credentials(server_type)
-        
+
         # Перемещаем все учетные записи в тип 'default'
         for cred in credentials:
-            settings_manager.update_windows_credential(
-                cred['id'], 
-                server_type='default'
-            )
-        
-        message = f"✅ *Тип серверов удален!*\n\n"
+            settings_manager.update_windows_credential(cred["id"], server_type="default")
+
+        message = "✅ *Тип серверов удален!*\n\n"
         message += f"• Тип *{server_type}* удален\n"
-        message += f"• Все учетные записи перемещены в тип 'default'\n"
+        message += "• Все учетные записи перемещены в тип 'default'\n"
         message += f"• Перемещено учетных записей: {len(credentials)}"
-        
+
         query.edit_message_text(
             message,
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ К управлению типами", callback_data='windows_auth_manage_types')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "↩️ К управлению типами", callback_data="windows_auth_manage_types"
+                        )
+                    ]
+                ]
+            ),
         )
-        
+
     except Exception as e:
         query.edit_message_text(f"❌ Ошибка при удалении типа: {str(e)}")
+
 
 def handle_server_type_creation(update, context):
     """Обработчик создания нового типа серверов"""
     new_type = update.message.text.strip()
-    
+
     try:
         # Проверяем, не существует ли уже такой тип
         existing_types = settings_manager.get_windows_server_types()
         if new_type in existing_types:
             update.message.reply_text(
                 f"❌ Тип '{new_type}' уже существует!",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_manage_types')]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("↩️ Назад", callback_data="windows_auth_manage_types")]]
+                ),
             )
             return
-        
+
         # Создаем новую учетную запись с этим типом (можно пустую)
         success = settings_manager.add_windows_credential(
-            username=f"user_{new_type}",
-            password="temp_password",
-            server_type=new_type,
-            priority=0
+            username=f"user_{new_type}", password="temp_password", server_type=new_type, priority=0
         )
-        
+
         if success:
             # Сразу удаляем временную учетную запись, если нужно
             # или оставляем как шаблон
-            
+
             update.message.reply_text(
                 f"✅ *Тип серверов '{new_type}' создан!*\n\n"
                 "Теперь вы можете добавить учетные записи для этого типа.",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("➕ Добавить учетную запись", callback_data='windows_auth_add'),
-                     InlineKeyboardButton("↩️ К управлению типами", callback_data='windows_auth_manage_types')]
-                ])
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "➕ Добавить учетную запись", callback_data="windows_auth_add"
+                            ),
+                            InlineKeyboardButton(
+                                "↩️ К управлению типами", callback_data="windows_auth_manage_types"
+                            ),
+                        ]
+                    ]
+                ),
             )
         else:
             update.message.reply_text("❌ Ошибка при создании типа")
-    
+
     except Exception as e:
         update.message.reply_text(f"❌ Ошибка: {e}")
-    
+
     # Очищаем контекст
-    context.user_data['creating_server_type'] = False
+    context.user_data["creating_server_type"] = False
+
 
 def handle_server_type_editing(update, context):
     """Обработчик редактирования типа серверов"""
     new_type = update.message.text.strip()
-    old_type = context.user_data.get('old_server_type')
-    
+    old_type = context.user_data.get("old_server_type")
+
     try:
         # Проверяем, не существует ли уже такой тип
         existing_types = settings_manager.get_windows_server_types()
         if new_type in existing_types and new_type != old_type:
             update.message.reply_text(
                 f"❌ Тип '{new_type}' уже существует!",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_manage_types')]
-                ])
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("↩️ Назад", callback_data="windows_auth_manage_types")]]
+                ),
             )
             return
-        
+
         # Получаем все учетные записи старого типа
         credentials = settings_manager.get_windows_credentials(old_type)
-        
+
         # Обновляем тип для каждой учетной записи
         for cred in credentials:
-            settings_manager.update_windows_credential(
-                cred['id'], 
-                server_type=new_type
-            )
-        
+            settings_manager.update_windows_credential(cred["id"], server_type=new_type)
+
         update.message.reply_text(
             f"✅ *Тип серверов переименован!*\n\n"
             f"• Старое название: {old_type}\n"
             f"• Новое название: {new_type}\n"
             f"• Обновлено учетных записей: {len(credentials)}",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ К управлению типами", callback_data='windows_auth_manage_types')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "↩️ К управлению типами", callback_data="windows_auth_manage_types"
+                        )
+                    ]
+                ]
+            ),
         )
-    
+
     except Exception as e:
         update.message.reply_text(f"❌ Ошибка: {e}")
-    
+
     # Очищаем контекст
-    context.user_data['editing_server_type'] = False
-    context.user_data.pop('old_server_type', None)
+    context.user_data["editing_server_type"] = False
+    context.user_data.pop("old_server_type", None)
+
 
 # Обработчики для неработающих кнопок
 def add_chat_handler(update, context):
     """Добавить чат - заглушка"""
     not_implemented_handler(update, context, "Добавление чата")
 
+
 def remove_chat_handler(update, context):
     """Удалить чат - заглушка"""
     not_implemented_handler(update, context, "Удаление чата")
 
+
 def view_all_settings_handler(update, context):
     """Просмотр всех настроек - заглушка"""
     not_implemented_handler(update, context, "Просмотр всех настроек")
+
 
 def add_pattern_handler(update, context):
     """Добавить паттерн - заглушка"""
     query = update.callback_query
     query.answer()
 
-    context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'db_input'
-    context.user_data['backup_pattern_mode'] = 'db_wizard'
+    context.user_data["adding_backup_pattern"] = True
+    context.user_data["backup_pattern_stage"] = "db_input"
+    context.user_data["backup_pattern_mode"] = "db_wizard"
 
     query.edit_message_text(
         "🧙 *Мастер добавления паттерна БД*\n\n"
@@ -11395,22 +12648,30 @@ def add_pattern_handler(update, context):
         "`Backup db company_main completed`\n\n"
         "Пример фрагментов:\n"
         "`Backup db; company_main; completed`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена",
+                        callback_data=context.user_data.get("patterns_back", "settings_backup"),
+                    ),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def add_zfs_pattern_handler(update, context):
     """Добавить паттерн для ZFS"""
     query = update.callback_query
     query.answer()
 
-    context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'zfs_input'
-    context.user_data['backup_pattern_mode'] = 'zfs_wizard'
+    context.user_data["adding_backup_pattern"] = True
+    context.user_data["backup_pattern_stage"] = "zfs_input"
+    context.user_data["backup_pattern_mode"] = "zfs_wizard"
 
     query.edit_message_text(
         "🧙 *Мастер добавления паттерна ZFS*\n\n"
@@ -11420,22 +12681,30 @@ def add_zfs_pattern_handler(update, context):
         "`ZFS alert zfs01: state: ONLINE, state: ONLINE`\n\n"
         "Пример фрагментов:\n"
         "`ZFS alert; zfs01; state:`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена",
+                        callback_data=context.user_data.get("patterns_back", "settings_backup"),
+                    ),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def add_proxmox_pattern_handler(update, context):
     """Добавить паттерн для Proxmox"""
     query = update.callback_query
     query.answer()
 
-    context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'proxmox_input'
-    context.user_data['backup_pattern_mode'] = 'proxmox_wizard'
+    context.user_data["adding_backup_pattern"] = True
+    context.user_data["backup_pattern_stage"] = "proxmox_input"
+    context.user_data["backup_pattern_mode"] = "proxmox_wizard"
 
     query.edit_message_text(
         "🧙 *Мастер добавления паттерна Proxmox*\n\n"
@@ -11443,22 +12712,30 @@ def add_proxmox_pattern_handler(update, context):
         "Фрагменты учитываются в указанном порядке.\n\n"
         "Пример темы:\n"
         "`vzdump backup status`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена",
+                        callback_data=context.user_data.get("patterns_back", "settings_backup"),
+                    ),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def add_mail_pattern_handler(update, context):
     """Добавить паттерн для бэкапов почты"""
     query = update.callback_query
     query.answer()
 
-    context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'mail_input'
-    context.user_data['backup_pattern_mode'] = 'mail_wizard'
+    context.user_data["adding_backup_pattern"] = True
+    context.user_data["backup_pattern_stage"] = "mail_input"
+    context.user_data["backup_pattern_mode"] = "mail_wizard"
 
     query.edit_message_text(
         "🧙 *Мастер добавления паттерна почты*\n\n"
@@ -11468,12 +12745,19 @@ def add_mail_pattern_handler(update, context):
         "`Бэкап Zimbra - 52G /backups/zimbra/2025-03-01`\n\n"
         "Пример фрагментов:\n"
         "`Бэкап Zimbra; /backups/zimbra`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена",
+                        callback_data=context.user_data.get("patterns_back", "settings_backup"),
+                    ),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
 
 
@@ -11482,11 +12766,11 @@ def add_snapshot_pattern_handler(update, context):
     query = update.callback_query
     query.answer()
 
-    context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'mail_input'
-    context.user_data['backup_pattern_mode'] = 'snapshot_transfer_wizard'
-    context.user_data.pop('backup_pattern_generated', None)
-    context.user_data.pop('backup_pattern_source', None)
+    context.user_data["adding_backup_pattern"] = True
+    context.user_data["backup_pattern_stage"] = "mail_input"
+    context.user_data["backup_pattern_mode"] = "snapshot_transfer_wizard"
+    context.user_data.pop("backup_pattern_generated", None)
+    context.user_data.pop("backup_pattern_source", None)
 
     query.edit_message_text(
         "🧙 *Мастер добавления паттерна передачи снэпшотов*\n\n"
@@ -11494,61 +12778,77 @@ def add_snapshot_pattern_handler(update, context):
         "Фрагменты учитываются в указанном порядке.\n\n"
         "Пример темы:\n"
         "`zfs sr-srv1 STARTED snapshot transfer`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_snapshot_menu')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена",
+                        callback_data=context.user_data.get(
+                            "patterns_back", "settings_snapshot_menu"
+                        ),
+                    ),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def show_stock_pattern_type_menu(update, context):
     """Показать выбор типа паттерна для остатков."""
     query = update.callback_query
     query.answer()
 
-    message = (
-        "📦 *Добавление паттерна для загрузки остатков*\n\n"
-        "Выберите, что нужно настроить:"
-    )
+    message = "📦 *Добавление паттерна для загрузки остатков*\n\n" "Выберите, что нужно настроить:"
 
     keyboard = [
-        [InlineKeyboardButton("🧾 Тема письма", callback_data='stock_pattern_select_subject')],
-        [InlineKeyboardButton("🗂️ Источник отчета", callback_data='stock_pattern_select_source')],
-        [InlineKeyboardButton("📎 Имя вложения", callback_data='stock_pattern_select_attachment')],
-        [InlineKeyboardButton("📄 Строка файла", callback_data='stock_pattern_select_file_entry')],
-        [InlineKeyboardButton("✅ Успешная загрузка", callback_data='stock_pattern_select_success')],
-        [InlineKeyboardButton("🙈 Игнорировать строки", callback_data='stock_pattern_select_ignore')],
-        [InlineKeyboardButton("❌ Ошибка загрузки", callback_data='stock_pattern_select_failure')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_patterns_stock'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("🧾 Тема письма", callback_data="stock_pattern_select_subject")],
+        [InlineKeyboardButton("🗂️ Источник отчета", callback_data="stock_pattern_select_source")],
+        [InlineKeyboardButton("📎 Имя вложения", callback_data="stock_pattern_select_attachment")],
+        [InlineKeyboardButton("📄 Строка файла", callback_data="stock_pattern_select_file_entry")],
+        [
+            InlineKeyboardButton(
+                "✅ Успешная загрузка", callback_data="stock_pattern_select_success"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🙈 Игнорировать строки", callback_data="stock_pattern_select_ignore"
+            )
+        ],
+        [InlineKeyboardButton("❌ Ошибка загрузки", callback_data="stock_pattern_select_failure")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_patterns_stock"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def stock_pattern_select_handler(update, context, pattern_type: str):
     """Запустить мастер для выбранного типа паттерна остатков."""
     query = update.callback_query
     query.answer()
 
-    context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'stock_input'
-    if pattern_type == 'subject':
-        context.user_data['backup_pattern_mode'] = 'stock_subject_wizard'
-    elif pattern_type == 'source':
-        context.user_data['backup_pattern_mode'] = 'stock_source_wizard'
+    context.user_data["adding_backup_pattern"] = True
+    context.user_data["backup_pattern_stage"] = "stock_input"
+    if pattern_type == "subject":
+        context.user_data["backup_pattern_mode"] = "stock_subject_wizard"
+    elif pattern_type == "source":
+        context.user_data["backup_pattern_mode"] = "stock_source_wizard"
     else:
-        context.user_data['backup_pattern_mode'] = 'stock_log_wizard'
-    context.user_data['backup_pattern_stock_type'] = pattern_type
-    context.user_data.pop('backup_pattern_generated', None)
-    context.user_data.pop('backup_pattern_source', None)
-    context.user_data.pop('backup_pattern_stock_label', None)
+        context.user_data["backup_pattern_mode"] = "stock_log_wizard"
+    context.user_data["backup_pattern_stock_type"] = pattern_type
+    context.user_data.pop("backup_pattern_generated", None)
+    context.user_data.pop("backup_pattern_source", None)
+    context.user_data.pop("backup_pattern_stock_label", None)
 
-    if pattern_type == 'subject':
+    if pattern_type == "subject":
         prompt = (
             "🧙 *Мастер добавления темы*\n\n"
             "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
@@ -11556,7 +12856,7 @@ def stock_pattern_select_handler(update, context, pattern_type: str):
             "Пример:\n"
             "`Логи загрузки файлов в рабочую базу 07:38:14`"
         )
-    elif pattern_type == 'source':
+    elif pattern_type == "source":
         prompt = (
             "🧙 *Мастер добавления источника отчета*\n\n"
             "Введите название источника и тему письма через `|`.\n"
@@ -11564,28 +12864,28 @@ def stock_pattern_select_handler(update, context, pattern_type: str):
             "Пример:\n"
             "`Филиал Москва | Логи загрузки файлов в рабочую базу 07:38:14`"
         )
-    elif pattern_type == 'attachment':
+    elif pattern_type == "attachment":
         prompt = (
             "🧙 *Мастер добавления имени вложения*\n\n"
             "Введите имя файла или фрагменты через `;`/`,`.\n\n"
             "Пример:\n"
             "`LogiLogistam.txt`"
         )
-    elif pattern_type == 'file_entry':
+    elif pattern_type == "file_entry":
         prompt = (
             "🧙 *Мастер добавления строки файла*\n\n"
             "Введите строку с названием поставщика и путем к файлу.\n\n"
             "Пример:\n"
             "`19.01.26 07:35:36: ЗЭТА  НСК  D:\\Obmen\\OCTATKu\\ЗЭТА\\Остатки ЗЭТА НСК.csv`"
         )
-    elif pattern_type == 'success':
+    elif pattern_type == "success":
         prompt = (
             "🧙 *Мастер добавления строки успеха*\n\n"
             "Введите строку с результатом успешной загрузки.\n\n"
             "Пример:\n"
             "`19.01.26 07:35:39: ***Остатки загружены!***   строк 348   07:35:39`"
         )
-    elif pattern_type == 'ignore':
+    elif pattern_type == "ignore":
         prompt = (
             "🧙 *Мастер добавления игнорируемой строки*\n\n"
             "Введите строку или обязательные фрагменты через `;`/`,`.\n"
@@ -11603,39 +12903,50 @@ def stock_pattern_select_handler(update, context, pattern_type: str):
 
     query.edit_message_text(
         prompt,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена",
+                        callback_data=context.user_data.get("patterns_back", "settings_backup"),
+                    ),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def stock_pattern_retry_handler(update, context):
     """Повторить ввод для паттернов остатков."""
     query = update.callback_query
     query.answer()
 
-    pattern_type = context.user_data.get('backup_pattern_stock_type', 'subject')
+    pattern_type = context.user_data.get("backup_pattern_stock_type", "subject")
     stock_pattern_select_handler(update, context, pattern_type)
+
 
 def stock_pattern_confirm_handler(update, context):
     """Подтвердить сохранение паттерна остатков."""
     query = update.callback_query
     query.answer()
 
-    pattern = context.user_data.get('backup_pattern_generated')
-    pattern_type = context.user_data.get('backup_pattern_stock_type')
-    back_callback = context.user_data.get('patterns_back', 'settings_backup')
-    label = context.user_data.get('backup_pattern_stock_label')
+    pattern = context.user_data.get("backup_pattern_generated")
+    pattern_type = context.user_data.get("backup_pattern_stock_type")
+    back_callback = context.user_data.get("patterns_back", "settings_backup")
+    label = context.user_data.get("backup_pattern_stock_label")
 
     if not pattern or not pattern_type:
         query.edit_message_text(
             "❌ Паттерн не найден. Начните добавление заново.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+                ]
+            ),
         )
         return
 
@@ -11647,11 +12958,11 @@ def stock_pattern_confirm_handler(update, context):
             INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
             VALUES (?, ?, ?, 1)
             """,
-            (pattern_type, pattern, "stock_load")
+            (pattern_type, pattern, "stock_load"),
         )
         conn.commit()
 
-        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        source_label = context.user_data.get("backup_pattern_source", "мастер")
         label_text = f"Метка: *{label}*\n" if label else ""
         query.edit_message_text(
             "✅ *Паттерн добавлен!*\n\n"
@@ -11660,26 +12971,31 @@ def stock_pattern_confirm_handler(update, context):
             f"{label_text}"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
     except Exception as e:
         query.edit_message_text(f"❌ Ошибка сохранения: {e}")
     finally:
-        context.user_data.pop('adding_backup_pattern', None)
-        context.user_data.pop('backup_pattern_stage', None)
-        context.user_data.pop('backup_pattern_category', None)
-        context.user_data.pop('backup_pattern_type', None)
-        context.user_data.pop('backup_pattern_subject', None)
-        context.user_data.pop('backup_pattern_mode', None)
-        context.user_data.pop('backup_pattern_generated', None)
-        context.user_data.pop('backup_pattern_source', None)
-        context.user_data.pop('backup_pattern_stock_type', None)
-        context.user_data.pop('backup_pattern_stock_label', None)
+        context.user_data.pop("adding_backup_pattern", None)
+        context.user_data.pop("backup_pattern_stage", None)
+        context.user_data.pop("backup_pattern_category", None)
+        context.user_data.pop("backup_pattern_type", None)
+        context.user_data.pop("backup_pattern_subject", None)
+        context.user_data.pop("backup_pattern_mode", None)
+        context.user_data.pop("backup_pattern_generated", None)
+        context.user_data.pop("backup_pattern_source", None)
+        context.user_data.pop("backup_pattern_stock_type", None)
+        context.user_data.pop("backup_pattern_stock_label", None)
+
 
 def edit_mail_default_pattern_handler(update, context):
     """Изменить дефолтный паттерн для бэкапов почты"""
@@ -11689,60 +13005,78 @@ def edit_mail_default_pattern_handler(update, context):
     fallback_patterns = _get_mail_fallback_patterns()
     current_pattern = fallback_patterns[0] if fallback_patterns else ""
 
-    context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'pattern_only'
-    context.user_data['backup_pattern_mode'] = 'mail'
+    context.user_data["adding_backup_pattern"] = True
+    context.user_data["backup_pattern_stage"] = "pattern_only"
+    context.user_data["backup_pattern_mode"] = "mail"
 
     query.edit_message_text(
         "✏️ *Изменение паттерна почты*\n\n"
         f"Текущий паттерн:\n`{current_pattern}`\n\n"
         "Введите новый regex паттерн темы письма:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена",
+                        callback_data=context.user_data.get("patterns_back", "settings_backup"),
+                    ),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def mail_pattern_retry_handler(update, context):
     """Повторить ввод темы/фрагментов для паттерна почты."""
     query = update.callback_query
     query.answer()
 
-    context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'mail_input'
-    context.user_data['backup_pattern_mode'] = 'mail_wizard'
-    context.user_data.pop('backup_pattern_generated', None)
-    context.user_data.pop('backup_pattern_source', None)
+    context.user_data["adding_backup_pattern"] = True
+    context.user_data["backup_pattern_stage"] = "mail_input"
+    context.user_data["backup_pattern_mode"] = "mail_wizard"
+    context.user_data.pop("backup_pattern_generated", None)
+    context.user_data.pop("backup_pattern_source", None)
 
     query.edit_message_text(
         "🧙 *Мастер добавления паттерна почты*\n\n"
         "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
         "Фрагменты учитываются в указанном порядке.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена",
+                        callback_data=context.user_data.get("patterns_back", "settings_backup"),
+                    ),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def mail_pattern_confirm_handler(update, context):
     """Подтвердить сохранение паттерна почты."""
     query = update.callback_query
     query.answer()
 
-    pattern = context.user_data.get('backup_pattern_generated')
-    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    pattern = context.user_data.get("backup_pattern_generated")
+    back_callback = context.user_data.get("patterns_back", "settings_backup")
 
     if not pattern:
         query.edit_message_text(
             "❌ Паттерн не найден. Начните добавление заново.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+                ]
+            ),
         )
         return
 
@@ -11754,35 +13088,39 @@ def mail_pattern_confirm_handler(update, context):
             INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
             VALUES (?, ?, ?, 1)
             """,
-            ("subject", pattern, "mail")
+            ("subject", pattern, "mail"),
         )
         conn.commit()
 
-        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        source_label = context.user_data.get("backup_pattern_source", "мастер")
         query.edit_message_text(
             "✅ *Паттерн добавлен!*\n\n"
             "Категория: *mail*\n"
             "Тип: *subject*\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
     except Exception as e:
         query.edit_message_text(f"❌ Ошибка сохранения: {e}")
     finally:
-        context.user_data.pop('adding_backup_pattern', None)
-        context.user_data.pop('backup_pattern_stage', None)
-        context.user_data.pop('backup_pattern_category', None)
-        context.user_data.pop('backup_pattern_type', None)
-        context.user_data.pop('backup_pattern_subject', None)
-        context.user_data.pop('backup_pattern_mode', None)
-        context.user_data.pop('backup_pattern_generated', None)
-        context.user_data.pop('backup_pattern_source', None)
+        context.user_data.pop("adding_backup_pattern", None)
+        context.user_data.pop("backup_pattern_stage", None)
+        context.user_data.pop("backup_pattern_category", None)
+        context.user_data.pop("backup_pattern_type", None)
+        context.user_data.pop("backup_pattern_subject", None)
+        context.user_data.pop("backup_pattern_mode", None)
+        context.user_data.pop("backup_pattern_generated", None)
+        context.user_data.pop("backup_pattern_source", None)
 
 
 def snapshot_pattern_confirm_handler(update, context):
@@ -11790,16 +13128,18 @@ def snapshot_pattern_confirm_handler(update, context):
     query = update.callback_query
     query.answer()
 
-    pattern = context.user_data.get('backup_pattern_generated')
-    back_callback = context.user_data.get('patterns_back', 'settings_snapshot_menu')
+    pattern = context.user_data.get("backup_pattern_generated")
+    back_callback = context.user_data.get("patterns_back", "settings_snapshot_menu")
 
     if not pattern:
         query.edit_message_text(
             "❌ Паттерн не найден. Начните добавление заново.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+                ]
+            ),
         )
         return
 
@@ -11811,75 +13151,89 @@ def snapshot_pattern_confirm_handler(update, context):
             INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
             VALUES (?, ?, ?, 1)
             """,
-            ("subject", pattern, "snapshot_transfer")
+            ("subject", pattern, "snapshot_transfer"),
         )
         conn.commit()
 
-        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        source_label = context.user_data.get("backup_pattern_source", "мастер")
         query.edit_message_text(
             "✅ *Паттерн добавлен!*\n\n"
             "Категория: *snapshot_transfer*\n"
             "Тип: *subject*\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
     except Exception as e:
         query.edit_message_text(f"❌ Ошибка сохранения: {e}")
     finally:
-        context.user_data.pop('adding_backup_pattern', None)
-        context.user_data.pop('backup_pattern_stage', None)
-        context.user_data.pop('backup_pattern_category', None)
-        context.user_data.pop('backup_pattern_type', None)
-        context.user_data.pop('backup_pattern_subject', None)
-        context.user_data.pop('backup_pattern_mode', None)
-        context.user_data.pop('backup_pattern_generated', None)
-        context.user_data.pop('backup_pattern_source', None)
+        context.user_data.pop("adding_backup_pattern", None)
+        context.user_data.pop("backup_pattern_stage", None)
+        context.user_data.pop("backup_pattern_category", None)
+        context.user_data.pop("backup_pattern_type", None)
+        context.user_data.pop("backup_pattern_subject", None)
+        context.user_data.pop("backup_pattern_mode", None)
+        context.user_data.pop("backup_pattern_generated", None)
+        context.user_data.pop("backup_pattern_source", None)
+
 
 def db_pattern_retry_handler(update, context):
     """Повторить ввод темы/фрагментов для паттерна БД."""
     query = update.callback_query
     query.answer()
 
-    context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'db_input'
-    context.user_data['backup_pattern_mode'] = 'db_wizard'
-    context.user_data.pop('backup_pattern_generated', None)
-    context.user_data.pop('backup_pattern_source', None)
-    context.user_data.pop('backup_pattern_category', None)
-    context.user_data.pop('backup_pattern_db_name', None)
+    context.user_data["adding_backup_pattern"] = True
+    context.user_data["backup_pattern_stage"] = "db_input"
+    context.user_data["backup_pattern_mode"] = "db_wizard"
+    context.user_data.pop("backup_pattern_generated", None)
+    context.user_data.pop("backup_pattern_source", None)
+    context.user_data.pop("backup_pattern_category", None)
+    context.user_data.pop("backup_pattern_db_name", None)
 
     query.edit_message_text(
         "🧙 *Мастер добавления паттерна БД*\n\n"
         "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
         "Во фрагментах обязательно укажите имя БД из настроек.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена",
+                        callback_data=context.user_data.get("patterns_back", "settings_backup"),
+                    ),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def _get_database_categories() -> list[str]:
     """Получить список категорий БД из настроек."""
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     if not isinstance(db_config, dict):
         return []
     return sorted([key for key in db_config.keys() if isinstance(key, str)])
 
+
 def _show_db_pattern_confirm(update, context):
     """Показать экран подтверждения паттерна БД с выбором категории."""
-    pattern = context.user_data.get('backup_pattern_generated')
-    db_name = context.user_data.get('backup_pattern_db_name', '')
-    category = context.user_data.get('backup_pattern_category', '')
-    source_label = context.user_data.get('backup_pattern_source', 'мастер')
-    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    pattern = context.user_data.get("backup_pattern_generated")
+    db_name = context.user_data.get("backup_pattern_db_name", "")
+    category = context.user_data.get("backup_pattern_category", "")
+    source_label = context.user_data.get("backup_pattern_source", "мастер")
+    back_callback = context.user_data.get("patterns_back", "settings_backup")
 
     if not pattern:
         return
@@ -11892,8 +13246,7 @@ def _show_db_pattern_confirm(update, context):
             label = f"✅ {category_name}" if category_name == category else category_name
             row.append(
                 InlineKeyboardButton(
-                    label,
-                    callback_data=f"db_pattern_set_category_{category_name}"
+                    label, callback_data=f"db_pattern_set_category_{category_name}"
                 )
             )
             if len(row) == 2:
@@ -11902,12 +13255,16 @@ def _show_db_pattern_confirm(update, context):
         if row:
             keyboard.append(row)
 
-    keyboard.extend([
-        [InlineKeyboardButton("✅ Сохранить", callback_data='db_pattern_confirm')],
-        [InlineKeyboardButton("✏️ Ввести заново", callback_data='db_pattern_retry')],
-        [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ])
+    keyboard.extend(
+        [
+            [InlineKeyboardButton("✅ Сохранить", callback_data="db_pattern_confirm")],
+            [InlineKeyboardButton("✏️ Ввести заново", callback_data="db_pattern_retry")],
+            [
+                InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
+        ]
+    )
 
     message = (
         "✅ *Черновик паттерна готов!*\n\n"
@@ -11925,39 +13282,39 @@ def _show_db_pattern_confirm(update, context):
     if query:
         query.answer()
         query.edit_message_text(
-            message,
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return
 
     update.message.reply_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def db_pattern_set_category_handler(update, context, category: str):
     """Выбрать категорию для паттерна БД."""
-    context.user_data['backup_pattern_category'] = category
+    context.user_data["backup_pattern_category"] = category
     _show_db_pattern_confirm(update, context)
+
 
 def db_pattern_confirm_handler(update, context):
     """Подтвердить сохранение паттерна БД."""
     query = update.callback_query
     query.answer()
 
-    pattern = context.user_data.get('backup_pattern_generated')
-    category = context.user_data.get('backup_pattern_category')
-    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    pattern = context.user_data.get("backup_pattern_generated")
+    category = context.user_data.get("backup_pattern_category")
+    back_callback = context.user_data.get("patterns_back", "settings_backup")
 
     if not pattern or not category:
         query.edit_message_text(
             "❌ Паттерн не найден. Начните добавление заново.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+                ]
+            ),
         )
         return
 
@@ -11969,12 +13326,12 @@ def db_pattern_confirm_handler(update, context):
             INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
             VALUES (?, ?, ?, 1)
             """,
-            ("subject", pattern, category)
+            ("subject", pattern, category),
         )
         conn.commit()
 
-        source_label = context.user_data.get('backup_pattern_source', 'мастер')
-        db_name = context.user_data.get('backup_pattern_db_name', '')
+        source_label = context.user_data.get("backup_pattern_source", "мастер")
+        db_name = context.user_data.get("backup_pattern_db_name", "")
         db_info = f"БД: *{db_name}*\n" if db_name else ""
         query.edit_message_text(
             "✅ *Паттерн добавлен!*\n\n"
@@ -11983,25 +13340,30 @@ def db_pattern_confirm_handler(update, context):
             "Тип: *subject*\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
     except Exception as e:
         query.edit_message_text(f"❌ Ошибка сохранения: {e}")
     finally:
-        context.user_data.pop('adding_backup_pattern', None)
-        context.user_data.pop('backup_pattern_stage', None)
-        context.user_data.pop('backup_pattern_category', None)
-        context.user_data.pop('backup_pattern_type', None)
-        context.user_data.pop('backup_pattern_subject', None)
-        context.user_data.pop('backup_pattern_mode', None)
-        context.user_data.pop('backup_pattern_generated', None)
-        context.user_data.pop('backup_pattern_source', None)
-        context.user_data.pop('backup_pattern_db_name', None)
+        context.user_data.pop("adding_backup_pattern", None)
+        context.user_data.pop("backup_pattern_stage", None)
+        context.user_data.pop("backup_pattern_category", None)
+        context.user_data.pop("backup_pattern_type", None)
+        context.user_data.pop("backup_pattern_subject", None)
+        context.user_data.pop("backup_pattern_mode", None)
+        context.user_data.pop("backup_pattern_generated", None)
+        context.user_data.pop("backup_pattern_source", None)
+        context.user_data.pop("backup_pattern_db_name", None)
+
 
 def edit_default_db_pattern_handler(update, context, category: str, index_value: str):
     """Редактировать дефолтный паттерн БД."""
@@ -12021,23 +13383,28 @@ def edit_default_db_pattern_handler(update, context, category: str, index_value:
         return
 
     current_pattern = patterns[index - 1]
-    context.user_data['editing_default_db_pattern'] = True
-    context.user_data['editing_default_db_category'] = category
-    context.user_data['editing_default_db_index'] = index
+    context.user_data["editing_default_db_pattern"] = True
+    context.user_data["editing_default_db_category"] = category
+    context.user_data["editing_default_db_index"] = index
 
-    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    back_callback = context.user_data.get("patterns_back", "settings_backup")
     query.edit_message_text(
         "✏️ *Редактирование дефолтного паттерна БД*\n\n"
         f"Категория: *{category}*\n"
         f"Текущий паттерн: `{current_pattern}`\n\n"
         "Введите новый regex паттерн темы письма:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("❌ Отмена", callback_data=back_callback),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def delete_default_db_pattern_handler(update, context, category: str, index_value: str):
     """Удалить дефолтный паттерн БД."""
@@ -12064,54 +13431,69 @@ def delete_default_db_pattern_handler(update, context, category: str, index_valu
 
     _save_database_patterns_setting(db_patterns)
 
-    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    back_callback = context.user_data.get("patterns_back", "settings_backup")
     query.edit_message_text(
         "✅ Дефолтный паттерн удалён.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def zfs_pattern_retry_handler(update, context):
     """Повторить ввод темы/фрагментов для паттерна ZFS."""
     query = update.callback_query
     query.answer()
 
-    context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'zfs_input'
-    context.user_data['backup_pattern_mode'] = 'zfs_wizard'
-    context.user_data.pop('backup_pattern_generated', None)
-    context.user_data.pop('backup_pattern_source', None)
+    context.user_data["adding_backup_pattern"] = True
+    context.user_data["backup_pattern_stage"] = "zfs_input"
+    context.user_data["backup_pattern_mode"] = "zfs_wizard"
+    context.user_data.pop("backup_pattern_generated", None)
+    context.user_data.pop("backup_pattern_source", None)
 
     query.edit_message_text(
         "🧙 *Мастер добавления паттерна ZFS*\n\n"
         "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
         "Во фрагментах обязательно укажите имя ZFS сервера из настроек.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена",
+                        callback_data=context.user_data.get("patterns_back", "settings_backup"),
+                    ),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def zfs_pattern_confirm_handler(update, context):
     """Подтвердить сохранение паттерна ZFS."""
     query = update.callback_query
     query.answer()
 
-    pattern = context.user_data.get('backup_pattern_generated')
-    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    pattern = context.user_data.get("backup_pattern_generated")
+    back_callback = context.user_data.get("patterns_back", "settings_backup")
 
     if not pattern:
         query.edit_message_text(
             "❌ Паттерн не найден. Начните добавление заново.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+                ]
+            ),
         )
         return
 
@@ -12123,74 +13505,89 @@ def zfs_pattern_confirm_handler(update, context):
             INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
             VALUES (?, ?, ?, 1)
             """,
-            ("subject", pattern, "zfs")
+            ("subject", pattern, "zfs"),
         )
         conn.commit()
 
-        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        source_label = context.user_data.get("backup_pattern_source", "мастер")
         query.edit_message_text(
             "✅ *Паттерн добавлен!*\n\n"
             "Категория: *zfs*\n"
             "Тип: *subject*\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
     except Exception as e:
         query.edit_message_text(f"❌ Ошибка сохранения: {e}")
     finally:
-        context.user_data.pop('adding_backup_pattern', None)
-        context.user_data.pop('backup_pattern_stage', None)
-        context.user_data.pop('backup_pattern_category', None)
-        context.user_data.pop('backup_pattern_type', None)
-        context.user_data.pop('backup_pattern_subject', None)
-        context.user_data.pop('backup_pattern_mode', None)
-        context.user_data.pop('backup_pattern_generated', None)
-        context.user_data.pop('backup_pattern_source', None)
+        context.user_data.pop("adding_backup_pattern", None)
+        context.user_data.pop("backup_pattern_stage", None)
+        context.user_data.pop("backup_pattern_category", None)
+        context.user_data.pop("backup_pattern_type", None)
+        context.user_data.pop("backup_pattern_subject", None)
+        context.user_data.pop("backup_pattern_mode", None)
+        context.user_data.pop("backup_pattern_generated", None)
+        context.user_data.pop("backup_pattern_source", None)
+
 
 def proxmox_pattern_retry_handler(update, context):
     """Повторить ввод темы/фрагментов для паттерна Proxmox."""
     query = update.callback_query
     query.answer()
 
-    context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'proxmox_input'
-    context.user_data['backup_pattern_mode'] = 'proxmox_wizard'
-    context.user_data.pop('backup_pattern_generated', None)
-    context.user_data.pop('backup_pattern_source', None)
+    context.user_data["adding_backup_pattern"] = True
+    context.user_data["backup_pattern_stage"] = "proxmox_input"
+    context.user_data["backup_pattern_mode"] = "proxmox_wizard"
+    context.user_data.pop("backup_pattern_generated", None)
+    context.user_data.pop("backup_pattern_source", None)
 
     query.edit_message_text(
         "🧙 *Мастер добавления паттерна Proxmox*\n\n"
         "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
         "Фрагменты учитываются в указанном порядке.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton(
+                        "❌ Отмена",
+                        callback_data=context.user_data.get("patterns_back", "settings_backup"),
+                    ),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def proxmox_pattern_confirm_handler(update, context):
     """Подтвердить сохранение паттерна Proxmox."""
     query = update.callback_query
     query.answer()
 
-    pattern = context.user_data.get('backup_pattern_generated')
-    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    pattern = context.user_data.get("backup_pattern_generated")
+    back_callback = context.user_data.get("patterns_back", "settings_backup")
 
     if not pattern:
         query.edit_message_text(
             "❌ Паттерн не найден. Начните добавление заново.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+                ]
+            ),
         )
         return
 
@@ -12202,35 +13599,40 @@ def proxmox_pattern_confirm_handler(update, context):
             INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
             VALUES (?, ?, ?, 1)
             """,
-            ("subject", pattern, "proxmox")
+            ("subject", pattern, "proxmox"),
         )
         conn.commit()
 
-        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        source_label = context.user_data.get("backup_pattern_source", "мастер")
         query.edit_message_text(
             "✅ *Паттерн добавлен!*\n\n"
             "Категория: *proxmox*\n"
             "Тип: *subject*\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
     except Exception as e:
         query.edit_message_text(f"❌ Ошибка сохранения: {e}")
     finally:
-        context.user_data.pop('adding_backup_pattern', None)
-        context.user_data.pop('backup_pattern_stage', None)
-        context.user_data.pop('backup_pattern_category', None)
-        context.user_data.pop('backup_pattern_type', None)
-        context.user_data.pop('backup_pattern_subject', None)
-        context.user_data.pop('backup_pattern_mode', None)
-        context.user_data.pop('backup_pattern_generated', None)
-        context.user_data.pop('backup_pattern_source', None)
+        context.user_data.pop("adding_backup_pattern", None)
+        context.user_data.pop("backup_pattern_stage", None)
+        context.user_data.pop("backup_pattern_category", None)
+        context.user_data.pop("backup_pattern_type", None)
+        context.user_data.pop("backup_pattern_subject", None)
+        context.user_data.pop("backup_pattern_mode", None)
+        context.user_data.pop("backup_pattern_generated", None)
+        context.user_data.pop("backup_pattern_source", None)
+
 
 def view_patterns_handler(update, context):
     """Просмотр паттернов"""
@@ -12239,8 +13641,8 @@ def view_patterns_handler(update, context):
 
     conn = settings_manager.get_connection()
     cursor = conn.cursor()
-    filter_mode = context.user_data.get('patterns_filter', 'all')
-    if filter_mode == 'zfs':
+    filter_mode = context.user_data.get("patterns_filter", "all")
+    if filter_mode == "zfs":
         cursor.execute(
             """
             SELECT id, pattern_type, pattern, category
@@ -12249,7 +13651,7 @@ def view_patterns_handler(update, context):
             ORDER BY category, pattern_type, id
             """
         )
-    elif filter_mode == 'db':
+    elif filter_mode == "db":
         # Паттерны бэкапов БД — это произвольные категории-группы БД из
         # DATABASE_CONFIG (+ 'database'/'unknown'). Категории других,
         # независимых расширений (snapshot_transfer, stock_load, mail,
@@ -12266,7 +13668,7 @@ def view_patterns_handler(update, context):
             ORDER BY category, pattern_type, id
             """
         )
-    elif filter_mode == 'proxmox':
+    elif filter_mode == "proxmox":
         cursor.execute(
             """
             SELECT id, pattern_type, pattern, category
@@ -12276,7 +13678,7 @@ def view_patterns_handler(update, context):
             ORDER BY category, pattern_type, id
             """
         )
-    elif filter_mode == 'mail':
+    elif filter_mode == "mail":
         cursor.execute(
             """
             SELECT id, pattern_type, pattern, category
@@ -12285,7 +13687,7 @@ def view_patterns_handler(update, context):
             ORDER BY category, pattern_type, id
             """
         )
-    elif filter_mode == 'stock_load':
+    elif filter_mode == "stock_load":
         cursor.execute(
             """
             SELECT id, pattern_type, pattern, category
@@ -12294,7 +13696,7 @@ def view_patterns_handler(update, context):
             ORDER BY category, pattern_type, id
             """
         )
-    elif filter_mode == 'snapshot_transfer':
+    elif filter_mode == "snapshot_transfer":
         cursor.execute(
             """
             SELECT id, pattern_type, pattern, category
@@ -12314,9 +13716,9 @@ def view_patterns_handler(update, context):
         )
     rows = cursor.fetchall()
 
-    title = context.user_data.get('patterns_title', "📋 *Паттерны*")
+    title = context.user_data.get("patterns_title", "📋 *Паттерны*")
     display_rows = rows
-    if filter_mode == 'db':
+    if filter_mode == "db":
         display_rows = []
         for pattern_id, pattern_type, pattern, category in rows:
             if category == "database" and pattern_type.startswith("proxmox"):
@@ -12326,21 +13728,21 @@ def view_patterns_handler(update, context):
             if category == "database" and pattern_type.startswith("database"):
                 normalized = pattern_type
                 while normalized.startswith("database"):
-                    normalized = normalized[len("database"):]
+                    normalized = normalized[len("database") :]
                 display_category = normalized or category
                 display_type = "subject"
             display_rows.append((pattern_id, display_type, pattern, display_category))
-    if filter_mode == 'proxmox':
+    if filter_mode == "proxmox":
         display_rows = []
         for pattern_id, pattern_type, pattern, category in rows:
             display_category = category
             display_type = pattern_type
             if category == "database" and pattern_type.startswith("proxmox"):
-                normalized = pattern_type[len("proxmox"):]
+                normalized = pattern_type[len("proxmox") :]
                 display_category = "proxmox"
                 display_type = normalized or "subject"
             display_rows.append((pattern_id, display_type, pattern, display_category))
-    if filter_mode == 'stock_load':
+    if filter_mode == "stock_load":
         display_rows = []
         for pattern_id, pattern_type, pattern, category in rows:
             display_category = category
@@ -12355,19 +13757,26 @@ def view_patterns_handler(update, context):
     fallback_patterns = []
     fallback_db_patterns = {}
     fallback_stock_patterns: dict[str, list[str]] = {}
-    if not display_rows and filter_mode == 'mail':
+    if not display_rows and filter_mode == "mail":
         fallback_patterns = _get_mail_fallback_patterns()
-    if not display_rows and filter_mode == 'db':
+    if not display_rows and filter_mode == "db":
         fallback_db_patterns = _get_database_fallback_patterns()
-    if not display_rows and filter_mode == 'stock_load':
+    if not display_rows and filter_mode == "stock_load":
         fallback_stock_patterns = _get_stock_load_fallback_patterns()
 
-    if not display_rows and not fallback_patterns and not fallback_db_patterns and not fallback_stock_patterns:
+    if (
+        not display_rows
+        and not fallback_patterns
+        and not fallback_db_patterns
+        and not fallback_stock_patterns
+    ):
         message = f"{title}\n\n❌ Паттерны не настроены."
     else:
         message = f"{title}\n\n"
         current_category = None
-        for index, (pattern_id, pattern_type, pattern, category) in enumerate(display_rows, start=1):
+        for index, (pattern_id, pattern_type, pattern, category) in enumerate(
+            display_rows, start=1
+        ):
             if category != current_category:
                 if current_category is not None:
                     message += "\n"
@@ -12405,67 +13814,79 @@ def view_patterns_handler(update, context):
 
     keyboard = []
     for index, (pattern_id, pattern_type, pattern, category) in enumerate(display_rows, start=1):
-        keyboard.append([
-            InlineKeyboardButton(
-                f"✏️ {index}. {category}:{pattern_type}",
-                callback_data=f"edit_pattern_{pattern_id}"
-            ),
-            InlineKeyboardButton(
-                f"🗑️ {index}. {category}:{pattern_type}",
-                callback_data=f"delete_pattern_{pattern_id}"
-            )
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"✏️ {index}. {category}:{pattern_type}",
+                    callback_data=f"edit_pattern_{pattern_id}",
+                ),
+                InlineKeyboardButton(
+                    f"🗑️ {index}. {category}:{pattern_type}",
+                    callback_data=f"delete_pattern_{pattern_id}",
+                ),
+            ]
+        )
 
-    if fallback_patterns and filter_mode == 'mail':
-        keyboard.append([
-            InlineKeyboardButton("✏️ Изменить дефолтный паттерн", callback_data='edit_mail_default_pattern')
-        ])
-    if fallback_db_patterns and filter_mode == 'db':
+    if fallback_patterns and filter_mode == "mail":
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "✏️ Изменить дефолтный паттерн", callback_data="edit_mail_default_pattern"
+                )
+            ]
+        )
+    if fallback_db_patterns and filter_mode == "db":
         for category, patterns in fallback_db_patterns.items():
             for index, _ in enumerate(patterns, start=1):
-                keyboard.append([
-                    InlineKeyboardButton(
-                        f"✏️ {category} #{index}",
-                        callback_data=f"db_default_edit_{category}__{index}"
-                    ),
-                    InlineKeyboardButton(
-                        f"🗑️ {category} #{index}",
-                        callback_data=f"db_default_delete_{category}__{index}"
-                    )
-                ])
+                keyboard.append(
+                    [
+                        InlineKeyboardButton(
+                            f"✏️ {category} #{index}",
+                            callback_data=f"db_default_edit_{category}__{index}",
+                        ),
+                        InlineKeyboardButton(
+                            f"🗑️ {category} #{index}",
+                            callback_data=f"db_default_delete_{category}__{index}",
+                        ),
+                    ]
+                )
 
-    add_callback = context.user_data.get('patterns_add')
+    add_callback = context.user_data.get("patterns_add")
     if add_callback:
         keyboard.append([InlineKeyboardButton("➕ Добавить паттерн", callback_data=add_callback)])
 
-    back_callback = context.user_data.get('patterns_back', 'settings_backup')
-    if filter_mode in {'zfs', 'snapshot_transfer'}:
-        keyboard.append([
-            InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-        ])
+    back_callback = context.user_data.get("patterns_back", "settings_backup")
+    if filter_mode in {"zfs", "snapshot_transfer"}:
+        keyboard.append(
+            [
+                InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ]
+        )
     else:
-        keyboard.append([
-            InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-            InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ]
+        )
 
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def _get_database_category(db_name):
     """Получить категорию базы данных по ключу"""
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = settings_manager.get_setting("DATABASE_CONFIG", {})
     if not isinstance(db_config, dict):
         return "unknown"
     for category, databases in db_config.items():
         if isinstance(databases, dict) and db_name in databases:
             return category
     return "unknown"
+
 
 def delete_pattern_handler(update, context, pattern_id):
     """Удалить паттерн"""
@@ -12480,21 +13901,23 @@ def delete_pattern_handler(update, context, pattern_id):
 
     conn = settings_manager.get_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE backup_patterns SET enabled = 0 WHERE id = ?",
-        (pattern_id_int,)
-    )
+    cursor.execute("UPDATE backup_patterns SET enabled = 0 WHERE id = ?", (pattern_id_int,))
     conn.commit()
 
-    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    back_callback = context.user_data.get("patterns_back", "settings_backup")
     query.edit_message_text(
         "✅ Паттерн удалён.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def edit_pattern_handler(update, context, pattern_id):
     """Редактировать паттерн"""
@@ -12515,47 +13938,51 @@ def edit_pattern_handler(update, context, pattern_id):
         FROM backup_patterns
         WHERE id = ? AND enabled = 1
         """,
-        (pattern_id_int,)
+        (pattern_id_int,),
     )
     row = cursor.fetchone()
 
     if not row:
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        back_callback = context.user_data.get("patterns_back", "settings_backup")
         query.edit_message_text(
             "❌ Паттерн не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
     _, pattern_type, pattern, category = row
-    context.user_data['editing_backup_pattern'] = True
-    context.user_data['editing_backup_pattern_id'] = pattern_id_int
-    context.user_data['backup_pattern_category'] = category
-    context.user_data['backup_pattern_type'] = pattern_type
-    if category == 'zfs':
-        context.user_data['backup_pattern_mode'] = 'zfs'
-        context.user_data['backup_pattern_stage'] = 'pattern_only'
-    elif category == 'proxmox':
-        context.user_data['backup_pattern_mode'] = 'proxmox'
-        context.user_data['backup_pattern_stage'] = 'pattern_only'
-    elif category == 'mail':
-        context.user_data['backup_pattern_mode'] = 'mail'
-        context.user_data['backup_pattern_stage'] = 'pattern_only'
-    elif category == 'stock_load':
-        context.user_data['backup_pattern_mode'] = 'stock'
-        context.user_data['backup_pattern_stage'] = 'pattern_only'
+    context.user_data["editing_backup_pattern"] = True
+    context.user_data["editing_backup_pattern_id"] = pattern_id_int
+    context.user_data["backup_pattern_category"] = category
+    context.user_data["backup_pattern_type"] = pattern_type
+    if category == "zfs":
+        context.user_data["backup_pattern_mode"] = "zfs"
+        context.user_data["backup_pattern_stage"] = "pattern_only"
+    elif category == "proxmox":
+        context.user_data["backup_pattern_mode"] = "proxmox"
+        context.user_data["backup_pattern_stage"] = "pattern_only"
+    elif category == "mail":
+        context.user_data["backup_pattern_mode"] = "mail"
+        context.user_data["backup_pattern_stage"] = "pattern_only"
+    elif category == "stock_load":
+        context.user_data["backup_pattern_mode"] = "stock"
+        context.user_data["backup_pattern_stage"] = "pattern_only"
     else:
-        context.user_data['backup_pattern_mode'] = 'db'
-        context.user_data['backup_pattern_stage'] = 'subject'
+        context.user_data["backup_pattern_mode"] = "db"
+        context.user_data["backup_pattern_stage"] = "subject"
 
-    back_callback = context.user_data.get('patterns_back', 'settings_backup')
-    if category in ('zfs', 'proxmox', 'mail'):
+    back_callback = context.user_data.get("patterns_back", "settings_backup")
+    if category in ("zfs", "proxmox", "mail"):
         prompt = "Введите паттерн темы письма:"
-    elif category == 'stock_load':
+    elif category == "stock_load":
         prompt = "Введите regex паттерн для выбранного типа:"
     else:
         prompt = "Введите тему письма (как приходит в почте):"
@@ -12566,25 +13993,30 @@ def edit_pattern_handler(update, context, pattern_id):
         f"Тип: *{pattern_type}*\n"
         f"Текущий паттерн: `{pattern}`\n\n"
         f"{prompt}",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("❌ Отмена", callback_data=back_callback),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
+
 
 def handle_backup_pattern_input(update, context):
     """Обработчик добавления паттерна"""
-    if 'adding_backup_pattern' not in context.user_data:
+    if "adding_backup_pattern" not in context.user_data:
         return
 
     user_input = update.message.text.strip()
-    stage = context.user_data.get('backup_pattern_stage', 'category')
-    mode = context.user_data.get('backup_pattern_mode', 'db')
+    stage = context.user_data.get("backup_pattern_stage", "category")
+    mode = context.user_data.get("backup_pattern_mode", "db")
 
-    if mode == 'db_wizard':
-        if stage != 'db_input':
+    if mode == "db_wizard":
+        if stage != "db_input":
             update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
             return
 
@@ -12597,9 +14029,9 @@ def handle_backup_pattern_input(update, context):
             update.message.reply_text(
                 "❌ Базы данных не настроены. Сначала добавьте БД в настройках."
             )
-            context.user_data.pop('adding_backup_pattern', None)
-            context.user_data.pop('backup_pattern_stage', None)
-            context.user_data.pop('backup_pattern_mode', None)
+            context.user_data.pop("adding_backup_pattern", None)
+            context.user_data.pop("backup_pattern_stage", None)
+            context.user_data.pop("backup_pattern_mode", None)
             return
 
         fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
@@ -12628,22 +14060,21 @@ def handle_backup_pattern_input(update, context):
         category = _get_database_category(db_name)
         if category == "unknown":
             update.message.reply_text(
-                "❌ Не удалось определить категорию БД.\n"
-                "Проверьте, что БД есть в настройках."
+                "❌ Не удалось определить категорию БД.\n" "Проверьте, что БД есть в настройках."
             )
             return
 
-        context.user_data['backup_pattern_generated'] = pattern
-        context.user_data['backup_pattern_source'] = source_label
-        context.user_data['backup_pattern_stage'] = 'db_confirm'
-        context.user_data['backup_pattern_category'] = category
-        context.user_data['backup_pattern_db_name'] = db_name
+        context.user_data["backup_pattern_generated"] = pattern
+        context.user_data["backup_pattern_source"] = source_label
+        context.user_data["backup_pattern_stage"] = "db_confirm"
+        context.user_data["backup_pattern_category"] = category
+        context.user_data["backup_pattern_db_name"] = db_name
 
         _show_db_pattern_confirm(update, context)
         return
 
-    if mode == 'zfs_wizard':
-        if stage != 'zfs_input':
+    if mode == "zfs_wizard":
+        if stage != "zfs_input":
             update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
             return
 
@@ -12656,9 +14087,9 @@ def handle_backup_pattern_input(update, context):
             update.message.reply_text(
                 "❌ ZFS серверы не настроены. Сначала добавьте серверы в настройках ZFS."
             )
-            context.user_data.pop('adding_backup_pattern', None)
-            context.user_data.pop('backup_pattern_stage', None)
-            context.user_data.pop('backup_pattern_mode', None)
+            context.user_data.pop("adding_backup_pattern", None)
+            context.user_data.pop("backup_pattern_stage", None)
+            context.user_data.pop("backup_pattern_mode", None)
             return
 
         fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
@@ -12688,28 +14119,32 @@ def handle_backup_pattern_input(update, context):
             )
             return
 
-        context.user_data['backup_pattern_generated'] = pattern
-        context.user_data['backup_pattern_source'] = source_label
-        context.user_data['backup_pattern_stage'] = 'zfs_confirm'
+        context.user_data["backup_pattern_generated"] = pattern
+        context.user_data["backup_pattern_source"] = source_label
+        context.user_data["backup_pattern_stage"] = "zfs_confirm"
 
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        back_callback = context.user_data.get("patterns_back", "settings_backup")
         update.message.reply_text(
             "✅ *Черновик паттерна готов!*\n\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`\n\n"
             "Сохранить?",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='zfs_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='zfs_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("✅ Сохранить", callback_data="zfs_pattern_confirm")],
+                    [InlineKeyboardButton("✏️ Ввести заново", callback_data="zfs_pattern_retry")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
-    if mode == 'mail_wizard':
-        if stage != 'mail_input':
+    if mode == "mail_wizard":
+        if stage != "mail_input":
             update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
             return
 
@@ -12731,28 +14166,32 @@ def handle_backup_pattern_input(update, context):
             update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
             return
 
-        context.user_data['backup_pattern_generated'] = pattern
-        context.user_data['backup_pattern_source'] = source_label
-        context.user_data['backup_pattern_stage'] = 'mail_confirm'
+        context.user_data["backup_pattern_generated"] = pattern
+        context.user_data["backup_pattern_source"] = source_label
+        context.user_data["backup_pattern_stage"] = "mail_confirm"
 
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        back_callback = context.user_data.get("patterns_back", "settings_backup")
         update.message.reply_text(
             "✅ *Черновик паттерна готов!*\n\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`\n\n"
             "Сохранить?",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='mail_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='mail_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("✅ Сохранить", callback_data="mail_pattern_confirm")],
+                    [InlineKeyboardButton("✏️ Ввести заново", callback_data="mail_pattern_retry")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
-    if mode == 'snapshot_transfer_wizard':
-        if stage != 'mail_input':
+    if mode == "snapshot_transfer_wizard":
+        if stage != "mail_input":
             update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
             return
         if not user_input:
@@ -12760,32 +14199,48 @@ def handle_backup_pattern_input(update, context):
             return
         fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
         fragments = [fragment for fragment in fragments if fragment]
-        pattern = _build_mail_pattern_from_fragments(fragments) if len(fragments) > 1 else _build_mail_pattern_from_subject(user_input)
+        pattern = (
+            _build_mail_pattern_from_fragments(fragments)
+            if len(fragments) > 1
+            else _build_mail_pattern_from_subject(user_input)
+        )
         source_label = "фрагменты" if len(fragments) > 1 else "тема письма"
         if not pattern:
             update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
             return
-        context.user_data['backup_pattern_generated'] = pattern
-        context.user_data['backup_pattern_source'] = source_label
-        context.user_data['backup_pattern_stage'] = 'snapshot_confirm'
-        back_callback = context.user_data.get('patterns_back', 'settings_snapshot_menu')
+        context.user_data["backup_pattern_generated"] = pattern
+        context.user_data["backup_pattern_source"] = source_label
+        context.user_data["backup_pattern_stage"] = "snapshot_confirm"
+        back_callback = context.user_data.get("patterns_back", "settings_snapshot_menu")
         update.message.reply_text(
             "✅ *Черновик паттерна готов!*\n\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`\n\n"
             "Сохранить?",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='snapshot_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='snapshot_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "✅ Сохранить", callback_data="snapshot_pattern_confirm"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "✏️ Ввести заново", callback_data="snapshot_pattern_retry"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
-    if mode == 'stock_subject_wizard':
-        if stage != 'stock_input':
+    if mode == "stock_subject_wizard":
+        if stage != "stock_input":
             update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
             return
 
@@ -12807,28 +14262,32 @@ def handle_backup_pattern_input(update, context):
             update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
             return
 
-        context.user_data['backup_pattern_generated'] = pattern
-        context.user_data['backup_pattern_source'] = source_label
-        context.user_data['backup_pattern_stage'] = 'stock_confirm'
+        context.user_data["backup_pattern_generated"] = pattern
+        context.user_data["backup_pattern_source"] = source_label
+        context.user_data["backup_pattern_stage"] = "stock_confirm"
 
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        back_callback = context.user_data.get("patterns_back", "settings_backup")
         update.message.reply_text(
             "✅ *Черновик паттерна готов!*\n\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`\n\n"
             "Сохранить?",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='stock_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='stock_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("✅ Сохранить", callback_data="stock_pattern_confirm")],
+                    [InlineKeyboardButton("✏️ Ввести заново", callback_data="stock_pattern_retry")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
-    if mode == 'stock_source_wizard':
-        if stage != 'stock_input':
+    if mode == "stock_source_wizard":
+        if stage != "stock_input":
             update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
             return
 
@@ -12837,16 +14296,12 @@ def handle_backup_pattern_input(update, context):
             return
 
         if "|" not in user_input:
-            update.message.reply_text(
-                "❌ Нужен формат `Название | Тема письма`. Попробуйте снова:"
-            )
+            update.message.reply_text("❌ Нужен формат `Название | Тема письма`. Попробуйте снова:")
             return
 
-        label_raw, subject_raw = [part.strip() for part in user_input.split("|", 1)]
+        label_raw, subject_raw = (part.strip() for part in user_input.split("|", 1))
         if not label_raw or not subject_raw:
-            update.message.reply_text(
-                "❌ Название и тема не могут быть пустыми. Попробуйте снова:"
-            )
+            update.message.reply_text("❌ Название и тема не могут быть пустыми. Попробуйте снова:")
             return
 
         fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", subject_raw)]
@@ -12862,31 +14317,35 @@ def handle_backup_pattern_input(update, context):
             update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
             return
 
-        context.user_data['backup_pattern_generated'] = pattern
-        context.user_data['backup_pattern_source'] = source_label
-        context.user_data['backup_pattern_stage'] = 'stock_confirm'
-        context.user_data['backup_pattern_stock_type'] = f"source:{label_raw}"
-        context.user_data['backup_pattern_stock_label'] = label_raw
+        context.user_data["backup_pattern_generated"] = pattern
+        context.user_data["backup_pattern_source"] = source_label
+        context.user_data["backup_pattern_stage"] = "stock_confirm"
+        context.user_data["backup_pattern_stock_type"] = f"source:{label_raw}"
+        context.user_data["backup_pattern_stock_label"] = label_raw
 
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        back_callback = context.user_data.get("patterns_back", "settings_backup")
         update.message.reply_text(
             "✅ *Черновик паттерна готов!*\n\n"
             f"Источник: *{source_label}*\n"
             f"Метка: *{label_raw}*\n"
             f"Паттерн: `{pattern}`\n\n"
             "Сохранить?",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='stock_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='stock_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("✅ Сохранить", callback_data="stock_pattern_confirm")],
+                    [InlineKeyboardButton("✏️ Ввести заново", callback_data="stock_pattern_retry")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
-    if mode == 'stock_log_wizard':
-        if stage != 'stock_input':
+    if mode == "stock_log_wizard":
+        if stage != "stock_input":
             update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
             return
 
@@ -12894,7 +14353,7 @@ def handle_backup_pattern_input(update, context):
             update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
             return
 
-        pattern_type = context.user_data.get('backup_pattern_stock_type', 'file_entry')
+        pattern_type = context.user_data.get("backup_pattern_stock_type", "file_entry")
         fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
         fragments = [fragment for fragment in fragments if fragment]
 
@@ -12902,16 +14361,16 @@ def handle_backup_pattern_input(update, context):
             pattern = _build_stock_pattern_from_fragments(fragments)
             source_label = "фрагменты"
         else:
-            if pattern_type == 'success':
+            if pattern_type == "success":
                 pattern = _build_stock_success_pattern(user_input)
                 source_label = "строка лога"
-            elif pattern_type == 'attachment':
+            elif pattern_type == "attachment":
                 pattern = re.escape(user_input.strip()) + r"$"
                 source_label = "имя файла"
-            elif pattern_type == 'ignore':
+            elif pattern_type == "ignore":
                 pattern = _build_stock_pattern_from_fragments([user_input])
                 source_label = "строка лога"
-            elif pattern_type == 'failure':
+            elif pattern_type == "failure":
                 pattern = _build_stock_pattern_from_fragments([user_input])
                 source_label = "строка лога"
             else:
@@ -12925,28 +14384,32 @@ def handle_backup_pattern_input(update, context):
             update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
             return
 
-        context.user_data['backup_pattern_generated'] = pattern
-        context.user_data['backup_pattern_source'] = source_label
-        context.user_data['backup_pattern_stage'] = 'stock_confirm'
+        context.user_data["backup_pattern_generated"] = pattern
+        context.user_data["backup_pattern_source"] = source_label
+        context.user_data["backup_pattern_stage"] = "stock_confirm"
 
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        back_callback = context.user_data.get("patterns_back", "settings_backup")
         update.message.reply_text(
             "✅ *Черновик паттерна готов!*\n\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`\n\n"
             "Сохранить?",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='stock_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='stock_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("✅ Сохранить", callback_data="stock_pattern_confirm")],
+                    [InlineKeyboardButton("✏️ Ввести заново", callback_data="stock_pattern_retry")],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
-    if mode == 'proxmox_wizard':
-        if stage != 'proxmox_input':
+    if mode == "proxmox_wizard":
+        if stage != "proxmox_input":
             update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
             return
 
@@ -12968,40 +14431,48 @@ def handle_backup_pattern_input(update, context):
             update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
             return
 
-        context.user_data['backup_pattern_generated'] = pattern
-        context.user_data['backup_pattern_source'] = source_label
-        context.user_data['backup_pattern_stage'] = 'proxmox_confirm'
+        context.user_data["backup_pattern_generated"] = pattern
+        context.user_data["backup_pattern_source"] = source_label
+        context.user_data["backup_pattern_stage"] = "proxmox_confirm"
 
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        back_callback = context.user_data.get("patterns_back", "settings_backup")
         update.message.reply_text(
             "✅ *Черновик паттерна готов!*\n\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`\n\n"
             "Сохранить?",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='proxmox_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='proxmox_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("✅ Сохранить", callback_data="proxmox_pattern_confirm")],
+                    [
+                        InlineKeyboardButton(
+                            "✏️ Ввести заново", callback_data="proxmox_pattern_retry"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
         return
 
-    if mode in ('zfs', 'proxmox', 'mail'):
+    if mode in ("zfs", "proxmox", "mail"):
         if not user_input:
             update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
             return
 
         pattern = user_input
         pattern_type = "subject"
-        if mode == 'zfs':
-            category = 'zfs'
-        elif mode == 'proxmox':
-            category = 'proxmox'
+        if mode == "zfs":
+            category = "zfs"
+        elif mode == "proxmox":
+            category = "proxmox"
         else:
-            category = 'mail'
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+            category = "mail"
+        back_callback = context.user_data.get("patterns_back", "settings_backup")
 
         try:
             conn = settings_manager.get_connection()
@@ -13011,7 +14482,7 @@ def handle_backup_pattern_input(update, context):
                 INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
                 VALUES (?, ?, ?, 1)
                 """,
-                (pattern_type, pattern, category)
+                (pattern_type, pattern, category),
             )
             conn.commit()
 
@@ -13020,39 +14491,43 @@ def handle_backup_pattern_input(update, context):
                 f"Категория: *{category}*\n"
                 f"Тип: *{pattern_type}*\n"
                 f"Паттерн: `{pattern}`",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                     InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-                ])
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                        [
+                            InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                        ],
+                    ]
+                ),
             )
         except Exception as e:
             update.message.reply_text(f"❌ Ошибка сохранения: {e}")
         finally:
-            context.user_data.pop('adding_backup_pattern', None)
-            context.user_data.pop('backup_pattern_stage', None)
-            context.user_data.pop('backup_pattern_category', None)
-            context.user_data.pop('backup_pattern_type', None)
-            context.user_data.pop('backup_pattern_subject', None)
-            context.user_data.pop('backup_pattern_mode', None)
+            context.user_data.pop("adding_backup_pattern", None)
+            context.user_data.pop("backup_pattern_stage", None)
+            context.user_data.pop("backup_pattern_category", None)
+            context.user_data.pop("backup_pattern_type", None)
+            context.user_data.pop("backup_pattern_subject", None)
+            context.user_data.pop("backup_pattern_mode", None)
         return
 
-    if stage == 'subject':
+    if stage == "subject":
         if not user_input:
             update.message.reply_text("❌ Тема не может быть пустой. Попробуйте снова:")
             return
-        context.user_data['backup_pattern_subject'] = user_input
-        context.user_data['backup_pattern_stage'] = 'db_name'
+        context.user_data["backup_pattern_subject"] = user_input
+        context.user_data["backup_pattern_stage"] = "db_name"
         update.message.reply_text("Введите имя базы данных из темы письма:")
         return
 
-    if stage == 'db_name':
+    if stage == "db_name":
         if not user_input:
             update.message.reply_text("❌ Имя базы не может быть пустым. Попробуйте снова:")
             return
 
-        subject = context.user_data.get('backup_pattern_subject')
+        subject = context.user_data.get("backup_pattern_subject")
         db_name = user_input
         escaped_subject = re.escape(subject)
         escaped_db_name = re.escape(db_name)
@@ -13066,7 +14541,7 @@ def handle_backup_pattern_input(update, context):
         pattern_type = "subject"
         category = _get_database_category(db_name)
 
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        back_callback = context.user_data.get("patterns_back", "settings_backup")
 
         try:
             conn = settings_manager.get_connection()
@@ -13076,7 +14551,7 @@ def handle_backup_pattern_input(update, context):
                 INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
                 VALUES (?, ?, ?, 1)
                 """,
-                (pattern_type, pattern, category)
+                (pattern_type, pattern, category),
             )
             conn.commit()
 
@@ -13085,53 +14560,58 @@ def handle_backup_pattern_input(update, context):
                 f"Категория: *{category}*\n"
                 f"Тип: *{pattern_type}*\n"
                 f"Паттерн: `{pattern}`",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                     InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-                ])
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                        [
+                            InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                        ],
+                    ]
+                ),
             )
         except Exception as e:
             update.message.reply_text(f"❌ Ошибка сохранения: {e}")
         finally:
-            context.user_data.pop('adding_backup_pattern', None)
-            context.user_data.pop('backup_pattern_stage', None)
-            context.user_data.pop('backup_pattern_category', None)
-            context.user_data.pop('backup_pattern_type', None)
-            context.user_data.pop('backup_pattern_subject', None)
-            context.user_data.pop('backup_pattern_mode', None)
+            context.user_data.pop("adding_backup_pattern", None)
+            context.user_data.pop("backup_pattern_stage", None)
+            context.user_data.pop("backup_pattern_category", None)
+            context.user_data.pop("backup_pattern_type", None)
+            context.user_data.pop("backup_pattern_subject", None)
+            context.user_data.pop("backup_pattern_mode", None)
+
 
 def handle_backup_pattern_edit_input(update, context):
     """Обработчик редактирования паттерна"""
-    if 'editing_backup_pattern' not in context.user_data:
+    if "editing_backup_pattern" not in context.user_data:
         return
 
     new_pattern = update.message.text.strip()
-    stage = context.user_data.get('backup_pattern_stage', 'subject')
-    mode = context.user_data.get('backup_pattern_mode', 'db')
+    stage = context.user_data.get("backup_pattern_stage", "subject")
+    mode = context.user_data.get("backup_pattern_mode", "db")
 
-    if mode in ('zfs', 'proxmox', 'mail', 'stock'):
+    if mode in ("zfs", "proxmox", "mail", "stock"):
         if not new_pattern:
             update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
             return
 
-        pattern_id = context.user_data.get('editing_backup_pattern_id')
+        pattern_id = context.user_data.get("editing_backup_pattern_id")
         if not pattern_id:
             update.message.reply_text("❌ Не найден паттерн для редактирования.")
-            context.user_data.pop('editing_backup_pattern', None)
+            context.user_data.pop("editing_backup_pattern", None)
             return
 
-        if mode == 'zfs':
-            category = 'zfs'
-        elif mode == 'proxmox':
-            category = 'proxmox'
-        elif mode == 'mail':
-            category = 'mail'
+        if mode == "zfs":
+            category = "zfs"
+        elif mode == "proxmox":
+            category = "proxmox"
+        elif mode == "mail":
+            category = "mail"
         else:
-            category = 'stock_load'
-        pattern_type = context.user_data.get('backup_pattern_type', 'subject')
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+            category = "stock_load"
+        pattern_type = context.user_data.get("backup_pattern_type", "subject")
+        back_callback = context.user_data.get("patterns_back", "settings_backup")
 
         try:
             conn = settings_manager.get_connection()
@@ -13142,7 +14622,7 @@ def handle_backup_pattern_edit_input(update, context):
                 SET pattern = ?, category = ?, pattern_type = ?
                 WHERE id = ?
                 """,
-                (new_pattern, category, pattern_type, pattern_id)
+                (new_pattern, category, pattern_type, pattern_id),
             )
             conn.commit()
 
@@ -13151,40 +14631,44 @@ def handle_backup_pattern_edit_input(update, context):
                 f"Категория: *{category}*\n"
                 f"Тип: *{pattern_type}*\n"
                 f"Паттерн: `{new_pattern}`",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                     InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-                ])
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                        [
+                            InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                        ],
+                    ]
+                ),
             )
         except Exception as e:
             update.message.reply_text(f"❌ Ошибка сохранения: {e}")
         finally:
-            context.user_data.pop('editing_backup_pattern', None)
-            context.user_data.pop('editing_backup_pattern_id', None)
-            context.user_data.pop('backup_pattern_category', None)
-            context.user_data.pop('backup_pattern_type', None)
-            context.user_data.pop('backup_pattern_subject', None)
-            context.user_data.pop('backup_pattern_stage', None)
-            context.user_data.pop('backup_pattern_mode', None)
+            context.user_data.pop("editing_backup_pattern", None)
+            context.user_data.pop("editing_backup_pattern_id", None)
+            context.user_data.pop("backup_pattern_category", None)
+            context.user_data.pop("backup_pattern_type", None)
+            context.user_data.pop("backup_pattern_subject", None)
+            context.user_data.pop("backup_pattern_stage", None)
+            context.user_data.pop("backup_pattern_mode", None)
         return
 
-    if stage == 'subject':
+    if stage == "subject":
         if not new_pattern:
             update.message.reply_text("❌ Тема не может быть пустой. Попробуйте снова:")
             return
-        context.user_data['backup_pattern_subject'] = new_pattern
-        context.user_data['backup_pattern_stage'] = 'db_name'
+        context.user_data["backup_pattern_subject"] = new_pattern
+        context.user_data["backup_pattern_stage"] = "db_name"
         update.message.reply_text("Введите имя базы данных из темы письма:")
         return
 
-    if stage == 'db_name':
+    if stage == "db_name":
         if not new_pattern:
             update.message.reply_text("❌ Имя базы не может быть пустым. Попробуйте снова:")
             return
 
-        subject = context.user_data.get('backup_pattern_subject')
+        subject = context.user_data.get("backup_pattern_subject")
         db_name = new_pattern
         escaped_subject = re.escape(subject)
         escaped_db_name = re.escape(db_name)
@@ -13194,17 +14678,17 @@ def handle_backup_pattern_edit_input(update, context):
             )
             return
 
-        pattern_id = context.user_data.get('editing_backup_pattern_id')
+        pattern_id = context.user_data.get("editing_backup_pattern_id")
         if not pattern_id:
             update.message.reply_text("❌ Не найден паттерн для редактирования.")
-            context.user_data.pop('editing_backup_pattern', None)
+            context.user_data.pop("editing_backup_pattern", None)
             return
 
         new_pattern = escaped_subject.replace(escaped_db_name, r"([\w.-]+)")
         category = _get_database_category(db_name)
         pattern_type = "subject"
 
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        back_callback = context.user_data.get("patterns_back", "settings_backup")
 
         try:
             conn = settings_manager.get_connection()
@@ -13215,7 +14699,7 @@ def handle_backup_pattern_edit_input(update, context):
                 SET pattern = ?, category = ?, pattern_type = ?
                 WHERE id = ?
                 """,
-                (new_pattern, category, pattern_type, pattern_id)
+                (new_pattern, category, pattern_type, pattern_id),
             )
             conn.commit()
 
@@ -13224,24 +14708,29 @@ def handle_backup_pattern_edit_input(update, context):
                 f"Категория: *{category}*\n"
                 f"Тип: *{pattern_type}*\n"
                 f"Паттерн: `{new_pattern}`",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                     InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-                ])
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                        [
+                            InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                        ],
+                    ]
+                ),
             )
         except Exception as e:
             update.message.reply_text(f"❌ Ошибка сохранения: {e}")
         finally:
-            context.user_data.pop('editing_backup_pattern', None)
-            context.user_data.pop('editing_backup_pattern_id', None)
-            context.user_data.pop('backup_pattern_category', None)
-            context.user_data.pop('backup_pattern_type', None)
-            context.user_data.pop('backup_pattern_subject', None)
-            context.user_data.pop('backup_pattern_stage', None)
-            context.user_data.pop('backup_pattern_mode', None)
-    
+            context.user_data.pop("editing_backup_pattern", None)
+            context.user_data.pop("editing_backup_pattern_id", None)
+            context.user_data.pop("backup_pattern_category", None)
+            context.user_data.pop("backup_pattern_type", None)
+            context.user_data.pop("backup_pattern_subject", None)
+            context.user_data.pop("backup_pattern_stage", None)
+            context.user_data.pop("backup_pattern_mode", None)
+
+
 def handle_default_db_pattern_edit_input(update, context):
     """Обработчик редактирования дефолтного паттерна БД."""
     new_pattern = update.message.text.strip()
@@ -13249,37 +14738,39 @@ def handle_default_db_pattern_edit_input(update, context):
         update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
         return
 
-    category = context.user_data.get('editing_default_db_category')
-    index = context.user_data.get('editing_default_db_index')
+    category = context.user_data.get("editing_default_db_category")
+    index = context.user_data.get("editing_default_db_index")
     if not category or not index:
         update.message.reply_text("❌ Не найден паттерн для редактирования.")
-        context.user_data.pop('editing_default_db_pattern', None)
+        context.user_data.pop("editing_default_db_pattern", None)
         return
 
     db_patterns = _get_database_patterns_setting()
     patterns = db_patterns.get(category, [])
     if index < 1 or index > len(patterns):
         update.message.reply_text("❌ Паттерн не найден.")
-        context.user_data.pop('editing_default_db_pattern', None)
+        context.user_data.pop("editing_default_db_pattern", None)
         return
 
     patterns[index - 1] = new_pattern
     db_patterns[category] = patterns
     _save_database_patterns_setting(db_patterns)
 
-    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    back_callback = context.user_data.get("patterns_back", "settings_backup")
     update.message.reply_text(
-        "✅ *Паттерн обновлён!*\n\n"
-        f"Категория: *{category}*\n"
-        f"Паттерн: `{new_pattern}`",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        "✅ *Паттерн обновлён!*\n\n" f"Категория: *{category}*\n" f"Паттерн: `{new_pattern}`",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [
+                    InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
 
-    context.user_data.pop('editing_default_db_pattern', None)
-    context.user_data.pop('editing_default_db_category', None)
-    context.user_data.pop('editing_default_db_index', None)
+    context.user_data.pop("editing_default_db_pattern", None)
+    context.user_data.pop("editing_default_db_category", None)
+    context.user_data.pop("editing_default_db_index", None)

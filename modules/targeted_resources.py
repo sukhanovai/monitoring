@@ -11,7 +11,7 @@ A placeholder for address verification of resources.
 Заглушка для адресных проверок ресурсов.
 """
 
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 
 def get_targeted_resource_checks() -> List[Dict[str, Any]]:

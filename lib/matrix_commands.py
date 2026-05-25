@@ -15,14 +15,14 @@ from __future__ import annotations
 
 import asyncio
 import copy
-from collections import OrderedDict
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import json
 import os
 import re
-from typing import Dict, List, Optional, Set, Tuple
 import sys
+from collections import OrderedDict
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Dict, List, Optional, Set, Tuple
 
 try:
     from nio import (
@@ -34,6 +34,7 @@ try:
         RoomMessageNotice,
         RoomMessageText,
     )
+
     _MATRIX_NIO_AVAILABLE = True
 except ImportError:
     AsyncClient = None  # type: ignore[assignment]
@@ -47,6 +48,7 @@ except ImportError:
 
 try:
     from nio import ReactionEvent  # type: ignore[attr-defined]
+
     _MATRIX_REACTION_EVENT_AVAILABLE = True
 except ImportError:
     ReactionEvent = object  # type: ignore[assignment]
@@ -54,6 +56,7 @@ except ImportError:
 
 try:
     from nio import UnknownEvent  # type: ignore[attr-defined]
+
     _MATRIX_UNKNOWN_EVENT_AVAILABLE = True
 except ImportError:
     UnknownEvent = object  # type: ignore[assignment]
@@ -61,20 +64,20 @@ except ImportError:
 
 try:
     from nio import MegolmEvent  # type: ignore[attr-defined]
+
     _MATRIX_MEGOLM_EVENT_AVAILABLE = True
 except ImportError:
     MegolmEvent = object  # type: ignore[assignment]
     _MATRIX_MEGOLM_EVENT_AVAILABLE = False
 
-from lib.logging import debug_log, info_log
 from core.task_router import (
+    get_monitoring_servers,
     run_availability_task,
     run_resources_task,
     run_targeted_task,
-    get_monitoring_servers,
 )
+from lib.logging import debug_log, info_log
 from modules.morning_report import morning_report
-
 
 # Универсальная кнопка-эмодзи «открыть меню». Вешается ботом на стартовое
 # сообщение и под утренний/сводный отчёт. На неё реагируем как на !menu вне
@@ -136,44 +139,74 @@ class ExtensionMenuItem:
 # Расширение email_processor сюда не входит: ему нечего показать командой.
 EXTENSION_MENU_ITEMS: List[ExtensionMenuItem] = [
     ExtensionMenuItem(
-        "resource_monitor", "📊", "!resources",
-        "ресурсы всех серверов", "_handle_resources_all",
+        "resource_monitor",
+        "📊",
+        "!resources",
+        "ресурсы всех серверов",
+        "_handle_resources_all",
     ),
     ExtensionMenuItem(
-        "backup_monitor", "💾", "!backup",
-        "бэкапы Proxmox", "_handle_ext_proxmox_backup",
+        "backup_monitor",
+        "💾",
+        "!backup",
+        "бэкапы Proxmox",
+        "_handle_ext_proxmox_backup",
     ),
     ExtensionMenuItem(
-        "database_backup_monitor", "🗃️", "!dbbackup",
-        "бэкапы баз данных", "_handle_ext_db_backup",
+        "database_backup_monitor",
+        "🗃️",
+        "!dbbackup",
+        "бэкапы баз данных",
+        "_handle_ext_db_backup",
     ),
     ExtensionMenuItem(
-        "mail_backup_monitor", "📬", "!mailbackup",
-        "бэкапы почтового сервера", "_handle_ext_mail_backup",
+        "mail_backup_monitor",
+        "📬",
+        "!mailbackup",
+        "бэкапы почтового сервера",
+        "_handle_ext_mail_backup",
     ),
     ExtensionMenuItem(
-        "stock_load_monitor", "📦", "!stock",
-        "загрузка остатков 1С", "_handle_ext_stock_load",
+        "stock_load_monitor",
+        "📦",
+        "!stock",
+        "загрузка остатков 1С",
+        "_handle_ext_stock_load",
     ),
     ExtensionMenuItem(
-        "zfs_monitor", "🧊", "!zfs",
-        "детальный статус пулов ZFS (почта)", "_handle_ext_zfs",
+        "zfs_monitor",
+        "🧊",
+        "!zfs",
+        "детальный статус пулов ZFS (почта)",
+        "_handle_ext_zfs",
     ),
     ExtensionMenuItem(
-        "zfs_pool_free_space_monitor", "💽", "!zfsfree",
-        "свободное место ZFS (SSH)", "_handle_ext_zfs_free",
+        "zfs_pool_free_space_monitor",
+        "💽",
+        "!zfsfree",
+        "свободное место ZFS (SSH)",
+        "_handle_ext_zfs_free",
     ),
     ExtensionMenuItem(
-        "snapshot_transfer_monitor", "📸", "!snapshots",
-        "передачи ZFS-снэпшотов", "_handle_ext_snapshot_transfer",
+        "snapshot_transfer_monitor",
+        "📸",
+        "!snapshots",
+        "передачи ZFS-снэпшотов",
+        "_handle_ext_snapshot_transfer",
     ),
     ExtensionMenuItem(
-        "supplier_stock_files", "🏷️", "!supplier",
-        "остатки поставщиков", "_handle_ext_supplier",
+        "supplier_stock_files",
+        "🏷️",
+        "!supplier",
+        "остатки поставщиков",
+        "_handle_ext_supplier",
     ),
     ExtensionMenuItem(
-        "web_interface", "🌐", "!web",
-        "адрес веб-интерфейса", "_handle_ext_web",
+        "web_interface",
+        "🌐",
+        "!web",
+        "адрес веб-интерфейса",
+        "_handle_ext_web",
     ),
 ]
 _EXT_ITEM_BY_COMMAND: Dict[str, ExtensionMenuItem] = {
@@ -223,80 +256,130 @@ def _split_message(message: str, limit: int = _MAX_MESSAGE_CHARS) -> List[str]:
 #
 # «Основные настройки системы» показываются строго в этом порядке —
 # по группам и ключам, независимо от категории в БД.
-_CORE_SETTINGS_GROUPS: "OrderedDict[str, List[str]]" = OrderedDict((
-    ("telegram", ["CHAT_IDS", "TELEGRAM_TOKEN"]),
-    ("matrix", [
-        "MATRIX_ACCESS_TOKEN", "MATRIX_BOT_PASSWORD",
-        "MATRIX_BOT_USER_ID", "MATRIX_ROOM_ID",
-    ]),
-    ("monitoring", [
-        "API_TIMEOUT_SEC", "CHECK_INTERVAL", "CPU_WARNING",
-        "MAX_FAIL_TIME", "SERVER_TIMEOUTS",
-    ]),
-    ("time", [
-        "DATA_COLLECTION", "DATA_COLLECTION_TIME", "DATA_COLLECTION_TIMES",
-        "SILENT_END", "SILENT_START",
-    ]),
-    ("auth", ["SSH_KEY_PATH", "SSH_USERNAME"]),
-))
-_CORE_KEYS: Set[str] = {
-    key for keys in _CORE_SETTINGS_GROUPS.values() for key in keys
-}
+_CORE_SETTINGS_GROUPS: "OrderedDict[str, List[str]]" = OrderedDict(
+    (
+        ("telegram", ["CHAT_IDS", "TELEGRAM_TOKEN"]),
+        (
+            "matrix",
+            [
+                "MATRIX_ACCESS_TOKEN",
+                "MATRIX_BOT_PASSWORD",
+                "MATRIX_BOT_USER_ID",
+                "MATRIX_ROOM_ID",
+            ],
+        ),
+        (
+            "monitoring",
+            [
+                "API_TIMEOUT_SEC",
+                "CHECK_INTERVAL",
+                "CPU_WARNING",
+                "MAX_FAIL_TIME",
+                "SERVER_TIMEOUTS",
+            ],
+        ),
+        (
+            "time",
+            [
+                "DATA_COLLECTION",
+                "DATA_COLLECTION_TIME",
+                "DATA_COLLECTION_TIMES",
+                "SILENT_END",
+                "SILENT_START",
+            ],
+        ),
+        ("auth", ["SSH_KEY_PATH", "SSH_USERNAME"]),
+    )
+)
+_CORE_KEYS: Set[str] = {key for keys in _CORE_SETTINGS_GROUPS.values() for key in keys}
 
 # Параметры расширений. Показываются в секции «Расширения» только если
 # расширение включено в extension_manager. Привязка по явным ключам и/или
 # по категории настройки в БД.
-_EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict((
-    ("resource_monitor", {
-        "label": "💻 ресурсы",
-        "keys": [
-            "RESOURCE_CHECK_INTERVAL", "RESOURCE_ALERT_INTERVAL",
-            "CPU_CRITICAL", "RAM_WARNING", "RAM_CRITICAL",
-            "DISK_WARNING", "DISK_CRITICAL",
-        ],
-        "categories": ["resources"],
-    }),
-    ("backup_monitor", {
-        "label": "📊 бэкапы Proxmox",
-        "keys": ["BACKUP_ALERT_HOURS", "BACKUP_STALE_HOURS", "PROXMOX_HOSTS"],
-        "categories": ["backup"],
-    }),
-    ("database_backup_monitor", {
-        "label": "🗃️ бэкапы БД",
-        "keys": ["DATABASE_CONFIG"],
-        "categories": ["database"],
-    }),
-    ("mail_backup_monitor", {
-        "label": "📬 бэкапы почтового сервера",
-        "keys": [],
-        "categories": ["mail"],
-    }),
-    ("stock_load_monitor", {
-        "label": "📦 загрузка остатков 1С",
-        "keys": [],
-        "categories": ["stock_load"],
-    }),
-    ("zfs_monitor", {
-        "label": "🧊 ZFS",
-        "keys": ["ZFS_SERVERS"],
-        "categories": ["zfs"],
-    }),
-    ("zfs_pool_free_space_monitor", {
-        "label": "💽 свободное место ZFS",
-        "keys": ["ZFS_POOL_FREE_SPACE_HOSTS"],
-        "categories": ["zfs_pool_free_space"],
-    }),
-    ("snapshot_transfer_monitor", {
-        "label": "📸 передачи снэпшотов",
-        "keys": ["SNAPSHOT_TRANSFER_HOSTS"],
-        "categories": ["snapshot_transfer"],
-    }),
-    ("web_interface", {
-        "label": "🌐 веб-интерфейс",
-        "keys": ["WEB_PORT", "WEB_HOST"],
-        "categories": ["web"],
-    }),
-))
+_EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict(
+    (
+        (
+            "resource_monitor",
+            {
+                "label": "💻 ресурсы",
+                "keys": [
+                    "RESOURCE_CHECK_INTERVAL",
+                    "RESOURCE_ALERT_INTERVAL",
+                    "CPU_CRITICAL",
+                    "RAM_WARNING",
+                    "RAM_CRITICAL",
+                    "DISK_WARNING",
+                    "DISK_CRITICAL",
+                ],
+                "categories": ["resources"],
+            },
+        ),
+        (
+            "backup_monitor",
+            {
+                "label": "📊 бэкапы Proxmox",
+                "keys": ["BACKUP_ALERT_HOURS", "BACKUP_STALE_HOURS", "PROXMOX_HOSTS"],
+                "categories": ["backup"],
+            },
+        ),
+        (
+            "database_backup_monitor",
+            {
+                "label": "🗃️ бэкапы БД",
+                "keys": ["DATABASE_CONFIG"],
+                "categories": ["database"],
+            },
+        ),
+        (
+            "mail_backup_monitor",
+            {
+                "label": "📬 бэкапы почтового сервера",
+                "keys": [],
+                "categories": ["mail"],
+            },
+        ),
+        (
+            "stock_load_monitor",
+            {
+                "label": "📦 загрузка остатков 1С",
+                "keys": [],
+                "categories": ["stock_load"],
+            },
+        ),
+        (
+            "zfs_monitor",
+            {
+                "label": "🧊 ZFS",
+                "keys": ["ZFS_SERVERS"],
+                "categories": ["zfs"],
+            },
+        ),
+        (
+            "zfs_pool_free_space_monitor",
+            {
+                "label": "💽 свободное место ZFS",
+                "keys": ["ZFS_POOL_FREE_SPACE_HOSTS"],
+                "categories": ["zfs_pool_free_space"],
+            },
+        ),
+        (
+            "snapshot_transfer_monitor",
+            {
+                "label": "📸 передачи снэпшотов",
+                "keys": ["SNAPSHOT_TRANSFER_HOSTS"],
+                "categories": ["snapshot_transfer"],
+            },
+        ),
+        (
+            "web_interface",
+            {
+                "label": "🌐 веб-интерфейс",
+                "keys": ["WEB_PORT", "WEB_HOST"],
+                "categories": ["web"],
+            },
+        ),
+    )
+)
 
 # debug управляется на стороне сервера (config/debug.py, modules.debug),
 # tamtam удалён из проекта — оба не показываются и не меняются из бота.
@@ -309,10 +392,7 @@ def _is_tamtam_setting(key: str, category: str) -> bool:
 
 
 def _is_debug_setting(key: str, category: str) -> bool:
-    return (
-        (key or "").upper() in _HIDDEN_SETTING_KEYS
-        or (category or "").lower() == "debug"
-    )
+    return (key or "").upper() in _HIDDEN_SETTING_KEYS or (category or "").lower() == "debug"
 
 
 # Однозначный владелец параметра: явный ключ имеет приоритет над категорией.
@@ -452,9 +532,7 @@ def _expand_backup_patterns(row: dict) -> List[Tuple[dict, str]]:
     out: List[Tuple[dict, str]] = []
     seen_owners: Set[str] = set()
     for section in sorted(parsed.keys()):
-        owner = _BACKUP_PATTERN_SECTION_OWNER.get(
-            section, _BACKUP_PATTERN_DEFAULT_OWNER
-        )
+        owner = _BACKUP_PATTERN_SECTION_OWNER.get(section, _BACKUP_PATTERN_DEFAULT_OWNER)
         seen_owners.add(owner)
         try:
             section_value = json.dumps(parsed[section], ensure_ascii=False)
@@ -463,35 +541,36 @@ def _expand_backup_patterns(row: dict) -> List[Tuple[dict, str]]:
         desc = _BACKUP_PATTERN_SECTION_DESC.get(
             section, f"Регэкспы раздела «{section}» BACKUP_PATTERNS"
         )
-        out.append((
-            {
-                "key": f"{_BACKUP_PATTERNS_KEY}.{section}",
-                "value": section_value,
-                "category": category,
-                "description": desc + _BACKUP_PATTERN_SECTION_HINT,
-                "data_type": "dict",
-            },
-            owner,
-        ))
+        out.append(
+            (
+                {
+                    "key": f"{_BACKUP_PATTERNS_KEY}.{section}",
+                    "value": section_value,
+                    "category": category,
+                    "description": desc + _BACKUP_PATTERN_SECTION_HINT,
+                    "data_type": "dict",
+                },
+                owner,
+            )
+        )
     for owner, section in _PATTERN_OWNER_PRIMARY_SECTION.items():
         if owner in seen_owners:
             continue
         desc = _BACKUP_PATTERN_SECTION_DESC.get(
             section, f"Регэкспы раздела «{section}» BACKUP_PATTERNS"
         )
-        out.append((
-            {
-                "key": f"{_BACKUP_PATTERNS_KEY}.{section}",
-                "value": "{}",
-                "category": category,
-                "description": (
-                    desc + " (паттерны не заданы)"
-                    + _BACKUP_PATTERN_SECTION_HINT
-                ),
-                "data_type": "dict",
-            },
-            owner,
-        ))
+        out.append(
+            (
+                {
+                    "key": f"{_BACKUP_PATTERNS_KEY}.{section}",
+                    "value": "{}",
+                    "category": category,
+                    "description": (desc + " (паттерны не заданы)" + _BACKUP_PATTERN_SECTION_HINT),
+                    "data_type": "dict",
+                },
+                owner,
+            )
+        )
     return out
 
 
@@ -558,9 +637,11 @@ class MatrixCommandBot:
 
     @property
     def enabled(self) -> bool:
-        return bool(self.homeserver and self.default_room_id and (
-            self.access_token or (self.bot_user_id and self.bot_password)
-        ))
+        return bool(
+            self.homeserver
+            and self.default_room_id
+            and (self.access_token or (self.bot_user_id and self.bot_password))
+        )
 
     @property
     def _credentials_file(self) -> str:
@@ -655,8 +736,7 @@ class MatrixCommandBot:
                 self._e2e_enabled = True
                 self._register_callbacks()
                 info_log(
-                    "✅ Matrix E2EE: восстановлен device "
-                    f"{creds['device_id']} из crypto-store"
+                    "✅ Matrix E2EE: восстановлен device " f"{creds['device_id']} из crypto-store"
                 )
                 return True
             except Exception as exc:
@@ -677,9 +757,7 @@ class MatrixCommandBot:
             config=config,
         )
         try:
-            resp = await self.client.login(
-                self.bot_password, device_name=self.device_name
-            )
+            resp = await self.client.login(self.bot_password, device_name=self.device_name)
         except Exception as exc:
             debug_log(f"❌ Matrix login исключение: {exc}")
             return False
@@ -873,10 +951,10 @@ class MatrixCommandBot:
         (get_database_monitor_snapshot): конфиг + backups.db.
         """
         try:
-            from extensions.backup_monitor.bot_handler import BackupMonitorBot
             from extensions.backup_monitor.backup_handlers import (
                 get_database_monitor_snapshot,
             )
+            from extensions.backup_monitor.bot_handler import BackupMonitorBot
 
             snapshot = get_database_monitor_snapshot(BackupMonitorBot())
         except Exception as exc:
@@ -893,10 +971,7 @@ class MatrixCommandBot:
                 {
                     "backup_type": backup_type,
                     "db_name": db_name,
-                    "display_name": str(
-                        item.get("display_name") or db_name
-                    ).strip()
-                    or db_name,
+                    "display_name": str(item.get("display_name") or db_name).strip() or db_name,
                     "status": str(item.get("status") or "unknown"),
                     "is_disabled": bool(item.get("is_disabled")),
                 }
@@ -914,11 +989,7 @@ class MatrixCommandBot:
         index: "OrderedDict[str, Tuple[str, str, str]]" = OrderedDict()
         for entry in entries:
             status = str(entry.get("status") or "unknown")
-            icon = (
-                "⚪"
-                if entry.get("is_disabled")
-                else self._DB_STATUS_ICONS.get(status, "⚪")
-            )
+            icon = "⚪" if entry.get("is_disabled") else self._DB_STATUS_ICONS.get(status, "⚪")
             display_name = entry["display_name"]
             base = f"{icon} {display_name}"
             label = base
@@ -935,9 +1006,7 @@ class MatrixCommandBot:
             )
         return index
 
-    def _resolve_db_entry(
-        self, label: str
-    ) -> Optional[Tuple[str, str, str]]:
+    def _resolve_db_entry(self, label: str) -> Optional[Tuple[str, str, str]]:
         """Резолвит ключ реакции/аргумент в (backup_type, db_name, display).
 
         Сначала по актуальному индексу из последнего меню, затем по свежему
@@ -999,13 +1068,9 @@ class MatrixCommandBot:
                 f"ⓘ Баз {len(index)}, кнопок показано {len(labels)} "
                 "(остальные — командой !dbbackup <имя_базы>)."
             )
-        event_id = await self._send_text(
-            room_id, body + "\n" + "\n".join(hint)
-        )
+        event_id = await self._send_text(room_id, body + "\n" + "\n".join(hint))
         if not event_id:
-            debug_log(
-                "⚠️ Matrix сводка !dbbackup без event_id: кнопки-реакции пропущены"
-            )
+            debug_log("⚠️ Matrix сводка !dbbackup без event_id: кнопки-реакции пропущены")
             return
 
         self._dbbackup_menu_event_ids[event_id] = room_id
@@ -1033,7 +1098,9 @@ class MatrixCommandBot:
         if down:
             lines.append("Проблемные серверы:")
             for item in down:
-                lines.append(f"- {item.get('name', item.get('ip', 'unknown'))} ({item.get('ip', 'n/a')})")
+                lines.append(
+                    f"- {item.get('name', item.get('ip', 'unknown'))} ({item.get('ip', 'n/a')})"
+                )
         return "\n".join(lines)
 
     async def _handle_resources_all(self) -> str:
@@ -1292,18 +1359,13 @@ class MatrixCommandBot:
             return f"❌ Ошибка получения данных по «{host_name}»: {str(exc)[:160]}"
 
         if not rows:
-            return (
-                f"🖥️ Бэкапы {host_name}\n"
-                "Нет данных по этому хосту за последнее время."
-            )
+            return f"🖥️ Бэкапы {host_name}\n" "Нет данных по этому хосту за последнее время."
 
         try:
             status_key = bot.get_host_display_status(host_name)
         except Exception:
             status_key = ""
-        status_label = self._BACKUP_HOST_STATUS_LABEL.get(
-            str(status_key), str(status_key) or ""
-        )
+        status_label = self._BACKUP_HOST_STATUS_LABEL.get(str(status_key), str(status_key) or "")
 
         lines = [f"🖥️ Бэкапы {host_name}"]
         if status_label:
@@ -1312,9 +1374,7 @@ class MatrixCommandBot:
         for backup_status, duration, total_size, error_message, received_at in rows:
             icon = "✅" if str(backup_status) == "success" else "❌"
             try:
-                backup_time = datetime.strptime(
-                    str(received_at), "%Y-%m-%d %H:%M:%S"
-                )
+                backup_time = datetime.strptime(str(received_at), "%Y-%m-%d %H:%M:%S")
                 time_str = backup_time.strftime("%d.%m %H:%M")
             except Exception:
                 time_str = str(received_at)[:16]
@@ -1345,10 +1405,7 @@ class MatrixCommandBot:
         """Статистика бэкапов одной БД (как деталь в Telegram-боте)."""
         label = (label or "").strip()
         if not label:
-            return (
-                "ℹ️ Не указано имя базы. "
-                "Использование: !dbbackup <имя_базы>"
-            )
+            return "ℹ️ Не указано имя базы. " "Использование: !dbbackup <имя_базы>"
 
         target = self._resolve_db_entry(label)
         if target is None:
@@ -1362,20 +1419,13 @@ class MatrixCommandBot:
             from extensions.backup_monitor.bot_handler import BackupMonitorBot
 
             bot = BackupMonitorBot()
-            details = bot.get_database_details(
-                backup_type, db_name, self._DB_DETAIL_HOURS
-            )
+            details = bot.get_database_details(backup_type, db_name, self._DB_DETAIL_HOURS)
             try:
-                status_key = bot.get_database_display_status(
-                    backup_type, db_name
-                )
+                status_key = bot.get_database_display_status(backup_type, db_name)
             except Exception:
                 status_key = ""
         except Exception as exc:
-            return (
-                f"❌ Ошибка получения данных по «{display_name}»: "
-                f"{str(exc)[:160]}"
-            )
+            return f"❌ Ошибка получения данных по «{display_name}»: " f"{str(exc)[:160]}"
 
         if not details:
             return (
@@ -1384,9 +1434,7 @@ class MatrixCommandBot:
                 f"{self._DB_DETAIL_HOURS} часов."
             )
 
-        status_label = self._DB_STATUS_LABEL.get(
-            str(status_key), str(status_key) or ""
-        )
+        status_label = self._DB_STATUS_LABEL.get(str(status_key), str(status_key) or "")
         success = sum(1 for d in details if d and d[0] == "success")
         failed = sum(1 for d in details if d and d[0] == "failed")
         total = len(details)
@@ -1405,9 +1453,7 @@ class MatrixCommandBot:
         for status, task_type, error_count, _subject, received_at in details[:10]:
             icon = "✅" if status == "success" else "❌"
             try:
-                backup_time = datetime.strptime(
-                    str(received_at), "%Y-%m-%d %H:%M:%S"
-                )
+                backup_time = datetime.strptime(str(received_at), "%Y-%m-%d %H:%M:%S")
                 time_str = backup_time.strftime("%d.%m %H:%M")
             except Exception:
                 time_str = str(received_at)[:16]
@@ -1528,17 +1574,13 @@ class MatrixCommandBot:
                     f"{_icon(latest_status)} {latest_status or '—'} ({received or '—'})"
                 )
             lines.append("")
-            lines.append(
-                f"Всего хостов: {total} · 🟢 {ok_count} · 🔴 {err_count}"
-            )
+            lines.append(f"Всего хостов: {total} · 🟢 {ok_count} · 🔴 {err_count}")
 
         if recent:
             lines.append("")
             lines.append("🧾 Последние распарсенные письма:")
             for host_name, status_val, received in recent:
-                lines.append(
-                    f"{_icon(status_val)} {host_name} · {status_val} ({received})"
-                )
+                lines.append(f"{_icon(status_val)} {host_name} · {status_val} ({received})")
 
         return "\n".join(lines)
 
@@ -1560,9 +1602,7 @@ class MatrixCommandBot:
                 recv = (src.get("receive") or {}).get("icon", "⚪️")
                 proc = (src.get("processing") or {}).get("icon", "⚪️")
                 tran = (src.get("transfer") or {}).get("icon", "⚪️")
-                lines.append(
-                    f"  {name}: приём {recv} обработка {proc} передача {tran}"
-                )
+                lines.append(f"  {name}: приём {recv} обработка {proc} передача {tran}")
         if not any_source:
             lines.append("ℹ️ Нет данных по источникам")
         return "\n".join(lines)
@@ -1744,11 +1784,7 @@ class MatrixCommandBot:
         if ext_groups:
             sections.append(("🧩 Расширения", ext_groups))
 
-        total = sum(
-            len(members)
-            for _, groups in sections
-            for _, members in groups
-        )
+        total = sum(len(members) for _, groups in sections for _, members in groups)
         return sections, total
 
     def _render_settings_sections(
@@ -1793,11 +1829,7 @@ class MatrixCommandBot:
             needle = group_filter.strip().lower()
             filtered: List[Tuple[str, List[Tuple[str, list]]]] = []
             for title, groups in sections:
-                matched = [
-                    (group, members)
-                    for group, members in groups
-                    if needle in group.lower()
-                ]
+                matched = [(group, members) for group, members in groups if needle in group.lower()]
                 if matched:
                     filtered.append((title, matched))
             if not filtered:
@@ -1817,10 +1849,7 @@ class MatrixCommandBot:
         """Возвращает текст ошибки, если параметр недоступен из бота."""
         category = meta.get("category", "")
         if _is_tamtam_setting(setting_key, category):
-            return (
-                f"❌ Параметр {setting_key} удалён из проекта "
-                "(интеграция TamTam отключена)."
-            )
+            return f"❌ Параметр {setting_key} удалён из проекта " "(интеграция TamTam отключена)."
         if _is_debug_setting(setting_key, category):
             return (
                 f"ⓘ {setting_key} — параметр отладки. "
@@ -1848,18 +1877,14 @@ class MatrixCommandBot:
                     "❌ BACKUP_PATTERNS пуст или не является словарём. "
                     "Полностью: !settings get BACKUP_PATTERNS"
                 )
-            match = next(
-                (k for k in data if k.lower() == section_raw.lower()), None
-            )
+            match = next((k for k in data if k.lower() == section_raw.lower()), None)
             if match is None:
                 avail = ", ".join(sorted(data.keys())) or "—"
                 return (
                     f"❌ Раздел «{section_raw}» в BACKUP_PATTERNS не найден.\n"
                     f"• доступные разделы: {avail}"
                 )
-            owner = _BACKUP_PATTERN_SECTION_OWNER.get(
-                match.lower(), _BACKUP_PATTERN_DEFAULT_OWNER
-            )
+            owner = _BACKUP_PATTERN_SECTION_OWNER.get(match.lower(), _BACKUP_PATTERN_DEFAULT_OWNER)
             desc = _BACKUP_PATTERN_SECTION_DESC.get(
                 match, f"Регэкспы раздела «{match}» BACKUP_PATTERNS"
             )
@@ -1881,10 +1906,7 @@ class MatrixCommandBot:
 
             meta = config_manager.get_setting_meta(setting_key)
             if meta is None:
-                return (
-                    f"❌ Настройка {setting_key} не найдена. "
-                    "Список: !settings list"
-                )
+                return f"❌ Настройка {setting_key} не найдена. " "Список: !settings list"
             blocked = self._check_setting_access(setting_key, meta)
             if blocked:
                 return blocked
@@ -1892,11 +1914,7 @@ class MatrixCommandBot:
             desc = meta.get("description") or "без описания"
             dtype = meta.get("data_type", "string")
             shown = self._format_setting_value(setting_key, value, reveal=True)
-            return (
-                f"✅ {setting_key} = {shown}\n"
-                f"• тип: {dtype}\n"
-                f"• описание: {desc}"
-            )
+            return f"✅ {setting_key} = {shown}\n" f"• тип: {dtype}\n" f"• описание: {desc}"
         except Exception as exc:
             return f"❌ Ошибка чтения настройки: {exc}"
 
@@ -1926,10 +1944,7 @@ class MatrixCommandBot:
             try:
                 converted = self._convert_setting_value(raw_value, data_type)
             except (ValueError, json.JSONDecodeError) as exc:
-                return (
-                    f"❌ Неверное значение для {setting_key} "
-                    f"(тип {data_type}): {exc}"
-                )
+                return f"❌ Неверное значение для {setting_key} " f"(тип {data_type}): {exc}"
 
             ok = config_manager.set_setting(
                 setting_key,
@@ -1941,12 +1956,8 @@ class MatrixCommandBot:
             if not ok:
                 return f"❌ Не удалось сохранить настройку {setting_key}"
 
-            shown = self._format_setting_value(
-                setting_key, converted, reveal=True
-            )
-            self._audit(
-                "settings", "settings", f"set {setting_key}", "applied"
-            )
+            shown = self._format_setting_value(setting_key, converted, reveal=True)
+            self._audit("settings", "settings", f"set {setting_key}", "applied")
             return (
                 f"✅ {setting_key} обновлена: {shown}\n"
                 "ⓘ Часть параметров применяется при следующем "
@@ -1981,9 +1992,7 @@ class MatrixCommandBot:
             raw_value = command_text.split(maxsplit=3)[3].strip()
             return self._settings_set(setting_key, raw_value)
 
-        return (
-            f"ℹ️ Неизвестное действие «{action}».\n\n{self._SETTINGS_USAGE}"
-        )
+        return f"ℹ️ Неизвестное действие «{action}».\n\n{self._SETTINGS_USAGE}"
 
     async def _handle_zfs(self) -> str:
         try:
@@ -2171,8 +2180,7 @@ class MatrixCommandBot:
             "• !help — краткая справка по Matrix-командам",
             "• !diag / !ping — диагностика command-bot",
             "",
-            "Длинные списки приходят несколькими сообщениями "
-            "с маркером (n/total).",
+            "Длинные списки приходят несколькими сообщениями " "с маркером (n/total).",
         ]
         return "\n".join(lines)
 
@@ -2227,8 +2235,7 @@ class MatrixCommandBot:
         if command == "!backup":
             if "backup_monitor" not in self._enabled_extensions():
                 return command, (
-                    "❌ Команда !backup недоступна: расширение "
-                    "«backup_monitor» выключено."
+                    "❌ Команда !backup недоступна: расширение " "«backup_monitor» выключено."
                 )
             parts = normalized.split(maxsplit=1)
             arg = parts[1].strip() if len(parts) > 1 else ""
@@ -2256,8 +2263,7 @@ class MatrixCommandBot:
         if command == "!res":
             if "resource_monitor" not in self._enabled_extensions():
                 return command, (
-                    "❌ Команда !res недоступна: расширение "
-                    "«resource_monitor» выключено."
+                    "❌ Команда !res недоступна: расширение " "«resource_monitor» выключено."
                 )
             return command, await self._handle_targeted(normalized, "resources")
         if command == "!report":
@@ -2265,7 +2271,9 @@ class MatrixCommandBot:
         if command == "!settings":
             return command, await self._handle_settings(normalized)
         if command == "!diag":
-            return command, self._format_diag(sender=sender, room_id=room_id, command_text=normalized)
+            return command, self._format_diag(
+                sender=sender, room_id=room_id, command_text=normalized
+            )
         if command == "!ping":
             return command, "🏓 pong"
         return command or "unknown", "ℹ️ Неизвестная команда. Напиши !menu для списка команд."
@@ -2287,7 +2295,9 @@ class MatrixCommandBot:
             if clean.startswith("!"):
                 return clean
             if allow_inline:
-                inline_command = re.search(r"(^|\s)(![a-z0-9_]+(?:\s+[^\n]+)?)", clean, flags=re.IGNORECASE)
+                inline_command = re.search(
+                    r"(^|\s)(![a-z0-9_]+(?:\s+[^\n]+)?)", clean, flags=re.IGNORECASE
+                )
                 if inline_command:
                     return inline_command.group(2).strip()
 
@@ -2409,10 +2419,7 @@ class MatrixCommandBot:
             )
             return
 
-        info_log(
-            "📩 Matrix команда получена: "
-            f"room={room_id}, sender={sender}, command={body}"
-        )
+        info_log("📩 Matrix команда получена: " f"room={room_id}, sender={sender}, command={body}")
         await self._dispatch_and_reply(body, sender=sender, room_id=room_id)
 
     def _reaction_target_and_key(self, event) -> Tuple[str, str]:
@@ -2464,10 +2471,7 @@ class MatrixCommandBot:
             if reaction_event_id:
                 self._processed_reactions[reaction_event_id] = True
                 self._cap_ordered(self._processed_reactions, 500)
-            info_log(
-                "📩 Matrix кнопка-меню нажата: "
-                f"room={room_id}, sender={sender}, key={key}"
-            )
+            info_log("📩 Matrix кнопка-меню нажата: " f"room={room_id}, sender={sender}, key={key}")
             await self._dispatch_and_reply("!menu", sender=sender, room_id=room_id)
             return
 
@@ -2475,9 +2479,7 @@ class MatrixCommandBot:
         is_ext_menu = target_event_id in self._ext_menu_event_ids
         is_backup_menu = target_event_id in self._backup_menu_event_ids
         is_dbbackup_menu = target_event_id in self._dbbackup_menu_event_ids
-        if not (
-            is_main_menu or is_ext_menu or is_backup_menu or is_dbbackup_menu
-        ):
+        if not (is_main_menu or is_ext_menu or is_backup_menu or is_dbbackup_menu):
             return
 
         if is_backup_menu:
@@ -2495,15 +2497,11 @@ class MatrixCommandBot:
             else:
                 command = ""
         elif is_ext_menu:
-            command = self._ext_command_by_emoji(key) or self._ext_command_by_emoji(
-                normalized_key
-            )
+            command = self._ext_command_by_emoji(key) or self._ext_command_by_emoji(normalized_key)
         else:
             command = _BUTTON_BY_EMOJI.get(key) or _BUTTON_BY_EMOJI.get(normalized_key)
         if not command:
-            debug_log(
-                f"ℹ️ Matrix реакция без сопоставленной кнопки (key='{key}', room={room_id})"
-            )
+            debug_log(f"ℹ️ Matrix реакция без сопоставленной кнопки (key='{key}', room={room_id})")
             return
 
         if reaction_event_id:
@@ -2557,8 +2555,8 @@ class MatrixCommandBot:
         )
         info_log(
             "ⓘ Отладка управляется на стороне сервера (из command-bot убрана). "
-            "Команды: python -c \"from modules.debug import debug_manager; "
-            "debug_manager.toggle_debug_mode(True)\" — включить DEBUG; "
+            'Команды: python -c "from modules.debug import debug_manager; '
+            'debug_manager.toggle_debug_mode(True)" — включить DEBUG; '
             "...toggle_debug_mode(False) — выключить; "
             "...get_debug_info() — статус. Файл: data/debug_config.json."
         )

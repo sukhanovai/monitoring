@@ -11,20 +11,22 @@ Morning Report Module
 Модуль утреннего отчета
 """
 
+import sqlite3
 import threading
 import time
 from datetime import datetime, timedelta, timezone
-import sqlite3
+
 from lib.logging import debug_log, info_log
+
 
 class MorningReport:
     """Класс управления утренними отчетами"""
-    
+
     def __init__(self):
         self.morning_data = {}
         self.last_report_date = None
         self.last_data_collection = None
-        
+
     def collect_morning_data(self, manual_call=False):
         """Сбор данных для утреннего отчета"""
         try:
@@ -33,33 +35,36 @@ class MorningReport:
                 f"manual_call={manual_call} now={datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             )
             from modules.availability import availability_monitor
+
             current_status = availability_monitor.get_current_status()
-            
+
             self.morning_data = {
                 "status": current_status,
                 "collection_time": datetime.now(),
-                "manual_call": manual_call
+                "manual_call": manual_call,
             }
-            
-            debug_log(f"✅ Данные для отчета собраны: {len(current_status['ok'])} доступно, {len(current_status['failed'])} недоступно")
+
+            debug_log(
+                f"✅ Данные для отчета собраны: {len(current_status['ok'])} доступно, {len(current_status['failed'])} недоступно"
+            )
             return True
         except Exception as e:
             debug_log(f"❌ Ошибка сбора данных для отчета: {e}")
             return False
-    
+
     def generate_report_message(self):
         """Генерация сообщения отчета"""
         if not self.morning_data or "status" not in self.morning_data:
             return "❌ Нет данных для отчета"
-            
+
         status = self.morning_data["status"]
         collection_time = self.morning_data.get("collection_time", datetime.now())
         is_manual = self.morning_data.get("manual_call", False)
-        
+
         total_servers = len(status["ok"]) + len(status["failed"])
         up_count = len(status["ok"])
         down_count = len(status["failed"])
-        
+
         # Определяем тип отчета
         report_type = "Ручной отчёт мониторинга" if is_manual else "Утренний отчёт мониторинга"
         try:
@@ -92,8 +97,8 @@ class MorningReport:
             for server_type, servers_list in sorted(by_type.items(), key=lambda item: str(item[0])):
                 for s in servers_list:
                     safe_type = escape_markdown(str(server_type).upper(), version=1)
-                    safe_name = escape_markdown(str(s.get('name', '')), version=1)
-                    safe_ip = escape_markdown(str(s.get('ip', '')), version=1)
+                    safe_name = escape_markdown(str(s.get("name", "")), version=1)
+                    safe_ip = escape_markdown(str(s.get("ip", "")), version=1)
                     problem_rows.append((safe_type, safe_name, safe_ip))
             message += self._render_table(
                 headers=("Тип", "Сервер", "IP"),
@@ -103,9 +108,10 @@ class MorningReport:
         # Добавляем информацию о бэкапах
         try:
             from extensions.extension_manager import extension_manager
-            show_proxmox = extension_manager.is_extension_enabled('backup_monitor')
-            show_databases = extension_manager.is_extension_enabled('database_backup_monitor')
-            show_mail = extension_manager.is_extension_enabled('mail_backup_monitor')
+
+            show_proxmox = extension_manager.is_extension_enabled("backup_monitor")
+            show_databases = extension_manager.is_extension_enabled("database_backup_monitor")
+            show_mail = extension_manager.is_extension_enabled("mail_backup_monitor")
             show_backups = show_proxmox or show_databases or show_mail
             if show_backups:
                 unavailable_hosts = set()
@@ -134,7 +140,8 @@ class MorningReport:
         # Добавляем информацию о загрузке остатков 1С
         try:
             from extensions.extension_manager import extension_manager
-            if extension_manager.is_extension_enabled('stock_load_monitor'):
+
+            if extension_manager.is_extension_enabled("stock_load_monitor"):
                 from extensions.backup_monitor.backup_utils import get_stock_load_summary
 
                 stock_summary = get_stock_load_summary(24 if is_manual else 16)
@@ -147,7 +154,8 @@ class MorningReport:
         # Добавляем информацию о ZFS
         try:
             from extensions.extension_manager import extension_manager
-            if extension_manager.is_extension_enabled('zfs_monitor'):
+
+            if extension_manager.is_extension_enabled("zfs_monitor"):
                 zfs_summary, zfs_has_issues = self.get_zfs_summary_for_report()
                 zfs_header_icon = "🔴" if zfs_has_issues else "🟢"
                 message += f"\n{zfs_header_icon} *Статусы ZFS (последние)*\n"
@@ -155,7 +163,7 @@ class MorningReport:
         except Exception as e:
             debug_log(f"⚠️ Ошибка получения данных о ZFS: {e}")
             message += "\n🧊 *Статусы ZFS:* данные недоступны\n"
-            
+
         message += f"\n⏰ *Отчёт сформирован:* {collection_time.strftime('%H:%M:%S')}"
         return message
 
@@ -210,7 +218,7 @@ class MorningReport:
             return "❌ Ошибка сбора данных для отчета"
 
         return self.generate_report_message()
-    
+
     def get_backup_summary_for_report(
         self,
         period_hours=16,
@@ -223,6 +231,7 @@ class MorningReport:
         try:
             # Импорт функций бэкапов
             from extensions.backup_monitor.backup_utils import get_backup_summary
+
             return get_backup_summary(
                 period_hours,
                 include_proxmox=include_proxmox,
@@ -244,14 +253,14 @@ class MorningReport:
             if not db_path:
                 return "❌ База бэкапов не настроена\n", True
 
-            zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+            zfs_servers = settings_manager.get_setting("ZFS_SERVERS", {})
             if not isinstance(zfs_servers, dict):
                 zfs_servers = {}
 
             allowed_servers = {
                 name
                 for name, server_value in zfs_servers.items()
-                if not isinstance(server_value, dict) or server_value.get('enabled', True)
+                if not isinstance(server_value, dict) or server_value.get("enabled", True)
             }
 
             conn = sqlite3.connect(str(db_path))
@@ -349,6 +358,7 @@ class MorningReport:
                     except ValueError:
                         return None
                 return None
+
             for server in expected_servers:
                 received_at = latest_by_server.get(server)
                 if not received_at:
@@ -382,7 +392,9 @@ class MorningReport:
                 for server_name, _, pool_state, _ in rows
                 if server_name not in stale_servers and str(pool_state).upper() != "ONLINE"
             )
-            servers_count = len(expected_servers) if expected_servers else len({row[0] for row in rows})
+            servers_count = (
+                len(expected_servers) if expected_servers else len({row[0] for row in rows})
+            )
             server_problem_flags = {server: False for server in expected_servers}
             for server_name, _, pool_state, _ in rows:
                 if server_name in stale_servers:
@@ -391,12 +403,20 @@ class MorningReport:
                     server_problem_flags[server_name] = True
 
             servers_problem = len(
-                {server for server in expected_servers if server in stale_servers or server_problem_flags.get(server)}
+                {
+                    server
+                    for server in expected_servers
+                    if server in stale_servers or server_problem_flags.get(server)
+                }
             )
             servers_ok = servers_count - servers_problem
 
-            free_space_summary, free_space_has_issues = self._get_zfs_free_space_summary(db_path, allowed_servers)
-            snapshot_summary, snapshot_has_issues = self._get_snapshot_transfer_summary(db_path, allowed_servers)
+            free_space_summary, free_space_has_issues = self._get_zfs_free_space_summary(
+                db_path, allowed_servers
+            )
+            snapshot_summary, snapshot_has_issues = self._get_snapshot_transfer_summary(
+                db_path, allowed_servers
+            )
 
             summary = (
                 f"• Серверов: {servers_count} (🟢 {servers_ok} / 🔴 {servers_problem})\n"
@@ -416,7 +436,7 @@ class MorningReport:
         except Exception as e:
             debug_log(f"❌ Ошибка получения сводки ZFS: {e}")
             return "❌ Данные ZFS недоступны\n", True
-    
+
     def _get_zfs_free_space_summary(self, db_path, allowed_servers):
         """Сводка по свободному месту ZFS-пулов."""
         try:
@@ -447,11 +467,7 @@ class MorningReport:
                 latest[key] = (free_percent, is_alert)
 
         if allowed_servers:
-            latest = {
-                key: value
-                for key, value in latest.items()
-                if key[0] in allowed_servers
-            }
+            latest = {key: value for key, value in latest.items() if key[0] in allowed_servers}
 
         if not latest:
             return "нет данных", False
@@ -497,7 +513,6 @@ class MorningReport:
         bad_count = total - ok_count
         return f"за 24ч: {total} (🟢 {ok_count} / 🔴 {bad_count})", bad_count > 0
 
-
     def _parse_collection_times(self, raw_value):
         """Парсит одно или несколько значений времени в список time."""
         if raw_value is None:
@@ -507,13 +522,13 @@ class MorningReport:
         if isinstance(raw_value, (list, tuple, set)):
             values = [str(item).strip() for item in raw_value]
         else:
-            normalized = str(raw_value).replace(';', ',')
-            values = [item.strip() for item in normalized.split(',') if item.strip()]
+            normalized = str(raw_value).replace(";", ",")
+            values = [item.strip() for item in normalized.split(",") if item.strip()]
 
         parsed = []
         for value in values:
             try:
-                parts = value.split(':')
+                parts = value.split(":")
                 if len(parts) < 2:
                     continue
                 hours = int(parts[0])
@@ -529,35 +544,40 @@ class MorningReport:
         configured_source = "config.settings.DATA_COLLECTION_TIME"
         try:
             from config.db_settings import DATA_COLLECTION_TIME as runtime_default
+
             default_time = runtime_default
         except Exception:
             pass
 
         try:
             from core.config_manager import config_manager as settings_manager
-            raw_value = settings_manager.get_setting('DATA_COLLECTION_TIMES', None, use_cache=False)
-            if raw_value not in (None, ''):
-                configured_source = 'БД settings: DATA_COLLECTION_TIMES'
+
+            raw_value = settings_manager.get_setting("DATA_COLLECTION_TIMES", None, use_cache=False)
+            if raw_value not in (None, ""):
+                configured_source = "БД settings: DATA_COLLECTION_TIMES"
             if raw_value in (None, ""):
-                raw_value = settings_manager.get_setting('DATA_COLLECTION_TIME', default_time, use_cache=False)
-                if raw_value not in (None, ''):
-                    configured_source = 'БД settings: DATA_COLLECTION_TIME'
+                raw_value = settings_manager.get_setting(
+                    "DATA_COLLECTION_TIME", default_time, use_cache=False
+                )
+                if raw_value not in (None, ""):
+                    configured_source = "БД settings: DATA_COLLECTION_TIME"
         except Exception:
             raw_value = default_time
 
         parsed = self._parse_collection_times(raw_value)
-        resolved_slots = ','.join(slot.strftime('%H:%M') for slot in parsed) if parsed else ''
+        resolved_slots = ",".join(slot.strftime("%H:%M") for slot in parsed) if parsed else ""
         info_log(
-            '[MORNING_REPORT_SCHEDULE] resolve_collection_times '
+            "[MORNING_REPORT_SCHEDULE] resolve_collection_times "
             f"source='{configured_source}' raw='{raw_value}' resolved='{resolved_slots}'"
         )
         if parsed:
             return parsed
-        if hasattr(raw_value, 'hour') and hasattr(raw_value, 'minute'):
+        if hasattr(raw_value, "hour") and hasattr(raw_value, "minute"):
             return [raw_value]
 
         try:
             from config.settings import DATA_COLLECTION_TIME as static_default
+
             return [static_default]
         except Exception:
             return [datetime.now().time().replace(second=0, microsecond=0)]
@@ -572,14 +592,15 @@ class MorningReport:
                 collected = self.collect_morning_data(manual_call)
                 if not collected:
                     return False
-            
+
             # Генерируем сообщение
             message = self.generate_report_message()
-            
+
             # Отправляем через унифицированный канал алертов. Для отчёта
             # просим повесить под Matrix-сообщением кнопку-эмодзи «открыть
             # меню» — пользователю удобно открыть !menu прямо из отчёта.
             from lib.alerts import send_alert
+
             sent_ok = send_alert(message, force=True, attach_menu_button=True)
 
             if sent_ok:
@@ -593,26 +614,30 @@ class MorningReport:
         except Exception as e:
             debug_log(f"❌ Ошибка отправки отчета: {e}")
             return False
-    
+
     def start_scheduler(self):
         """Запуск планировщика отчетов"""
         debug_log("⏰ Запуск планировщика утренних отчетов")
-        
+
         while True:
             current_time = datetime.now()
             current_time_time = current_time.time()
-            
+
             # Проверяем все актуальные времена сбора данных
             collection_times = self._get_collection_times()
             today = current_time.date()
 
             for collection_time in collection_times:
-                if (current_time_time.hour == collection_time.hour and
-                    current_time_time.minute == collection_time.minute):
+                if (
+                    current_time_time.hour == collection_time.hour
+                    and current_time_time.minute == collection_time.minute
+                ):
 
                     # Проверяем, что сегодня еще не отправляли отчет
                     if self.last_report_date != today:
-                        debug_log(f"📊 Автоматический сбор данных для утреннего отчета ({collection_time.strftime('%H:%M')})")
+                        debug_log(
+                            f"📊 Автоматический сбор данных для утреннего отчета ({collection_time.strftime('%H:%M')})"
+                        )
                         self.send_report(manual_call=False)
                         self.last_report_date = today
 
@@ -621,8 +646,9 @@ class MorningReport:
                     else:
                         debug_log(f"⏭️ Отчет уже отправлен сегодня {self.last_report_date}")
                     break
-            
+
             time.sleep(60)  # Проверяем каждую минуту
+
 
 # Глобальный экземпляр отчета
 morning_report = MorningReport()

@@ -14,49 +14,51 @@ Server Availability Monitoring Module
 import threading
 import time
 from datetime import datetime, timedelta
+
 from config.db_settings import CHECK_INTERVAL, MAX_FAIL_TIME
 from lib.logging import debug_log
 
 # Импортируем проверки серверов
 try:
-    from extensions.server_checks import initialize_servers, check_server_availability
+    from extensions.server_checks import check_server_availability, initialize_servers
 except ImportError:
     debug_log("⚠️ Модуль server_checks недоступен", force=True)
     check_server_availability = None
 
+
 class AvailabilityMonitor:
     """Класс мониторинга доступности серверов"""
-    
+
     def __init__(self):
         self.server_status = {}
         self.monitoring_active = True
         self.servers = []
         self.last_check_time = datetime.now()
-        
+
     def initialize(self):
         """Инициализация мониторинга"""
         if not check_server_availability:
             debug_log("❌ Модуль проверок недоступен", force=True)
             return False
-            
+
         self.servers = initialize_servers()
         monitor_server_ip = "192.168.20.2"
-        
+
         # Исключаем сервер мониторинга
         self.servers = [s for s in self.servers if s["ip"] != monitor_server_ip]
-        
+
         # Инициализация статусов
         for server in self.servers:
             self.server_status[server["ip"]] = {
                 "last_up": datetime.now(),
                 "alert_sent": False,
                 "name": server["name"],
-                "type": server["type"]
+                "type": server["type"],
             }
-            
+
         debug_log(f"✅ Мониторинг доступности инициализирован для {len(self.servers)} серверов")
         return True
-        
+
     def check_server(self, server):
         """Проверка одного сервера"""
         try:
@@ -64,30 +66,34 @@ class AvailabilityMonitor:
         except Exception as e:
             debug_log(f"❌ Ошибка проверки {server['name']}: {e}")
             return False
-            
+
     def handle_server_up(self, ip, status, current_time):
         """Обработка доступного сервера"""
         if status["alert_sent"]:
             downtime = (current_time - status["last_up"]).total_seconds()
             from bot.handlers.commands import send_alert
+
             send_alert(f"✅ {status['name']} ({ip}) доступен (простой: {int(downtime//60)} мин)")
 
         self.server_status[ip] = {
             "last_up": current_time,
             "alert_sent": False,
             "name": status["name"],
-            "type": status["type"]
+            "type": status["type"],
         }
 
     def handle_server_down(self, ip, status, current_time):
         """Обработка недоступного сервера"""
         downtime = (current_time - status["last_up"]).total_seconds()
-        
+
         if downtime >= MAX_FAIL_TIME and not status["alert_sent"]:
             from bot.handlers.commands import send_alert
-            send_alert(f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})")
+
+            send_alert(
+                f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})"
+            )
             self.server_status[ip]["alert_sent"] = True
-    
+
     def get_current_status(self):
         """Получить текущий статус всех серверов"""
         results = {"failed": [], "ok": []}
@@ -106,42 +112,43 @@ class AvailabilityMonitor:
             except Exception as e:
                 debug_log(f"❌ Ошибка проверки {server['name']}: {e}")
                 results["failed"].append(server)
-                
+
         return results
-    
+
     def start_monitoring(self):
         """Запуск цикла мониторинга"""
         if not self.initialize():
             debug_log("❌ Не удалось инициализировать мониторинг доступности", force=True)
             return
-            
+
         debug_log("🔄 Запуск цикла мониторинга доступности")
-        
+
         while True:
             if self.monitoring_active:
                 self.last_check_time = datetime.now()
-                
+
                 for server in self.servers:
                     try:
                         ip = server["ip"]
                         status = self.server_status.get(ip, {})
-                        
+
                         # Исключаем сервер мониторинга
                         if ip == "192.168.20.2":
                             self.server_status[ip]["last_up"] = self.last_check_time
                             continue
-                            
+
                         is_up = self.check_server(server)
-                        
+
                         if is_up:
                             self.handle_server_up(ip, status, self.last_check_time)
                         else:
                             self.handle_server_down(ip, status, self.last_check_time)
-                            
+
                     except Exception as e:
                         debug_log(f"❌ Ошибка мониторинга {server['name']}: {e}")
-                        
+
             time.sleep(CHECK_INTERVAL)
+
 
 # Глобальный экземпляр мониторинга
 availability_monitor = AvailabilityMonitor()

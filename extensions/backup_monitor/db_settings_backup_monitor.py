@@ -12,8 +12,16 @@ Settings from the database for the backup_monitor extension
 """
 
 try:
-    from config.db_settings import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG, BACKUP_DATABASE_CONFIG  # type: ignore
+    from config.db_settings import (  # type: ignore
+        BACKUP_DATABASE_CONFIG,
+        DATABASE_BACKUP_CONFIG,
+        PROXMOX_HOSTS,
+    )
 except Exception:
-    from config.settings import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG, BACKUP_DATABASE_CONFIG  # type: ignore
+    from config.settings import (  # type: ignore
+        BACKUP_DATABASE_CONFIG,
+        DATABASE_BACKUP_CONFIG,
+        PROXMOX_HOSTS,
+    )
 
 __all__ = ["PROXMOX_HOSTS", "DATABASE_BACKUP_CONFIG", "BACKUP_DATABASE_CONFIG"]

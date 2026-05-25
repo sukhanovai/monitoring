@@ -11,39 +11,45 @@ Server Checker Module
 Модуль проверки серверов
 """
 
-import time
-import subprocess
-import socket
 import logging
-import paramiko
+import socket
+import subprocess
+import time
 from contextlib import contextmanager
 from typing import Dict, List, Optional, Tuple
+
+import paramiko
+
 from lib.logging import debug_log, error_log, setup_logging
 from lib.network import check_ping as net_check_ping, check_port as net_check_port
 
+
 class ServerChecker:
     """Единый класс для проверки серверов - базовая версия"""
-    
+
     def __init__(self, ssh_timeout: int = 15, ping_timeout: int = 10, port_timeout: int = 5):
         self.ssh_timeout = ssh_timeout
         self.ping_timeout = ping_timeout
         self.port_timeout = port_timeout
         self.logger = setup_logging("checker")
-        
+
     def check_ping(self, ip: str) -> bool:
         """Универсальная проверка ping"""
         return net_check_ping(ip, timeout=self.ping_timeout)
-    
+
     def check_port(self, ip: str, port: int = 3389) -> bool:
         """Универсальная проверка порта"""
         return net_check_port(ip, port, timeout=self.port_timeout)
-    
-    def check_ssh_universal(self, ip: str, username: Optional[str] = None, key_path: Optional[str] = None) -> bool:
+
+    def check_ssh_universal(
+        self, ip: str, username: Optional[str] = None, key_path: Optional[str] = None
+    ) -> bool:
         """Универсальная проверка SSH с обработкой ошибок"""
         try:
             # Ленивая загрузка конфига
             if username is None or key_path is None:
-                from config.db_settings import SSH_USERNAME, SSH_KEY_PATH
+                from config.db_settings import SSH_KEY_PATH, SSH_USERNAME
+
                 username = SSH_USERNAME
                 key_path = SSH_KEY_PATH
 
@@ -98,6 +104,7 @@ class ServerChecker:
         """Получить таймаут для типа сервера"""
         try:
             from config.db_settings import SERVER_TIMEOUTS
+
             return SERVER_TIMEOUTS.get(server_type, 15)
         except:
             return 15

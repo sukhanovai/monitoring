@@ -13,4 +13,3 @@ Temporary shim module for compatibility.
 
 # ВРЕМЕННО: прокси-импорт на новый путь в lib
 from lib.monitoring_utils import *  # noqa: F401,F403
-

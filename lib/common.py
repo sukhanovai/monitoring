@@ -18,11 +18,13 @@ try:
     from config.db_settings import DEBUG_MODE
 except ImportError:
     DEBUG_MODE = False
-from lib.logging import setup_logging as _setup_logging, get_logger
+from lib.logging import get_logger, setup_logging as _setup_logging
+
 
 def setup_logging():
     """Настройка централизованного логирования"""
     return _setup_logging()
+
 
 def debug_log(message, force=False):
     """Централизованное логирование отладки"""
@@ -31,7 +33,8 @@ def debug_log(message, force=False):
         logger.debug(message)
     else:
         logger.info(message)
-        
+
+
 def safe_import(module_name, class_name=None):
     """Безопасный импорт с обработкой ошибок"""
     try:
@@ -46,12 +49,13 @@ def safe_import(module_name, class_name=None):
         debug_log(f"Attribute error for {module_name}.{class_name}: {e}")
         return None
 
+
 def format_duration(seconds):
     """Форматирование длительности в читаемый вид"""
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     seconds = seconds % 60
-    
+
     if hours > 0:
         return f"{hours}h {minutes:02d}m {seconds:02d}s"
     elif minutes > 0:
@@ -59,11 +63,13 @@ def format_duration(seconds):
     else:
         return f"{seconds}s"
 
+
 def progress_bar(percentage, width=20):
     """Универсальный прогресс-бар"""
     filled = int(round(width * percentage / 100))
     bar = f"[{'█' * filled}{'░' * (width - filled)}] {percentage:.1f}%"
     return bar
+
 
 def is_proxmox_server(ip):
     """Проверяет, является ли сервер Proxmox (устаревшая обертка)."""
@@ -73,4 +79,5 @@ def is_proxmox_server(ip):
         stacklevel=2,
     )
     from lib.utils import is_proxmox_server as _is_proxmox_server
+
     return _is_proxmox_server(ip)

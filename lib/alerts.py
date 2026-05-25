@@ -14,12 +14,14 @@ Unified alert system
 import asyncio
 import os
 import time
-import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, time as dt_time
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 from uuid import uuid4
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Optional, Dict, Any
-from datetime import datetime, time as dt_time
+
+import requests
+
 from lib.logging import debug_log, error_log, setup_logging
 
 # Эмодзи кнопки «открыть меню» под Matrix-сообщениями. Дублирует константу из
@@ -44,6 +46,7 @@ _matrix_room_id = ""
 _silent_override: Optional[bool] = None
 _alert_history: List[Dict[str, Any]] = []
 _max_history_size = 1000
+
 
 def configure_alerts(
     silent_start: Optional[int] = None,
@@ -73,31 +76,34 @@ def configure_alerts(
     if thresholds:
         _config.thresholds.update(thresholds)
 
+
 class AlertConfig:
     """Конфигурация алертов"""
-    
+
     def __init__(self):
         self.silent_start = 20  # 20:00
-        self.silent_end = 9     # 09:00
+        self.silent_end = 9  # 09:00
         self.enabled = True
         self.cooldown_seconds = 300  # 5 минут между одинаковыми алертами
         self.max_retries = 3
         self.retry_delay = 5
-        
+
         # Пороги для разных типов алертов
         self.thresholds = {
             "critical": {"priority": 1, "always_send": True},
             "warning": {"priority": 2, "always_send": False},
-            "info": {"priority": 3, "always_send": False}
+            "info": {"priority": 3, "always_send": False},
         }
+
 
 # Глобальный экземпляр конфигурации
 _config = AlertConfig()
 
+
 def init_telegram_bot(bot_instance, chat_ids: List[str]) -> None:
     """
     Инициализация Telegram бота для отправки алертов
-    
+
     Args:
         bot_instance: Экземпляр Telegram бота
         chat_ids: Список ID чатов для отправки
@@ -116,25 +122,27 @@ def init_matrix_bot(homeserver: str, access_token: str, room_id: str) -> None:
     debug_log("Matrix-канал уведомлений инициализирован")
 
 
-
 def set_silent_override(enabled: Optional[bool]) -> None:
     """
     Установить принудительное переопределение тихого режима
-    
+
     Args:
         enabled: None - автоматический режим, True - принудительно тихий, False - принудительно громкий
     """
     global _silent_override
     old_value = _silent_override
     _silent_override = enabled
-    
+
     status_map = {
         None: "автоматический режим",
         True: "принудительно тихий",
-        False: "принудительно громкий"
+        False: "принудительно громкий",
     }
-    
-    debug_log(f"Переопределение тихого режима изменено: {status_map.get(old_value, 'неизвестно')} → {status_map.get(enabled, 'неизвестно')}")
+
+    debug_log(
+        f"Переопределение тихого режима изменено: {status_map.get(old_value, 'неизвестно')} → {status_map.get(enabled, 'неизвестно')}"
+    )
+
 
 def get_silent_override() -> Optional[bool]:
     """
@@ -142,28 +150,30 @@ def get_silent_override() -> Optional[bool]:
     """
     return _silent_override
 
+
 def is_silent_time() -> bool:
     """
     Проверяет, находится ли текущее время в 'тихом' периоде
-    
+
     Returns:
         True если тихий режим активен
     """
     global _silent_override
-    
+
     # Если есть принудительное переопределение
     if _silent_override is not None:
         return _silent_override  # True - тихий, False - громкий
 
     # Стандартная проверка по времени
     current_hour = datetime.now().hour
-    
+
     # Если период переходит через полночь (например, 20:00 - 09:00)
     if _config.silent_start > _config.silent_end:
         return current_hour >= _config.silent_start or current_hour < _config.silent_end
-    
+
     # Период в пределах одних суток
     return _config.silent_start <= current_hour < _config.silent_end
+
 
 def is_startup_muted() -> bool:
     """Заглушено ли стартовое уведомление (Telegram + Matrix).
@@ -176,38 +186,40 @@ def is_startup_muted() -> bool:
     raw = os.environ.get("MONITOR_SILENT_START", "")
     return str(raw).strip().lower() in ("1", "true", "yes", "on")
 
+
 def should_send_alert(alert_type: str, force: bool) -> bool:
     """
     Проверяет, нужно ли отправлять алерт
-    
+
     Args:
         alert_type: Тип алерта (critical, warning, info)
         force: Принудительная отправка
-        
+
     Returns:
         True если нужно отправить алерт
     """
     if not _config.enabled:
         debug_log("Алерты отключены в конфигурации")
         return False
-    
+
     if force:
         return True
-    
+
     if is_silent_time():
         return False
-    
+
     if alert_type in _config.thresholds:
         threshold_config = _config.thresholds[alert_type]
         if threshold_config["always_send"]:
             return True
-    
+
     # Проверяем тихий режим для не-критических алертов
     if alert_type != "critical" and is_silent_time():
         debug_log("Тихий режим активен, алерт не отправляется")
         return False
-    
+
     return True
+
 
 def send_alert(
     message: str,
@@ -241,21 +253,13 @@ def send_alert(
         return False
 
     # Добавляем префикс в зависимости от типа алерта
-    prefixes = {
-        "critical": "🚨 ",
-        "warning": "⚠️ ",
-        "info": "ℹ️ "
-    }
+    prefixes = {"critical": "🚨 ", "warning": "⚠️ ", "info": "ℹ️ "}
 
     prefix = prefixes.get(alert_type, "")
     full_message = f"{prefix}{message}"
 
     # Логируем алерт
-    log_levels = {
-        "critical": error_log,
-        "warning": debug_log,
-        "info": debug_log
-    }
+    log_levels = {"critical": error_log, "warning": debug_log, "info": debug_log}
 
     log_func = log_levels.get(alert_type, debug_log)
     log_func(f"Отправка алерта [{alert_type}]: {message[:100]}...")
@@ -278,46 +282,47 @@ def send_alert(
             errors.append("Telegram: ошибка отправки")
 
     # Matrix
-    matrix_sent = _send_matrix_alert(
-        full_message, attach_menu_button=attach_menu_button
-    )
+    matrix_sent = _send_matrix_alert(full_message, attach_menu_button=attach_menu_button)
     if matrix_sent:
         sent = True
 
     # Записываем в историю
-    _record_alert({
-        "timestamp": datetime.now().isoformat(),
-        "message": message,
-        "type": alert_type,
-        "sent": sent,
-        "tags": tags or [],
-        "metadata": metadata or {},
-        "errors": errors
-    })
-    
+    _record_alert(
+        {
+            "timestamp": datetime.now().isoformat(),
+            "message": message,
+            "type": alert_type,
+            "sent": sent,
+            "tags": tags or [],
+            "metadata": metadata or {},
+            "errors": errors,
+        }
+    )
+
     return sent
+
 
 def _send_telegram_alert(message: str, alert_type: str) -> bool:
     """
     Отправка алерта через Telegram
-    
+
     Args:
         message: Текст сообщения
         alert_type: Тип алерта
-        
+
     Returns:
         True если отправлено успешно
     """
     if not _telegram_bot or not _chat_ids:
         error_log("Telegram бот не инициализирован")
         return False
-    
+
     total_chats = len(_chat_ids)
 
     # Для критических алертов добавляем дополнительное форматирование
     if alert_type == "critical":
         formatted_message = f"*{message}*"
-        parse_mode = 'Markdown'
+        parse_mode = "Markdown"
     else:
         formatted_message = message
         parse_mode = None
@@ -326,9 +331,7 @@ def _send_telegram_alert(message: str, alert_type: str) -> bool:
         for attempt in range(1, _config.max_retries + 1):
             try:
                 _telegram_bot.send_message(
-                    chat_id=chat_id,
-                    text=formatted_message,
-                    parse_mode=parse_mode
+                    chat_id=chat_id, text=formatted_message, parse_mode=parse_mode
                 )
                 return True
             except Exception as e:
@@ -356,82 +359,86 @@ def _send_telegram_alert(message: str, alert_type: str) -> bool:
     # Для мониторинга считаем успехом только доставку во все чаты
     return success_count == total_chats and total_chats > 0
 
+
 def _is_cooldown_active(message: str, check_period: int = None) -> bool:
     """
     Проверяет, активен ли кд для сообщения
-    
+
     Args:
         message: Текст сообщения
         check_period: Период проверки в секундах (если None, используется конфиг)
-        
+
     Returns:
         True если кд активен
     """
     period = check_period or _config.cooldown_seconds
     now = time.time()
-    
+
     # Ищем похожие сообщения в истории
     for alert in reversed(_alert_history):
         if alert["message"] == message and alert["sent"]:
             alert_time = datetime.fromisoformat(alert["timestamp"]).timestamp()
             if now - alert_time < period:
                 return True
-    
+
     return False
+
 
 def _record_alert(alert_data: Dict[str, Any]) -> None:
     """
     Записывает алерт в историю
-    
+
     Args:
         alert_data: Данные алерта
     """
     global _alert_history
-    
+
     _alert_history.append(alert_data)
-    
+
     # Ограничиваем размер истории
     if len(_alert_history) > _max_history_size:
         _alert_history = _alert_history[-_max_history_size:]
-    
+
     # Логируем в файл для отладки
     if alert_data.get("sent"):
         status = "✅ Отправлен"
     else:
         status = "❌ Не отправлен"
-    
+
     debug_log(f"Алерт записан в историю: {alert_data['type']} - {status}")
 
+
 def get_alert_history(
-    limit: int = 50,
-    alert_type: Optional[str] = None,
-    tags: Optional[List[str]] = None
+    limit: int = 50, alert_type: Optional[str] = None, tags: Optional[List[str]] = None
 ) -> List[Dict[str, Any]]:
     """
     Получить историю алертов
-    
+
     Args:
         limit: Максимальное количество записей
         alert_type: Фильтр по типу алерта
         tags: Фильтр по тегам
-        
+
     Returns:
         Список алертов
     """
     filtered_history = _alert_history
-    
+
     if alert_type:
         filtered_history = [a for a in filtered_history if a["type"] == alert_type]
-    
+
     if tags:
-        filtered_history = [a for a in filtered_history if any(tag in a.get("tags", []) for tag in tags)]
-    
+        filtered_history = [
+            a for a in filtered_history if any(tag in a.get("tags", []) for tag in tags)
+        ]
+
     return filtered_history[-limit:]
+
 
 def clear_alert_history() -> int:
     """
     Очистить историю алертов
-    
+
     Returns:
         Количество удаленных записей
     """
@@ -441,22 +448,22 @@ def clear_alert_history() -> int:
     debug_log(f"История алертов очищена, удалено {count} записей")
     return count
 
+
 def get_alert_stats() -> Dict[str, Any]:
     """
     Получить статистику по алертам
-    
+
     Returns:
         Словарь со статистикой
     """
     now = datetime.now()
     today_start = datetime(now.year, now.month, now.day)
-    
+
     # Фильтруем алерты за сегодня
     today_alerts = [
-        a for a in _alert_history 
-        if datetime.fromisoformat(a["timestamp"]) >= today_start
+        a for a in _alert_history if datetime.fromisoformat(a["timestamp"]) >= today_start
     ]
-    
+
     # Группируем по типам
     by_type = {}
     for alert in today_alerts:
@@ -466,24 +473,25 @@ def get_alert_stats() -> Dict[str, Any]:
         by_type[alert_type]["total"] += 1
         if alert["sent"]:
             by_type[alert_type]["sent"] += 1
-    
+
     return {
         "total_all_time": len(_alert_history),
         "total_today": len(today_alerts),
         "by_type": by_type,
         "silent_mode": is_silent_time(),
-        "silent_override": _silent_override
+        "silent_override": _silent_override,
     }
+
 
 def configure(
     silent_start: Optional[int] = None,
     silent_end: Optional[int] = None,
     enabled: Optional[bool] = None,
-    cooldown_seconds: Optional[int] = None
+    cooldown_seconds: Optional[int] = None,
 ) -> None:
     """
     Настройка параметров алертов
-    
+
     Args:
         silent_start: Начало тихого режима (0-23)
         silent_end: Конец тихого режима (0-23)
@@ -498,13 +506,19 @@ def configure(
         _config.enabled = enabled
     if cooldown_seconds is not None:
         _config.cooldown_seconds = cooldown_seconds
-    
-    debug_log(f"Конфигурация алертов обновлена: silent={_config.silent_start}:00-{_config.silent_end}:00, enabled={_config.enabled}, cooldown={_config.cooldown_seconds}с")
+
+    debug_log(
+        f"Конфигурация алертов обновлена: silent={_config.silent_start}:00-{_config.silent_end}:00, enabled={_config.enabled}, cooldown={_config.cooldown_seconds}с"
+    )
+
 
 # Алиасы для обратной совместимости
 send_message = send_alert
 
-def _build_matrix_message_payload(message: str, buttons: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
+
+def _build_matrix_message_payload(
+    message: str, buttons: Optional[List[Dict[str, str]]] = None
+) -> Dict[str, Any]:
     """Собирает payload Matrix-сообщения c поддержкой псевдо-кнопок через HTML-ссылки."""
     payload: Dict[str, Any] = {"msgtype": "m.text", "body": message}
     if not buttons:
@@ -544,7 +558,10 @@ async def _send_matrix_alert_async(
             content=payload,
             tx_id=uuid4().hex,
         )
-        if getattr(response, "transport_response", None) and response.transport_response.status >= 400:
+        if (
+            getattr(response, "transport_response", None)
+            and response.transport_response.status >= 400
+        ):
             debug_log(f"Matrix отправка не удалась: HTTP {response.transport_response.status}")
             return False
         if attach_menu_button:
@@ -568,9 +585,7 @@ async def _send_matrix_alert_async(
                         f"⚠️ Matrix: не удалось навесить кнопку-меню {MATRIX_MENU_TRIGGER_EMOJI}: {exc}"
                     )
             else:
-                debug_log(
-                    "⚠️ Matrix: ответ без event_id, кнопку-меню под отчётом не вешаем"
-                )
+                debug_log("⚠️ Matrix: ответ без event_id, кнопку-меню под отчётом не вешаем")
         return True
     except Exception as exc:
         debug_log(f"Matrix nio отправка не удалась: {exc}")
@@ -590,7 +605,9 @@ def _send_matrix_alert(
         try:
             from config import db_settings as _db_settings
 
-            _matrix_homeserver = _matrix_homeserver or (_db_settings.MATRIX_HOMESERVER or "").rstrip("/")
+            _matrix_homeserver = _matrix_homeserver or (
+                _db_settings.MATRIX_HOMESERVER or ""
+            ).rstrip("/")
             _matrix_access_token = _matrix_access_token or (_db_settings.MATRIX_ACCESS_TOKEN or "")
             _matrix_room_id = _matrix_room_id or (_db_settings.MATRIX_ROOM_ID or "")
         except Exception:
@@ -600,7 +617,9 @@ def _send_matrix_alert(
         try:
             from config import settings as _settings
 
-            _matrix_homeserver = _matrix_homeserver or (_settings.MATRIX_HOMESERVER or "").rstrip("/")
+            _matrix_homeserver = _matrix_homeserver or (_settings.MATRIX_HOMESERVER or "").rstrip(
+                "/"
+            )
             _matrix_access_token = _matrix_access_token or (_settings.MATRIX_ACCESS_TOKEN or "")
             _matrix_room_id = _matrix_room_id or (_settings.MATRIX_ROOM_ID or "")
         except Exception:
@@ -671,13 +690,9 @@ def _send_matrix_alert(
                         timeout=10,
                     )
                 except Exception as exc:
-                    debug_log(
-                        f"⚠️ Matrix HTTP fallback: реакция-меню не отправлена: {exc}"
-                    )
+                    debug_log(f"⚠️ Matrix HTTP fallback: реакция-меню не отправлена: {exc}")
             else:
-                debug_log(
-                    "⚠️ Matrix HTTP fallback: нет event_id в ответе, кнопку-меню не вешаем"
-                )
+                debug_log("⚠️ Matrix HTTP fallback: нет event_id в ответе, кнопку-меню не вешаем")
         return True
     except Exception as exc:
         debug_log(f"Matrix отправка не удалась: {exc}")

@@ -15,12 +15,12 @@ from pathlib import Path
 
 try:
     from config.settings import (
+        BACKUP_DATABASE_CONFIG,
         BASE_DIR,
         DATA_DIR,
+        DATABASE_BACKUP_CONFIG,
         LOG_DIR,
         PROXMOX_HOSTS,
-        DATABASE_BACKUP_CONFIG,
-        BACKUP_DATABASE_CONFIG,
     )  # type: ignore
 except Exception:
     BASE_DIR = Path(__file__).resolve().parents[2]

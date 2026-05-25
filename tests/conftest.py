@@ -5,6 +5,7 @@
 - MAILDIR_BASE указывает на tmp, чтобы mail_monitor не пытался
   читать /root/Maildir.
 """
+
 from __future__ import annotations
 
 import os
