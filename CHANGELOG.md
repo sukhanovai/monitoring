@@ -1,3 +1,13 @@
+## [8.62.47] - 2026-05-25
+
+### Fixed
+- RU: Android-приложение: чинится сборка `compactOpsDebug`, сломанная в `8.62.46`. Тот релиз выносил 134 локальных `var ... by rememberSaveable { mutableStateOf(...) }` в обычный класс-холдер `MonitoringAppState`, чтобы ART не падал с `VerifyError`. Вместе с этими 134 строками из тела `MonitoringApp` случайно пропали и 4 декларации, которым место — именно в @Composable-функции, а не в холдере: `pullToRefreshState`/`reportPullRefreshState` (через `rememberPullRefreshState(...)`), `screensPagerState` (через `rememberPagerState(initialPage = 1) { 3 }`) и `screensScope` (через `rememberCoroutineScope()`). Из-за этого `:app:compileCompactOpsDebugKotlin` падал с 11 ошибками `Unresolved reference` в `MainActivity.kt` (строки 2569, 2695, 2697, 2708, 2775, 2804, 2813, 3073). Декларации возвращены ровно туда, где `with(s) { ... }` уже открыт, поэтому остальной код снова видит и пейджер, и pull-refresh-стейты, и корутин-скоуп. Эти 4 вызова не возвращают `VerifyError`: исходный лимит был перебран 134-мя `rememberSaveable`, 4 ремембера для нелокального состояния погоды на нём не делают.
+- EN: Android app: fix the `compactOpsDebug` build that `8.62.46` broke. That release moved 134 local `var ... by rememberSaveable { mutableStateOf(...) }` declarations into a plain holder class `MonitoringAppState` so ART would stop crashing with `VerifyError`. Along with those 134 lines, 4 declarations that genuinely belong inside the `@Composable` function and not in the holder were accidentally dropped: `pullToRefreshState`/`reportPullRefreshState` (via `rememberPullRefreshState(...)`), `screensPagerState` (via `rememberPagerState(initialPage = 1) { 3 }`) and `screensScope` (via `rememberCoroutineScope()`). As a result `:app:compileCompactOpsDebugKotlin` failed with 11 `Unresolved reference` errors in `MainActivity.kt` (lines 2569, 2695, 2697, 2708, 2775, 2804, 2813, 3073). The declarations are restored right where `with(s) { ... }` is already open, so the rest of the code can see the pager, the pull-refresh states and the coroutine scope again. These 4 calls do not bring `VerifyError` back: the original limit was blown by 134 `rememberSaveable` declarations, 4 `remember*` calls for non-savable composable state make no difference.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.47`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.47`, `ANDROID_VERSION_CODE=809`).
+- EN: SemVer patch bump to `8.62.47`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.47`, `ANDROID_VERSION_CODE=809`).
+
 ## [8.62.46] - 2026-05-25
 
 ### Fixed

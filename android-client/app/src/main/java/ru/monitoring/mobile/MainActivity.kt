@@ -2047,6 +2047,15 @@ private fun MonitoringApp(
     val s = remember { MonitoringAppState() }
     with(s) {
 
+    val pullToRefreshState = rememberPullRefreshState(state.isLoading, onRefreshData)
+    val reportPullRefreshState = rememberPullRefreshState(
+        state.isLoading,
+        { onAction("send_morning_report") }
+    )
+    // 0 — отчёт, 1 — оперативный центр (стартовый экран), 2 — настройки.
+    val screensPagerState = rememberPagerState(initialPage = 1) { 3 }
+    val screensScope = rememberCoroutineScope()
+
     LaunchedEffect(
         pendingZfsHostSettingsName,
         state.extensionSettingsMenuAction,
