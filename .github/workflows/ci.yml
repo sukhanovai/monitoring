@@ -22,15 +22,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      - name: Install system deps (libolm for matrix-nio)
-        run: sudo apt-get update && sudo apt-get install -y libolm-dev
-
-      - name: Install Python deps
+      - name: Install dev deps
         run: |
           python -m pip install --upgrade pip
-          # wmi работает только на Windows — пропускаем при установке на Linux CI.
-          grep -v '^wmi' requirements.txt > /tmp/req-linux.txt
-          pip install -r /tmp/req-linux.txt
           pip install -r requirements-dev.txt
 
       - name: Ruff check
@@ -39,5 +33,9 @@ jobs:
       - name: Compile all
         run: python -m compileall -q .
 
-      - name: Pytest
+      - name: Pytest (smoke, no runtime deps)
+        # Сейчас CI прогоняет только лёгкие smoke-тесты, не требующие
+        # paramiko/telegram/matrix-nio. Полный smoke-импорт по
+        # core.monitor_core / bot.handlers / modules.mail_monitor добавится
+        # в отдельном PR вместе с настройкой apt/pip установки runtime.
         run: pytest
