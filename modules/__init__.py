@@ -13,4 +13,4 @@ Monitoring system modules
 
 from .targeted_checks import targeted_checks
 
-__all__ = ['targeted_checks']
+__all__ = ["targeted_checks"]

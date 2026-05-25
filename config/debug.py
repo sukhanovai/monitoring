@@ -51,7 +51,7 @@ class DebugConfig:
                 config = self.config
 
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
-            config['last_modified'] = datetime.now().isoformat()
+            config["last_modified"] = datetime.now().isoformat()
 
             self.config_file.write_text(json.dumps(config, indent=2), encoding="utf-8")
             return True
@@ -62,24 +62,24 @@ class DebugConfig:
     def get_default_config(self):
         """Возвращает конфигурацию по умолчанию"""
         return {
-            'debug_mode': False,
-            'log_level': 'INFO',
-            'enable_ssh_debug': False,
-            'enable_resource_debug': False,
-            'enable_backup_debug': True,
-            'max_log_size_mb': 100,
-            'last_modified': datetime.now().isoformat()
+            "debug_mode": False,
+            "log_level": "INFO",
+            "enable_ssh_debug": False,
+            "enable_resource_debug": False,
+            "enable_backup_debug": True,
+            "max_log_size_mb": 100,
+            "last_modified": datetime.now().isoformat(),
         }
 
     @property
     def debug_mode(self):
         """Режим отладки"""
-        return self.config.get('debug_mode', False)
+        return self.config.get("debug_mode", False)
 
     @debug_mode.setter
     def debug_mode(self, value):
         """Устанавливает режим отладки"""
-        self.config['debug_mode'] = value
+        self.config["debug_mode"] = value
         self.save_config()
 
     def enable_debug(self):
@@ -104,13 +104,13 @@ class DebugConfig:
     def get_debug_info(self):
         """Возвращает информацию о настройках отладки"""
         return {
-            'debug_mode': self.debug_mode,
-            'log_level': 'DEBUG' if self.debug_mode else 'INFO',
-            'ssh_debug': self.config.get('enable_ssh_debug', False),
-            'resource_debug': self.config.get('enable_resource_debug', False),
-            'backup_debug': self.config.get('enable_backup_debug', True),
-            'max_log_size': self.config.get('max_log_size_mb', 100),
-            'last_modified': self.config.get('last_modified')
+            "debug_mode": self.debug_mode,
+            "log_level": "DEBUG" if self.debug_mode else "INFO",
+            "ssh_debug": self.config.get("enable_ssh_debug", False),
+            "resource_debug": self.config.get("enable_resource_debug", False),
+            "backup_debug": self.config.get("enable_backup_debug", True),
+            "max_log_size": self.config.get("max_log_size_mb", 100),
+            "last_modified": self.config.get("last_modified"),
         }
 
 

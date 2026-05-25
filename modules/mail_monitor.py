@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import ast
 import email.policy
-import json
 import fnmatch
+import json
 import re
 import shutil
 import sqlite3
@@ -32,9 +32,9 @@ from config.db_settings import (
     BACKUP_PATTERNS,
     DATABASE_BACKUP_CONFIG,
     LOG_DIR,
+    MAIL_MONITOR_LOG_FILE,
     MAILDIR_CUR,
     MAILDIR_NEW,
-    MAIL_MONITOR_LOG_FILE,
     ZFS_SERVERS,
 )
 from core.config_manager import config_manager
@@ -153,10 +153,10 @@ def _normalize_snapshot_pattern(pattern: str) -> str:
     if not normalized:
         return ""
 
-    normalized = normalized.replace('.*', '__WILDCARD__')
-    normalized = normalized.replace('.\*', '__WILDCARD__')
+    normalized = normalized.replace(".*", "__WILDCARD__")
+    normalized = normalized.replace(".\*", "__WILDCARD__")
     normalized = re.sub(r"\s+", r"\\s+", normalized)
-    normalized = normalized.replace('__WILDCARD__', r'.*')
+    normalized = normalized.replace("__WILDCARD__", r".*")
     return normalized
 
 
@@ -196,8 +196,16 @@ def get_snapshot_transfer_patterns_from_config() -> list[str]:
         elif isinstance(fallback, list):
             fallback_patterns = fallback
 
-        normalized = [_normalize_snapshot_pattern(pattern) for pattern in subject_patterns if isinstance(pattern, str)]
-        normalized_fallback = [_normalize_snapshot_pattern(pattern) for pattern in fallback_patterns if isinstance(pattern, str)]
+        normalized = [
+            _normalize_snapshot_pattern(pattern)
+            for pattern in subject_patterns
+            if isinstance(pattern, str)
+        ]
+        normalized_fallback = [
+            _normalize_snapshot_pattern(pattern)
+            for pattern in fallback_patterns
+            if isinstance(pattern, str)
+        ]
 
         if not normalized:
             return normalized_fallback
@@ -357,7 +365,9 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
             for item in default_sources
             if isinstance(item, dict) and str(item.get("name") or "").strip()
         }
-        existing_names = {str(item.get("name") or "").strip() for item in sources if isinstance(item, dict)}
+        existing_names = {
+            str(item.get("name") or "").strip() for item in sources if isinstance(item, dict)
+        }
         for name, source in default_by_name.items():
             if name not in existing_names:
                 subject_patterns = _normalize_list(source.get("subject"))
@@ -667,7 +677,9 @@ class BackupProcessor:
                 match = re.search(pattern, subject_lower, re.IGNORECASE)
                 if match:
                     db_name = match.group(1).strip() if match.groups() else "unknown"
-                    error_value = match.group(2) if match.groups() and len(match.groups()) > 1 else None
+                    error_value = (
+                        match.group(2) if match.groups() and len(match.groups()) > 1 else None
+                    )
                     error_count = parse_error_count(error_value)
                     logger.info(
                         "✅ Найден бэкап barnaul: '%s' по паттерну: %s",
@@ -722,7 +734,9 @@ class BackupProcessor:
             logger.error(traceback.format_exc())
             return None
 
-    def save_database_backup(self, backup_info: dict, subject: str, email_date: datetime | None = None) -> None:
+    def save_database_backup(
+        self, backup_info: dict, subject: str, email_date: datetime | None = None
+    ) -> None:
         """Сохраняет информацию о бэкапе базы данных, игнорируя дубликаты."""
         try:
             conn = sqlite3.connect(self.db_path)
@@ -947,7 +961,9 @@ class BackupProcessor:
         for pattern in patterns:
             match = re.search(pattern, normalized_subject, re.IGNORECASE)
             if match:
-                logger.info("✅ Snapshot transfer: совпадение по пользовательскому паттерну: %s", pattern)
+                logger.info(
+                    "✅ Snapshot transfer: совпадение по пользовательскому паттерну: %s", pattern
+                )
                 break
 
         if not match:
@@ -960,7 +976,9 @@ class BackupProcessor:
         status = ""
 
         if match:
-            host_name = (match.groupdict().get("host") or match.group(1) if match.lastindex else "").strip()
+            host_name = (
+                match.groupdict().get("host") or match.group(1) if match.lastindex else ""
+            ).strip()
             status = (match.groupdict().get("status") or "").upper().strip()
 
         if not host_name or not status:
@@ -1091,7 +1109,9 @@ class BackupProcessor:
             try:
                 if re.search(pattern, subject, re.IGNORECASE):
                     return True
-                if normalized_subject != subject and re.search(pattern, normalized_subject, re.IGNORECASE):
+                if normalized_subject != subject and re.search(
+                    pattern, normalized_subject, re.IGNORECASE
+                ):
                     return True
             except re.error as exc:
                 logger.warning("⚠️ Некорректный паттерн '%s': %s", pattern, exc)
@@ -1194,7 +1214,9 @@ class BackupProcessor:
                     return str(alias)
         return base_name
 
-    def _resolve_filename_aliases(self, source: dict, filename_pattern: str) -> tuple[dict | None, str]:
+    def _resolve_filename_aliases(
+        self, source: dict, filename_pattern: str
+    ) -> tuple[dict | None, str]:
         aliases = source.get("filename_aliases")
         if isinstance(aliases, dict):
             return aliases, filename_pattern
@@ -1572,9 +1594,7 @@ class BackupProcessor:
                     if rows_value is None and success_match.lastindex:
                         rows_value = success_match.group(1)
                     try:
-                        fallback_entry["rows_count"] = (
-                            int(str(rows_value)) if rows_value else None
-                        )
+                        fallback_entry["rows_count"] = int(str(rows_value)) if rows_value else None
                     except ValueError:
                         fallback_entry["rows_count"] = None
                     continue
@@ -1733,9 +1753,7 @@ class BackupProcessor:
         subject_patterns = patterns.get("subject", [])
         sources = patterns.get("sources", [])
         matches_subject = (
-            self._match_subject_patterns(subject, subject_patterns)
-            if subject_patterns
-            else True
+            self._match_subject_patterns(subject, subject_patterns) if subject_patterns else True
         )
         matches_source = False
         if isinstance(sources, list) and sources:
@@ -2177,7 +2195,9 @@ class BackupProcessor:
             return f"{minutes}m {seconds:02d}s"
         return f"{seconds}s"
 
-    def save_backup_report(self, backup_info: dict, subject: str, email_date: datetime | None = None) -> None:
+    def save_backup_report(
+        self, backup_info: dict, subject: str, email_date: datetime | None = None
+    ) -> None:
         """Сохраняет отчет в базу с корректным временем, игнорируя дубликаты."""
         try:
             conn = sqlite3.connect(self.db_path)

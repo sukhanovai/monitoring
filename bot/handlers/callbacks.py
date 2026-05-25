@@ -11,28 +11,23 @@ A single router for callbacks.
 Единый router callback’ов.
 """
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest
 
+from bot.handlers.base import check_access, deny_access
+from bot.handlers.extensions import extensions_callback_handler, show_extensions_menu
+from bot.handlers.settings_handlers import BACKUP_SETTINGS_CALLBACKS, settings_callback_handler
 from bot.menu.handlers import show_main_menu
-from bot.handlers.settings_handlers import settings_callback_handler, BACKUP_SETTINGS_CALLBACKS
 from core.monitor_core import (
+    control_panel_handler,
     manual_check_handler,
     monitor_status,
     silent_status_handler,
-    control_panel_handler,
     toggle_monitoring_handler,
 )
-
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from bot.handlers.base import check_access, deny_access
-from modules.targeted_checks import targeted_checks
 from extensions.extension_manager import extension_manager
-from bot.handlers.extensions import (
-    show_extensions_menu,
-    extensions_callback_handler
-)
-
 from lib.logging import debug_log
+from modules.targeted_checks import targeted_checks
 
 
 def _safe_answer(query, **kwargs):
@@ -41,6 +36,7 @@ def _safe_answer(query, **kwargs):
     except BadRequest as e:
         # Callback query can be too old or already answered; ignore.
         debug_log(f"⚠️ callback answer skipped: {e}")
+
 
 def _server_result_keyboard(server_ip: str) -> InlineKeyboardMarkup:
     row_actions = [
@@ -51,17 +47,23 @@ def _server_result_keyboard(server_ip: str) -> InlineKeyboardMarkup:
     ]
 
     if extension_manager.is_extension_enabled("resource_monitor"):
-        row_actions.append(InlineKeyboardButton("📊 Ресурсы", callback_data=f"check_resources_{server_ip}"))
-        row_menus.append(InlineKeyboardButton("💻 Ресурсы сервера", callback_data="show_resources_menu"))
+        row_actions.append(
+            InlineKeyboardButton("📊 Ресурсы", callback_data=f"check_resources_{server_ip}")
+        )
+        row_menus.append(
+            InlineKeyboardButton("💻 Ресурсы сервера", callback_data="show_resources_menu")
+        )
 
-    return InlineKeyboardMarkup([
-        row_actions,
-        row_menus,
+    return InlineKeyboardMarkup(
         [
-            InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
-            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
-        ],
-    ])
+            row_actions,
+            row_menus,
+            [
+                InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
+        ]
+    )
 
 
 def handle_check_single_callback(update, context, server_ip):
@@ -70,18 +72,31 @@ def handle_check_single_callback(update, context, server_ip):
     _safe_answer(query)
 
     from bot.handlers.commands import handle_check_single_server
+
     result = handle_check_single_server(update, context, server_ip)
 
     query.edit_message_text(
         text=result,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("📊 Проверить ресурсы", callback_data=f'check_resources_{server_ip}')],
-            [InlineKeyboardButton("🔄 Проверить снова", callback_data=f'check_single_{server_ip}')],
-            [InlineKeyboardButton("↩️ Выбрать другой", callback_data='check_single_menu')],
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "📊 Проверить ресурсы", callback_data=f"check_resources_{server_ip}"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🔄 Проверить снова", callback_data=f"check_single_{server_ip}"
+                    )
+                ],
+                [InlineKeyboardButton("↩️ Выбрать другой", callback_data="check_single_menu")],
+                [
+                    InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
 
 
@@ -95,18 +110,27 @@ def handle_check_resources_callback(update, context, server_ip):
         return
 
     from bot.handlers.commands import handle_check_server_resources
+
     result = handle_check_server_resources(update, context, server_ip)
 
     query.edit_message_text(
         text=result,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔄 Обновить", callback_data=f'check_resources_{server_ip}')],
-            [InlineKeyboardButton("📡 Проверить доступность", callback_data=f'check_single_{server_ip}')],
-            [InlineKeyboardButton("↩️ Выбрать другой", callback_data='check_resources_menu')],
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🔄 Обновить", callback_data=f"check_resources_{server_ip}")],
+                [
+                    InlineKeyboardButton(
+                        "📡 Проверить доступность", callback_data=f"check_single_{server_ip}"
+                    )
+                ],
+                [InlineKeyboardButton("↩️ Выбрать другой", callback_data="check_resources_menu")],
+                [
+                    InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                    InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                ],
+            ]
+        ),
     )
 
 
@@ -129,11 +153,8 @@ def handle_server_selection_menu(update, context, action="check_single"):
 
     keyboard = create_server_selection_keyboard(action=action)
 
-    query.edit_message_text(
-        text=message,
-        parse_mode='Markdown',
-        reply_markup=keyboard
-    )
+    query.edit_message_text(text=message, parse_mode="Markdown", reply_markup=keyboard)
+
 
 def callback_router(update, context):
     debug_log("🧭 ROUTER MARKER v1: entered callback_router()")
@@ -151,193 +172,218 @@ def callback_router(update, context):
     # ------------------------------------------------
     # Главное меню
     # ------------------------------------------------
-    if data == 'main_menu':
+    if data == "main_menu":
         from bot.menu.handlers import show_main_menu
+
         show_main_menu(update, context)
 
-    elif data == 'about_bot':
+    elif data == "about_bot":
         from bot.menu.handlers import show_about_bot
+
         show_about_bot(update, context)
 
     # ------------------------------------------------
     # ДОСТУПНОСТЬ ВСЕХ СЕРВЕРОВ (ручная проверка)
     # ------------------------------------------------
-    elif data == 'manual_check':
+    elif data == "manual_check":
         manual_check_handler(update, context)
-        
+
     # ------------------------------------------------
     # ОДИН СЕРВЕР (доступность)
     # ------------------------------------------------
-    elif data == 'show_availability_menu':
+    elif data == "show_availability_menu":
         query.edit_message_text(
             "📡 *Выберите сервер для проверки доступности:*",
-            parse_mode='Markdown',
-            reply_markup=targeted_checks.create_server_selection_menu(
-                action="check_availability"
-            )
+            parse_mode="Markdown",
+            reply_markup=targeted_checks.create_server_selection_menu(action="check_availability"),
         )
 
-    elif data.startswith('check_availability_'):
-        server_id = data.replace('check_availability_', '')
+    elif data.startswith("check_availability_"):
+        server_id = data.replace("check_availability_", "")
 
         success, server, message = targeted_checks.check_single_server_availability(server_id)
 
         context.bot.send_message(
             chat_id=query.message.chat_id,
             text=message,
-            parse_mode='Markdown',
-            reply_markup=_server_result_keyboard(server_id)
+            parse_mode="Markdown",
+            reply_markup=_server_result_keyboard(server_id),
         )
 
     # ------------------------------------------------
     # РЕСУРСЫ СЕРВЕРА
     # ------------------------------------------------
-    elif data == 'show_resources_menu':
+    elif data == "show_resources_menu":
         if not extension_manager.is_extension_enabled("resource_monitor"):
             query.edit_message_text("📊 Мониторинг ресурсов отключён")
             return
         query.edit_message_text(
             "📊 *Выберите сервер для проверки ресурсов:*",
-            parse_mode='Markdown',
-            reply_markup=targeted_checks.create_server_selection_menu(
-                action="check_resources"
-            )
+            parse_mode="Markdown",
+            reply_markup=targeted_checks.create_server_selection_menu(action="check_resources"),
         )
 
-    elif data.startswith('check_resources_'):
+    elif data.startswith("check_resources_"):
         if not extension_manager.is_extension_enabled("resource_monitor"):
             query.edit_message_text("📊 Мониторинг ресурсов отключён")
             return
-        server_id = data.replace('check_resources_', '')
+        server_id = data.replace("check_resources_", "")
 
         success, server, message = targeted_checks.check_single_server_resources(server_id)
 
         context.bot.send_message(
             chat_id=query.message.chat_id,
             text=message,
-            parse_mode='Markdown',
-            reply_markup=_server_result_keyboard(server_id)
+            parse_mode="Markdown",
+            reply_markup=_server_result_keyboard(server_id),
         )
 
     # ------------------------------------------------
     # ПРОВЕРКА РЕСУРСОВ ВСЕХ СЕРВЕРОВ
     # ------------------------------------------------
-    elif data == 'check_resources':
+    elif data == "check_resources":
         if not extension_manager.is_extension_enabled("resource_monitor"):
             query.edit_message_text("📊 Мониторинг ресурсов отключён")
             return
         query.edit_message_text(
             "📊 *Выберите сервер для проверки ресурсов:*",
-            parse_mode='Markdown',
-            reply_markup=targeted_checks.create_server_selection_menu(
-                action="check_resources"
-            )
+            parse_mode="Markdown",
+            reply_markup=targeted_checks.create_server_selection_menu(action="check_resources"),
         )
 
     # ------------------------------------------------
     # СТАТУС / ПРОВЕРКА / УПРАВЛЕНИЕ (monitor_core)
     # ------------------------------------------------
-    elif data == 'monitor_status':
+    elif data == "monitor_status":
         monitor_status(update, context)
 
-    elif data == 'manual_check':
+    elif data == "manual_check":
         manual_check_handler(update, context)
 
-    elif data == 'silent_status':
+    elif data == "silent_status":
         silent_status_handler(update, context)
 
-    elif data == 'force_silent':
+    elif data == "force_silent":
         from core.monitor_core import force_silent_handler
+
         force_silent_handler(update, context)
 
-    elif data == 'force_loud':
+    elif data == "force_loud":
         from core.monitor_core import force_loud_handler
+
         force_loud_handler(update, context)
 
-    elif data == 'auto_mode':
+    elif data == "auto_mode":
         from core.monitor_core import auto_mode_handler
+
         auto_mode_handler(update, context)
 
-    elif data == 'toggle_silent':
+    elif data == "toggle_silent":
         from core.monitor_core import toggle_silent_mode_handler
+
         toggle_silent_mode_handler(update, context)
 
-    elif data == 'control_panel':
+    elif data == "control_panel":
         control_panel_handler(update, context)
 
-    elif data == 'test_alert_telegram':
+    elif data == "test_alert_telegram":
         from lib.alerts import send_test_telegram_alert
+
         sent = send_test_telegram_alert()
         query.edit_message_text(
             "✅ Тест Telegram отправлен" if sent else "❌ Тест Telegram не отправлен, смотри логи",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🧪 Повторить Telegram", callback_data='test_alert_telegram')],
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "🧪 Повторить Telegram", callback_data="test_alert_telegram"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
 
-    elif data == 'test_alert_matrix':
-        from lib.alerts import init_matrix_bot, send_test_matrix_alert
+    elif data == "test_alert_matrix":
         from core.config_manager import config_manager
+        from lib.alerts import init_matrix_bot, send_test_matrix_alert
 
-        homeserver = config_manager.get_setting('MATRIX_HOMESERVER', '')
-        access_token = config_manager.get_setting('MATRIX_ACCESS_TOKEN', '')
-        room_id = config_manager.get_setting('MATRIX_ROOM_ID', '')
+        homeserver = config_manager.get_setting("MATRIX_HOMESERVER", "")
+        access_token = config_manager.get_setting("MATRIX_ACCESS_TOKEN", "")
+        room_id = config_manager.get_setting("MATRIX_ROOM_ID", "")
         init_matrix_bot(homeserver, access_token, room_id)
 
         sent = send_test_matrix_alert()
         query.edit_message_text(
             "✅ Тест Matrix отправлен" if sent else "❌ Тест Matrix не отправлен, смотри логи",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🧪 Повторить Matrix", callback_data='test_alert_matrix')],
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "🧪 Повторить Matrix", callback_data="test_alert_matrix"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                        InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+                    ],
+                ]
+            ),
         )
 
-    elif data == 'toggle_monitoring':
+    elif data == "toggle_monitoring":
         toggle_monitoring_handler(update, context)
 
-    elif data == 'pause_monitoring':
+    elif data == "pause_monitoring":
         from core.monitor_core import pause_monitoring_handler
+
         pause_monitoring_handler(update, context)
 
-    elif data == 'resume_monitoring':
+    elif data == "resume_monitoring":
         from core.monitor_core import resume_monitoring_handler
+
         resume_monitoring_handler(update, context)
 
-    elif data == 'servers_list':
+    elif data == "servers_list":
         from extensions.server_checks import servers_list_handler
+
         servers_list_handler(update, context)
 
-    elif data == 'zfs_menu':
+    elif data == "zfs_menu":
         from bot.handlers.settings_handlers import show_zfs_main_menu
+
         show_zfs_main_menu(update, context)
 
-    elif data == 'zfs_pool_free_space_menu' or data.startswith('zfsp_'):
+    elif data == "zfs_pool_free_space_menu" or data.startswith("zfsp_"):
         from bot.handlers.zfs_pool_free_space_handlers import handle_callbacks
+
         handle_callbacks(update, context, data)
-    elif data == 'snapshot_transfer_menu':
+    elif data == "snapshot_transfer_menu":
         if not extension_manager.is_extension_enabled("snapshot_transfer_monitor"):
             query.edit_message_text("📸 Мониторинг передачи снэпшотов отключён")
             return
         from bot.handlers.settings_handlers import show_snapshot_transfer_settings
+
         show_snapshot_transfer_settings(update, context)
 
-
-    elif data in ('full_report', 'daily_report'):
+    elif data in ("full_report", "daily_report"):
         # в monitor_core это один и тот же handler в старом меню
         from core.monitor_core import send_morning_report_handler
+
         send_morning_report_handler(update, context)
 
     # ------------------------------------------------
     # НАСТРОЙКИ (settings_handlers)
     # ------------------------------------------------
-    elif data.startswith(('settings_', 'set_', 'manage_', 'ssh_', 'windows_', 'server_type_')) or data in {
-        'add_chat',
-        'remove_chat',
-        'server_timeouts',
+    elif data.startswith(
+        ("settings_", "set_", "manage_", "ssh_", "windows_", "server_type_")
+    ) or data in {
+        "add_chat",
+        "remove_chat",
+        "server_timeouts",
     }:
         # settings_handlers сам разбирает все эти ветки
         settings_callback_handler(update, context)
@@ -345,33 +391,41 @@ def callback_router(update, context):
     # ------------------------------------------------
     # НАСТРОЙКИ БЭКАПОВ (settings_handlers)
     # ------------------------------------------------
-    elif data in BACKUP_SETTINGS_CALLBACKS or data.startswith(('delete_pattern_', 'edit_pattern_', 'db_default_', 'stock_pattern_select_', 'snapshot_host_')):
+    elif data in BACKUP_SETTINGS_CALLBACKS or data.startswith(
+        (
+            "delete_pattern_",
+            "edit_pattern_",
+            "db_default_",
+            "stock_pattern_select_",
+            "snapshot_host_",
+        )
+    ):
         settings_callback_handler(update, context)
 
-    elif data.startswith('supplier_stock_'):
+    elif data.startswith("supplier_stock_"):
         settings_callback_handler(update, context)
 
     # ------------------------------------------------
     # РЕСУРСЫ: группы/списки (TargetedChecks)
     # ------------------------------------------------
-    elif data.startswith('server_group_'):
+    elif data.startswith("server_group_"):
         # формат: server_group_<type>_<action>
         # пример: server_group_ssh_check_resources
-        parts = data.split('_', 3)
+        parts = data.split("_", 3)
         # parts = ['server', 'group', '<type>', '<action>']
         if len(parts) == 4:
             server_type = parts[2]
             action = parts[3]
             query.edit_message_text(
-                f"📋 *Выберите сервер:*",
-                parse_mode='Markdown',
-                reply_markup=targeted_checks.create_server_group_menu(server_type, action)
+                "📋 *Выберите сервер:*",
+                parse_mode="Markdown",
+                reply_markup=targeted_checks.create_server_group_menu(server_type, action),
             )
         else:
             query.edit_message_text("❌ Некорректные данные меню группы серверов")
 
     # (по желанию) QUICK SEARCH / REFRESH можно просто гасить
-    elif data.startswith(('quick_search_', 'refresh_')):
+    elif data.startswith(("quick_search_", "refresh_")):
         _safe_answer(query, text="Функция отключена", show_alert=False)
 
     # ------------------------------------------------
@@ -387,7 +441,9 @@ def callback_router(update, context):
             query.edit_message_text("🗃️ Модуль бэкапов БД отключён")
             return
 
-        if data == "backup_main" and not (backup_enabled or db_enabled or mail_enabled or stock_enabled):
+        if data == "backup_main" and not (
+            backup_enabled or db_enabled or mail_enabled or stock_enabled
+        ):
             query.edit_message_text("💾 Модуль бэкапов отключён")
             return
 
@@ -412,20 +468,21 @@ def callback_router(update, context):
             return
 
         from extensions.backup_monitor.bot_handler import backup_callback
+
         backup_callback(update, context)
         return
 
     # ------------------------------------------------
     # РАСШИРЕНИЯ
     # ------------------------------------------------
-    elif data == 'extensions_menu':
+    elif data == "extensions_menu":
         show_extensions_menu(update, context)
 
-    elif data.startswith('ext_'):
+    elif data.startswith("ext_"):
         extensions_callback_handler(update, context)
 
     # ------------------------------------------------
     # Закрытие
     # ------------------------------------------------
-    elif data == 'close':
+    elif data == "close":
         query.delete_message()

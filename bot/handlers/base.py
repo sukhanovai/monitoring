@@ -11,9 +11,10 @@ Basic functions: access, universal responses, general checks
 Базовые функции: доступ, универсальные ответы, общие проверки
 """
 
-from config.settings import CHAT_IDS as DEFAULT_CHAT_IDS
 from config.db_settings import CHAT_IDS as DB_CHAT_IDS
+from config.settings import CHAT_IDS as DEFAULT_CHAT_IDS
 from lib.logging import debug_log
+
 
 def check_access(update):
     """
@@ -25,11 +26,10 @@ def check_access(update):
 
     allowed_ids = DB_CHAT_IDS if DB_CHAT_IDS else DEFAULT_CHAT_IDS
 
-    debug_log(
-        f"Access check | chat_id={chat_id} | allowed={allowed_ids}"
-    )
+    debug_log(f"Access check | chat_id={chat_id} | allowed={allowed_ids}")
 
     return chat_id in allowed_ids
+
 
 def deny_access(update):
     if update.message:

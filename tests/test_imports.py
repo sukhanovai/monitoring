@@ -6,6 +6,7 @@ Smoke-тест на импорты ключевых модулей.
 bot.handlers.settings_handlers). Если рефакторинг ломает граф
 импортов, тест краснеет до запуска приложения.
 """
+
 from __future__ import annotations
 
 import importlib

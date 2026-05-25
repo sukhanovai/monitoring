@@ -64,12 +64,28 @@ def show_hosts_list(update, context):
         toggle_text = "⛔️ Отключить" if enabled else "✅ Включить"
         keyboard.extend(
             [
-                [InlineKeyboardButton(f"✏️ Имя: {host_name}", callback_data=f"zfsp_edit_name_{host_name}")],
-                [InlineKeyboardButton(f"🌐 IP: {host_name}", callback_data=f"zfsp_edit_ip_{host_name}")],
-                [InlineKeyboardButton(f"🎚 Порог: {host_name}", callback_data=f"zfsp_edit_threshold_{host_name}")],
                 [
-                    InlineKeyboardButton(f"🗑 Удалить: {host_name}", callback_data=f"zfsp_delete_{host_name}"),
-                    InlineKeyboardButton(f"{toggle_text}: {host_name}", callback_data=f"zfsp_toggle_{host_name}"),
+                    InlineKeyboardButton(
+                        f"✏️ Имя: {host_name}", callback_data=f"zfsp_edit_name_{host_name}"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        f"🌐 IP: {host_name}", callback_data=f"zfsp_edit_ip_{host_name}"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        f"🎚 Порог: {host_name}", callback_data=f"zfsp_edit_threshold_{host_name}"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        f"🗑 Удалить: {host_name}", callback_data=f"zfsp_delete_{host_name}"
+                    ),
+                    InlineKeyboardButton(
+                        f"{toggle_text}: {host_name}", callback_data=f"zfsp_toggle_{host_name}"
+                    ),
                 ],
             ]
         )
@@ -84,7 +100,9 @@ def show_hosts_list(update, context):
         ]
     )
 
-    query.edit_message_text("\n".join(lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+    query.edit_message_text(
+        "\n".join(lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 
 def add_host_prompt(update, context):
@@ -160,7 +178,9 @@ def handle_add_input(update, context):
     return False
 
 
-def _edit_prompt(update, context, flag_key: str, name_key: str, server_name: str, text: str, back: str):
+def _edit_prompt(
+    update, context, flag_key: str, name_key: str, server_name: str, text: str, back: str
+):
     query = update.callback_query
     query.answer()
     context.user_data[flag_key] = True
@@ -168,7 +188,9 @@ def _edit_prompt(update, context, flag_key: str, name_key: str, server_name: str
     query.edit_message_text(
         text,
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ Отмена", callback_data=back)]]),
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data=back)]]
+        ),
     )
 
 

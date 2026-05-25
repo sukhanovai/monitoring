@@ -11,9 +11,9 @@ Utilities for working with backups
 Утилиты для работы с бэкапами
 """
 
+import logging
 import sqlite3
 from datetime import datetime, timedelta
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +60,8 @@ def get_backup_summary(
             logger.error("База данных бэкапов недоступна: %s", db_path)
             return "❌ База данных бэкапов недоступна\n", True
 
-        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime('%Y-%m-%d %H:%M:%S')
-        stale_threshold = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime("%Y-%m-%d %H:%M:%S")
+        stale_threshold = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
 
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
@@ -72,34 +72,43 @@ def get_backup_summary(
         unavailable_hosts_norm = {_normalize_host_key(host) for host in (unavailable_hosts or [])}
         if include_proxmox:
             try:
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT DISTINCT host_name
                     FROM proxmox_backups
                     WHERE received_at >= datetime('now', '-30 days')
                     ORDER BY host_name
-                ''')
+                """
+                )
                 all_hosts = [row[0] for row in cursor.fetchall()]
                 if proxmox_hosts_config:
                     configured_hosts = {
-                        host for host, value in proxmox_hosts_config.items()
+                        host
+                        for host, value in proxmox_hosts_config.items()
                         if _is_proxmox_host_enabled(value)
                     }
                     all_hosts = sorted(configured_hosts)
 
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT host_name, backup_status, MAX(received_at) as last_backup
                     FROM proxmox_backups
                     WHERE received_at >= ?
                     GROUP BY host_name
-                ''', (since_time,))
+                """,
+                    (since_time,),
+                )
                 proxmox_results = cursor.fetchall()
 
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT host_name, MAX(received_at) as last_backup
                     FROM proxmox_backups
                     GROUP BY host_name
                     HAVING last_backup < ?
-                ''', (stale_threshold,))
+                """,
+                    (stale_threshold,),
+                )
                 stale_hosts = cursor.fetchall()
             except Exception as exc:
                 if "no such table: proxmox_backups" in str(exc):
@@ -114,24 +123,30 @@ def get_backup_summary(
         stale_databases = []
         if include_databases:
             try:
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT backup_type, database_name, backup_status, MAX(received_at) as last_backup
                     FROM database_backups
                     WHERE received_at >= ?
                     GROUP BY backup_type, database_name
-                ''', (since_time,))
+                """,
+                    (since_time,),
+                )
                 db_results = cursor.fetchall()
                 db_results = [
                     (_normalize_backup_type(backup_type, db_name), db_name, status, last_backup)
                     for backup_type, db_name, status, last_backup in db_results
                 ]
 
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT backup_type, database_name, MAX(received_at) as last_backup
                     FROM database_backups
                     GROUP BY backup_type, database_name
                     HAVING last_backup < ?
-                ''', (stale_threshold,))
+                """,
+                    (stale_threshold,),
+                )
                 stale_databases = cursor.fetchall()
                 stale_databases = [
                     (_normalize_backup_type(backup_type, db_name), db_name, last_backup)
@@ -150,24 +165,24 @@ def get_backup_summary(
         if include_mail:
             try:
                 cursor.execute(
-                    '''
+                    """
                     SELECT backup_status, total_size, backup_path, received_at
                     FROM mail_server_backups
                     WHERE received_at >= ?
                     ORDER BY received_at DESC
                     LIMIT 1
-                ''',
+                """,
                     (since_time,),
                 )
                 mail_recent = cursor.fetchone()
 
                 cursor.execute(
-                    '''
+                    """
                     SELECT backup_status, total_size, backup_path, received_at
                     FROM mail_server_backups
                     ORDER BY received_at DESC
                     LIMIT 1
-                '''
+                """
                 )
                 mail_latest = cursor.fetchone()
             except Exception as exc:
@@ -198,7 +213,8 @@ def get_backup_summary(
                     unavailable_hosts_set.add(host_name)
         if unavailable_hosts_norm and not unavailable_hosts_set:
             unavailable_hosts_set = {
-                host_name for host_name in allowed_hosts
+                host_name
+                for host_name in allowed_hosts
                 if _normalize_host_key(host_name) in unavailable_hosts_norm
             }
         stale_hosts = [
@@ -207,11 +223,13 @@ def get_backup_summary(
             if host_name in allowed_hosts
         ]
 
-        hosts_with_success = len([
-            r for r in proxmox_results
-            if r[1] == 'success' and r[0] in allowed_hosts
-            and r[0] not in unavailable_hosts_set
-        ])
+        hosts_with_success = len(
+            [
+                r
+                for r in proxmox_results
+                if r[1] == "success" and r[0] in allowed_hosts and r[0] not in unavailable_hosts_set
+            ]
+        )
 
         def _get_db_config(config: dict, *keys: str) -> dict:
             for key in keys:
@@ -238,15 +256,15 @@ def get_backup_summary(
             }
 
         config_databases = {
-            'company_database': company_databases,
-            'barnaul': _get_db_config(
+            "company_database": company_databases,
+            "barnaul": _get_db_config(
                 database_backup_config,
                 "barnaul_backups",
                 "barnaul",
                 "Филиалы",
             ),
-            'client': client_databases,
-            'yandex': _get_db_config(database_backup_config, "yandex_backups", "yandex"),
+            "client": client_databases,
+            "yandex": _get_db_config(database_backup_config, "yandex_backups", "yandex"),
         }
 
         db_stats = {}
@@ -260,14 +278,11 @@ def get_backup_summary(
             for category, databases in configured_databases.items()
             for db_name in databases
         }
-        recent_db_keys = {
-            (backup_type, db_name)
-            for backup_type, db_name, _, _ in db_results
-        }
+        recent_db_keys = {(backup_type, db_name) for backup_type, db_name, _, _ in db_results}
         successful_db_keys = {
             (backup_type, db_name)
             for backup_type, db_name, status, _ in db_results
-            if status == 'success'
+            if status == "success"
         }
 
         missing_recent_db_keys = {
@@ -317,9 +332,9 @@ def get_backup_summary(
                     missing_recent += 1
 
             db_stats[category] = {
-                'total': total_in_config,
-                'successful': successful_count,
-                'missing_recent': missing_recent,
+                "total": total_in_config,
+                "successful": successful_count,
+                "missing_recent": missing_recent,
             }
 
         message = ""
@@ -350,14 +365,15 @@ def get_backup_summary(
 
         if include_databases:
             category_names = {
-                'company_database': 'Основные',
-                'barnaul': 'Барнаул',
-                'client': 'Клиенты',
-                'yandex': 'Yandex',
+                "company_database": "Основные",
+                "barnaul": "Барнаул",
+                "client": "Клиенты",
+                "yandex": "Yandex",
             }
 
             total_configured = sum(
-                len(databases) for databases in config_databases.values()
+                len(databases)
+                for databases in config_databases.values()
                 if isinstance(databases, dict)
             )
             if total_configured == 0:
@@ -371,10 +387,10 @@ def get_backup_summary(
                             {"total": 0, "successful": 0},
                         )
                         stats["total"] += 1
-                        if status == 'success':
+                        if status == "success":
                             stats["successful"] += 1
 
-                    for backup_type in ['company_database', 'barnaul', 'client', 'yandex']:
+                    for backup_type in ["company_database", "barnaul", "client", "yandex"]:
                         if backup_type not in fallback_stats:
                             continue
                         stats = fallback_stats[backup_type]
@@ -395,19 +411,19 @@ def get_backup_summary(
                             message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
                         message += "\n"
             else:
-                for category in ['company_database', 'barnaul', 'client', 'yandex']:
+                for category in ["company_database", "barnaul", "client", "yandex"]:
                     if category not in db_stats:
                         continue
                     stats = db_stats[category]
-                    if stats['total'] <= 0:
+                    if stats["total"] <= 0:
                         continue
 
                     type_name = category_names[category]
-                    success_rate = (stats['successful'] / stats['total']) * 100
+                    success_rate = (stats["successful"] / stats["total"]) * 100
                     stale_count = len([db for db in stale_databases if db[0] == category])
-                    missing_recent = stats.get('missing_recent', 0)
+                    missing_recent = stats.get("missing_recent", 0)
                     is_ok = (
-                        stats['successful'] == stats['total']
+                        stats["successful"] == stats["total"]
                         and stale_count == 0
                         and missing_recent == 0
                     )
@@ -420,7 +436,9 @@ def get_backup_summary(
                     if stale_count > 0:
                         message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
                     if missing_recent > 0:
-                        message += f" ⚠️ {missing_recent} БД без бэкапов за последние {period_hours}ч"
+                        message += (
+                            f" ⚠️ {missing_recent} БД без бэкапов за последние {period_hours}ч"
+                        )
                     message += "\n"
 
         total_stale = 0
@@ -433,7 +451,7 @@ def get_backup_summary(
         total_missing_recent = 0
         if include_databases:
             total_missing_recent = sum(
-                stats.get('missing_recent', 0) for stats in db_stats.values()
+                stats.get("missing_recent", 0) for stats in db_stats.values()
             )
 
         total_issues = total_stale + total_missing_recent + total_unavailable
@@ -456,9 +474,7 @@ def get_backup_summary(
             if include_databases and stale_databases and not stale_by_category:
                 message += f"• {len(stale_databases)} БД без бэкапов >24ч\n"
             if include_databases and total_missing_recent > 0 and not missing_recent_by_category:
-                message += (
-                    f"• {total_missing_recent} БД без бэкапов за последние {period_hours}ч\n"
-                )
+                message += f"• {total_missing_recent} БД без бэкапов за последние {period_hours}ч\n"
 
             if include_proxmox and stale_hosts:
                 stale_host_names = sorted({host_name for host_name, _ in stale_hosts})
@@ -467,7 +483,7 @@ def get_backup_summary(
 
             if include_databases and stale_by_category:
                 message += "• Проблемные БД (>24ч):\n"
-                for category in ['company_database', 'barnaul', 'client', 'yandex']:
+                for category in ["company_database", "barnaul", "client", "yandex"]:
                     if category not in stale_by_category:
                         continue
                     db_list = ", ".join(sorted(stale_by_category[category]))
@@ -475,10 +491,8 @@ def get_backup_summary(
                     message += f"  - {type_name}: {db_list}\n"
 
             if include_databases and missing_recent_by_category:
-                message += (
-                    f"• Нет бэкапов за последние {period_hours}ч:\n"
-                )
-                for category in ['company_database', 'barnaul', 'client', 'yandex']:
+                message += f"• Нет бэкапов за последние {period_hours}ч:\n"
+                for category in ["company_database", "barnaul", "client", "yandex"]:
                     if category not in missing_recent_by_category:
                         continue
                     db_list = ", ".join(sorted(missing_recent_by_category[category]))
@@ -486,6 +500,7 @@ def get_backup_summary(
                     message += f"  - {type_name}: {db_list}\n"
 
         if include_mail:
+
             def _mail_time_ago(received_at):
                 if not received_at:
                     return "неизвестно"
@@ -510,9 +525,7 @@ def get_backup_summary(
                 mail_has_issues = mail_recent is None
                 mail_icon = "🔴" if mail_has_issues else "🟢"
                 if mail_recent:
-                    message += (
-                        f"• {mail_icon} Почта: {size_text} {path_text} ({time_ago})\n"
-                    )
+                    message += f"• {mail_icon} Почта: {size_text} {path_text} ({time_ago})\n"
                 else:
                     message += (
                         f"• {mail_icon} Почта: нет свежих бэкапов "
@@ -594,10 +607,10 @@ def get_stock_load_summary(period_hours=16) -> str:
 
 class BackupBase:
     """Базовый класс для работы с бэкапами"""
-    
+
     def __init__(self, db_path):
         self.db_path = db_path
-    
+
     def execute_query(self, query, params=()):
         """Выполняет SQL запрос и возвращает результаты"""
         try:
@@ -610,7 +623,7 @@ class BackupBase:
         except Exception as e:
             logger.error(f"Ошибка выполнения запроса: {e}")
             return []
-    
+
     def execute_many(self, query, params_list):
         """Выполняет запрос с несколькими наборами параметров"""
         try:
@@ -623,17 +636,17 @@ class BackupBase:
         except Exception as e:
             logger.error(f"Ошибка выполнения массового запроса: {e}")
             return False
-    
+
     def format_time_ago(self, time_str):
         """Форматирует время в читаемый формат 'Xд Yч назад'"""
         try:
             if not time_str:
                 return "неизвестно"
-                
-            time_obj = datetime.strptime(time_str, '%Y-%m-%d %H:%M:%S')
+
+            time_obj = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
             time_diff = datetime.now() - time_obj
             hours_ago = int(time_diff.total_seconds() / 3600)
-            
+
             if hours_ago >= 24:
                 days = hours_ago // 24
                 hours = hours_ago % 24
@@ -642,6 +655,7 @@ class BackupBase:
                 return f"{hours_ago}ч назад"
         except Exception:
             return "ошибка времени"
+
 
 class StatusCalculator:
     """Калькулятор статусов для хостов и БД"""
@@ -655,17 +669,17 @@ class StatusCalculator:
         last_status, last_time = recent_backups[0]
 
         # Последний бэкап неуспешный
-        if last_status != 'success':
+        if last_status != "success":
             return "failed"
 
         # Есть неудачные бэкапы в истории
-        recent_failed = any(status != 'success' for status, _ in recent_backups[:3])
+        recent_failed = any(status != "success" for status, _ in recent_backups[:3])
         if recent_failed:
             return "recent_failed"
 
         # Проверяем свежесть
         try:
-            last_backup_time = datetime.strptime(last_time, '%Y-%m-%d %H:%M:%S')
+            last_backup_time = datetime.strptime(last_time, "%Y-%m-%d %H:%M:%S")
             hours_since_last = (datetime.now() - last_backup_time).total_seconds() / 3600
 
             if hours_since_last > stale_hours:
@@ -676,38 +690,40 @@ class StatusCalculator:
                 return "success"
         except Exception:
             return "unknown"
-    
+
     @staticmethod
     def calculate_db_status(recent_backups, hours_threshold=48):
         """Рассчитывает статус БД на основе recent_backups"""
         if not recent_backups:
             return "stale"
-        
+
         last_status, last_time, last_error_count = recent_backups[0]
-        
+
         # Последний бэкап неудачный
-        if last_status == 'failed':
+        if last_status == "failed":
             return "failed"
-        
+
         # Ошибки в последнем бэкапе
         if last_error_count and last_error_count > 0:
             return "warning"
-        
+
         # Неудачные бэкапы в истории
-        recent_failed = any(status == 'failed' for status, _, _ in recent_backups[:3])
+        recent_failed = any(status == "failed" for status, _, _ in recent_backups[:3])
         if recent_failed:
             return "recent_failed"
-        
+
         # Ошибки в истории
-        recent_errors = any(error_count and error_count > 0 for _, _, error_count in recent_backups[:3])
+        recent_errors = any(
+            error_count and error_count > 0 for _, _, error_count in recent_backups[:3]
+        )
         if recent_errors:
             return "recent_errors"
-        
+
         # Проверяем свежесть
         try:
-            last_backup_time = datetime.strptime(last_time, '%Y-%m-%d %H:%M:%S')
+            last_backup_time = datetime.strptime(last_time, "%Y-%m-%d %H:%M:%S")
             hours_since_last = (datetime.now() - last_backup_time).total_seconds() / 3600
-            
+
             if hours_since_last > hours_threshold:
                 return "stale"
             elif hours_since_last > 24:
@@ -717,49 +733,45 @@ class StatusCalculator:
         except Exception:
             return "unknown"
 
+
 class DisplayFormatters:
     """Форматтеры для отображения"""
-    
+
     HOST_STATUS_ICONS = {
         "success": "✅",
-        "failed": "🔴", 
+        "failed": "🔴",
         "recent_failed": "🟠",
         "old": "🟡",
         "stale": "⚫",
-        "unknown": "⚪"
+        "unknown": "⚪",
     }
-    
+
     DB_STATUS_ICONS = {
         "success": "✅",
         "failed": "🔴",
-        "recent_failed": "🟠", 
+        "recent_failed": "🟠",
         "warning": "🟡",
         "recent_errors": "🟠",
         "old": "🟡",
         "stale": "⚫",
-        "unknown": "⚪"
+        "unknown": "⚪",
     }
-    
-    TYPE_ICONS = {
-        'company_database': '🏢',
-        'barnaul': '🏔️',
-        'client': '👥', 
-        'yandex': '☁️'
-    }
-    
+
+    TYPE_ICONS = {"company_database": "🏢", "barnaul": "🏔️", "client": "👥", "yandex": "☁️"}
+
     TYPE_NAMES = {
-        'company_database': 'Основные БД компании',
-        'barnaul': 'Бэкапы Барнаул',
-        'client': 'Базы клиентов',
-        'yandex': 'Бэкапы на Yandex'
+        "company_database": "Основные БД компании",
+        "barnaul": "Бэкапы Барнаул",
+        "client": "Базы клиентов",
+        "yandex": "Бэкапы на Yandex",
     }
-    
+
     @classmethod
     def get_host_display_name(cls, host_name, status):
         """Возвращает отображаемое имя хоста с иконкой"""
         icon = cls.HOST_STATUS_ICONS.get(status, "⚪")
         return f"{icon} {host_name}"
-    
+
     @classmethod
     def get_db_display_name(cls, display_name, status):
         """Возвращает отображаемое имя БД с иконкой"""
@@ -768,11 +780,10 @@ class DisplayFormatters:
         if len(display_name) > 12:
             display_name = display_name[:10] + ".."
         return f"{icon} {display_name}"
-    
+
     @classmethod
     def get_type_display(cls, backup_type):
         """Возвращает отображаемое имя типа"""
-        icon = cls.TYPE_ICONS.get(backup_type, '📁')
+        icon = cls.TYPE_ICONS.get(backup_type, "📁")
         name = cls.TYPE_NAMES.get(backup_type, backup_type)
         return f"{icon} {name}"
-    

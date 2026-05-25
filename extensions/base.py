@@ -13,22 +13,23 @@ Extensions interface
 
 from abc import ABC, abstractmethod
 
+
 class Extension(ABC):
     @abstractmethod
     def enable(self):
         """Enable the extension"""
         pass
-    
+
     @abstractmethod
     def disable(self):
         """Disable the extension"""
         pass
-    
+
     @abstractmethod
     def get_handlers(self):
         """Get bot handlers for this extension"""
         pass
-    
+
     @abstractmethod
     def get_menu_commands(self):
         """Get menu commands for this extension"""

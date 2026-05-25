@@ -13,12 +13,12 @@ Task router helpers
 
 from typing import Any, Dict, Optional, Tuple
 
+from core.monitor import monitor
 from lib.logging import debug_log, setup_logging
 from modules.availability import availability_checker
 from modules.mail_monitor import run_mail_monitor
 from modules.resources import resources_checker
 from modules.targeted_checks import targeted_checks
-from core.monitor import monitor
 
 # Локальный логгер для CLI/функциональных проверок
 _logger = setup_logging("task_router")

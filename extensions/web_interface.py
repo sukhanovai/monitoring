@@ -11,15 +11,16 @@ Web interface
 Веб-интерфейс
 """
 
-from flask import Flask, jsonify, render_template_string, request
-from config import WEB_PORT, WEB_HOST
-import threading
-from datetime import datetime
 import json
 import os
-from config import STATS_FILE, DATA_DIR
 import subprocess
 import sys
+import threading
+from datetime import datetime
+
+from flask import Flask, jsonify, render_template_string, request
+
+from config import DATA_DIR, STATS_FILE, WEB_HOST, WEB_PORT
 
 app = Flask(__name__)
 
@@ -707,11 +708,12 @@ HTML_TEMPLATE = """
 </html>
 """
 
+
 def get_resource_class(value, resource_type):
     """Определяет класс для окрашивания ресурсов"""
     if not value or value == 0:
         return "normal"
-    
+
     if resource_type == "cpu":
         if value >= 90:
             return "critical"
@@ -735,45 +737,52 @@ def get_resource_class(value, resource_type):
             return "normal"
     return "normal"
 
+
 def get_monitoring_stats():
     """Получает статистику мониторинга"""
     try:
         # Пробуем получить данные из файла статистики
         stats_data = {}
         if os.path.exists(STATS_FILE):
-            with open(STATS_FILE, 'r') as f:
+            with open(STATS_FILE, "r") as f:
                 stats_data = json.load(f)
-        
+
         # Получаем текущий статус серверов
-        from monitor_core import get_current_server_status, monitoring_active, last_check_time
-        from monitor_core import is_silent_time, resource_history
+        from monitor_core import (
+            get_current_server_status,
+            is_silent_time,
+            last_check_time,
+            monitoring_active,
+            resource_history,
+        )
+
         from extensions.server_list import initialize_servers
-        
+
         current_status = get_current_server_status()
         servers_list = initialize_servers()
-        
+
         # Формируем список серверов для отображения
         servers_display = []
-        
+
         for server in servers_list:
             is_up = any(s["ip"] == server["ip"] for s in current_status["ok"])
             is_down = any(s["ip"] == server["ip"] for s in current_status["failed"])
-            
+
             status = "up" if is_up else "down"
             status_display = "✅ Доступен" if is_up else "❌ Недоступен"
-            
+
             # Получаем информацию о ресурсах
             resources_data = None
             os_info = "Unknown"
             if server["ip"] in resource_history and resource_history[server["ip"]]:
                 latest_resources = resource_history[server["ip"]][-1]
                 os_info = latest_resources.get("os", "Unknown")
-                
+
                 # Форматируем ресурсы с классами для окрашивания
                 cpu_value = latest_resources.get("cpu", 0)
                 ram_value = latest_resources.get("ram", 0)
                 disk_value = latest_resources.get("disk", 0)
-                
+
                 resources_data = {
                     "cpu": cpu_value,
                     "ram": ram_value,
@@ -782,14 +791,14 @@ def get_monitoring_stats():
                     "uptime": latest_resources.get("uptime", "N/A"),
                     "cpu_class": get_resource_class(cpu_value, "cpu"),
                     "ram_class": get_resource_class(ram_value, "ram"),
-                    "disk_class": get_resource_class(disk_value, "disk")
+                    "disk_class": get_resource_class(disk_value, "disk"),
                 }
-                
+
                 # Проверяем на проблемы с ресурсами для статуса
                 if resources_data and (cpu_value > 80 or ram_value > 85 or disk_value > 80):
                     status = "warning"
                     status_display = "⚠️ Высокая нагрузка"
-            
+
             server_data = {
                 "name": server["name"],
                 "ip": server["ip"],
@@ -797,34 +806,41 @@ def get_monitoring_stats():
                 "os": os_info,
                 "status": status,
                 "status_display": status_display,
-                "resources": resources_data
+                "resources": resources_data,
             }
-            
+
             servers_display.append(server_data)
-        
+
         # Сортируем серверы: сначала проблемные, потом доступные
-        servers_display.sort(key=lambda x: (0 if x["status"] == "down" else 1 if x["status"] == "warning" else 2))
-        
+        servers_display.sort(
+            key=lambda x: (0 if x["status"] == "down" else 1 if x["status"] == "warning" else 2)
+        )
+
         # Рассчитываем статистику
         total_servers = len(servers_list)
         servers_up = len(current_status["ok"])
         servers_down = len(current_status["failed"])
-        availability_percentage = round((servers_up / total_servers) * 100, 1) if total_servers > 0 else 0
-        
+        availability_percentage = (
+            round((servers_up / total_servers) * 100, 1) if total_servers > 0 else 0
+        )
+
         # Получаем настройки из конфига
         from config import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
+
         resource_check_minutes = RESOURCE_CHECK_INTERVAL // 60
-        
+
         # Считаем проблемы с ресурсами
         resource_alerts_count = 0
         for history in resource_history.values():
             if history:
                 last_resource = history[-1]
-                if (last_resource.get("cpu", 0) >= 90 or 
-                    last_resource.get("ram", 0) >= 95 or 
-                    last_resource.get("disk", 0) >= 90):
+                if (
+                    last_resource.get("cpu", 0) >= 90
+                    or last_resource.get("ram", 0) >= 95
+                    or last_resource.get("disk", 0) >= 90
+                ):
                     resource_alerts_count += 1
-        
+
         stats = {
             "total_servers": total_servers,
             "servers_up": servers_up,
@@ -834,14 +850,16 @@ def get_monitoring_stats():
             "check_interval": CHECK_INTERVAL,
             "monitoring_mode": "🟢 Активен" if monitoring_active else "🔴 Приостановлен",
             "silent_mode": "🔇 Включен" if is_silent_time() else "🔊 Выключен",
-            "resource_check_status": "🟢 Работает" if monitoring_active and not is_silent_time() else "⏸️ Приостановлен",
+            "resource_check_status": (
+                "🟢 Работает" if monitoring_active and not is_silent_time() else "⏸️ Приостановлен"
+            ),
             "resource_check_interval": resource_check_minutes,
             "resource_alerts": resource_alerts_count,
-            "uptime": stats_data.get("uptime", "N/A")
+            "uptime": stats_data.get("uptime", "N/A"),
         }
-        
+
         return stats, servers_display
-        
+
     except Exception as e:
         print(f"❌ Ошибка получения статистики: {e}")
         # Возвращаем данные по умолчанию при ошибке
@@ -857,167 +875,178 @@ def get_monitoring_stats():
             "resource_check_status": "❌ Ошибка",
             "resource_check_interval": 0,
             "resource_alerts": 0,
-            "uptime": "N/A"
+            "uptime": "N/A",
         }, []
 
-@app.route('/')
+
+@app.route("/")
 def index():
     """Главная страница веб-интерфейса"""
     try:
         stats, servers = get_monitoring_stats()
-        
+
         return render_template_string(
             HTML_TEMPLATE,
             stats=stats,
             servers=servers,
-            last_update=datetime.now().strftime("%H:%M:%S")
+            last_update=datetime.now().strftime("%H:%M:%S"),
         )
     except Exception as e:
         return f"❌ Ошибка загрузки веб-интерфейса: {e}"
 
-@app.route('/api/run_check')
+
+@app.route("/api/run_check")
 def api_run_check():
     """API для запуска проверок"""
-    check_type = request.args.get('type', 'quick')
-    
+    check_type = request.args.get("type", "quick")
+
     try:
-        if check_type == 'quick':
+        if check_type == "quick":
             # Запуск быстрой проверки доступности
             from monitor_core import get_current_server_status
+
             status = get_current_server_status()
             message = f"✅ Быстрая проверка выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
-            
-        elif check_type == 'resources':
+
+        elif check_type == "resources":
             # Запуск проверки ресурсов
             from monitor_core import check_resources_automatically
+
             check_resources_automatically()
             message = "✅ Проверка ресурсов выполнена. Данные обновятся через 1-2 минуты."
-            
-        elif check_type == 'report':
+
+        elif check_type == "report":
             # Формирование отчета
             from monitor_core import send_morning_report
+
             send_morning_report()
             message = "✅ Отчет сформирован и отправлен в Telegram"
-            
+
         else:
             message = "❌ Неизвестный тип проверки"
-            
-        return jsonify({"success": True, "message": message, "reload": check_type != 'resources'})
-        
+
+        return jsonify({"success": True, "message": message, "reload": check_type != "resources"})
+
     except Exception as e:
         return jsonify({"success": False, "message": f"❌ Ошибка: {str(e)}"})
 
-@app.route('/api/run_action')
+
+@app.route("/api/run_action")
 def api_run_action():
     """API для выполнения действий"""
-    action = request.args.get('action', '')
-    
+    action = request.args.get("action", "")
+
     try:
-        if action == 'check_all':
+        if action == "check_all":
             from monitor_core import get_current_server_status
+
             status = get_current_server_status()
             message = f"✅ Проверка всех серверов выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
-            
-        elif action == 'check_resources':
+
+        elif action == "check_resources":
             from monitor_core import check_resources_automatically
+
             check_resources_automatically()
             message = "✅ Проверка ресурсов запущена. Данные обновятся через 1-2 минуты."
-            
-        elif action == 'morning_report':
+
+        elif action == "morning_report":
             from monitor_core import send_morning_report
+
             send_morning_report()
             message = "✅ Утренний отчет отправлен в Telegram"
-            
-        elif action == 'restart_service':
+
+        elif action == "restart_service":
             # Перезапуск сервиса (осторожно!)
-            subprocess.run(['systemctl', 'restart', 'server-monitor.service'], check=True)
+            subprocess.run(["systemctl", "restart", "server-monitor.service"], check=True)
             message = "✅ Сервис перезапускается..."
-            
-        elif action == 'toggle_monitoring':
+
+        elif action == "toggle_monitoring":
             # В реальной реализации здесь нужно менять глобальную переменную
             message = "⚠️ Функция переключения мониторинга в разработке"
-            
-        elif action == 'toggle_silent':
+
+        elif action == "toggle_silent":
             # В реальной реализации здесь нужно менять глобальную переменную
             message = "⚠️ Функция переключения тихого режима в разработке"
-            
+
         else:
             message = "❌ Неизвестное действие"
-            
-        return jsonify({
-            "success": True, 
-            "message": message, 
-            "reload": action not in ['check_resources', 'toggle_monitoring', 'toggle_silent']
-        })
-        
+
+        return jsonify(
+            {
+                "success": True,
+                "message": message,
+                "reload": action not in ["check_resources", "toggle_monitoring", "toggle_silent"],
+            }
+        )
+
     except Exception as e:
         return jsonify({"success": False, "message": f"❌ Ошибка: {str(e)}"})
 
-@app.route('/api/status')
+
+@app.route("/api/status")
 def api_status():
     """API endpoint для получения статуса"""
     stats, servers = get_monitoring_stats()
-    return jsonify({
-        "status": "ok", 
-        "message": "Система мониторинга работает",
-        "data": {
-            "stats": stats,
-            "servers": servers,
-            "timestamp": datetime.now().isoformat()
+    return jsonify(
+        {
+            "status": "ok",
+            "message": "Система мониторинга работает",
+            "data": {"stats": stats, "servers": servers, "timestamp": datetime.now().isoformat()},
         }
-    })
+    )
 
-@app.route('/api/servers')
+
+@app.route("/api/servers")
 def api_servers():
     """API endpoint для получения списка серверов"""
     stats, servers = get_monitoring_stats()
-    return jsonify({
-        "servers": servers,
-        "count": len(servers),
-        "timestamp": datetime.now().isoformat()
-    })
+    return jsonify(
+        {"servers": servers, "count": len(servers), "timestamp": datetime.now().isoformat()}
+    )
 
-@app.route('/api/stats')
+
+@app.route("/api/stats")
 def api_stats():
     """API endpoint для получения статистики"""
     stats, servers = get_monitoring_stats()
-    return jsonify({
-        "statistics": stats,
-        "timestamp": datetime.now().isoformat()
-    })
+    return jsonify({"statistics": stats, "timestamp": datetime.now().isoformat()})
 
-@app.route('/health')
+
+@app.route("/health")
 def health_check():
     """Health check endpoint"""
     return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
 
-@app.route('/api/servers', methods=['GET', 'POST', 'PUT', 'DELETE'])
+
+@app.route("/api/servers", methods=["GET", "POST", "PUT", "DELETE"])
 def api_manage_servers():
     """API для управления списком серверов"""
-    if request.method == 'GET':
+    if request.method == "GET":
         # Получить список серверов
         from extensions.server_list import initialize_servers
+
         servers = initialize_servers()
         return jsonify({"servers": servers})
-    
-    elif request.method == 'POST':
+
+    elif request.method == "POST":
         # Добавить новый сервер
         data = request.json
         # Здесь добавить логику сохранения в server_list.json
         return jsonify({"success": True, "message": "Сервер добавлен"})
-    
-    elif request.method == 'PUT':
+
+    elif request.method == "PUT":
         # Обновить сервер
         data = request.json
         # Логика обновления
         return jsonify({"success": True, "message": "Сервер обновлен"})
-    
-    elif request.method == 'DELETE':
+
+    elif request.method == "DELETE":
         # Удалить сервер
-        server_ip = request.args.get('ip')
+        server_ip = request.args.get("ip")
         # Логика удаления
         return jsonify({"success": True, "message": "Сервер удален"})
-    
+
+
 def start_web_server():
     """Запускает веб-сервер"""
     print(f"🌐 Запуск веб-интерфейса на http://{WEB_HOST}:{WEB_PORT}")
@@ -1025,6 +1054,7 @@ def start_web_server():
         app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False)
     except Exception as e:
         print(f"❌ Ошибка запуска веб-сервера: {e}")
+
 
 if __name__ == "__main__":
     start_web_server()

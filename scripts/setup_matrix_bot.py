@@ -30,8 +30,10 @@ def _request_json(method: str, url: str, **kwargs):
     return {}
 
 
-def bootstrap_matrix_bot(homeserver: str, synapse_admin_token: str, username: str, password: str, room_id: str) -> MatrixBootstrapResult:
-    base = homeserver.rstrip('/')
+def bootstrap_matrix_bot(
+    homeserver: str, synapse_admin_token: str, username: str, password: str, room_id: str
+) -> MatrixBootstrapResult:
+    base = homeserver.rstrip("/")
     headers = {"Authorization": f"Bearer {synapse_admin_token}"}
 
     # 1) создаем пользователя через admin API Synapse
@@ -67,9 +69,17 @@ def bootstrap_matrix_bot(homeserver: str, synapse_admin_token: str, username: st
 def main() -> int:
     parser = argparse.ArgumentParser(description="Bootstrap Matrix bot for monitoring alerts")
     parser.add_argument("--homeserver", required=True)
-    parser.add_argument("--admin-token", required=True, help="Synapse admin access token (не токен бота из настроек Matrix)")
+    parser.add_argument(
+        "--admin-token",
+        required=True,
+        help="Synapse admin access token (не токен бота из настроек Matrix)",
+    )
     parser.add_argument("--username", default="monitoring_bot")
-    parser.add_argument("--password", required=True, help="Новый пароль Matrix-пользователя бота (задаётся при создании)")
+    parser.add_argument(
+        "--password",
+        required=True,
+        help="Новый пароль Matrix-пользователя бота (задаётся при создании)",
+    )
     parser.add_argument("--room-id", required=True)
     args = parser.parse_args()
 
@@ -81,12 +91,18 @@ def main() -> int:
         room_id=args.room_id,
     )
 
-    print(json.dumps({
-        "MATRIX_HOMESERVER": args.homeserver.rstrip('/'),
-        "MATRIX_ROOM_ID": result.room_id,
-        "MATRIX_ACCESS_TOKEN": result.access_token,
-        "MATRIX_BOT_USER_ID": result.user_id,
-    }, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {
+                "MATRIX_HOMESERVER": args.homeserver.rstrip("/"),
+                "MATRIX_ROOM_ID": result.room_id,
+                "MATRIX_ACCESS_TOKEN": result.access_token,
+                "MATRIX_BOT_USER_ID": result.user_id,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return 0
 
 
