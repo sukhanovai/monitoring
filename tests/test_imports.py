@@ -39,6 +39,7 @@ def test_monitor_decomposed_modules_importable() -> None:
         "core.monitor_parts.lifecycle",
         "core.monitor_parts.report",
         "core.monitor_parts.resource_checks",
+        "core.monitor_parts.telegram_handlers",
     ):
         importlib.import_module(name)
 
