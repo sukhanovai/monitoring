@@ -1,14 +1,14 @@
 """
-/config/settings_app.py
+/modules/mail_parts/db/__init__.py
 Server Monitoring System v8.62.53
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
-Deprecated wrapper for database-backed settings
+DB-helpers подпакет mail_parts (PR6b серии оптимизации).
 Система мониторинга серверов
 Версия: 8.62.53
 Автор: Александр Суханов (c)
 Лицензия: MIT
-Устаревшая обертка для настроек из БД
+DDL и SQL-хелперы, отделённые от логики BackupProcessor.
 """
 
-from config.db_settings import *  # noqa: F401,F403
+from __future__ import annotations

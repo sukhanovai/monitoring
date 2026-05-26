@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.62.52
+Server Monitoring System v8.62.53
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring — тонкий фасад над пакетом modules/mail_parts/.
 Система мониторинга серверов
-Версия: 8.62.52
+Версия: 8.62.53
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Тонкий фасад: класс BackupProcessor и pattern-хелперы перенесены в

@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/processor.py
-Server Monitoring System v8.62.52
+Server Monitoring System v8.62.53
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 BackupProcessor extracted from modules/mail_monitor.py (PR6 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.52
+Версия: 8.62.53
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Координатор обработки писем с отчётами о резервных копиях: чтение Maildir,
@@ -50,6 +50,7 @@ from extensions.supplier_stock_files import (
 )
 from lib.logging import setup_logging
 from modules.mail_parts import logger
+from modules.mail_parts.db.schema import create_schema
 from modules.mail_parts.patterns import (
     get_database_patterns_from_config,
     get_mail_patterns_from_config,
@@ -68,137 +69,13 @@ class BackupProcessor:
         self.init_database()
 
     def init_database(self) -> None:
-        """Инициализация базы данных."""
+        """Инициализирует backups.db через `mail_parts.db.schema.create_schema`."""
         try:
             conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
-
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS proxmox_backups (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    host_name TEXT NOT NULL,
-                    backup_status TEXT NOT NULL,
-                    task_type TEXT,
-                    duration TEXT,
-                    total_size TEXT,
-                    error_message TEXT,
-                    email_subject TEXT,
-                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """
-            )
-
-            cursor.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_backups_host_date
-                ON proxmox_backups(host_name, received_at)
-            """
-            )
-
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS zfs_pool_status (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    server_name TEXT NOT NULL,
-                    pool_name TEXT NOT NULL,
-                    pool_index INTEGER,
-                    pool_state TEXT NOT NULL,
-                    email_subject TEXT,
-                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(server_name, pool_name, received_at)
-                )
-            """
-            )
-
-            cursor.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_zfs_server_date
-                ON zfs_pool_status(server_name, received_at)
-            """
-            )
-
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS snapshot_transfers (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    host_name TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    snapshot_name TEXT,
-                    method TEXT,
-                    start_snapshot TEXT,
-                    size_text TEXT,
-                    started_at_text TEXT,
-                    completed_at_text TEXT,
-                    duration_text TEXT,
-                    email_subject TEXT,
-                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """
-            )
-            cursor.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_snapshot_transfers_host_date
-                ON snapshot_transfers(host_name, received_at)
-            """
-            )
-
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS mail_server_backups (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    host_name TEXT NOT NULL,
-                    backup_status TEXT NOT NULL,
-                    total_size TEXT,
-                    backup_path TEXT,
-                    email_subject TEXT,
-                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(host_name, backup_path, received_at)
-                )
-            """
-            )
-
-            cursor.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_mail_backup_date
-                ON mail_server_backups(host_name, received_at)
-            """
-            )
-
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS stock_load_results (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    supplier_name TEXT NOT NULL,
-                    source_name TEXT,
-                    file_path TEXT,
-                    status TEXT NOT NULL,
-                    rows_count INTEGER,
-                    error_count INTEGER DEFAULT 0,
-                    error_sample TEXT,
-                    attachment_name TEXT,
-                    log_timestamp TEXT,
-                    email_subject TEXT,
-                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(supplier_name, file_path, log_timestamp, received_at)
-                )
-            """
-            )
-
-            cursor.execute("PRAGMA table_info(stock_load_results)")
-            existing_columns = {row[1] for row in cursor.fetchall()}
-            if "source_name" not in existing_columns:
-                cursor.execute("ALTER TABLE stock_load_results ADD COLUMN source_name TEXT")
-
-            cursor.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_stock_load_date
-                ON stock_load_results(received_at)
-            """
-            )
-
-            conn.commit()
-            conn.close()
+            try:
+                create_schema(conn)
+            finally:
+                conn.close()
             logger.info("База данных бэкапов инициализирована")
 
         except Exception as exc:

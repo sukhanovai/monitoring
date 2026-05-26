@@ -1,3 +1,19 @@
+## [8.62.53] - 2026-05-26
+
+### Changed
+- RU: PR6b серии оптимизации — отделение SQL DDL backups.db от логики `BackupProcessor` и первая полезная unit-тестовая нагрузка проекта:
+  - Новый подпакет `modules/mail_parts/db/` со `schema.py` — функция `create_schema(conn)` инкапсулирует DDL пяти таблиц (`proxmox_backups`, `zfs_pool_status`, `snapshot_transfers`, `mail_server_backups`, `stock_load_results`), их индексов и однократную миграцию колонки `source_name` для старых инсталляций. SQL теперь читается единым блоком в одном месте.
+  - `BackupProcessor.init_database` сжался с 140 строк инлайн-SQL до тонкого 8-строчного обёртки над `create_schema`.
+  - `tests/test_mail_parsers.py` — 35 unit-тестов на pure-функции `BackupProcessor`: `normalize_status`, `is_proxmox_backup_email`, `parse_subject`, `parse_duration`/`duration_to_seconds`/`seconds_to_duration` (включая фиксацию известного ограничения «duration_to_seconds не учитывает часы» — комментарий не маскирует баг, а закрепляет текущее поведение, чтобы PR6c не сломал его незаметно) и три теста на `create_schema` (полнота таблиц/индексов, идемпотентность, ALTER TABLE-миграция). Это первые тесты проекта, проверяющие реальную бизнес-логику, а не только импорты. После PR6b в pytest 47 проходящих тестов (было 10).
+  - Дальнейшая декомпозиция `BackupProcessor` на parser-mixins (`parsers/database.py`, `parsers/zfs.py`, `parsers/mail.py`, `parsers/stock_load.py`, `parsers/proxmox.py`) — в PR6c. Теперь это можно делать аккуратно, прикрытое тестами PR6b.
+- EN: PR6b of the optimization series — separating the backups.db SQL DDL from `BackupProcessor`'s logic and adding the first real unit-test load to the project:
+  - New sub-package `modules/mail_parts/db/` with `schema.py` — the `create_schema(conn)` function encapsulates the DDL for the five tables (`proxmox_backups`, `zfs_pool_status`, `snapshot_transfers`, `mail_server_backups`, `stock_load_results`), their indexes and the one-shot `source_name` column migration for legacy installs. The SQL is now readable as a single block in one place.
+  - `BackupProcessor.init_database` shrank from 140 lines of inline SQL down to a thin 8-line wrapper around `create_schema`.
+  - `tests/test_mail_parsers.py` — 35 unit tests for the pure functions of `BackupProcessor`: `normalize_status`, `is_proxmox_backup_email`, `parse_subject`, `parse_duration`/`duration_to_seconds`/`seconds_to_duration` (including a pinned-down assertion of the known "duration_to_seconds ignores hours" limitation — the comment doesn't mask the bug, it locks down the current behavior so PR6c doesn't break it unnoticed), plus three tests for `create_schema` (full table/index coverage, idempotency, ALTER TABLE migration). These are the project's first tests that verify real business logic instead of just imports. After PR6b pytest runs 47 tests (was 10).
+  - Further decomposition of `BackupProcessor` into parser mixins (`parsers/database.py`, `parsers/zfs.py`, `parsers/mail.py`, `parsers/stock_load.py`, `parsers/proxmox.py`) is deferred to PR6c. With PR6b's safety net in place, that can now be done with confidence.
+- RU: SemVer patch-бамп до `8.62.53`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.53`, `ANDROID_VERSION_CODE=815`).
+- EN: SemVer patch bump to `8.62.53`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.53`, `ANDROID_VERSION_CODE=815`).
+
 ## [8.62.52] - 2026-05-26
 
 ### Changed
