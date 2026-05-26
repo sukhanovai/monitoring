@@ -127,6 +127,38 @@ def test_settings_handlers_facade() -> None:
     assert _legacy.__name__ == "bot.handlers.settings_handlers._legacy"
 
 
+def test_settings_handlers_supplier_stock_split() -> None:
+    """PR7b: блок supplier_stock (~84 функции) вынесен из _legacy.py в
+    одноимённый модуль `settings_handlers.supplier_stock`. Тест ловит,
+    чтобы:
+    1. функции были доступны через прямой импорт нового модуля;
+    2. они оставались доступны через фасад пакета (`import *` в __init__);
+    3. `_legacy.py` через обратный re-export `from .supplier_stock import *`
+       продолжал отдавать те же объекты — нужно для внутренних ссылок
+       `settings_callback_handler` в _legacy.py."""
+    from bot.handlers.settings_handlers import (
+        show_stock_load_settings,
+        show_supplier_stock_settings,
+        supplier_stock_handle_input,
+    )
+    from bot.handlers.settings_handlers._legacy import (
+        show_supplier_stock_settings as via_legacy,
+    )
+    from bot.handlers.settings_handlers.supplier_stock import (
+        show_supplier_stock_settings as via_module,
+    )
+
+    assert callable(show_supplier_stock_settings)
+    assert callable(supplier_stock_handle_input)
+    assert callable(show_stock_load_settings)
+    # Все три пути ведут к одному и тому же объекту функции
+    assert via_module is show_supplier_stock_settings
+    assert via_legacy is show_supplier_stock_settings
+    assert show_supplier_stock_settings.__module__ == (
+        "bot.handlers.settings_handlers.supplier_stock"
+    )
+
+
 def test_mail_backup_processor_mixins_composition() -> None:
     """PR6c: BackupProcessor собран из 5 parser-mixin'ов через множественное
     наследование. Тест закрепляет состав MRO — поломка инфраструктуры
