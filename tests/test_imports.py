@@ -91,6 +91,42 @@ def test_mail_monitor_facade_and_parts() -> None:
     assert callable(get_stock_load_patterns_from_config)
 
 
+def test_settings_handlers_facade() -> None:
+    """PR7: bot/handlers/settings_handlers.py превращён в одноимённый
+    пакет с подмодулем _legacy.py. Внешние импортёры
+    (`bot.handlers.callbacks`, `bot.menu.handlers`,
+    `extensions.backup_monitor.bot_handler`) опираются на конкретные имена
+    из этого пакета — тест явно их перепроверяет, чтобы PR7b/PR7c не
+    обронили имя при разнесении на UI-семьи."""
+    from bot.handlers.settings_handlers import (
+        BACKUP_SETTINGS_CALLBACKS,
+        handle_setting_value,
+        settings_callback_handler,
+        show_mail_patterns_menu,
+        show_snapshot_transfer_settings,
+        show_zfs_main_menu,
+    )
+
+    assert isinstance(BACKUP_SETTINGS_CALLBACKS, (set, frozenset))
+    assert BACKUP_SETTINGS_CALLBACKS  # non-empty (24 callback id's)
+    assert callable(settings_callback_handler)
+    assert callable(handle_setting_value)
+    assert callable(show_mail_patterns_menu)
+    assert callable(show_zfs_main_menu)
+    assert callable(show_snapshot_transfer_settings)
+
+    # _legacy остаётся приватным подмодулем пакета, но должен быть
+    # импортируем — иначе ломается обратный путь, если кому-то нужен
+    # full-module reload.
+    from bot.handlers.settings_handlers import _legacy
+    from bot.handlers.settings_handlers._legacy import (
+        settings_callback_handler as direct_handler,
+    )
+
+    assert direct_handler is settings_callback_handler  # identity preserved
+    assert _legacy.__name__ == "bot.handlers.settings_handlers._legacy"
+
+
 def test_mail_backup_processor_mixins_composition() -> None:
     """PR6c: BackupProcessor собран из 5 parser-mixin'ов через множественное
     наследование. Тест закрепляет состав MRO — поломка инфраструктуры

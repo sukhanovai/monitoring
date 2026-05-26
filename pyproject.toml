@@ -64,7 +64,7 @@ extend-ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 # Монолитные модули — особо шумные правила игнорируются пока идёт декомпозиция.
-"bot/handlers/settings_handlers.py" = ["F401", "F811", "F841", "B007"]
+"bot/handlers/settings_handlers/_legacy.py" = ["F401", "F811", "F841", "B007"]
 "core/monitor_core.py" = ["F401", "F811", "F841", "B007"]
 "modules/mail_monitor.py" = ["F401", "F811", "F841", "B007"]
 # __init__ обычно реэкспортирует.
