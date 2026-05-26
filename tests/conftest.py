@@ -45,14 +45,44 @@ def _install_stub(name: str, attrs: dict[str, object] | None = None) -> None:
 for _stub in ("requests", "paramiko"):
     _install_stub(_stub)
 
-# Подмодули telegram нужны core/monitor/* и нескольким handlers — для
-# теста на импорт достаточно пустых классов-плейсхолдеров.
+# Подмодули telegram нужны core/monitor_parts/*, bot/handlers/* и
+# bot/menu/handlers — для smoke-тестов на импорт достаточно пустых
+# классов-плейсхолдеров. Расширено в PR7 (settings_handlers — пакет),
+# чтобы покрыть `from bot.handlers ...` chain end-to-end.
 _telegram_classes = {
-    name: type(name, (), {}) for name in ("Bot", "InlineKeyboardButton", "InlineKeyboardMarkup")
+    name: type(name, (), {})
+    for name in (
+        "Bot",
+        "BotCommand",
+        "InlineKeyboardButton",
+        "InlineKeyboardMarkup",
+        "KeyboardButton",
+        "ReplyKeyboardMarkup",
+        "ReplyKeyboardRemove",
+        "Update",
+    )
 }
 _install_stub("telegram", _telegram_classes)
-_install_stub("telegram.error", {"BadRequest": type("BadRequest", (Exception,), {})})
-_install_stub("telegram.ext", {})
+_install_stub(
+    "telegram.error",
+    {
+        "BadRequest": type("BadRequest", (Exception,), {}),
+        "TelegramError": type("TelegramError", (Exception,), {}),
+    },
+)
+_telegram_ext_classes = {
+    name: type(name, (), {})
+    for name in (
+        "CallbackContext",
+        "CallbackQueryHandler",
+        "CommandHandler",
+        "ConversationHandler",
+        "Filters",
+        "MessageHandler",
+        "Updater",
+    )
+}
+_install_stub("telegram.ext", _telegram_ext_classes)
 _install_stub("telegram.utils", {})
 _install_stub("telegram.utils.helpers", {"escape_markdown": lambda *a, **k: ""})
 

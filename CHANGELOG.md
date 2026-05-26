@@ -1,3 +1,23 @@
+## [8.62.55] - 2026-05-26
+
+### Changed
+- RU: PR7 (часть 1) серии оптимизации — начало декомпозиции `bot/handlers/settings_handlers.py` (14 776 строк, 291 функция, самый крупный монолит проекта). Файл превращён в одноимённый пакет `bot/handlers/settings_handlers/`:
+  - всё содержимое прежнего файла перемещено в `_legacy.py` через `git mv` (история файла сохраняется);
+  - новый `__init__.py` реэкспортирует через `import *` все публичные имена и **дополнительно** явно pin-ит шесть имён, на которые опираются внешние модули: `BACKUP_SETTINGS_CALLBACKS`, `settings_callback_handler`, `handle_setting_value`, `show_mail_patterns_menu`, `show_snapshot_transfer_settings`, `show_zfs_main_menu`. Если PR7b/PR7c потеряет одно из них при разнесении на UI-семьи — это сразу покраснит smoke-тест.
+  Внешние импортёры (`bot/handlers/__init__.py`, `bot/handlers/callbacks.py:19`, `bot/menu/handlers.py`, `extensions/backup_monitor/bot_handler.py`) **не правлены** — `from bot.handlers.settings_handlers import …` продолжает работать как раньше.
+  Названия пакета и файла **совпадают** — Python разрешает это, потому что .py был **удалён** при `git mv`, в отличие от инцидента 8.62.50, где `core/monitor/` создавался **соседом** к существующему `core/monitor.py` и перекрывал его. В `pyproject.toml` per-file-ignores `bot/handlers/settings_handlers.py` → `bot/handlers/settings_handlers/_legacy.py`.
+  Дальнейшее разнесение в `_state.py`, `menu.py`, `auth_servers.py`, `windows_creds.py`, `backups/proxmox.py`, `backups/db.py`, `backups/zfs.py`, `backups/mail.py`, `backups/snapshot.py`, `supplier_stock.py` — в PR7b+ по плану «один блок = один коммит, после каждого smoke-тест».
+- EN: PR7 (part 1) of the optimization series — start of decomposing `bot/handlers/settings_handlers.py` (14 776 lines, 291 functions, the largest monolith of the project). The file is turned into a same-named package `bot/handlers/settings_handlers/`:
+  - All previous content moved to `_legacy.py` via `git mv` (file history preserved).
+  - The new `__init__.py` re-exports all public names via `import *` and **additionally** explicitly pins the six names external modules depend on: `BACKUP_SETTINGS_CALLBACKS`, `settings_callback_handler`, `handle_setting_value`, `show_mail_patterns_menu`, `show_snapshot_transfer_settings`, `show_zfs_main_menu`. If PR7b/PR7c loses any of them during the UI-family split — the smoke test will flag it immediately.
+  External importers (`bot/handlers/__init__.py`, `bot/handlers/callbacks.py:19`, `bot/menu/handlers.py`, `extensions/backup_monitor/bot_handler.py`) are **not touched** — `from bot.handlers.settings_handlers import …` keeps working as before.
+  The package and file names **coincide** — Python allows this because the `.py` file was **deleted** by `git mv`, unlike the 8.62.50 incident where `core/monitor/` was created as a **sibling** to the existing `core/monitor.py` and shadowed it. In `pyproject.toml` the per-file-ignore was updated from `bot/handlers/settings_handlers.py` to `bot/handlers/settings_handlers/_legacy.py`.
+  Further split into `_state.py`, `menu.py`, `auth_servers.py`, `windows_creds.py`, `backups/proxmox.py`, `backups/db.py`, `backups/zfs.py`, `backups/mail.py`, `backups/snapshot.py`, `supplier_stock.py` lands in PR7b+ following the "one block = one commit, smoke test after each" plan.
+- RU: Smoke-тесты расширены: `test_settings_handlers_facade` пин-ит публичные имена пакета и identity `settings_callback_handler` через прямой импорт из `_legacy.py`. `tests/conftest.py` пополнен `telegram.ext` / `telegram` stubs (`BotCommand`, `CallbackQueryHandler`, `CommandHandler`, `Filters`, `MessageHandler` и др.), чтобы импорт `bot.handlers.*` ходил end-to-end в CI без `python-telegram-bot`.
+- EN: Smoke tests are extended: `test_settings_handlers_facade` pins the public names of the package and the identity of `settings_callback_handler` via a direct import from `_legacy.py`. `tests/conftest.py` is extended with `telegram.ext` / `telegram` stubs (`BotCommand`, `CallbackQueryHandler`, `CommandHandler`, `Filters`, `MessageHandler` etc.) so `bot.handlers.*` imports flow end-to-end in CI without `python-telegram-bot`.
+- RU: SemVer patch-бамп до `8.62.55`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.55`, `ANDROID_VERSION_CODE=817`).
+- EN: SemVer patch bump to `8.62.55`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.55`, `ANDROID_VERSION_CODE=817`).
+
 ## [8.62.54] - 2026-05-26
 
 ### Changed
