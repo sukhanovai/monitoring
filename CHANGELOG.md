@@ -1,3 +1,13 @@
+## [8.62.50] - 2026-05-26
+
+### Fixed
+- RU: HOTFIX к PR5 — на проде systemd-сервис `server-monitor.service` падал с `ImportError: cannot import name 'monitor' from 'core.monitor' (.../core/monitor/__init__.py)`. Причина: новый пакет `core/monitor/` (5 модулей декомпозиции из PR5) перекрыл собой существующий модуль `core/monitor.py`, в котором живёт singleton `monitor` ядра системы. Python разрешает `core.monitor` как пакет, поэтому `from core.monitor import monitor` уходило в `__init__.py` пакета, где никакого `monitor` нет, и весь импорт-граф (`main → bot.handlers → callbacks → monitor_core → core.monitor`) рушился ещё до старта. Пакет переименован: `core/monitor/` → `core/monitor_parts/`. Все внутренние импорты (`core.monitor.alerts` → `core.monitor_parts.alerts` и т. п.) обновлены, smoke-тест расширен регрессией `test_core_monitor_singleton_not_shadowed`, проверяющей `from core.monitor import monitor`.
+- EN: HOTFIX for PR5 — production `server-monitor.service` crashed with `ImportError: cannot import name 'monitor' from 'core.monitor' (.../core/monitor/__init__.py)`. Root cause: the new `core/monitor/` package (the five PR5 decomposition modules) shadowed the existing `core/monitor.py` module, which is where the system's `monitor` singleton lives. Python resolves `core.monitor` as a package first, so `from core.monitor import monitor` was going into the package's `__init__.py` (which has no `monitor`), bringing down the whole import graph (`main → bot.handlers → callbacks → monitor_core → core.monitor`) before startup. The package is renamed: `core/monitor/` → `core/monitor_parts/`. All internal imports (`core.monitor.alerts` → `core.monitor_parts.alerts`, etc.) are updated and the smoke test is extended with a `test_core_monitor_singleton_not_shadowed` regression that asserts `from core.monitor import monitor`.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.50`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.50`, `ANDROID_VERSION_CODE=812`).
+- EN: SemVer patch bump to `8.62.50`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.50`, `ANDROID_VERSION_CODE=812`).
+
 ## [8.62.49] - 2026-05-25
 
 ### Changed

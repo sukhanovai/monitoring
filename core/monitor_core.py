@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v8.62.49
+Server Monitoring System v8.62.50
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.62.49
+Версия: 8.62.50
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -821,9 +821,9 @@ def check_disk_resources_handler(update, context):
 
 
 # perform_cpu_check / perform_ram_check / perform_disk_check вынесены в
-# core/monitor/resource_checks.py. Реэкспорт через __getattr__ фасада в
+# core/monitor_parts/resource_checks.py. Реэкспорт через __getattr__ фасада в
 # конце файла, для прямых вызовов внутри monitor_core — алиасы:
-from core.monitor.resource_checks import (
+from core.monitor_parts.resource_checks import (
     perform_cpu_check,
     perform_disk_check,
     perform_ram_check,
@@ -1264,17 +1264,17 @@ def perform_full_check(context, chat_id, progress_message_id):
         )
 
 
-# start_monitoring вынесен в core/monitor/lifecycle.py.
-# handle_server_up / handle_server_down вынесены в core/monitor/availability.py.
+# start_monitoring вынесен в core/monitor_parts/lifecycle.py.
+# handle_server_up / handle_server_down вынесены в core/monitor_parts/availability.py.
 # check_resources_automatically / check_resource_alerts / send_resource_alerts
-# вынесены в core/monitor/alerts.py.
-from core.monitor.alerts import (
+# вынесены в core/monitor_parts/alerts.py.
+from core.monitor_parts.alerts import (
     check_resource_alerts,
     check_resources_automatically,
     send_resource_alerts,
 )
-from core.monitor.availability import handle_server_down, handle_server_up
-from core.monitor.lifecycle import start_monitoring
+from core.monitor_parts.availability import handle_server_down, handle_server_up
+from core.monitor_parts.lifecycle import start_monitoring
 
 
 def close_menu(update, context):
@@ -1360,8 +1360,8 @@ def send_morning_report_handler(update, context):
 
 
 # send_morning_report / get_backup_summary_for_report / debug_backup_data
-# вынесены в core/monitor/report.py.
-from core.monitor.report import (
+# вынесены в core/monitor_parts/report.py.
+from core.monitor_parts.report import (
     debug_backup_data,
     get_backup_summary_for_report,
     send_morning_report,
