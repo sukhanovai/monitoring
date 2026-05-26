@@ -1,3 +1,23 @@
+## [8.62.52] - 2026-05-26
+
+### Changed
+- RU: Декомпозиция `modules/mail_monitor.py` (PR6 серии оптимизации) — монолит ~2286 строк разбит на пакет `modules/mail_parts/`:
+  - `patterns.py` — 6 модуль-уровневых сборщиков regex/glob-паттернов из конфигурации БД для разных типов писем (БД-бэкапы, ZFS-статус, snapshot-передача, mail-бэкап, supplier stock): `get_database_patterns_from_config`, `get_zfs_patterns_from_config`, `_normalize_snapshot_pattern`, `get_snapshot_transfer_patterns_from_config`, `get_mail_patterns_from_config`, `get_stock_load_patterns_from_config`.
+  - `processor.py` — класс `BackupProcessor` (1839 строк, 30+ методов: парсинг subject/body по типам, чтение Maildir, запись в `backups.db`).
+  - `__init__.py` — пакет с общим `logger` (раньше module-level в `mail_monitor.py`), чтобы парсеры и processor шарили один setup.
+  `modules/mail_monitor.py` сжался с 2286 до **81 строки** и стал тонким фасадом: `run_mail_monitor`, `main` (точки входа systemd-юнита `mail-monitor.service`) и re-export `BackupProcessor` + всех pattern-хелперов. Внешние импортёры `core/task_router.py` (`from modules.mail_monitor import run_mail_monitor`) и `modules/improved_mail_monitor.py` (`from modules.mail_monitor import main`) **не правлены**.
+  Имя пакета — `mail_parts/` (а не `mail/`), чтобы соблюсти урок hotfix-а 8.62.50: пакет не должен совпадать с уже существующим `.py`-модулем в той же директории (`modules/mail_monitor.py` остаётся как фасад). Дальнейшая декомпозиция `BackupProcessor` на parser-mixins/db-helpers с unit-тестами на fixture-сэмплах писем перенесена в PR6b.
+- EN: Decomposition of `modules/mail_monitor.py` (PR6 of the optimization series) — the ~2286-line monolith is split into a `modules/mail_parts/` package:
+  - `patterns.py` — 6 module-level builders that produce regex/glob patterns from the configuration DB for the different mail types (DB backups, ZFS status, snapshot transfer, mail backup, supplier stock): `get_database_patterns_from_config`, `get_zfs_patterns_from_config`, `_normalize_snapshot_pattern`, `get_snapshot_transfer_patterns_from_config`, `get_mail_patterns_from_config`, `get_stock_load_patterns_from_config`.
+  - `processor.py` — the `BackupProcessor` class (1839 lines, 30+ methods: subject/body parsing by type, Maildir reading, writing into `backups.db`).
+  - `__init__.py` — the package shares a single `logger` (previously module-level in `mail_monitor.py`) so the parsers and the processor sit on top of one logging setup.
+  `modules/mail_monitor.py` shrunk from 2286 to **81 lines** and is now a thin facade: `run_mail_monitor`, `main` (the systemd-unit entrypoints for `mail-monitor.service`) and the re-export of `BackupProcessor` + all the pattern helpers. External importers `core/task_router.py` (`from modules.mail_monitor import run_mail_monitor`) and `modules/improved_mail_monitor.py` (`from modules.mail_monitor import main`) are **not touched**.
+  The package is named `mail_parts/` (not `mail/`) to honor the hotfix 8.62.50 lesson: a new package must not clash with an existing sibling `.py` module (`modules/mail_monitor.py` stays as the facade). Further decomposition of `BackupProcessor` into parser mixins / db helpers with unit tests on email fixture samples is deferred to PR6b.
+- RU: Smoke-тест `tests/test_imports.py` расширен `test_mail_monitor_facade_and_parts` — фиксирует, что `BackupProcessor` через фасад и через пакет это один и тот же класс, и что все 5 pattern-хелперов callable. Поломка декомпозиции PR6b/PR7 покраснит CI до запуска.
+- EN: Smoke test `tests/test_imports.py` is extended with `test_mail_monitor_facade_and_parts` — it pins down that `BackupProcessor` is the same class whether imported via the facade or the package, and that all five pattern helpers are callable. Any regression from PR6b/PR7 will red the CI before startup.
+- RU: SemVer patch-бамп до `8.62.52`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.52`, `ANDROID_VERSION_CODE=814`).
+- EN: SemVer patch bump to `8.62.52`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.52`, `ANDROID_VERSION_CODE=814`).
+
 ## [8.62.51] - 2026-05-26
 
 ### Changed

@@ -52,6 +52,33 @@ def test_core_monitor_singleton_not_shadowed() -> None:
     assert monitor is not None
 
 
+def test_mail_monitor_facade_and_parts() -> None:
+    """PR6: BackupProcessor вынесен в `modules.mail_parts.processor`,
+    pattern-хелперы — в `modules.mail_parts.patterns`. Фасад
+    `modules.mail_monitor` должен по-прежнему отдавать `BackupProcessor`,
+    `run_mail_monitor`, `main` — на них завязаны `core.task_router` и
+    `modules.improved_mail_monitor`. Имя пакета — `mail_parts`, чтобы не
+    столкнуться с существующим `modules/mail_monitor.py` (урок PR5 hotfix)."""
+    from modules.mail_monitor import BackupProcessor, main, run_mail_monitor
+    from modules.mail_parts.patterns import (
+        get_database_patterns_from_config,
+        get_mail_patterns_from_config,
+        get_snapshot_transfer_patterns_from_config,
+        get_stock_load_patterns_from_config,
+        get_zfs_patterns_from_config,
+    )
+    from modules.mail_parts.processor import BackupProcessor as BackupProcessorPkg
+
+    assert BackupProcessorPkg is BackupProcessor
+    assert callable(run_mail_monitor)
+    assert callable(main)
+    assert callable(get_database_patterns_from_config)
+    assert callable(get_zfs_patterns_from_config)
+    assert callable(get_mail_patterns_from_config)
+    assert callable(get_snapshot_transfer_patterns_from_config)
+    assert callable(get_stock_load_patterns_from_config)
+
+
 def test_resource_check_specs_unified() -> None:
     """PR5: ResourceCheckSpec заменяет три копии perform_*_check. Тест
     закрепляет, что CPU/RAM/DISK имеют ожидаемые ключи и пороги."""
