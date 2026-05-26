@@ -159,6 +159,34 @@ def test_settings_handlers_supplier_stock_split() -> None:
     )
 
 
+def test_settings_handlers_zfs_split() -> None:
+    """PR7c: блок ZFS (~29 функций) вынесен из _legacy.py в одноимённый
+    модуль `settings_handlers.zfs`. Тест ловит, чтобы три пути импорта
+    (`...settings_handlers.X`, `...settings_handlers._legacy.X`,
+    `...settings_handlers.zfs.X`) возвращали один и тот же объект и
+    `__module__` указывал в новый модуль."""
+    from bot.handlers.settings_handlers import (
+        add_zfs_pattern_handler,
+        show_zfs_main_menu,
+        show_zfs_patterns_menu,
+        zfs_pattern_confirm_handler,
+    )
+    from bot.handlers.settings_handlers._legacy import (
+        show_zfs_main_menu as via_legacy,
+    )
+    from bot.handlers.settings_handlers.zfs import (
+        show_zfs_main_menu as via_module,
+    )
+
+    assert callable(show_zfs_main_menu)
+    assert callable(show_zfs_patterns_menu)
+    assert callable(add_zfs_pattern_handler)
+    assert callable(zfs_pattern_confirm_handler)
+    assert via_module is show_zfs_main_menu
+    assert via_legacy is show_zfs_main_menu
+    assert show_zfs_main_menu.__module__ == "bot.handlers.settings_handlers.zfs"
+
+
 def test_mail_backup_processor_mixins_composition() -> None:
     """PR6c: BackupProcessor собран из 5 parser-mixin'ов через множественное
     наследование. Тест закрепляет состав MRO — поломка инфраструктуры
