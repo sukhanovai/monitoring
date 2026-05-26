@@ -44,8 +44,10 @@ mail_monitor.log
 *.sqlite
 *.sqlite3
 
-# Backups
+# Backups (runtime data dumps; не путать с пакетом
+# bot/handlers/settings_handlers/backups/ — он tracked)
 backups/
+!bot/handlers/settings_handlers/backups/
 *.backup
 *.bak
 
