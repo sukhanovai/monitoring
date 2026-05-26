@@ -24,14 +24,18 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 
-def _install_stub(name: str) -> None:
+def _install_stub(name: str, attrs: dict[str, object] | None = None) -> None:
     """Подложить пустой модуль-заглушку, если настоящая либа не установлена."""
     if name in sys.modules:
         return
     try:
         __import__(name)
     except ImportError:
-        sys.modules[name] = types.ModuleType(name)
+        module = types.ModuleType(name)
+        if attrs:
+            for attr_name, value in attrs.items():
+                setattr(module, attr_name, value)
+        sys.modules[name] = module
 
 
 # Третьесторонние runtime-зависимости, которые подгружаются по цепочке
@@ -40,6 +44,17 @@ def _install_stub(name: str) -> None:
 # lib.utils. В CI runtime deps не ставятся.
 for _stub in ("requests", "paramiko"):
     _install_stub(_stub)
+
+# Подмодули telegram нужны core/monitor/* и нескольким handlers — для
+# теста на импорт достаточно пустых классов-плейсхолдеров.
+_telegram_classes = {
+    name: type(name, (), {}) for name in ("Bot", "InlineKeyboardButton", "InlineKeyboardMarkup")
+}
+_install_stub("telegram", _telegram_classes)
+_install_stub("telegram.error", {"BadRequest": type("BadRequest", (Exception,), {})})
+_install_stub("telegram.ext", {})
+_install_stub("telegram.utils", {})
+_install_stub("telegram.utils.helpers", {"escape_markdown": lambda *a, **k: ""})
 
 _TMP_BASE = Path(tempfile.mkdtemp(prefix="monitoring-test-"))
 os.environ.setdefault("MONITORING_BASE_DIR", str(_TMP_BASE))

@@ -1,3 +1,25 @@
+## [8.62.49] - 2026-05-25
+
+### Changed
+- RU: Декомпозиция `core/monitor_core.py` (PR5 серии оптимизации, часть 1) — из монолита в 2783 строки извлечены 5 модулей в пакет `core/monitor/`:
+  - `resource_checks.py` — три копи-пастных `perform_cpu_check`/`perform_ram_check`/`perform_disk_check` заменены параметризованной `perform_resource_check(... ResourceCheckSpec)`. Поведение, тексты и кнопки идентичны (зафиксировано `ResourceCheckSpec`-таблицами CPU/RAM/DISK), оставлены тонкие wrapper-функции с исходными именами для обратной совместимости.
+  - `availability.py` — `handle_server_up`/`handle_server_down`.
+  - `alerts.py` — `check_resources_automatically`, `check_resource_alerts`, `send_resource_alerts`.
+  - `report.py` — `send_morning_report`, `get_backup_summary_for_report`, `debug_backup_data`.
+  - `lifecycle.py` — `start_monitoring` (основной цикл с проверкой ресурсов, утренним отчётом и опросом доступности).
+  Старый `core/monitor_core.py` сжался с 2783 до ~1460 строк и теперь импортирует имена из подмодулей; внешние импортёры (`bot/handlers/*`, `bot/menu/*`, `extensions/web_interface`, `core/monitor.py`, `lib/monitoring_utils.py`, `lib/matrix_commands.py`) не правятся. Циклика с `modules/morning_report.py` разорвана локальными импортами внутри `lifecycle.start_monitoring`. Перенос ~25 callback-handler-функций в отдельный `core/monitor/telegram_handlers.py` сделан отдельным PR5b, чтобы избежать одного огромного неревьюабельного коммита.
+- EN: Decomposition of `core/monitor_core.py` (PR5 of the optimization series, part 1) — five modules are extracted from the 2783-line monolith into a `core/monitor/` package:
+  - `resource_checks.py` — three copy-pasted `perform_cpu_check`/`perform_ram_check`/`perform_disk_check` are replaced with a parametrized `perform_resource_check(... ResourceCheckSpec)`. Behavior, texts and buttons are identical (locked in via `ResourceCheckSpec` tables for CPU/RAM/DISK), with thin wrapper functions preserved for backwards compatibility.
+  - `availability.py` — `handle_server_up`/`handle_server_down`.
+  - `alerts.py` — `check_resources_automatically`, `check_resource_alerts`, `send_resource_alerts`.
+  - `report.py` — `send_morning_report`, `get_backup_summary_for_report`, `debug_backup_data`.
+  - `lifecycle.py` — `start_monitoring` (the main loop with resource checks, the morning report and the availability poll).
+  The legacy `core/monitor_core.py` shrunk from 2783 to ~1460 lines and now re-imports names from the submodules; external importers (`bot/handlers/*`, `bot/menu/*`, `extensions/web_interface`, `core/monitor.py`, `lib/monitoring_utils.py`, `lib/matrix_commands.py`) are not touched. The import cycle with `modules/morning_report.py` is broken by local imports inside `lifecycle.start_monitoring`. Moving the ~25 callback handler functions into a separate `core/monitor/telegram_handlers.py` is split out into a follow-up PR5b to avoid a single unreviewable mega-commit.
+- RU: `tests/conftest.py` — добавлены лёгкие заглушки `telegram` / `telegram.error` / `telegram.ext` / `telegram.utils.helpers`, чтобы тесты на импорт могли загружать `core/monitor/*` без установки `python-telegram-bot` в CI. Сам smoke-тест расширен: импортируются все 5 новых подмодулей и фиксируются ключевые параметры `ResourceCheckSpec` для CPU/RAM/DISK.
+- EN: `tests/conftest.py` — lightweight stubs for `telegram` / `telegram.error` / `telegram.ext` / `telegram.utils.helpers` are added so the import smoke tests can load `core/monitor/*` without `python-telegram-bot` installed in CI. The smoke test itself is extended: all five new submodules are imported and the key `ResourceCheckSpec` parameters for CPU/RAM/DISK are pinned down.
+- RU: SemVer patch-бамп до `8.62.49`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.49`, `ANDROID_VERSION_CODE=811`).
+- EN: SemVer patch bump to `8.62.49`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.49`, `ANDROID_VERSION_CODE=811`).
+
 ## [8.62.48] - 2026-05-25
 
 ### Changed

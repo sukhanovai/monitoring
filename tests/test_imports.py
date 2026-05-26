@@ -24,6 +24,36 @@ LIGHT_MODULES = [
 ]
 
 
+def test_monitor_decomposed_modules_importable() -> None:
+    """PR5: пакет core/monitor — extract'ы из monitor_core.py — должен
+    хотя бы импортироваться без падений при наличии заглушек runtime
+    зависимостей. Тест ловит проблемы в графе импортов после PR5b/PR6."""
+    import importlib
+
+    for name in (
+        "core.monitor",
+        "core.monitor.alerts",
+        "core.monitor.availability",
+        "core.monitor.lifecycle",
+        "core.monitor.report",
+        "core.monitor.resource_checks",
+    ):
+        importlib.import_module(name)
+
+
+def test_resource_check_specs_unified() -> None:
+    """PR5: ResourceCheckSpec заменяет три копии perform_*_check. Тест
+    закрепляет, что CPU/RAM/DISK имеют ожидаемые ключи и пороги."""
+    from core.monitor.resource_checks import CPU_SPEC, DISK_SPEC, RAM_SPEC
+
+    assert CPU_SPEC.metric == "cpu" and CPU_SPEC.critical_threshold == 80
+    assert RAM_SPEC.metric == "ram" and RAM_SPEC.critical_threshold == 85
+    assert DISK_SPEC.metric == "disk" and DISK_SPEC.critical_threshold == 90
+    assert CPU_SPEC.callback_id == "check_cpu"
+    assert RAM_SPEC.callback_id == "check_ram"
+    assert DISK_SPEC.callback_id == "check_disk"
+
+
 def test_monitor_state_singleton() -> None:
     """MonitoringState из PR4 — единственный источник runtime-состояния
     ядра. Тест ловит ломающие изменения структуры в PR5+."""
