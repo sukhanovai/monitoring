@@ -187,6 +187,50 @@ def test_settings_handlers_zfs_split() -> None:
     assert show_zfs_main_menu.__module__ == "bot.handlers.settings_handlers.zfs"
 
 
+def test_settings_handlers_backups_split() -> None:
+    """PR7d: Proxmox vzdump (15 функций) и ZFS snapshot transfer
+    (10 функций) выделены в `settings_handlers.backups.proxmox` и
+    `settings_handlers.backups.snapshot`. Тест ловит identity на трёх
+    путях для представителя каждой подсемьи."""
+    from bot.handlers.settings_handlers import (
+        add_proxmox_pattern_handler,
+        add_snapshot_pattern_handler,
+        show_proxmox_backup_settings,
+        show_proxmox_patterns_menu,
+        show_snapshot_hosts_menu,
+        show_snapshot_transfer_settings,
+    )
+    from bot.handlers.settings_handlers._legacy import (
+        show_proxmox_backup_settings as proxmox_via_legacy,
+        show_snapshot_transfer_settings as snapshot_via_legacy,
+    )
+    from bot.handlers.settings_handlers.backups.proxmox import (
+        show_proxmox_backup_settings as proxmox_via_module,
+    )
+    from bot.handlers.settings_handlers.backups.snapshot import (
+        show_snapshot_transfer_settings as snapshot_via_module,
+    )
+
+    assert callable(show_proxmox_backup_settings)
+    assert callable(show_proxmox_patterns_menu)
+    assert callable(add_proxmox_pattern_handler)
+    assert callable(show_snapshot_hosts_menu)
+    assert callable(show_snapshot_transfer_settings)
+    assert callable(add_snapshot_pattern_handler)
+
+    assert proxmox_via_module is show_proxmox_backup_settings
+    assert proxmox_via_legacy is show_proxmox_backup_settings
+    assert show_proxmox_backup_settings.__module__ == (
+        "bot.handlers.settings_handlers.backups.proxmox"
+    )
+
+    assert snapshot_via_module is show_snapshot_transfer_settings
+    assert snapshot_via_legacy is show_snapshot_transfer_settings
+    assert show_snapshot_transfer_settings.__module__ == (
+        "bot.handlers.settings_handlers.backups.snapshot"
+    )
+
+
 def test_mail_backup_processor_mixins_composition() -> None:
     """PR6c: BackupProcessor собран из 5 parser-mixin'ов через множественное
     наследование. Тест закрепляет состав MRO — поломка инфраструктуры
