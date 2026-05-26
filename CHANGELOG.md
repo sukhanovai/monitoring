@@ -1,3 +1,27 @@
+## [8.62.54] - 2026-05-26
+
+### Changed
+- RU: PR6c серии оптимизации — `BackupProcessor` разбит на пять parser-mixin'ов в `modules/mail_parts/parsers/`:
+  - `proxmox.py` — `ProxmoxBackupParserMixin` с диспетчером `parse_email_file` и Proxmox-vzdump-парсерами (11 методов, ~516 строк): `is_proxmox_backup_email`, `_resolve_proxmox_host_name`, `parse_subject`, `normalize_status`, `get_email_body`, `parse_body`, `parse_duration`, `duration_to_seconds`, `seconds_to_duration`, `save_backup_report`.
+  - `database.py` — `DatabaseBackupParserMixin` (2 метода, ~275 строк): `parse_database_backup`, `save_database_backup`.
+  - `zfs.py` — `ZfsBackupParserMixin` (4 метода, ~279 строк): `parse_zfs_status`, `save_zfs_status`, `parse_snapshot_transfer`, `save_snapshot_transfer`.
+  - `mail.py` — `MailBackupParserMixin` (2 метода, ~152 строк): `parse_mail_backup`, `save_mail_backup`.
+  - `stock_load.py` — `StockLoadParserMixin` (5 методов, ~580 строк): `parse_supplier_stock_email`, `_match_stock_load_source`, `parse_stock_load_log`, `save_stock_load_entries`, `parse_stock_load_email`.
+  `BackupProcessor` теперь собирается через множественное наследование из этих пяти mixin'ов, а `modules/mail_parts/processor.py` сжался с 1810 до **341 строки** — ядро класса: `__init__`, `init_database` (8-строчная обёртка над `create_schema` из PR6b), `process_new_emails` (диспатчер Maildir) и 13 shared helper-методов (`_match_subject_patterns`, `_decode_attachment_payload`, `_match_regex`, `_normalize_rule_pattern`, `_normalize_match_text`, `_decode_header_value`, `_get_attachment_filename`, `_match_rule_pattern`, `_get_sender_candidates`, `_append_date_suffix`, `_resolve_attachment_name`, `_resolve_filename_aliases`, `_build_attachment_output_name`, `_extract_matching_attachments`), которые шарятся между mixin'ами через `self`.
+  Все 37 характеризующих тестов из PR6b (на `normalize_status`, `parse_subject`, `parse_duration`/`duration_to_seconds`/`seconds_to_duration`, `is_proxmox_backup_email`, `create_schema`) продолжают проходить без изменений — это и есть smoke-сеть, ради которой PR6b был отдельной частью. Извлечение mixin'ов сделано AST-скриптом `/tmp/extract_mixins.py`, чтобы границы методов считались по дереву, а не по диапазону строк (риск рассинхрона исключён).
+- EN: PR6c of the optimization series — `BackupProcessor` is split into five parser mixins in `modules/mail_parts/parsers/`:
+  - `proxmox.py` — `ProxmoxBackupParserMixin` with the `parse_email_file` dispatcher and the Proxmox vzdump parsers (11 methods, ~516 lines): `is_proxmox_backup_email`, `_resolve_proxmox_host_name`, `parse_subject`, `normalize_status`, `get_email_body`, `parse_body`, `parse_duration`, `duration_to_seconds`, `seconds_to_duration`, `save_backup_report`.
+  - `database.py` — `DatabaseBackupParserMixin` (2 methods, ~275 lines): `parse_database_backup`, `save_database_backup`.
+  - `zfs.py` — `ZfsBackupParserMixin` (4 methods, ~279 lines): `parse_zfs_status`, `save_zfs_status`, `parse_snapshot_transfer`, `save_snapshot_transfer`.
+  - `mail.py` — `MailBackupParserMixin` (2 methods, ~152 lines): `parse_mail_backup`, `save_mail_backup`.
+  - `stock_load.py` — `StockLoadParserMixin` (5 methods, ~580 lines): `parse_supplier_stock_email`, `_match_stock_load_source`, `parse_stock_load_log`, `save_stock_load_entries`, `parse_stock_load_email`.
+  `BackupProcessor` is now composed via multiple inheritance from these five mixins, and `modules/mail_parts/processor.py` shrank from 1810 to **341 lines** — only the class core: `__init__`, `init_database` (the 8-line wrapper around PR6b's `create_schema`), `process_new_emails` (the Maildir dispatcher), and 13 shared helper methods (`_match_subject_patterns`, `_decode_attachment_payload`, `_match_regex`, `_normalize_rule_pattern`, `_normalize_match_text`, `_decode_header_value`, `_get_attachment_filename`, `_match_rule_pattern`, `_get_sender_candidates`, `_append_date_suffix`, `_resolve_attachment_name`, `_resolve_filename_aliases`, `_build_attachment_output_name`, `_extract_matching_attachments`) shared across mixins via `self`.
+  All 37 characterization tests from PR6b (`normalize_status`, `parse_subject`, `parse_duration`/`duration_to_seconds`/`seconds_to_duration`, `is_proxmox_backup_email`, `create_schema`) keep passing as-is — this is the very safety net PR6b was carved out for. The mixin extraction was done by an AST script (`/tmp/extract_mixins.py`) so method boundaries are computed from the parse tree, not from line ranges (no drift risk).
+- RU: Smoke-тест `tests/test_imports.py` расширен: `test_mail_backup_processor_mixins_composition` закрепляет, что все пять mixin'ов присутствуют в `BackupProcessor.__mro__`, а представительные методы каждого mixin'а доступны на классе. Список светлых модулей пополнен пятью parsers/*.
+- EN: Smoke test `tests/test_imports.py` is extended: `test_mail_backup_processor_mixins_composition` pins down that all five mixins are in `BackupProcessor.__mro__` and that a representative method from each is accessible on the class. The lightweight imports list is extended with the five parsers/* modules.
+- RU: SemVer patch-бамп до `8.62.54`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.54`, `ANDROID_VERSION_CODE=816`).
+- EN: SemVer patch bump to `8.62.54`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.54`, `ANDROID_VERSION_CODE=816`).
+
 ## [8.62.53] - 2026-05-26
 
 ### Changed
