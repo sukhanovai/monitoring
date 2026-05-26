@@ -25,26 +25,36 @@ LIGHT_MODULES = [
 
 
 def test_monitor_decomposed_modules_importable() -> None:
-    """PR5: пакет core/monitor — extract'ы из monitor_core.py — должен
-    хотя бы импортироваться без падений при наличии заглушек runtime
-    зависимостей. Тест ловит проблемы в графе импортов после PR5b/PR6."""
+    """PR5: пакет `core/monitor_parts/` — extract'ы из monitor_core.py —
+    должен импортироваться без падений при наличии заглушек runtime
+    зависимостей. Имя пакета — `monitor_parts`, чтобы не перекрыть
+    существующий модуль `core/monitor.py` (фикс к hotfix-у 8.62.50)."""
     import importlib
 
     for name in (
-        "core.monitor",
-        "core.monitor.alerts",
-        "core.monitor.availability",
-        "core.monitor.lifecycle",
-        "core.monitor.report",
-        "core.monitor.resource_checks",
+        "core.monitor",  # singleton-модуль `monitor` должен оставаться доступным
+        "core.monitor_parts",
+        "core.monitor_parts.alerts",
+        "core.monitor_parts.availability",
+        "core.monitor_parts.lifecycle",
+        "core.monitor_parts.report",
+        "core.monitor_parts.resource_checks",
     ):
         importlib.import_module(name)
+
+
+def test_core_monitor_singleton_not_shadowed() -> None:
+    """Регрессия hotfix-а 8.62.50: пакет рядом с `core/monitor.py` не
+    должен перекрывать `from core.monitor import monitor`."""
+    from core.monitor import monitor
+
+    assert monitor is not None
 
 
 def test_resource_check_specs_unified() -> None:
     """PR5: ResourceCheckSpec заменяет три копии perform_*_check. Тест
     закрепляет, что CPU/RAM/DISK имеют ожидаемые ключи и пороги."""
-    from core.monitor.resource_checks import CPU_SPEC, DISK_SPEC, RAM_SPEC
+    from core.monitor_parts.resource_checks import CPU_SPEC, DISK_SPEC, RAM_SPEC
 
     assert CPU_SPEC.metric == "cpu" and CPU_SPEC.critical_threshold == 80
     assert RAM_SPEC.metric == "ram" and RAM_SPEC.critical_threshold == 85

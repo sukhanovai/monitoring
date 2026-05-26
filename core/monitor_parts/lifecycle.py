@@ -1,12 +1,12 @@
 """
-/core/monitor/lifecycle.py
-Server Monitoring System v8.62.49
+/core/monitor_parts/lifecycle.py
+Server Monitoring System v8.62.50
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main monitoring loop entry-point extracted from core/monitor_core.py
 (PR5 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.49
+Версия: 8.62.50
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Жизненный цикл монитора: однократная инициализация бота/state, затем
@@ -34,9 +34,6 @@ def start_monitoring() -> None:
     проход по `state.servers` с `check_server_availability` и
     плановую проверку свободного места ZFS пулов.
     """
-    from core.monitor.alerts import check_resources_automatically
-    from core.monitor.availability import handle_server_down, handle_server_up
-    from core.monitor.report import send_morning_report
     from core.monitor_core import (
         ensure_alerts_config,
         get_config,
@@ -47,6 +44,9 @@ def start_monitoring() -> None:
         refresh_servers,
         send_alert,
     )
+    from core.monitor_parts.alerts import check_resources_automatically
+    from core.monitor_parts.availability import handle_server_down, handle_server_up
+    from core.monitor_parts.report import send_morning_report
     from extensions.server_checks import (
         check_server_availability,
         initialize_servers,
