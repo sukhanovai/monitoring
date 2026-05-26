@@ -40,6 +40,18 @@ def test_monitor_decomposed_modules_importable() -> None:
         "core.monitor_parts.report",
         "core.monitor_parts.resource_checks",
         "core.monitor_parts.telegram_handlers",
+        # PR6/PR6b/PR6c — пакет декомпозиции mail_monitor
+        "modules.mail_parts",
+        "modules.mail_parts.patterns",
+        "modules.mail_parts.processor",
+        "modules.mail_parts.db",
+        "modules.mail_parts.db.schema",
+        "modules.mail_parts.parsers",
+        "modules.mail_parts.parsers.database",
+        "modules.mail_parts.parsers.mail",
+        "modules.mail_parts.parsers.proxmox",
+        "modules.mail_parts.parsers.stock_load",
+        "modules.mail_parts.parsers.zfs",
     ):
         importlib.import_module(name)
 
@@ -77,6 +89,42 @@ def test_mail_monitor_facade_and_parts() -> None:
     assert callable(get_mail_patterns_from_config)
     assert callable(get_snapshot_transfer_patterns_from_config)
     assert callable(get_stock_load_patterns_from_config)
+
+
+def test_mail_backup_processor_mixins_composition() -> None:
+    """PR6c: BackupProcessor собран из 5 parser-mixin'ов через множественное
+    наследование. Тест закрепляет состав MRO — поломка инфраструктуры
+    разбиения (одного mixin'а забыли, или порядок наследования съехал)
+    покраснит CI до запуска."""
+    from modules.mail_monitor import BackupProcessor
+    from modules.mail_parts.parsers import (
+        DatabaseBackupParserMixin,
+        MailBackupParserMixin,
+        ProxmoxBackupParserMixin,
+        StockLoadParserMixin,
+        ZfsBackupParserMixin,
+    )
+
+    mro = BackupProcessor.__mro__
+    for mixin in (
+        DatabaseBackupParserMixin,
+        MailBackupParserMixin,
+        ProxmoxBackupParserMixin,
+        StockLoadParserMixin,
+        ZfsBackupParserMixin,
+    ):
+        assert mixin in mro, mixin.__name__
+
+    # Хотя бы по одному «представительному» методу из каждого mixin'а
+    # должен быть доступен на инстансе.
+    for method_name in (
+        "parse_database_backup",  # DatabaseBackupParserMixin
+        "parse_mail_backup",  # MailBackupParserMixin
+        "parse_subject",  # ProxmoxBackupParserMixin
+        "parse_stock_load_log",  # StockLoadParserMixin
+        "parse_zfs_status",  # ZfsBackupParserMixin
+    ):
+        assert hasattr(BackupProcessor, method_name), method_name
 
 
 def test_resource_check_specs_unified() -> None:
