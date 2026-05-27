@@ -273,6 +273,57 @@ def test_settings_handlers_backups_db_split() -> None:
     )
 
 
+def test_settings_handlers_pr7f_split() -> None:
+    """PR7f: финальная партия семей вынесена из _legacy.py:
+    - `settings_handlers.auth` (~7 функций: SSH/Windows auth UI);
+    - `settings_handlers.backups.mail` (~9 функций: mail backup UI);
+    - `settings_handlers.windows_creds` (~2 функции: handler ввода учётки).
+    Тест ловит identity на трёх путях для представителей каждой подсемьи."""
+    from bot.handlers.settings_handlers import (
+        handle_windows_credential_input,
+        show_auth_settings,
+        show_mail_backup_settings,
+        show_mail_patterns_menu,
+        show_ssh_auth_settings,
+        show_windows_auth_settings,
+    )
+    from bot.handlers.settings_handlers._legacy import (
+        handle_windows_credential_input as w_via_legacy,
+        show_auth_settings as auth_via_legacy,
+        show_mail_backup_settings as mail_via_legacy,
+    )
+    from bot.handlers.settings_handlers.auth import (
+        show_auth_settings as auth_via_module,
+    )
+    from bot.handlers.settings_handlers.backups.mail import (
+        show_mail_backup_settings as mail_via_module,
+    )
+    from bot.handlers.settings_handlers.windows_creds import (
+        handle_windows_credential_input as w_via_module,
+    )
+
+    assert callable(show_auth_settings)
+    assert callable(show_ssh_auth_settings)
+    assert callable(show_windows_auth_settings)
+    assert callable(show_mail_backup_settings)
+    assert callable(show_mail_patterns_menu)
+    assert callable(handle_windows_credential_input)
+
+    assert auth_via_module is show_auth_settings
+    assert auth_via_legacy is show_auth_settings
+    assert show_auth_settings.__module__ == "bot.handlers.settings_handlers.auth"
+
+    assert mail_via_module is show_mail_backup_settings
+    assert mail_via_legacy is show_mail_backup_settings
+    assert show_mail_backup_settings.__module__ == ("bot.handlers.settings_handlers.backups.mail")
+
+    assert w_via_module is handle_windows_credential_input
+    assert w_via_legacy is handle_windows_credential_input
+    assert handle_windows_credential_input.__module__ == (
+        "bot.handlers.settings_handlers.windows_creds"
+    )
+
+
 def test_mail_backup_processor_mixins_composition() -> None:
     """PR6c: BackupProcessor собран из 5 parser-mixin'ов через множественное
     наследование. Тест закрепляет состав MRO — поломка инфраструктуры
