@@ -1,3 +1,41 @@
+## [8.62.61] - 2026-05-27
+
+### Changed
+- RU: PR8 серии оптимизации — унификация resource-alerts по плану «убрать пересечения, привести к одной декларативной схеме метрик». В `core/monitor_parts/alerts.py` появилась декларативная схема `ResourceAlertRule` (dataclass) и pure-функция `evaluate_alert_rules(ip, current, history, sent_state, *, rules, thresholds, alert_interval_seconds, now)`, которая заменяет три копи-пастных блока disk/cpu/ram внутри прежнего `check_resource_alerts`. Сама функция `check_resource_alerts` стала тонкой обёрткой над `evaluate_alert_rules`, привязанной к глобальному `state.resource_history` / `state.resource_alerts_sent`. Группировка в `send_resource_alerts` теперь тоже берёт список и метки групп из `ALERT_RULES` — добавить четвёртую метрику = добавить одну строку в кортеж.
+- EN: PR8 of the optimization series — unification of resource alerts per plan "remove the overlaps, drive everything off a single declarative schema". `core/monitor_parts/alerts.py` now has a `ResourceAlertRule` dataclass and the pure function `evaluate_alert_rules(ip, current, history, sent_state, *, rules, thresholds, alert_interval_seconds, now)`, which replaces the three copy-pasted disk/cpu/ram blocks inside the former `check_resource_alerts`. `check_resource_alerts` itself becomes a thin wrapper over `evaluate_alert_rules` bound to the global `state.resource_history` / `state.resource_alerts_sent`. Grouping in `send_resource_alerts` now also takes its list and group labels from `ALERT_RULES` — adding a fourth metric = adding one tuple line.
+- RU: Удалены дубликаты в `modules/resources.py`:
+  - `ResourceMonitor.start_automatic_checks`, `ResourceMonitor.perform_automatic_check`, `ResourceMonitor.check_resource_alerts`, `ResourceMonitor.send_resource_alerts` — мёртвый код после PR5 (единственный «живой» автоматический цикл живёт в `core.monitor_parts.alerts.check_resources_automatically`; локальная `check_resource_alerts` здесь проверяла только disk без CPU/RAM, что расходилось с реальной логикой);
+  - `ResourcesChecker.check_resource_alerts` переписан тонкой обёрткой над `evaluate_alert_rules` (раньше был copy-paste 50+ строк); шаги истории и счётчик отправок теперь живут в полях экземпляра, а решающая логика — в декларативной схеме;
+  - убраны неиспользуемые импорты `threading`, `RESOURCE_ALERT_INTERVAL`, `RESOURCE_ALERT_THRESHOLDS`, `RESOURCE_CHECK_INTERVAL`, `timedelta`.
+- EN: Removed duplicates in `modules/resources.py`:
+  - `ResourceMonitor.start_automatic_checks`, `ResourceMonitor.perform_automatic_check`, `ResourceMonitor.check_resource_alerts`, `ResourceMonitor.send_resource_alerts` — dead code after PR5 (the only "live" automatic loop lives in `core.monitor_parts.alerts.check_resources_automatically`; the local `check_resource_alerts` here only checked disk without CPU/RAM, which diverged from the real logic);
+  - `ResourcesChecker.check_resource_alerts` is rewritten as a thin wrapper over `evaluate_alert_rules` (was a 50+ line copy-paste); the history steps and the send counter live on the instance fields, while the decision logic lives in the declarative schema;
+  - dropped unused imports `threading`, `RESOURCE_ALERT_INTERVAL`, `RESOURCE_ALERT_THRESHOLDS`, `RESOURCE_CHECK_INTERVAL`, `timedelta`.
+- RU: Добавлено **9 unit-тестов** в `tests/test_resource_alerts.py` — закрепляют ключевое поведение `evaluate_alert_rules` без какой-либо БД и сетевых вызовов (pure-функция с инжектируемым `now`):
+  1. `test_disk_alert_fires_immediately_without_history` — disk-правило `streak=1` срабатывает сразу;
+  2. `test_cpu_requires_two_consecutive_high_checks` — одна высокая CPU без истории не даёт алерт;
+  3. `test_cpu_alert_fires_after_two_consecutive_high` — текущая + предыдущая выше порога → CPU-алерт с форматом `prev% → current%`;
+  4. `test_ram_streak_broken_by_low_prev` — низкая предыдущая RAM ломает streak;
+  5. `test_dedup_within_interval_suppresses_repeat` — повторный алерт в пределах interval подавлен;
+  6. `test_dedup_after_interval_allows_repeat` — после interval+1 секунд алерт уходит снова;
+  7. `test_all_three_rules_fire_independently` — три алерта в одном вызове, по одному на правило;
+  8. `test_below_threshold_no_alert` — все метрики ниже порога → пусто;
+  9. `test_alert_rules_export_contains_three_metrics` — структурная страховка: ровно три правила (disk, cpu, ram) с ожидаемыми `requires_streak`.
+- EN: Added **9 unit tests** in `tests/test_resource_alerts.py` — they pin down `evaluate_alert_rules`'s key behaviour with no DB and no network calls (pure function with an injectable `now`):
+  1. `test_disk_alert_fires_immediately_without_history` — disk rule `streak=1` fires immediately;
+  2. `test_cpu_requires_two_consecutive_high_checks` — a single high CPU without history yields no alert;
+  3. `test_cpu_alert_fires_after_two_consecutive_high` — current + previous above threshold → CPU alert in `prev% → current%` format;
+  4. `test_ram_streak_broken_by_low_prev` — a low previous RAM breaks the streak;
+  5. `test_dedup_within_interval_suppresses_repeat` — a repeat alert within the interval is suppressed;
+  6. `test_dedup_after_interval_allows_repeat` — after `interval+1` seconds the alert fires again;
+  7. `test_all_three_rules_fire_independently` — three alerts in a single call, one per rule;
+  8. `test_below_threshold_no_alert` — all metrics below threshold → empty;
+  9. `test_alert_rules_export_contains_three_metrics` — structural safety net: exactly three rules (disk, cpu, ram) with the expected `requires_streak`.
+- RU: После PR8 в pytest **63 passed** (54 + 9 новых). Внешние импортёры (`core/monitor.py:266` через `resources_checker.check_resource_alerts`) **не правлены** — поведение точно сохранено, что закреплено идентичным форматом сообщений в новых тестах.
+- EN: After PR8 pytest has **63 passed** (54 + 9 new). External importers (`core/monitor.py:266` through `resources_checker.check_resource_alerts`) are **not touched** — behaviour is preserved exactly, locked in by the message format in the new tests.
+- RU: SemVer patch-бамп до `8.62.61`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.61`, `ANDROID_VERSION_CODE=823`).
+- EN: SemVer patch bump to `8.62.61`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.61`, `ANDROID_VERSION_CODE=823`).
+
 ## [8.62.60] - 2026-05-27
 
 ### Changed

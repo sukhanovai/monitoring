@@ -1,24 +1,18 @@
 """
 /app/modules/resources.py
-Server Monitoring System v8.62.60
+Server Monitoring System v8.62.61
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server resource checking module
 Система мониторинга серверов
-Версия: 8.62.60
+Версия: 8.62.61
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль проверки ресурсов серверов
 """
 
-import threading
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from config.db_settings import (
-    RESOURCE_ALERT_INTERVAL,
-    RESOURCE_ALERT_THRESHOLDS,
-    RESOURCE_CHECK_INTERVAL,
-)
 from lib.helpers import progress_bar
 from lib.logging import debug_log
 
@@ -151,75 +145,14 @@ class ResourceMonitor:
         """Получить историю ресурсов сервера"""
         return self.resource_history.get(server_ip, [])[-limit:]
 
-    def start_automatic_checks(self):
-        """Запуск автоматических проверок ресурсов"""
-        debug_log("🔄 Запуск автоматических проверок ресурсов")
-
-        while True:
-            current_time = datetime.now()
-
-            # Проверяем интервал
-            if (current_time - self.last_resource_check).total_seconds() >= RESOURCE_CHECK_INTERVAL:
-                debug_log("🔍 Автоматическая проверка ресурсов...")
-                self.perform_automatic_check()
-                self.last_resource_check = current_time
-
-            time.sleep(60)  # Проверяем каждую минуту
-
-    def perform_automatic_check(self):
-        """Выполнение автоматической проверки ресурсов"""
-        try:
-            results = self.check_all_resources()
-
-            # Анализ результатов и отправка алертов
-            alerts = []
-            for result in results:
-                if result["success"] and result["resources"]:
-                    server_alerts = self.check_resource_alerts(
-                        result["server"]["ip"], result["resources"]
-                    )
-                    if server_alerts:
-                        alerts.extend(server_alerts)
-
-            # Отправка алертов если есть
-            if alerts:
-                self.send_resource_alerts(alerts)
-
-        except Exception as e:
-            debug_log(f"❌ Ошибка автоматической проверки ресурсов: {e}")
-
-    def check_resource_alerts(self, ip, resources):
-        """Проверка условий для алертов"""
-        alerts = []
-
-        # Проверка Disk (одна проверка)
-        disk_usage = resources.get("disk", 0)
-        if disk_usage >= RESOURCE_ALERT_THRESHOLDS["disk_alert"]:
-            alert_key = f"{ip}_disk"
-            if (
-                alert_key not in self.resource_alerts_sent
-                or (datetime.now() - self.resource_alerts_sent[alert_key]).total_seconds()
-                > RESOURCE_ALERT_INTERVAL
-            ):
-                alerts.append(f"💾 **Дисковое пространство** на сервере: {disk_usage}%")
-                self.resource_alerts_sent[alert_key] = datetime.now()
-
-        # Здесь можно добавить проверки CPU и RAM
-
-        return alerts
-
-    def send_resource_alerts(self, alerts):
-        """Отправка алертов по ресурсам"""
-        if not alerts:
-            return
-
-        message = "🚨 *Проблемы с ресурсами серверов*\n\n"
-        message += "\n".join(alerts)
-        message += f"\n⏰ Время проверки: {datetime.now().strftime('%H:%M:%S')}"
-
-        from bot.handlers.commands import send_alert
-
-        send_alert(message)
+    # PR8: метод `start_automatic_checks`, `perform_automatic_check`,
+    # `check_resource_alerts` и `send_resource_alerts` были мёртвым кодом
+    # после PR5 — единственный «живой» автоматический цикл живёт в
+    # `core.monitor_parts.alerts.check_resources_automatically`. Кроме того,
+    # локальная `check_resource_alerts` здесь проверяла только disk
+    # (без CPU/RAM), что расходилось с реальной логикой в `monitor_parts`.
+    # Чтобы не плодить дубль декларативной схемы, удалены — единая точка
+    # правды теперь в `core/monitor_parts/alerts.py`.
 
 
 # Глобальный экземпляр мониторинга ресурсов
@@ -293,8 +226,16 @@ class ResourcesChecker:
         return results, stats
 
     def check_resource_alerts(self, ip, current_resources):
-        """Проверяет условия для отправки алертов по ресурсам."""
-        from config import RESOURCE_ALERT_INTERVAL, RESOURCE_ALERT_THRESHOLDS
+        """Проверяет условия для отправки алертов по ресурсам.
+
+        PR8: тонкий wrapper над декларативной схемой `ALERT_RULES` из
+        `core.monitor_parts.alerts.evaluate_alert_rules`. Раньше здесь
+        был copy-paste из `monitor_core` (три блока disk/cpu/ram). История
+        и счётчик отправок живут в полях `ResourcesChecker` — отдельно
+        от глобального `state` ядра мониторинга, чтобы разовые ручные
+        проверки не мешали автоматическому пайплайну.
+        """
+        from core.monitor_parts.alerts import evaluate_alert_rules
 
         if not current_resources:
             return []
@@ -318,55 +259,13 @@ class ResourcesChecker:
             self.resource_history[ip] = self.resource_history[ip][-10:]
 
         history = self.resource_history.get(ip, [])[:-1]
-        alerts = []
-
-        disk_usage = resource_entry.get("disk", 0)
-        if disk_usage >= RESOURCE_ALERT_THRESHOLDS["disk_alert"]:
-            alert_key = f"{ip}_disk"
-            if (
-                alert_key not in self.resource_alerts_sent
-                or (current_time - self.resource_alerts_sent[alert_key]).total_seconds()
-                > RESOURCE_ALERT_INTERVAL
-            ):
-                alerts.append(
-                    f"💾 **Дисковое пространство** на {server_name}: {disk_usage}% "
-                    f"(превышен порог {RESOURCE_ALERT_THRESHOLDS['disk_alert']}%)"
-                )
-                self.resource_alerts_sent[alert_key] = current_time
-
-        cpu_usage = resource_entry.get("cpu", 0)
-        if cpu_usage >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"] and len(history) >= 1:
-            prev_cpu = history[-1].get("cpu", 0)
-            if prev_cpu >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
-                alert_key = f"{ip}_cpu"
-                if (
-                    alert_key not in self.resource_alerts_sent
-                    or (current_time - self.resource_alerts_sent[alert_key]).total_seconds()
-                    > RESOURCE_ALERT_INTERVAL
-                ):
-                    alerts.append(
-                        f"💻 **Процессор** на {server_name}: {prev_cpu}% → {cpu_usage}% "
-                        f"(2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['cpu_alert']}%)"
-                    )
-                    self.resource_alerts_sent[alert_key] = current_time
-
-        ram_usage = resource_entry.get("ram", 0)
-        if ram_usage >= RESOURCE_ALERT_THRESHOLDS["ram_alert"] and len(history) >= 1:
-            prev_ram = history[-1].get("ram", 0)
-            if prev_ram >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
-                alert_key = f"{ip}_ram"
-                if (
-                    alert_key not in self.resource_alerts_sent
-                    or (current_time - self.resource_alerts_sent[alert_key]).total_seconds()
-                    > RESOURCE_ALERT_INTERVAL
-                ):
-                    alerts.append(
-                        f"🧠 **Память** на {server_name}: {prev_ram}% → {ram_usage}% "
-                        f"(2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['ram_alert']}%)"
-                    )
-                    self.resource_alerts_sent[alert_key] = current_time
-
-        return alerts
+        return evaluate_alert_rules(
+            ip,
+            resource_entry,
+            history,
+            self.resource_alerts_sent,
+            now=current_time,
+        )
 
 
 # Глобальный экземпляр чекера ресурсов
