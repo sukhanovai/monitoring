@@ -1,12 +1,12 @@
 """
 /modules/mail_parts/db/schema.py
-Server Monitoring System v8.62.59
+Server Monitoring System v8.62.60
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 SQL DDL for backups.db extracted from BackupProcessor.init_database
 (PR6b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.59
+Версия: 8.62.60
 Автор: Александр Суханов (c)
 Лицензия: MIT
 DDL шести таблиц backups.db (`proxmox_backups`, `zfs_pool_status`,

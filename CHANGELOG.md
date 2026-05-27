@@ -1,3 +1,43 @@
+## [8.62.60] - 2026-05-27
+
+### Changed
+- RU: PR7f серии оптимизации — финальная партия семей вынесена из `bot/handlers/settings_handlers/_legacy.py`:
+  - `auth.py` (~349 строк, **7 функций**) — SSH/Windows auth UI: `show_auth_settings`, `show_ssh_auth_settings`, `show_windows_auth_settings`, `show_windows_auth_list`, `show_windows_auth_add`, `show_windows_auth_by_type`, `show_windows_auth_manage_types`.
+  - `backups/mail.py` (~379 строк, **9 функций**) — mail server backup UI и pattern handlers: `show_mail_backup_settings`, `show_mail_patterns_menu`, `add_mail_pattern_handler`, `edit_mail_default_pattern_handler`, `mail_pattern_retry_handler`, `mail_pattern_confirm_handler`, `_get_mail_fallback_patterns`, `_build_mail_pattern_from_subject`, `_build_mail_pattern_from_fragments`.
+  - `windows_creds.py` (~246 строк, **2 функции**) — Windows-credentials input handlers, оставшиеся не покрытыми семьёй `auth`: `handle_windows_credential_input`, `handle_credential_type_selection`.
+  `_legacy.py` сжался с 5593 до **4789 строк** (−14%). Доля исходного 14 776-строчного монолита, оставшаяся в `_legacy.py`: **32%** (было 38%).
+- EN: PR7f of the optimization series — the final batch of families is moved out of `bot/handlers/settings_handlers/_legacy.py`:
+  - `auth.py` (~349 lines, **7 functions**) — SSH/Windows auth UI: `show_auth_settings`, `show_ssh_auth_settings`, `show_windows_auth_settings`, `show_windows_auth_list`, `show_windows_auth_add`, `show_windows_auth_by_type`, `show_windows_auth_manage_types`.
+  - `backups/mail.py` (~379 lines, **9 functions**) — mail server backup UI and pattern handlers: `show_mail_backup_settings`, `show_mail_patterns_menu`, `add_mail_pattern_handler`, `edit_mail_default_pattern_handler`, `mail_pattern_retry_handler`, `mail_pattern_confirm_handler`, `_get_mail_fallback_patterns`, `_build_mail_pattern_from_subject`, `_build_mail_pattern_from_fragments`.
+  - `windows_creds.py` (~246 lines, **2 functions**) — Windows-credentials input handlers not covered by the `auth` family: `handle_windows_credential_input`, `handle_credential_type_selection`.
+  `_legacy.py` shrunk from 5593 to **4789 lines** (−14%). The remaining share of the original 14 776-line monolith in `_legacy.py`: **32%** (was 38%).
+- RU: Двусторонний re-export расширен — `_legacy.py` теперь подсасывает `from .auth import *`, `from .backups.mail import *` и `from .windows_creds import *` рядом с уже существующими импортами supplier_stock, zfs, backups.{proxmox,snapshot,db}. Identity-check на трёх путях добавлен в `test_settings_handlers_pr7f_split` — пин-ит, что `show_auth_settings`, `show_mail_backup_settings` и `handle_windows_credential_input` идентичны через фасад, `_legacy.py` и через прямой импорт нового модуля; `__module__` указывает в правильную точку.
+- EN: The two-way re-export is extended — `_legacy.py` now pulls in `from .auth import *`, `from .backups.mail import *` and `from .windows_creds import *` alongside the existing imports for supplier_stock, zfs, backups.{proxmox,snapshot,db}. The identity check on three paths is added in `test_settings_handlers_pr7f_split` — pinning that `show_auth_settings`, `show_mail_backup_settings` and `handle_windows_credential_input` are identical through the facade, `_legacy.py` and a direct import of the new module; `__module__` points to the right place.
+- RU: Извлечение AST-скриптом `/tmp/extract_remaining.py` — порядок групп важен: `auth` идёт первой, чтобы `show_windows_auth_*` (это auth-меню) попало в auth.py, а оставшийся `handle_windows_credential_input` — в windows_creds.py. Внешние импортёры (`bot/handlers/__init__.py`, `bot/handlers/callbacks.py`, `bot/menu/handlers.py`, `extensions/backup_monitor/bot_handler.py`) **не правлены** — `bot/handlers/__init__.py:57` (`from bot.handlers.settings_handlers import handle_setting_value`) и аналогичные опираются на фасад. После PR7f в pytest **54 passed**.
+- EN: Extracted via an AST script (`/tmp/extract_remaining.py`) — group order matters: `auth` comes first so `show_windows_auth_*` (which are auth menus) lands in `auth.py`, and the remaining `handle_windows_credential_input` falls into `windows_creds.py`. External importers (`bot/handlers/__init__.py`, `bot/handlers/callbacks.py`, `bot/menu/handlers.py`, `extensions/backup_monitor/bot_handler.py`) are **not touched** — `bot/handlers/__init__.py:57` (`from bot.handlers.settings_handlers import handle_setting_value`) and similar continue relying on the facade. After PR7f pytest has **54 passed**.
+- RU: Прогресс декомпозиции `settings_handlers` (итого по PR7…PR7f):
+  - `_legacy.py`: 14 776 → **4789** (32% исходного объёма);
+  - `supplier_stock.py`: 5805
+  - `backups/db.py`: 1812
+  - `zfs.py`: 960
+  - `backups/proxmox.py`: 594
+  - `backups/snapshot.py`: 455
+  - `backups/mail.py`: 379 ← новый
+  - `auth.py`: 349 ← новый
+  - `windows_creds.py`: 246 ← новый
+- EN: `settings_handlers` decomposition progress (totals over PR7…PR7f):
+  - `_legacy.py`: 14 776 → **4789** (32% of the original);
+  - `supplier_stock.py`: 5805
+  - `backups/db.py`: 1812
+  - `zfs.py`: 960
+  - `backups/proxmox.py`: 594
+  - `backups/snapshot.py`: 455
+  - `backups/mail.py`: 379 ← new
+  - `auth.py`: 349 ← new
+  - `windows_creds.py`: 246 ← new
+- RU: SemVer patch-бамп до `8.62.60`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.60`, `ANDROID_VERSION_CODE=822`).
+- EN: SemVer patch bump to `8.62.60`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.60`, `ANDROID_VERSION_CODE=822`).
+
 ## [8.62.59] - 2026-05-27
 
 ### Changed
