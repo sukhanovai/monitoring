@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/snapshot.py
-Server Monitoring System v8.62.62
+Server Monitoring System v8.62.63
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ZFS snapshot transfer settings: hosts toggle/delete, pattern menu/handlers. (PR7d).
 Система мониторинга серверов
-Версия: 8.62.62
+Версия: 8.62.63
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имена сохранены —

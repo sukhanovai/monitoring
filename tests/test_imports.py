@@ -324,6 +324,41 @@ def test_settings_handlers_pr7f_split() -> None:
     )
 
 
+def test_settings_handlers_pr11_split() -> None:
+    """PR11: финальное разбиение _legacy.py — две самые крупные функции
+    вынесены в отдельные модули:
+    - `settings_handlers.callback_dispatcher` — главный диспатчер
+      callback-кнопок (~1146 строк, был самым большим if/elif в проекте);
+    - `settings_handlers.settings_value` — обработчик текстового ввода
+      значений настроек (~241 строка).
+    Тест ловит identity на трёх путях для обоих имён."""
+    from bot.handlers.settings_handlers import (
+        handle_setting_value,
+        settings_callback_handler,
+    )
+    from bot.handlers.settings_handlers._legacy import (
+        handle_setting_value as value_via_legacy,
+        settings_callback_handler as dispatcher_via_legacy,
+    )
+    from bot.handlers.settings_handlers.callback_dispatcher import (
+        settings_callback_handler as dispatcher_via_module,
+    )
+    from bot.handlers.settings_handlers.settings_value import (
+        handle_setting_value as value_via_module,
+    )
+
+    assert callable(settings_callback_handler)
+    assert callable(handle_setting_value)
+    assert dispatcher_via_module is settings_callback_handler
+    assert dispatcher_via_legacy is settings_callback_handler
+    assert settings_callback_handler.__module__ == (
+        "bot.handlers.settings_handlers.callback_dispatcher"
+    )
+    assert value_via_module is handle_setting_value
+    assert value_via_legacy is handle_setting_value
+    assert handle_setting_value.__module__ == ("bot.handlers.settings_handlers.settings_value")
+
+
 def test_mail_backup_processor_mixins_composition() -> None:
     """PR6c: BackupProcessor собран из 5 parser-mixin'ов через множественное
     наследование. Тест закрепляет состав MRO — поломка инфраструктуры
