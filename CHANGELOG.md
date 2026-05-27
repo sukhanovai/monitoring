@@ -1,3 +1,27 @@
+## [Unreleased]
+
+### Added
+- RU: PR9 серии оптимизации — `scripts/bump_version.py` автоматизирует ручную процедуру синхронизации версии из CLAUDE.md. Канонический источник — `config/settings.py:APP_VERSION`; всё остальное (`ANDROID_LATEST_VERSION`, `android-client/gradle.properties:ANDROID_VERSION_NAME`, ссылки на prerelease APK в `README.md` / `docs/android_mobile_app.md`, заголовки `Server Monitoring System v…` и `Версия:…` во всех `*.py` под `bot/`, `core/`, `lib/`, `modules/`, `extensions/`, `config/`, `scripts/` и `main.py`, плюс `*.md` под `docs/`) обязано совпадать. Три режима:
+  - `python scripts/bump_version.py --check` — выход 1 при рассинхроне (используется pre-commit hook);
+  - `python scripts/bump_version.py --print` — текущая каноническая версия;
+  - `python scripts/bump_version.py 8.62.X` — обновить везде до новой версии.
+  Скрипт **не трогает** `ANDROID_VERSION_CODE` (отдельная семантика, инкрементируется отдельно) и **не подменяет** запись в `CHANGELOG.md` (содержание — за автором PR).
+- EN: PR9 of the optimization series — `scripts/bump_version.py` automates the manual version-sync procedure from CLAUDE.md. The canonical source is `config/settings.py:APP_VERSION`; everything else (`ANDROID_LATEST_VERSION`, `android-client/gradle.properties:ANDROID_VERSION_NAME`, prerelease APK links in `README.md` / `docs/android_mobile_app.md`, `Server Monitoring System v…` and `Версия:…` headers in every `*.py` under `bot/`, `core/`, `lib/`, `modules/`, `extensions/`, `config/`, `scripts/`, `main.py`, plus `*.md` under `docs/`) must match. Three modes:
+  - `python scripts/bump_version.py --check` — exit 1 on drift (used by the pre-commit hook);
+  - `python scripts/bump_version.py --print` — current canonical version;
+  - `python scripts/bump_version.py 8.62.X` — update everywhere to a new version.
+  The script does **not** touch `ANDROID_VERSION_CODE` (independent semantics, bumped separately) and does **not** replace the `CHANGELOG.md` entry (the content is up to the PR author).
+- RU: В `.pre-commit-config.yaml` добавлен локальный hook `bump-version-check`, который запускает `--check` только при правке версионных файлов (regex `files:` отсекает изменения, не затрагивающие версию — например, теста или скрипта). Рассинхрон ломает коммит ещё до пуша.
+- EN: A local `bump-version-check` hook is added to `.pre-commit-config.yaml`; it runs `--check` only when version-bearing files are touched (the `files:` regex skips changes that don't touch the version — e.g. a test or a script). Any drift breaks the commit before push.
+- RU: 7 unit-тестов в `tests/test_bump_version.py`: read_canonical_version читает APP_VERSION; --check на чистом дереве зелёный; EXPLICIT_SITES имеют реально существующие пути; discover_header_files обходит все известные подкаталоги; bump_to обновляет fake-дерево; bump_to отвергает не-SemVer; round-trip bump → check возвращает 0. Pytest теперь: **70 passed**.
+- EN: 7 unit tests in `tests/test_bump_version.py`: read_canonical_version reads APP_VERSION; --check on a clean tree is green; EXPLICIT_SITES have real paths; discover_header_files walks all known subdirs; bump_to updates a fake tree; bump_to rejects non-SemVer; round-trip bump → check returns 0. Pytest now: **70 passed**.
+- RU: CLAUDE.md — раздел версионирования переписан в пользу скрипта; старая `grep`-команда оставлена fallback'ом «на случай если скрипт сломан».
+- EN: CLAUDE.md — the versioning section is rewritten in favour of the script; the old `grep` command stays as a fallback "in case the script is broken".
+
+### Note
+- RU: Версия проекта НЕ инкрементируется в PR9 — скрипт инфраструктурный, поведение приложения не меняется.
+- EN: The project version is NOT bumped in PR9 — the script is infrastructure, application behaviour is unchanged.
+
 ## [8.62.61] - 2026-05-27
 
 ### Changed

@@ -20,3 +20,26 @@ repos:
       - id: check-toml
       - id: check-added-large-files
         args: ["--maxkb=500"]
+
+  # PR9: согласованность версии в config/settings.py, gradle.properties,
+  # ссылках на prerelease APK и заголовках исходников.
+  - repo: local
+    hooks:
+      - id: bump-version-check
+        name: bump_version.py --check
+        entry: python scripts/bump_version.py --check
+        language: system
+        pass_filenames: false
+        # Запускать только при правке файлов, где живёт версия — иначе hook
+        # бьёт каждый коммит, что раздражает на правках теста или README.
+        files: |
+          (?x)^(
+            config/settings\.py |
+            android-client/gradle\.properties |
+            README\.md |
+            docs/android_mobile_app\.md |
+            scripts/bump_version\.py |
+            main\.py |
+            (bot|core|lib|modules|extensions|config|scripts)/.+\.py |
+            docs/.+\.md
+          )$

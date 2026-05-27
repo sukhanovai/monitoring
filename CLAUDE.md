@@ -22,7 +22,21 @@
 - ссылки на prerelease APK в `README.md` и `docs/android_mobile_app.md`
 - верхняя запись в `CHANGELOG.md`
 
-Быстрая проверка отсутствия рассинхрона (должно быть пусто):
+Быстрая проверка через `scripts/bump_version.py`:
+
+```sh
+python scripts/bump_version.py --check       # сверка (выход 1 при рассинхроне)
+python scripts/bump_version.py --print       # вывести текущую APP_VERSION
+python scripts/bump_version.py 8.62.62       # обновить везде до новой версии
+```
+
+`--check` запускается pre-commit hook'ом автоматически на каждый коммит,
+который трогает версионные файлы. Скрипт **не инкрементирует** ни
+`ANDROID_VERSION_CODE`, ни запись в `CHANGELOG.md` — это надо делать
+вручную (`ANDROID_VERSION_CODE` имеет независимую семантику, `CHANGELOG`
+содержит описание изменений автора).
+
+Старая ручная сверка через grep (на случай если скрипт сломан):
 
 ```sh
 grep -rnoE "8\.6[0-9]\.[0-9]+" \
