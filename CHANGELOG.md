@@ -1,3 +1,47 @@
+## [8.62.63] - 2026-05-27
+
+### Changed
+- RU: PR11 (бывший PR7g) серии оптимизации — финальное разбиение `bot/handlers/settings_handlers/_legacy.py`. Из оставшегося ядра вынесены **две самые крупные функции** в отдельные модули:
+  - `callback_dispatcher.py` (~1146 строк) — `settings_callback_handler`, главный диспатчер callback-кнопок настроек, был самым большим `if/elif` в проекте.
+  - `settings_value.py` (~241 строка) — `handle_setting_value`, обработчик текстового ввода значений настроек.
+  `_legacy.py` сжался с 4753 до **3368 строк** (−29%). Доля исходного 14 776-строчного монолита, оставшаяся в `_legacy.py`: **23%** (было 32% после PR7f).
+- EN: PR11 (formerly PR7g) of the optimization series — final breakup of `bot/handlers/settings_handlers/_legacy.py`. The two largest functions are moved out of the remaining core into dedicated modules:
+  - `callback_dispatcher.py` (~1146 lines) — `settings_callback_handler`, the main settings callback-button dispatcher, was the largest `if/elif` in the project.
+  - `settings_value.py` (~241 lines) — `handle_setting_value`, the text-input handler for setting values.
+  `_legacy.py` shrunk from 4753 to **3368 lines** (−29%). The remaining share of the original 14 776-line monolith in `_legacy.py`: **23%** (was 32% after PR7f).
+- RU: Двусторонний re-export расширен — `_legacy.py` теперь подсасывает `from .callback_dispatcher import *` и `from .settings_value import *` рядом с уже существующими импортами supplier_stock, zfs, backups.{proxmox,snapshot,db,mail}, auth, windows_creds. Внешние импортёры (`bot/handlers/callbacks.py:19`, `bot/menu/handlers.py`, `bot/handlers/__init__.py`, `extensions/backup_monitor/bot_handler.py`) **не правлены** — `from bot.handlers.settings_handlers import settings_callback_handler, handle_setting_value` продолжает работать через фасад.
+- EN: The two-way re-export is extended — `_legacy.py` now pulls in `from .callback_dispatcher import *` and `from .settings_value import *` alongside the existing imports for supplier_stock, zfs, backups.{proxmox,snapshot,db,mail}, auth, windows_creds. External importers (`bot/handlers/callbacks.py:19`, `bot/menu/handlers.py`, `bot/handlers/__init__.py`, `extensions/backup_monitor/bot_handler.py`) are **not touched** — `from bot.handlers.settings_handlers import settings_callback_handler, handle_setting_value` keeps working via the facade.
+- RU: Извлечение AST-скриптом `/tmp/extract_pr11.py` — границы функций по дереву Python (не по строкам). Identity-check на трёх путях добавлен в `test_settings_handlers_pr11_split`: `settings_callback_handler` через фасад/`_legacy`/`callback_dispatcher` — тот же объект; то же самое для `handle_setting_value` через `settings_value`. `__module__` указывает в новые модули.
+- EN: Extracted via an AST script (`/tmp/extract_pr11.py`) — function boundaries from the Python tree (not from line numbers). Identity check on three paths is added in `test_settings_handlers_pr11_split`: `settings_callback_handler` through the facade / `_legacy` / `callback_dispatcher` returns the same object; same for `handle_setting_value` via `settings_value`. `__module__` points to the new modules.
+- RU: После PR11 в pytest **80 passed** (79 + 1 новый `test_settings_handlers_pr11_split`). Mypy strict-набор и near-strict набор не менялись.
+- EN: After PR11 pytest has **80 passed** (79 + 1 new `test_settings_handlers_pr11_split`). The mypy strict set and near-strict set are unchanged.
+- RU: Итог декомпозиции `settings_handlers` (по убыванию):
+  - `_legacy.py`: 14 776 → **3368** (23% исходного объёма; в ядре остаются ~78 функций — общие UI-меню, server CRUD, extensions menu, processing-pipeline helpers; диспатчер и value handler уехали);
+  - `supplier_stock.py`: 5805
+  - `backups/db.py`: 1812
+  - `callback_dispatcher.py`: **1146 ← новый**
+  - `zfs.py`: 960
+  - `backups/proxmox.py`: 594
+  - `backups/snapshot.py`: 455
+  - `backups/mail.py`: 379
+  - `auth.py`: 349
+  - `settings_value.py`: **241 ← новый**
+  - `windows_creds.py`: 246
+- EN: Settings handlers decomposition totals (descending):
+  - `_legacy.py`: 14 776 → **3368** (23% of the original; ~78 functions remain in the core — common UI menus, server CRUD, extensions menu, processing-pipeline helpers; the dispatcher and value handler moved out);
+  - `supplier_stock.py`: 5805
+  - `backups/db.py`: 1812
+  - `callback_dispatcher.py`: **1146 ← new**
+  - `zfs.py`: 960
+  - `backups/proxmox.py`: 594
+  - `backups/snapshot.py`: 455
+  - `backups/mail.py`: 379
+  - `auth.py`: 349
+  - `settings_value.py`: **241 ← new**
+  - `windows_creds.py`: 246
+- RU: SemVer patch-бамп до `8.62.63` через PR9-скрипт (`scripts/bump_version.py 8.62.63`); синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.63`, `ANDROID_VERSION_CODE=825`).
+- EN: SemVer patch bump to `8.62.63` via the PR9 script (`scripts/bump_version.py 8.62.63`); synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.63`, `ANDROID_VERSION_CODE=825`).
+
 ## [8.62.62] - 2026-05-27
 
 ### Added (PR10 — mypy strict для нового кода)
