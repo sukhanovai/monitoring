@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/proxmox.py
-Server Monitoring System v8.62.58
+Server Monitoring System v8.62.59
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Proxmox vzdump backup settings: hosts list CRUD, pattern menu/handlers. (PR7d).
 Система мониторинга серверов
-Версия: 8.62.58
+Версия: 8.62.59
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имена сохранены —
@@ -79,7 +79,6 @@ BACKUP_SETTINGS_CALLBACKS = {
 debug_logger = debug_log
 
 
-
 def _normalize_proxmox_hosts(raw_hosts) -> dict:
     """Нормализует PROXMOX_HOSTS к словарю для всех входных форматов."""
     if isinstance(raw_hosts, dict):
@@ -94,6 +93,7 @@ def _normalize_proxmox_hosts(raw_hosts) -> dict:
                 parsed_hosts = {}
         return parsed_hosts if isinstance(parsed_hosts, dict) else {}
     return {}
+
 
 def _get_proxmox_hosts_for_settings() -> dict:
     """Получить PROXMOX_HOSTS с fallback, как в мобильном API настроек."""
@@ -114,6 +114,7 @@ def _get_proxmox_hosts_for_settings() -> dict:
     except Exception:
         fallback_proxmox_hosts = {}
     return _normalize_proxmox_hosts(fallback_proxmox_hosts)
+
 
 def show_proxmox_backup_settings(update, context):
     """Показать настройки бэкапов Proxmox в разделе расширений"""
@@ -138,6 +139,7 @@ def show_proxmox_backup_settings(update, context):
         message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+
 def show_proxmox_patterns_menu(update, context):
     """Показать паттерны для Proxmox"""
     back_callback = (
@@ -148,6 +150,7 @@ def show_proxmox_patterns_menu(update, context):
     context.user_data["patterns_add"] = "add_proxmox_pattern"
     context.user_data["patterns_title"] = "🖥️ *Паттерны бэкапов Proxmox*"
     view_patterns_handler(update, context)
+
 
 def show_backup_proxmox_settings(update, context):
     """Показать настройки бэкапов Proxmox"""
@@ -183,6 +186,7 @@ def show_backup_proxmox_settings(update, context):
     query.edit_message_text(
         message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 def show_proxmox_hosts_list(update, context):
     """Показать список хостов Proxmox"""
@@ -241,6 +245,7 @@ def show_proxmox_hosts_list(update, context):
         message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+
 def add_proxmox_host_handler(update, context):
     """Добавить хост Proxmox"""
     query = update.callback_query
@@ -261,6 +266,7 @@ def add_proxmox_host_handler(update, context):
             ]
         ),
     )
+
 
 def delete_proxmox_host(update, context, host_name):
     """Удалить хост Proxmox"""
@@ -301,6 +307,7 @@ def delete_proxmox_host(update, context, host_name):
         ),
     )
 
+
 def handle_proxmox_host_input(update, context):
     """Обработчик добавления хоста Proxmox"""
     if "adding_proxmox_host" not in context.user_data:
@@ -335,6 +342,7 @@ def handle_proxmox_host_input(update, context):
     )
 
     context.user_data.pop("adding_proxmox_host", None)
+
 
 def edit_proxmox_host_handler(update, context, host_name):
     """Начать редактирование хоста Proxmox"""
@@ -376,6 +384,7 @@ def edit_proxmox_host_handler(update, context, host_name):
             ]
         ),
     )
+
 
 def handle_proxmox_host_edit_input(update, context):
     """Обработчик редактирования хоста Proxmox"""
@@ -422,6 +431,7 @@ def handle_proxmox_host_edit_input(update, context):
 
     context.user_data.pop("editing_proxmox_host", None)
     context.user_data.pop("editing_proxmox_host_name", None)
+
 
 def toggle_proxmox_host(update, context, host_name):
     """Включить/отключить мониторинг хоста Proxmox"""
@@ -471,6 +481,7 @@ def toggle_proxmox_host(update, context, host_name):
         ),
     )
 
+
 def add_proxmox_pattern_handler(update, context):
     """Добавить паттерн для Proxmox"""
     query = update.callback_query
@@ -501,6 +512,7 @@ def add_proxmox_pattern_handler(update, context):
         ),
     )
 
+
 def proxmox_pattern_retry_handler(update, context):
     """Повторить ввод темы/фрагментов для паттерна Proxmox."""
     query = update.callback_query
@@ -530,6 +542,7 @@ def proxmox_pattern_retry_handler(update, context):
             ]
         ),
     )
+
 
 def proxmox_pattern_confirm_handler(update, context):
     """Подтвердить сохранение паттерна Proxmox."""

@@ -1,11 +1,11 @@
 """
 /extensions/zfs_free_space_monitor.py
-Server Monitoring System v8.62.58
+Server Monitoring System v8.62.59
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ZFS free space monitoring over SSH
 Система мониторинга серверов
-Версия: 8.62.58
+Версия: 8.62.59
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг свободного места ZFS по SSH

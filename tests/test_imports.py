@@ -231,6 +231,48 @@ def test_settings_handlers_backups_split() -> None:
     )
 
 
+def test_settings_handlers_backups_db_split() -> None:
+    """PR7e: DB-backup семья (53 функции) выделена в
+    `settings_handlers.backups.db`. Тест ловит identity на трёх путях
+    для пары представителей: `show_database_backup_settings` (главное
+    меню) и `settings_toggle_database_monitoring` (callback)."""
+    from bot.handlers.settings_handlers import (
+        add_database_category_handler,
+        delete_database_entry_execute,
+        edit_default_db_pattern_handler,
+        handle_db_category_input,
+        settings_toggle_database_monitoring,
+        show_database_backup_settings,
+        show_db_patterns_menu,
+    )
+    from bot.handlers.settings_handlers._legacy import (
+        settings_toggle_database_monitoring as toggle_via_legacy,
+        show_database_backup_settings as menu_via_legacy,
+    )
+    from bot.handlers.settings_handlers.backups.db import (
+        settings_toggle_database_monitoring as toggle_via_module,
+        show_database_backup_settings as menu_via_module,
+    )
+
+    assert callable(show_database_backup_settings)
+    assert callable(show_db_patterns_menu)
+    assert callable(add_database_category_handler)
+    assert callable(delete_database_entry_execute)
+    assert callable(edit_default_db_pattern_handler)
+    assert callable(handle_db_category_input)
+    assert callable(settings_toggle_database_monitoring)
+
+    assert menu_via_module is show_database_backup_settings
+    assert menu_via_legacy is show_database_backup_settings
+    assert toggle_via_module is settings_toggle_database_monitoring
+    assert toggle_via_legacy is settings_toggle_database_monitoring
+
+    assert show_database_backup_settings.__module__ == ("bot.handlers.settings_handlers.backups.db")
+    assert settings_toggle_database_monitoring.__module__ == (
+        "bot.handlers.settings_handlers.backups.db"
+    )
+
+
 def test_mail_backup_processor_mixins_composition() -> None:
     """PR6c: BackupProcessor собран из 5 parser-mixin'ов через множественное
     наследование. Тест закрепляет состав MRO — поломка инфраструктуры

@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/snapshot.py
-Server Monitoring System v8.62.58
+Server Monitoring System v8.62.59
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ZFS snapshot transfer settings: hosts toggle/delete, pattern menu/handlers. (PR7d).
 Система мониторинга серверов
-Версия: 8.62.58
+Версия: 8.62.59
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имена сохранены —
@@ -79,7 +79,6 @@ BACKUP_SETTINGS_CALLBACKS = {
 debug_logger = debug_log
 
 
-
 def show_snapshot_hosts_menu(update, context):
     """Показать список и управление хостами передачи снэпшотов."""
     query = update.callback_query
@@ -143,12 +142,15 @@ def show_snapshot_hosts_menu(update, context):
         message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+
 def _get_snapshot_hosts_config() -> dict:
     hosts = settings_manager.get_setting("SNAPSHOT_TRANSFER_HOSTS", {}) or {}
     return hosts if isinstance(hosts, dict) else {}
 
+
 def _save_snapshot_hosts_config(hosts: dict) -> None:
     settings_manager.set_setting("SNAPSHOT_TRANSFER_HOSTS", hosts, "snapshot_transfer_hosts")
+
 
 def toggle_snapshot_host_handler(update, context, host_name: str) -> None:
     hosts = _get_snapshot_hosts_config()
@@ -158,11 +160,13 @@ def toggle_snapshot_host_handler(update, context, host_name: str) -> None:
         hosts[host_name] = host_cfg
         _save_snapshot_hosts_config(hosts)
 
+
 def delete_snapshot_host_handler(update, context, host_name: str) -> None:
     hosts = _get_snapshot_hosts_config()
     if host_name in hosts:
         hosts.pop(host_name, None)
         _save_snapshot_hosts_config(hosts)
+
 
 def _clear_snapshot_host_input_state(context) -> None:
     """Сбросить флаги текстового ввода для хостов/времени снэпшотов."""
@@ -172,6 +176,7 @@ def _clear_snapshot_host_input_state(context) -> None:
         "editing_snapshot_start_time",
     ):
         context.user_data.pop(key, None)
+
 
 def handle_snapshot_host_text_input(update, context) -> bool:
     text = (update.message.text or "").strip()
@@ -228,6 +233,7 @@ def handle_snapshot_host_text_input(update, context) -> bool:
         return True
 
     return False
+
 
 def show_snapshot_transfer_settings(update, context):
     """Показать настройки мониторинга передач снэпшотов"""
@@ -358,6 +364,7 @@ def show_snapshot_transfer_settings(update, context):
         message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+
 def add_snapshot_pattern_handler(update, context):
     """Добавить паттерн для передачи снэпшотов."""
     query = update.callback_query
@@ -391,6 +398,7 @@ def add_snapshot_pattern_handler(update, context):
             ]
         ),
     )
+
 
 def snapshot_pattern_confirm_handler(update, context):
     """Подтвердить сохранение паттерна передачи снэпшотов."""
