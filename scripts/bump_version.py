@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 /scripts/bump_version.py
-Server Monitoring System v8.62.61
+Server Monitoring System v8.62.62
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Version bump helper extracted from the manual procedure in CLAUDE.md
 (PR9 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.61
+Версия: 8.62.62
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Скрипт автоматизирует ручную процедуру синхронизации версии,
@@ -239,15 +239,16 @@ def check_consistency() -> int:
 def _replace_explicit_sites(new_version: str) -> int:
     """Обновляет EXPLICIT_SITES (config/settings.py, gradle.properties,
     README.md, docs/android_mobile_app.md) до new_version."""
+
+    def _replace(match: re.Match[str]) -> str:
+        return match.group(0).replace(match.group(1), new_version)
+
     touched = 0
     for site in EXPLICIT_SITES:
         if not site.path.exists():
             continue
         text = site.path.read_text(encoding="utf-8")
-        new_text = site.pattern.sub(
-            lambda m, v=new_version: m.group(0).replace(m.group(1), v),
-            text,
-        )
+        new_text = site.pattern.sub(_replace, text)
         if new_text != text:
             site.path.write_text(new_text, encoding="utf-8")
             touched += 1
@@ -256,6 +257,10 @@ def _replace_explicit_sites(new_version: str) -> int:
 
 def _replace_headers(new_version: str, files: Iterable[Path]) -> int:
     """Обновляет шапки `Server Monitoring System v…` / `Версия:…` до new_version."""
+
+    def _replace(match: re.Match[str]) -> str:
+        return match.group(0).replace(match.group(1), new_version)
+
     touched = 0
     patterns = (HEADER_VERSION_RE, HEADER_VERSION_RU_RE)
     for path in files:
@@ -265,10 +270,7 @@ def _replace_headers(new_version: str, files: Iterable[Path]) -> int:
             continue
         new_text = text
         for pattern in patterns:
-            new_text = pattern.sub(
-                lambda m, v=new_version: m.group(0).replace(m.group(1), v),
-                new_text,
-            )
+            new_text = pattern.sub(_replace, new_text)
         if new_text != text:
             path.write_text(new_text, encoding="utf-8")
             touched += 1

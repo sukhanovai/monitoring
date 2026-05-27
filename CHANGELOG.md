@@ -1,6 +1,30 @@
-## [Unreleased]
+## [8.62.62] - 2026-05-27
 
-### Added
+### Added (PR10 — mypy strict для нового кода)
+- RU: PR10 серии оптимизации — включён mypy strict для отобранного набора «эталонов типизации». В `pyproject.toml` две `[[tool.mypy.overrides]]` секции:
+  - `strict = true` для четырёх pure-модулей: `core.monitor_state` (PR4), `scripts.bump_version` (PR9), `modules.mail_parts.db.schema` (PR6b), `modules.mail_parts.db` (пакет).
+  - «near-strict» (без `disallow_untyped_calls`, потому что вызывают untyped legacy-API из `extensions/server_checks` и `core/monitor_core`): `core.monitor_parts.alerts`, `core.monitor_parts.availability`, `core.monitor_parts.resource_checks`. Включены `disallow_untyped_defs`, `disallow_incomplete_defs`, `check_untyped_defs`, `no_implicit_reexport`, `warn_unused_ignores`.
+  Все шесть модулей сейчас mypy-чисты. По мере того, как legacy получает аннотации, near-strict набор будет переезжать в полный strict.
+- EN: PR10 of the optimization series — mypy strict is enabled for a selected set of "typing reference modules". `pyproject.toml` adds two `[[tool.mypy.overrides]]` sections:
+  - `strict = true` for four pure modules: `core.monitor_state` (PR4), `scripts.bump_version` (PR9), `modules.mail_parts.db.schema` (PR6b), `modules.mail_parts.db` (package).
+  - "near-strict" (without `disallow_untyped_calls`, since they call untyped legacy API from `extensions/server_checks` and `core/monitor_core`): `core.monitor_parts.alerts`, `core.monitor_parts.availability`, `core.monitor_parts.resource_checks`. Enables `disallow_untyped_defs`, `disallow_incomplete_defs`, `check_untyped_defs`, `no_implicit_reexport`, `warn_unused_ignores`.
+  All six modules are mypy-clean right now. As legacy gets annotated, the near-strict set will migrate into full strict.
+- RU: CI workflow (`.github/workflows/ci.yml`) получил новый шаг `Mypy (strict set)` — запускает `mypy` по списку из шести модулей вместо `mypy .`, чтобы legacy-код не блокировал PR'ы по новому коду. Шаг между `compileall` и `pytest`.
+- EN: CI workflow (`.github/workflows/ci.yml`) gets a new step `Mypy (strict set)` — it runs `mypy` over the six-module list instead of `mypy .`, so legacy code does not block PRs against the new code. The step sits between `compileall` and `pytest`.
+- RU: 9 unit-тестов в `tests/test_mypy_strict_set.py` — структурно закрепляют желаемое состояние, не запуская сам mypy:
+  - 1 тест перечитывает `pyproject.toml` и проверяет наличие strict-набора;
+  - 1 тест проверяет наличие near-strict набора;
+  - 7 параметризованных — модули из обоих наборов остаются импортируемыми (защита от случайного удаления/переименования).
+  Pytest теперь: **79 passed** (70 + 9 новых).
+- EN: 9 unit tests in `tests/test_mypy_strict_set.py` — they pin the desired state structurally without running mypy itself:
+  - 1 test re-reads `pyproject.toml` and verifies the strict set is present;
+  - 1 test verifies the near-strict set is present;
+  - 7 parametrized — modules from both sets remain importable (guard against accidental deletion/rename).
+  Pytest now: **79 passed** (70 + 9 new).
+- RU: В `scripts/bump_version.py` две inline-lambda заменены на именованные локальные `_replace` — для strict mypy требуется явный тип для `re.Match[str]`. Поведение не меняется.
+- EN: Two inline lambdas in `scripts/bump_version.py` are replaced with named local `_replace` helpers — strict mypy requires an explicit `re.Match[str]` type. Behavior unchanged.
+
+### Added (PR9 — scripts/bump_version.py + pre-commit hook)
 - RU: PR9 серии оптимизации — `scripts/bump_version.py` автоматизирует ручную процедуру синхронизации версии из CLAUDE.md. Канонический источник — `config/settings.py:APP_VERSION`; всё остальное (`ANDROID_LATEST_VERSION`, `android-client/gradle.properties:ANDROID_VERSION_NAME`, ссылки на prerelease APK в `README.md` / `docs/android_mobile_app.md`, заголовки `Server Monitoring System v…` и `Версия:…` во всех `*.py` под `bot/`, `core/`, `lib/`, `modules/`, `extensions/`, `config/`, `scripts/` и `main.py`, плюс `*.md` под `docs/`) обязано совпадать. Три режима:
   - `python scripts/bump_version.py --check` — выход 1 при рассинхроне (используется pre-commit hook);
   - `python scripts/bump_version.py --print` — текущая каноническая версия;
@@ -18,9 +42,9 @@
 - RU: CLAUDE.md — раздел версионирования переписан в пользу скрипта; старая `grep`-команда оставлена fallback'ом «на случай если скрипт сломан».
 - EN: CLAUDE.md — the versioning section is rewritten in favour of the script; the old `grep` command stays as a fallback "in case the script is broken".
 
-### Note
-- RU: Версия проекта НЕ инкрементируется в PR9 — скрипт инфраструктурный, поведение приложения не меняется.
-- EN: The project version is NOT bumped in PR9 — the script is infrastructure, application behaviour is unchanged.
+### Changed
+- RU: SemVer patch-бамп до `8.62.62` через сам PR9-скрипт (eat-our-own-dogfood — первая боевая прогонка `scripts/bump_version.py 8.62.62`); синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.62`, `ANDROID_VERSION_CODE=824`).
+- EN: SemVer patch bump to `8.62.62` via the PR9 script itself (eat-our-own-dogfood — the first production run of `scripts/bump_version.py 8.62.62`); synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.62`, `ANDROID_VERSION_CODE=824`).
 
 ## [8.62.61] - 2026-05-27
 
