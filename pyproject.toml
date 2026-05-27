@@ -106,6 +106,42 @@ exclude = [
     "dist/",
 ]
 
+# PR10: strict-режим для отобранных PURE-модулей нового кода. Список
+# намеренно мал — это «эталоны типизации», на которые нужно равняться
+# при дальнейшем расширении. Расширять только после того, как для
+# нового кандидата исправлены все `no-untyped-call` от легаси-окружения.
+[[tool.mypy.overrides]]
+module = [
+    "core.monitor_state",
+    "scripts.bump_version",
+    "modules.mail_parts.db.schema",
+    "modules.mail_parts.db",
+]
+strict = true
+# В strict-наборе остаётся ignore_missing_imports — без него
+# mypy упрётся в paramiko/telegram даже для модулей, которые их не
+# трогают (тянутся транзитивно через config/__init__.py).
+
+# Декларативный список модулей, которые ХОТЕЛОСЬ БЫ привести к strict.
+# Сейчас они вызывают untyped legacy-функции (extensions/server_checks,
+# core.monitor_core), поэтому strict включается без `disallow_untyped_calls`.
+[[tool.mypy.overrides]]
+module = [
+    "core.monitor_parts.alerts",
+    "core.monitor_parts.availability",
+    "core.monitor_parts.resource_checks",
+]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_reexport = true
+warn_unused_ignores = true
+# disallow_untyped_calls и warn_return_any явно false — иначе вызовы
+# в untyped legacy-API (extensions/server_checks, core.monitor_core)
+# валят весь CI. Будет включено, когда legacy получит аннотации.
+disallow_untyped_calls = false
+warn_return_any = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

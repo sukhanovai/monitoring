@@ -33,6 +33,21 @@ jobs:
       - name: Compile all
         run: python -m compileall -q .
 
+      - name: Mypy (strict set)
+        # PR10: strict-проверка ограничена набором pure-модулей из
+        # pyproject.toml [[tool.mypy.overrides]] — список «эталонов
+        # типизации», на которые равняемся при расширении набора.
+        # Полная проверка всего репо НЕ запускается, чтобы legacy
+        # не блокировал PR-ы по новому коду.
+        run: |
+          mypy \
+            core/monitor_state.py \
+            scripts/bump_version.py \
+            modules/mail_parts/db/schema.py \
+            core/monitor_parts/alerts.py \
+            core/monitor_parts/availability.py \
+            core/monitor_parts/resource_checks.py
+
       - name: Pytest (smoke, no runtime deps)
         # Сейчас CI прогоняет только лёгкие smoke-тесты, не требующие
         # paramiko/telegram/matrix-nio. Полный smoke-импорт по
