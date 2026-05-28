@@ -2492,6 +2492,15 @@ private fun MonitoringApp(
                 )
             )
         }
+        extensionsById["nas_transfer_monitor"]?.takeIf { it.enabled }?.let { extension ->
+            add(
+                buildExtensionDataTile(
+                    extension = extension.copy(name = "NAS"),
+                    summaryOverride = state.backupNasTransferSummary,
+                    hasProblemOverride = state.backupNasTransferHasProblemItems
+                )
+            )
+        }
         findExtensionByIds(extensionsById, "supplier_stock_files", "supplier_stock_reports")
             ?.takeIf { it.enabled }
             ?.let { extension ->
@@ -2548,6 +2557,10 @@ private fun MonitoringApp(
                 {
                     showSnapshotTransferDialog = true
                     onAction("snapshot_transfer_menu")
+                }
+            } else if (extension.id == "nas_transfer_monitor") {
+                {
+                    onAction("backup_nas_transfer")
                 }
             } else if (extension.id == "zfs_monitor") {
                 {

@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.63
+Server Monitoring System v8.62.64
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.63
+Версия: 8.62.64
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1539,6 +1539,7 @@ def _execute_mobile_control_action(action: str):
         "backup_databases",
         "backup_mail",
         "backup_stock_loads",
+        "backup_nas_transfer",
         "supplier_stock_reports",
         "zfs",
         "zfs_menu",
@@ -1628,6 +1629,10 @@ def _execute_mobile_control_action(action: str):
             "backup_databases": ("database_backup_monitor", "🗃️ Мониторинг бэкапов БД отключён"),
             "backup_mail": ("mail_backup_monitor", "📬 Мониторинг бэкапов почты отключён"),
             "backup_stock_loads": ("stock_load_monitor", "📦 Мониторинг остатков 1С отключён"),
+            "backup_nas_transfer": (
+                "nas_transfer_monitor",
+                "📤 Мониторинг передачи на NAS отключён",
+            ),
             "supplier_stock_reports": ("supplier_stock_files", "📦 Остатки поставщиков отключены"),
             "zfs": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
             "zfs_menu": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
@@ -2273,6 +2278,66 @@ def _execute_mobile_control_action(action: str):
                     f"Итого записей: {len(mail_backups)}",
                     f"✅ Успешных: {ok_backups}",
                     f"🚨 С ошибками: {problem_backups}",
+                ]
+            )
+            return True, "\n".join(lines), "accepted", None
+
+        if action == "backup_nas_transfer":
+            try:
+                nas_hours = int(
+                    settings_manager.get_setting("NAS_TRANSFER_ALERT_HOURS", 48) or 48
+                )
+            except (TypeError, ValueError):
+                nas_hours = 48
+            transfers = backup_bot.get_nas_transfers(hours=nas_hours, limit=20)
+            if not transfers:
+                return (
+                    True,
+                    "📤 Передача бэкапов на NAS\n\nДанные о передаче на NAS пока отсутствуют.",
+                    "accepted",
+                    None,
+                )
+            status_icons = {
+                "OK": "✅",
+                "ERROR": "🚨",
+                "SKIPPED": "⏭️",
+                "STARTED": "🟡",
+                "BUSY": "🟡",
+            }
+            ok_count = 0
+            problem_count = 0
+            lines = [f"📤 Передача бэкапов на NAS (за {nas_hours}ч)", ""]
+            for (
+                host_name,
+                status,
+                nas_mounted,
+                _started_at,
+                completed_at_text,
+                bases_processed,
+                error_count,
+                problem_bases,
+                received_at,
+            ) in transfers:
+                status_norm = str(status or "").upper().strip()
+                if status_norm == "OK":
+                    ok_count += 1
+                else:
+                    problem_count += 1
+                icon = status_icons.get(status_norm, "⚪")
+                time_ago = backup_bot.format_time_ago(received_at)
+                mount_text = "NAS ✅" if nas_mounted else "NAS ⛔"
+                lines.append(
+                    f"{icon} {host_name} · {status_norm or '—'} · {mount_text} · "
+                    f"баз {bases_processed or 0} · ошибок {error_count or 0} "
+                    f"({completed_at_text or time_ago})"
+                )
+                if problem_bases:
+                    lines.append(f"   ⚠️ Проблемные базы: {problem_bases}")
+            lines.extend(
+                [
+                    "",
+                    f"Итого: {ok_count}/{len(transfers)} успешно",
+                    f"🚨 С проблемами: {problem_count}",
                 ]
             )
             return True, "\n".join(lines), "accepted", None
