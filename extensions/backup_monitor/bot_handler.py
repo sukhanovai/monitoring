@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.62.63
+Server Monitoring System v8.62.64
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.62.63
+Версия: 8.62.64
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -33,6 +33,7 @@ from extensions.backup_monitor.backup_handlers import (
     show_hosts_menu,
     show_mail_backups,
     show_main_menu,
+    show_nas_transfers,
     show_proxmox_menu,
     show_proxmox_patterns_menu,
     show_recent_backups,
@@ -456,6 +457,23 @@ class BackupMonitorBot(BackupBase):
             logger.error(f"Ошибка получения почтовых бэкапов: {exc}")
             return []
 
+    def get_nas_transfers(self, hours=48, limit=10):
+        """Получает последние итоги передачи бэкапов на NAS."""
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        query = """
+            SELECT host_name, status, nas_mounted, started_at_text, completed_at_text,
+                   bases_processed, error_count, problem_bases, received_at
+            FROM nas_transfers
+            WHERE received_at >= ?
+            ORDER BY received_at DESC
+            LIMIT ?
+        """
+        try:
+            return self.execute_query(query, (since_time, limit))
+        except Exception as exc:
+            logger.error(f"Ошибка получения передач на NAS: {exc}")
+            return []
+
     # === МЕТОДЫ ДЛЯ ЗАГРУЗКИ ОСТАТКОВ ===
 
     def get_stock_loads(self, hours=24):
@@ -710,6 +728,12 @@ def backup_callback(update, context):
                 query.edit_message_text("📦 Мониторинг остатков 1С отключён")
                 return
             show_stock_loads(query, backup_bot)
+
+        elif data == "backup_nas_transfer":
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            show_nas_transfers(query, backup_bot)
 
         elif data == "backup_proxmox":
             if not extension_manager.is_extension_enabled("backup_monitor"):

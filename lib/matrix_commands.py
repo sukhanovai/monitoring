@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.63
+Server Monitoring System v8.62.64
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.63
+Версия: 8.62.64
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -195,6 +195,13 @@ EXTENSION_MENU_ITEMS: List[ExtensionMenuItem] = [
         "_handle_ext_snapshot_transfer",
     ),
     ExtensionMenuItem(
+        "nas_transfer_monitor",
+        "📤",
+        "!nas",
+        "передача бэкапов на NAS",
+        "_handle_ext_nas_transfer",
+    ),
+    ExtensionMenuItem(
         "supplier_stock_files",
         "🏷️",
         "!supplier",
@@ -371,6 +378,14 @@ _EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict(
             },
         ),
         (
+            "nas_transfer_monitor",
+            {
+                "label": "📤 передача бэкапов на NAS",
+                "keys": ["NAS_TRANSFER_ALERT_HOURS"],
+                "categories": ["nas_transfer"],
+            },
+        ),
+        (
             "web_interface",
             {
                 "label": "🌐 веб-интерфейс",
@@ -425,6 +440,7 @@ _BACKUP_PATTERN_SECTION_OWNER: Dict[str, str] = {
     "mail": "mail_backup_monitor",
     "zfs": "zfs_monitor",
     "snapshot_transfer": "snapshot_transfer_monitor",
+    "nas_transfer": "nas_transfer_monitor",
     "stock_load": "stock_load_monitor",
     "database": "database_backup_monitor",
     "proxmox": "backup_monitor",
@@ -435,6 +451,7 @@ _BACKUP_PATTERN_SECTION_DESC: Dict[str, str] = {
     "mail": "Регэкспы писем бэкапа Zimbra (почтовый сервер)",
     "zfs": "Регэкспы писем статуса ZFS-массивов",
     "snapshot_transfer": "Регэкспы писем передачи ZFS-снэпшотов",
+    "nas_transfer": "Регэкспы писем передачи бэкапов на NAS",
     "stock_load": "Регэкспы логов загрузки остатков 1С",
     "database": "Регэкспы писем бэкапов баз данных",
     "proxmox": "Регэкспы писем бэкапов Proxmox/PBS",
@@ -454,6 +471,7 @@ _PATTERN_OWNER_PRIMARY_SECTION: Dict[str, str] = {
     "mail_backup_monitor": "mail",
     "zfs_monitor": "zfs",
     "snapshot_transfer_monitor": "snapshot_transfer",
+    "nas_transfer_monitor": "nas_transfer",
     "stock_load_monitor": "stock_load",
 }
 
@@ -1582,6 +1600,92 @@ class MatrixCommandBot:
             for host_name, status_val, received in recent:
                 lines.append(f"{_icon(status_val)} {host_name} · {status_val} ({received})")
 
+        return "\n".join(lines)
+
+    async def _handle_ext_nas_transfer(self) -> str:
+        import sqlite3
+
+        from config.settings import BACKUP_DB_FILE
+        from core.config_manager import config_manager
+
+        try:
+            hours = int(config_manager.get_setting("NAS_TRANSFER_ALERT_HOURS", 48) or 48)
+        except (TypeError, ValueError):
+            hours = 48
+
+        rows: List[Tuple] = []
+        try:
+            conn = sqlite3.connect(str(BACKUP_DB_FILE))
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT host_name, status, nas_mounted, started_at_text,
+                       completed_at_text, bases_processed, error_count,
+                       problem_bases, received_at
+                FROM nas_transfers
+                WHERE datetime(received_at) >= datetime('now', ?)
+                ORDER BY datetime(received_at) DESC, id DESC
+                LIMIT 10
+                """,
+                (f"-{hours} hours",),
+            )
+            rows = cursor.fetchall()
+        except sqlite3.OperationalError:
+            pass
+        except Exception as exc:
+            debug_log(f"⚠️ nas_transfer Matrix handler: {exc}")
+        finally:
+            try:
+                conn.close()  # type: ignore[name-defined]
+            except Exception:
+                pass
+
+        def _icon(status_val: str) -> str:
+            normalized = (status_val or "").upper()
+            if normalized == "OK":
+                return "🟢"
+            if normalized in {"STARTED", "BUSY"}:
+                return "🟡"
+            if normalized == "SKIPPED":
+                return "⏭️"
+            if normalized == "ERROR":
+                return "🔴"
+            return "⚪️"
+
+        lines = [f"📤 Передача бэкапов на NAS (за {hours}ч)", ""]
+        if not rows:
+            lines.append("ℹ️ Нет данных за период.")
+            return "\n".join(lines)
+
+        ok_count = 0
+        err_count = 0
+        for (
+            host_name,
+            status_val,
+            nas_mounted,
+            _started,
+            completed_at_text,
+            bases_processed,
+            error_count,
+            problem_bases,
+            received_at,
+        ) in rows:
+            status_norm = str(status_val or "").upper().strip()
+            if status_norm == "OK":
+                ok_count += 1
+            elif status_norm == "ERROR":
+                err_count += 1
+            mount_text = "NAS ✅" if nas_mounted else "NAS ⛔"
+            lines.append(
+                f"{_icon(status_norm)} {host_name} · {status_norm or '—'} · {mount_text} · "
+                f"баз {bases_processed or 0} · ошибок {error_count or 0} "
+                f"({completed_at_text or received_at or '—'})"
+            )
+            if problem_bases:
+                lines.append(f"   ⚠️ Проблемные базы: {problem_bases}")
+
+        lines.append("")
+        lines.append(f"Всего прогонов: {len(rows)} · 🟢 {ok_count} · 🔴 {err_count}")
         return "\n".join(lines)
 
     async def _handle_ext_supplier(self) -> str:

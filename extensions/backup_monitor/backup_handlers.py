@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.62.63
+Server Monitoring System v8.62.64
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.62.63
+Версия: 8.62.64
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -51,6 +51,11 @@ def create_main_menu():
 
     if extension_manager.is_extension_enabled("stock_load_monitor"):
         keyboard.append([InlineKeyboardButton("📦 Остатки 1С", callback_data="backup_stock_loads")])
+
+    if extension_manager.is_extension_enabled("nas_transfer_monitor"):
+        keyboard.append(
+            [InlineKeyboardButton("📤 Передача на NAS", callback_data="backup_nas_transfer")]
+        )
 
     keyboard.extend(
         [
@@ -953,6 +958,68 @@ def show_mail_backups(query, backup_bot, hours=72):
     except Exception as e:
         logger.error(f"Ошибка в show_mail_backups: {e}")
         query.edit_message_text("❌ Ошибка при получении данных по почтовым бэкапам")
+
+
+def show_nas_transfers(query, backup_bot, hours=48):
+    """Показывает итоги передачи бэкапов 1С на NAS."""
+    try:
+        transfers = backup_bot.get_nas_transfers(hours=hours, limit=10)
+
+        navigation = [
+            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+        ]
+
+        if not transfers:
+            message = (
+                "📤 *Передача бэкапов на NAS*\n\n" f"❌ Нет данных за последние {hours} часов."
+            )
+            query.edit_message_text(
+                message,
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(navigation),
+            )
+            return
+
+        status_icons = {"OK": "✅", "ERROR": "🚨", "SKIPPED": "⏭️", "STARTED": "🟡", "BUSY": "🟡"}
+
+        message = f"📤 *Передача бэкапов на NAS (за {hours}ч)*\n\n"
+        for (
+            host_name,
+            status,
+            nas_mounted,
+            started_at_text,
+            completed_at_text,
+            bases_processed,
+            error_count,
+            problem_bases,
+            received_at,
+        ) in transfers:
+            icon = status_icons.get((status or "").upper(), "⚪")
+            time_ago = backup_bot.format_time_ago(received_at)
+            mount_text = "NAS примонтирован" if nas_mounted else "NAS не примонтирован"
+            message += f"{icon} *{_md(host_name)}* — {_md(status)} ({_md(time_ago)})\n"
+            message += (
+                f"   {_md(mount_text)}, баз: {bases_processed or 0}, "
+                f"ошибок: {error_count or 0}\n"
+            )
+            if completed_at_text:
+                message += f"   Завершено: {_md(completed_at_text)}\n"
+            if problem_bases:
+                message += f"   ⚠️ Проблемные базы: {_md(problem_bases)}\n"
+
+        query.edit_message_text(
+            message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(navigation)
+        )
+
+    except BadRequest as exc:
+        if "Message is not modified" in str(exc):
+            query.answer("Меню уже открыто", show_alert=False)
+            return
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка в show_nas_transfers: {e}")
+        query.edit_message_text("❌ Ошибка при получении данных по передаче на NAS")
 
 
 def show_stock_loads(query, backup_bot, hours=24):

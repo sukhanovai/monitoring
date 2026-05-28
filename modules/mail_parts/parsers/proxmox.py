@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/proxmox.py
-Server Monitoring System v8.62.63
+Server Monitoring System v8.62.64
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ProxmoxBackupParserMixin — часть BackupProcessor (PR6c серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.63
+Версия: 8.62.64
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Mixin ProxmoxBackupParserMixin; объединяется с другими mixin'ами в BackupProcessor.
@@ -124,6 +124,11 @@ class ProxmoxBackupParserMixin:
                 self.save_snapshot_transfer(snapshot_transfer, subject, email_date)
                 return {"snapshot_transfer": snapshot_transfer}
 
+            nas_transfer = self.parse_nas_transfer(subject, self.get_email_body(msg))
+            if nas_transfer:
+                self.save_nas_transfer(nas_transfer, subject, email_date)
+                return {"nas_transfer": nas_transfer}
+
             mail_backup_info = self.parse_mail_backup(subject)
             if mail_backup_info:
                 self.save_mail_backup(mail_backup_info, subject, email_date)
@@ -139,7 +144,7 @@ class ProxmoxBackupParserMixin:
 
             if not self.is_proxmox_backup_email(subject):
                 logger.info(
-                    "Пропускаем не-Proxmox/БД/ZFS/передачи снэпшотов/почта/остатки письмо: %s...",
+                    "Пропускаем не-Proxmox/БД/ZFS/передачи снэпшотов/NAS/почта/остатки письмо: %s...",
                     subject[:50],
                 )
                 return None

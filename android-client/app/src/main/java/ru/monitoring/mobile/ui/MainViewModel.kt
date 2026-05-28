@@ -100,6 +100,7 @@ class MainViewModel(
         "backup_databases",
         "backup_mail",
         "backup_stock_loads",
+        "backup_nas_transfer",
         "supplier_stock_reports",
         "settings_patterns_proxmox"
     )
@@ -110,6 +111,7 @@ class MainViewModel(
         "snapshot_transfer_menu",
         "backup_proxmox",
         "backup_stock_loads",
+        "backup_nas_transfer",
         "supplier_stock_reports",
     )
     private val extensionSettingsControlActions = extensionControlActions + setOf("open_extensions_settings")
@@ -122,6 +124,7 @@ class MainViewModel(
         Pair({ action -> action == "backup_databases" || action.startsWith("db_detail_") }, "database_backup_monitor"),
         Pair({ action -> action.startsWith("backup_mail") }, "mail_backup_monitor"),
         Pair({ action -> action == "backup_stock_loads" }, "stock_load_monitor"),
+        Pair({ action -> action == "backup_nas_transfer" }, "nas_transfer_monitor"),
         Pair({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files")
     )
     private val extensionSettingsFallbackActions = listOf(
@@ -131,6 +134,7 @@ class MainViewModel(
         Triple("mail_backup_monitor", "📬 Бэкапы почты", "settings_ext_backup_mail"),
         Triple("zfs_pool_free_space_monitor", "💽 zfs место", "zfs_pool_free_space_menu"),
         Triple("stock_load_monitor", "📦 Загрузка остатков 1С", "settings_ext_stock_load"),
+        Triple("nas_transfer_monitor", "📤 Передача на NAS", "backup_nas_transfer"),
         Triple("supplier_stock_files", "📦 Остатки поставщиков", "settings_ext_supplier_stock"),
         Triple("resource_monitor", "💻 Ресурсы", "settings_resources")
     )
@@ -674,6 +678,16 @@ class MainViewModel(
                         backupStockLoadsHasProblemItems = summary?.hasProblem ?: state.backupStockLoadsHasProblemItems
                     )
                 }
+                "extension_nas_transfer_monitor" -> {
+                    val response = withContext(Dispatchers.IO) {
+                        runCatching { currentApi().runControlAction(ControlActionRequest("backup_nas_transfer")) }.getOrNull()
+                    }
+                    val summary = buildBackupTileSummary(response)
+                    state = state.copy(
+                        backupNasTransferSummary = summary?.ratioText ?: state.backupNasTransferSummary,
+                        backupNasTransferHasProblemItems = summary?.hasProblem ?: state.backupNasTransferHasProblemItems
+                    )
+                }
                 "extension_supplier_stock_files" -> {
                     val response = withContext(Dispatchers.IO) {
                         runCatching { currentApi().runControlAction(ControlActionRequest("supplier_stock_reports")) }.getOrNull()
@@ -1144,6 +1158,7 @@ class MainViewModel(
                 }
                 val zfsPoolFreeSpaceSummary = fetchOrLog("runControlAction(zfs_pool_free_space_menu)") { currentApi().runControlAction(ControlActionRequest("zfs_pool_free_space_menu")) }
                 val snapshotTransferSummary = fetchOrLog("runControlAction(snapshot_transfer_menu)") { currentApi().runControlAction(ControlActionRequest("snapshot_transfer_menu")) }
+                val nasTransferSummary = fetchOrLog("runControlAction(backup_nas_transfer)") { currentApi().runControlAction(ControlActionRequest("backup_nas_transfer")) }
                 listOf(
                     monitoring,
                     bot,
@@ -1162,7 +1177,8 @@ class MainViewModel(
                     zfsSummaryBundle,
                     zfsPoolFreeSpaceSummary,
                     matrixBot,
-                    snapshotTransferSummary
+                    snapshotTransferSummary,
+                    nasTransferSummary
                 )
             }
 
@@ -1194,6 +1210,7 @@ class MainViewModel(
             val zfsPoolFreeSpaceSummary = buildBackupTileSummary(result[15] as? ControlActionResult)
             val matrixBot = result[16] as? ru.monitoring.mobile.api.SettingsMatrixBotResponse
             val snapshotTransferSummary = buildSnapshotTransferTileSummary(result[17] as? ControlActionResult)
+            val nasTransferSummary = buildBackupTileSummary(result[18] as? ControlActionResult)
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -1269,6 +1286,7 @@ class MainViewModel(
                 zfsSummary = zfsSummary?.ratioText ?: state.zfsSummary,
                 zfsPoolFreeSpaceSummary = zfsPoolFreeSpaceSummary?.ratioText ?: state.zfsPoolFreeSpaceSummary,
                 snapshotTransferSummary = snapshotTransferSummary?.ratioText ?: state.snapshotTransferSummary,
+                backupNasTransferSummary = nasTransferSummary?.ratioText ?: state.backupNasTransferSummary,
                 backupProxmoxHasProblemItems = proxmoxBackupSummary?.hasProblem ?: state.backupProxmoxHasProblemItems,
                 backupDatabasesHasProblemItems = dbBackupSummary?.hasProblem ?: state.backupDatabasesHasProblemItems,
                 backupStockLoadsHasProblemItems = stockLoadSummary?.hasProblem ?: state.backupStockLoadsHasProblemItems,
@@ -1277,6 +1295,7 @@ class MainViewModel(
                 zfsHasProblemItems = zfsSummary?.hasProblem ?: state.zfsHasProblemItems,
                 zfsPoolFreeSpaceHasProblemItems = zfsPoolFreeSpaceSummary?.hasProblem ?: state.zfsPoolFreeSpaceHasProblemItems,
                 snapshotTransferHasProblemItems = snapshotTransferSummary?.hasProblem ?: state.snapshotTransferHasProblemItems,
+                backupNasTransferHasProblemItems = nasTransferSummary?.hasProblem ?: state.backupNasTransferHasProblemItems,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -3252,6 +3271,7 @@ data class MainUiState(
     val zfsSummary: String = "",
     val zfsPoolFreeSpaceSummary: String = "",
     val snapshotTransferSummary: String = "",
+    val backupNasTransferSummary: String = "",
     val backupProxmoxHasProblemItems: Boolean = false,
     val backupDatabasesHasProblemItems: Boolean = false,
     val backupStockLoadsHasProblemItems: Boolean = false,
@@ -3260,6 +3280,7 @@ data class MainUiState(
     val zfsHasProblemItems: Boolean = false,
     val zfsPoolFreeSpaceHasProblemItems: Boolean = false,
     val snapshotTransferHasProblemItems: Boolean = false,
+    val backupNasTransferHasProblemItems: Boolean = false,
     val mailBackupHistoryTitle: String = "",
     val mailBackupHistoryItems: List<MailBackupHistoryItem> = emptyList(),
     val zfsStatusMessage: String = "",

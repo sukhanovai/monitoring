@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v8.62.63
+Server Monitoring System v8.62.64
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 8.62.63
+Версия: 8.62.64
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -22,9 +22,9 @@ from lib.utils import is_proxmox_server
 DEBUG_MODE = False
 
 # Версия приложения
-APP_VERSION = "8.62.63"
+APP_VERSION = "8.62.64"
 ANDROID_MIN_SUPPORTED_VERSION = "8.59.10"
-ANDROID_LATEST_VERSION = "8.62.63"
+ANDROID_LATEST_VERSION = "8.62.64"
 
 
 # Matrix-уведомления (доп. канал к Telegram)
@@ -178,6 +178,11 @@ BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {
     "snapshot_transfer": {
         "subject": [
             r"^snapshots transfer (?P<host>[\w.-]+) (?P<status>STARTED|SUCCESS|SKIPPED|ERROR|BUSY)$"
+        ]
+    },
+    "nas_transfer": {
+        "subject": [
+            r"^NAS transfer (?P<host>[\w.-]+) (?P<status>OK|ERROR|SKIPPED|STARTED|BUSY)$"
         ]
     },
     "stock_load": {
