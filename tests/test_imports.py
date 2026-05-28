@@ -359,6 +359,30 @@ def test_settings_handlers_pr11_split() -> None:
     assert handle_setting_value.__module__ == ("bot.handlers.settings_handlers.settings_value")
 
 
+def test_settings_dispatcher_resolves_legacy_names() -> None:
+    """Регрессия: `settings_callback_handler` выделен в callback_dispatcher,
+    но в рантайме обращается к именам, оставшимся в _legacy
+    (`settings_command`, `_safe_query_answer`, `show_telegram_settings`, …).
+    Статический импорт _legacy в callback_dispatcher невозможен (цикл), поэтому
+    имена подтягиваются лениво через `_ensure_legacy_bindings`. Без этого любой
+    callback настроек падал с `NameError: name 'settings_command' is not defined`.
+    """
+    from bot.handlers.settings_handlers import callback_dispatcher
+
+    callback_dispatcher._ensure_legacy_bindings()
+
+    module_globals = vars(callback_dispatcher)
+    for name in (
+        "settings_command",
+        "_safe_query_answer",
+        "show_telegram_settings",
+        "show_monitoring_settings",
+        "show_time_settings",
+    ):
+        assert name in module_globals, f"{name} не связан в callback_dispatcher"
+        assert callable(module_globals[name])
+
+
 def test_mail_backup_processor_mixins_composition() -> None:
     """PR6c: BackupProcessor собран из 5 parser-mixin'ов через множественное
     наследование. Тест закрепляет состав MRO — поломка инфраструктуры

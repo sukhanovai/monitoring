@@ -86,8 +86,38 @@ BACKUP_SETTINGS_CALLBACKS = {
 debug_logger = debug_log
 
 
+_LEGACY_BINDINGS_DONE = False
+
+
+def _ensure_legacy_bindings() -> None:
+    """Подтягивает имена из _legacy в globals этого модуля.
+
+    `settings_callback_handler` выделен из _legacy.py (PR11), но обращается
+    к множеству хелперов и show_*-меню, которые остались в _legacy
+    (`settings_command`, `_safe_query_answer`, `show_telegram_settings`, …).
+    Статический импорт _legacy сюда невозможен — _legacy сам делает
+    `from .callback_dispatcher import *` (циклический импорт). Поэтому
+    связываем недостающие имена лениво, на первом вызове, когда оба модуля
+    уже полностью загружены. `setdefault` не перетирает собственные имена
+    этого модуля.
+    """
+    global _LEGACY_BINDINGS_DONE
+    if _LEGACY_BINDINGS_DONE:
+        return
+
+    from bot.handlers.settings_handlers import _legacy
+
+    module_globals = globals()
+    for name in dir(_legacy):
+        if name.startswith("__"):
+            continue
+        module_globals.setdefault(name, getattr(_legacy, name))
+    _LEGACY_BINDINGS_DONE = True
+
+
 def settings_callback_handler(update, context):
     """Обработчик callback'ов настроек"""
+    _ensure_legacy_bindings()
     query = update.callback_query
     data = query.data
 
