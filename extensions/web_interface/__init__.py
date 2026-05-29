@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.69
+Server Monitoring System v8.62.70
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.69
+Версия: 8.62.70
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -5811,6 +5811,80 @@ def v1_extensions_actions():
                         {"label": "↩️ Назад", "action": back_action},
                         {"label": "✖️ Закрыть", "action": "close"},
                     ],
+                }
+            ),
+            200,
+        )
+
+    if action == "settings_ext_nas" or action == "nas_ignore_clear" or action.startswith(
+        ("nas_set_hours|", "nas_unignore|")
+    ):
+        from extensions.backup_monitor.backup_utils import (
+            get_nas_ignore_bases,
+            save_nas_ignore_bases,
+        )
+
+        notice = ""
+        if action.startswith("nas_set_hours|"):
+            raw_hours = action.split("|", 1)[1].strip()
+            try:
+                hours_value = int(raw_hours)
+                if hours_value <= 0:
+                    raise ValueError
+                settings_manager.set_setting(
+                    "NAS_TRANSFER_ALERT_HOURS", hours_value, "nas_transfer"
+                )
+                notice = f"✅ Период отчёта: {hours_value}ч\n\n"
+            except (TypeError, ValueError):
+                notice = "❌ Некорректное значение периода\n\n"
+        elif action.startswith("nas_unignore|"):
+            base = unquote(raw_action.split("|", 1)[1]).strip()
+            remaining = [b for b in get_nas_ignore_bases() if b.lower() != base.lower()]
+            save_nas_ignore_bases(remaining)
+            notice = f"🗑 База «{base}» убрана из игнор-списка\n\n"
+        elif action == "nas_ignore_clear":
+            save_nas_ignore_bases([])
+            notice = "🧹 Игнор-список очищен\n\n"
+
+        try:
+            current_hours = int(settings_manager.get_setting("NAS_TRANSFER_ALERT_HOURS", 48) or 48)
+        except (TypeError, ValueError):
+            current_hours = 48
+        ignore_bases = get_nas_ignore_bases()
+
+        ignore_text = ", ".join(ignore_bases) if ignore_bases else "—"
+        message = (
+            f"{notice}⚙️ Передача бэкапов на NAS — настройки\n\n"
+            f"• Период отчёта: {current_hours}ч\n"
+            f"• Игнорируемые базы: {ignore_text}\n\n"
+            "Игнорируемые базы не считаются ошибкой. Добавить новую базу можно в "
+            "Telegram-боте (требуется ввод текста)."
+        )
+
+        menu_options = []
+        for value in (24, 48, 72, 168):
+            prefix = "✅ " if value == current_hours else ""
+            menu_options.append({"label": f"{prefix}{value}ч", "action": f"nas_set_hours|{value}"})
+        for base in ignore_bases:
+            menu_options.append({"label": f"🗑 {base}", "action": f"nas_unignore|{base}"})
+        if ignore_bases:
+            menu_options.append({"label": "🧹 Очистить игнор-список", "action": "nas_ignore_clear"})
+        menu_options.extend(
+            [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
+        )
+
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": message,
+                    "menu_options": menu_options,
                 }
             ),
             200,
