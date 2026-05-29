@@ -29,6 +29,30 @@ HOST="$(hostname -s)"
 MAIL_FROM="root@${HOST}"
 RUN_START="$(date '+%Y-%m-%d %H:%M:%S')"
 
+# Базы, для которых отсутствие свежего бэкапа НЕ считается проблемой
+# (не пишется в ERROR-лог и не попадает в письмо).
+# Список можно расширять, не трогая логику: добавьте имена баз в файл
+# $IGNORE_BASES_FILE по одному в строке (пустые строки и '#'-комментарии
+# игнорируются). Имена соответствуют суффиксу каталога current.<base>.
+IGNORE_BASES=("Agreement" "Hold" "Koyvan")
+IGNORE_BASES_FILE="/opt/nas_transfer_ignore.txt"
+if [ -f "$IGNORE_BASES_FILE" ]; then
+    while IFS= read -r _ib; do
+        _ib="${_ib%%#*}"                       # отрезаем комментарий
+        _ib="$(echo "$_ib" | xargs)"           # обрезаем пробелы
+        [ -n "$_ib" ] && IGNORE_BASES+=("$_ib")
+    done < "$IGNORE_BASES_FILE"
+fi
+
+# Проверяет, входит ли база в список игнорируемых.
+is_ignored_base() {
+    local b="$1" x
+    for x in "${IGNORE_BASES[@]}"; do
+        [ "$x" = "$b" ] && return 0
+    done
+    return 1
+}
+
 # Проверка доступности NAS.
 # ВАЖНО: точкой монтирования NFS является /NAS, а каталог назначения
 # $nas=/NAS/backup.1c — это подкаталог внутри неё. Поэтому
@@ -126,7 +150,7 @@ for folder in "${backups_folders[@]}"; do
         fi
     else
         echo "  No backup files found for $base" >> "$DEBUG_LOG"
-        if [[ "$base" = "Agreement" || "$base" = "Hold" || "$base" = "Koyvan" ]]; then
+        if is_ignored_base "$base"; then
             echo "  Base $base is excluded from error logging" >> "$DEBUG_LOG"
         else
             echo "  Writing error to log" >> "$DEBUG_LOG"
@@ -171,9 +195,17 @@ ERROR_LOG="$nas/ERROR_$(date +%Y-%m-%d).log"
 PROBLEM_BASES=""
 ERROR_COUNT=0
 if [ -f "$ERROR_LOG" ]; then
-    PROBLEM_BASES="$(awk '/problem base/ {print $NF}' "$ERROR_LOG" \
-        | sort -u | paste -sd ',' - | sed 's/,/, /g')"
-    ERROR_COUNT="$(awk '/problem base/ {print $NF}' "$ERROR_LOG" | sort -u | grep -c .)"
+    # Уникальные проблемные базы за сегодня, с отсевом игнорируемых
+    # (на случай записей от более ранних прогонов в этот же день).
+    problem_arr=()
+    while IFS= read -r _pb; do
+        [ -n "$_pb" ] || continue
+        is_ignored_base "$_pb" && continue
+        problem_arr+=("$_pb")
+    done < <(awk '/problem base/ {print $NF}' "$ERROR_LOG" | sort -u)
+
+    ERROR_COUNT=${#problem_arr[@]}
+    PROBLEM_BASES="$(printf '%s\n' "${problem_arr[@]}" | paste -sd ',' - | sed 's/,/, /g')"
 fi
 
 # Статус прогона

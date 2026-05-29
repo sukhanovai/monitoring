@@ -1,11 +1,11 @@
 """
 /bot/menu/builder.py
-Server Monitoring System v8.62.67
+Server Monitoring System v8.62.68
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 The place where keyboards are made.
 Система мониторинга серверов
-Версия: 8.62.67
+Версия: 8.62.68
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Место, где строятся клавиатуры
@@ -37,6 +37,15 @@ def main_menu(extension_manager):
 
     if extension_manager.is_extension_enabled("stock_load_monitor"):
         keyboard.append([InlineKeyboardButton("📦 Остатки 1С", callback_data="backup_stock_loads")])
+
+    if extension_manager.is_extension_enabled("nas_transfer_monitor"):
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "📤 Передача бэкапов на NAS", callback_data="backup_nas_transfer"
+                )
+            ]
+        )
 
     if extension_manager.is_extension_enabled("supplier_stock_files"):
         keyboard.append(
