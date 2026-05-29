@@ -158,5 +158,6 @@ class MonitoringAppState {
     var databaseActionsTargetAction by mutableStateOf("")
     var showStockLoadsDialog by mutableStateOf(false)
     var showSnapshotTransferDialog by mutableStateOf(false)
+    var showNasTransferDialog by mutableStateOf(false)
     var showMorningReportDialog by mutableStateOf(false)
 }
