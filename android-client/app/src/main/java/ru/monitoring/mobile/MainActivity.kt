@@ -5515,6 +5515,31 @@ private fun MonitoringApp(
                     } else {
                         Text("Загружаем настройки передачи на NAS…")
                     }
+
+                    // Добавление новой игнорируемой базы (можно несколько через запятую)
+                    OutlinedTextField(
+                        value = nasIgnoreInput,
+                        onValueChange = { nasIgnoreInput = it },
+                        label = { Text("Новая база в игнор") },
+                        placeholder = { Text("например Plastkor.zip, sklad") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = {
+                            val value = nasIgnoreInput.trim()
+                            if (value.isNotEmpty()) {
+                                onExtensionsSettingsAction("nas_ignore_add|" + Uri.encode(value))
+                                nasIgnoreInput = ""
+                            }
+                        },
+                        enabled = nasIgnoreInput.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("➕ Добавить в игнор")
+                    }
+
                     nasSettingsOptions.forEach { (label, action) ->
                         Button(
                             onClick = { onExtensionsSettingsAction(action) },

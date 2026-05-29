@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.72
+Server Monitoring System v8.62.73
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.72
+Версия: 8.62.73
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -5817,7 +5817,7 @@ def v1_extensions_actions():
         )
 
     if action == "settings_ext_nas" or action == "nas_ignore_clear" or action.startswith(
-        ("nas_set_hours|", "nas_unignore|")
+        ("nas_set_hours|", "nas_unignore|", "nas_ignore_add|")
     ):
         from extensions.backup_monitor.backup_utils import (
             get_nas_ignore_bases,
@@ -5837,6 +5837,27 @@ def v1_extensions_actions():
                 notice = f"✅ Период отчёта: {hours_value}ч\n\n"
             except (TypeError, ValueError):
                 notice = "❌ Некорректное значение периода\n\n"
+        elif action.startswith("nas_ignore_add|"):
+            raw_value = unquote(raw_action.split("|", 1)[1])
+            names = [
+                part.strip()
+                for part in re.split(r"[,\n;]+", raw_value)
+                if part.strip()
+            ]
+            bases = get_nas_ignore_bases()
+            existing = {b.lower() for b in bases}
+            added = []
+            for name in names:
+                if name.lower() not in existing:
+                    bases.append(name)
+                    existing.add(name.lower())
+                    added.append(name)
+            save_nas_ignore_bases(bases)
+            notice = (
+                f"✅ Добавлено в игнор: {', '.join(added)}\n\n"
+                if added
+                else "ℹ️ Ничего не добавлено (пусто или дубли)\n\n"
+            )
         elif action.startswith("nas_unignore|"):
             base = unquote(raw_action.split("|", 1)[1]).strip()
             remaining = [b for b in get_nas_ignore_bases() if b.lower() != base.lower()]
@@ -5857,8 +5878,8 @@ def v1_extensions_actions():
             f"{notice}⚙️ Передача бэкапов на NAS — настройки\n\n"
             f"• Период отчёта: {current_hours}ч\n"
             f"• Игнорируемые базы: {ignore_text}\n\n"
-            "Игнорируемые базы не считаются ошибкой. Добавить новую базу можно в "
-            "Telegram-боте (требуется ввод текста)."
+            "Игнорируемые базы не считаются ошибкой. Добавьте новую базу в поле "
+            "ниже (можно несколько через запятую)."
         )
 
         menu_options = []

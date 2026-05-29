@@ -160,5 +160,6 @@ class MonitoringAppState {
     var showSnapshotTransferDialog by mutableStateOf(false)
     var showNasTransferDialog by mutableStateOf(false)
     var showNasSettingsDialog by mutableStateOf(false)
+    var nasIgnoreInput by mutableStateOf("")
     var showMorningReportDialog by mutableStateOf(false)
 }

@@ -1,3 +1,9 @@
+## [8.62.73] - 2026-05-29
+
+### Added
+- RU: Android — в диалоге настроек «Передача на NAS» появилось поле ввода для **добавления новой игнорируемой базы** (можно несколько через запятую). По кнопке «➕ Добавить в игнор» вызывается серверное действие `nas_ignore_add|<base>` (`/v1/settings/extensions/actions`), список сразу обновляется. Раньше добавление было доступно только в Telegram.
+- EN: Android — the "NAS transfer" settings dialog now has an input field to **add a new ignored base** (several at once, comma-separated). The "➕ Add to ignore" button calls the server action `nas_ignore_add|<base>` (`/v1/settings/extensions/actions`) and the list refreshes immediately. Previously adding was only possible in Telegram.
+
 ## [8.62.72] - 2026-05-29
 
 ### Fixed

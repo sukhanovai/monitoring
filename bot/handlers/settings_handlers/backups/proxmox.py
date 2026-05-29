@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/proxmox.py
-Server Monitoring System v8.62.72
+Server Monitoring System v8.62.73
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Proxmox vzdump backup settings: hosts list CRUD, pattern menu/handlers. (PR7d).
 Система мониторинга серверов
-Версия: 8.62.72
+Версия: 8.62.73
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имена сохранены —
