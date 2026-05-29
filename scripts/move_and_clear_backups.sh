@@ -29,6 +29,19 @@ HOST="$(hostname -s)"
 MAIL_FROM="root@${HOST}"
 RUN_START="$(date '+%Y-%m-%d %H:%M:%S')"
 
+# Проверка доступности NAS.
+# ВАЖНО: точкой монтирования NFS является /NAS, а каталог назначения
+# $nas=/NAS/backup.1c — это подкаталог внутри неё. Поэтому
+# `mountpoint -q "$nas"` всегда возвращает false. Считаем NAS
+# примонтированным, если каталог назначения лежит на отдельной ФС
+# (другой номер устройства), а не на корневой (когда NFS не подключён).
+nas_is_mounted() {
+    local nas_dev root_dev
+    nas_dev="$(stat -c %d "$nas" 2>/dev/null)"
+    root_dev="$(stat -c %d / 2>/dev/null)"
+    [ -n "$nas_dev" ] && [ "$nas_dev" != "$root_dev" ]
+}
+
 # Проверяем существование директорий
 echo "Checking directories:" >> "$DEBUG_LOG"
 for dir in "$pbs" "$nas" "$path_7_bases"; do
@@ -41,7 +54,7 @@ for dir in "$pbs" "$nas" "$path_7_bases"; do
 done
 
 # Проверяем монтирование NAS
-if mountpoint -q "$nas"; then
+if nas_is_mounted; then
     echo "NAS mounted OK" >> "$DEBUG_LOG"
 else
     echo "ERROR: NAS NOT mounted!" >> "$DEBUG_LOG"
@@ -141,7 +154,7 @@ echo "$(date +%d-%m-%Y[%H:%M:%S]) Script finished" >> "$DEBUG_LOG"
 # === Итоговое письмо о передаче бэкапов на NAS (для nas_transfer_monitor) ===
 RUN_END="$(date '+%Y-%m-%d %H:%M:%S')"
 
-if mountpoint -q "$nas"; then
+if nas_is_mounted; then
     NAS_MOUNTED="да"
 else
     NAS_MOUNTED="нет"
