@@ -1,3 +1,13 @@
+## [8.62.71] - 2026-05-29
+
+### Fixed
+- RU: Telegram — заработало «➕ Добавить базу в игнор» для NAS. Ввод обрабатывался в неактивном `backup_host_settings_input_handler` (в группе 0 PTB первым всегда срабатывает `handle_setting_value`), поэтому текст не доходил. Обработку перенёс в активный роутер `handle_setting_value` (флаг `nas_add_ignore_base`). Теперь можно добавлять **несколько баз сразу** — через запятую, пробел или с новой строки.
+- EN: Telegram — "➕ Add base to ignore" for NAS now works. Input was handled in the inactive `backup_host_settings_input_handler` (in PTB group 0 `handle_setting_value` always runs first), so the text never reached it. Moved handling into the active router `handle_setting_value` (flag `nas_add_ignore_base`). You can now add **several bases at once** — separated by commas, spaces or new lines.
+
+### Added
+- RU: Android — у плашки «NAS» добавлена шестерёнка (`onSettingsClick`) и долгий тап (`onLongClick`); оба открывают настройки расширения (`settings_ext_nas`: период отчёта + управление игнор-списком).
+- EN: Android — the "NAS" tile gains a gear (`onSettingsClick`) and a long-press (`onLongClick`); both open the extension settings (`settings_ext_nas`: report window + ignore-list management).
+
 ## [8.62.70] - 2026-05-29
 
 ### Added

@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/settings_value.py
-Server Monitoring System v8.62.70
+Server Monitoring System v8.62.71
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчик текстового ввода значений настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.70
+Версия: 8.62.71
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
@@ -178,6 +178,13 @@ def handle_setting_value(update, context):
     # Проверяем, не редактируется ли дефолтный паттерн БД
     if context.user_data.get("editing_default_db_pattern"):
         return handle_default_db_pattern_edit_input(update, context)
+
+    # Добавление баз в игнор-список расширения «Передача бэкапов на NAS»
+    if context.user_data.get("nas_add_ignore_base"):
+        context.user_data.pop("nas_add_ignore_base", None)
+        from extensions.backup_monitor.backup_handlers import add_nas_ignore_base_value
+
+        return add_nas_ignore_base_value(update, update.message.text)
 
     # Если это обычная настройка
     if "editing_setting" not in context.user_data:
