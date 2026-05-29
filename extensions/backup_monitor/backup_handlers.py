@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.62.68
+Server Monitoring System v8.62.69
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.62.68
+Версия: 8.62.69
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -960,12 +960,26 @@ def show_mail_backups(query, backup_bot, hours=72):
         query.edit_message_text("❌ Ошибка при получении данных по почтовым бэкапам")
 
 
-def show_nas_transfers(query, backup_bot, hours=48):
+def _get_nas_alert_hours(default: int = 48) -> int:
+    """Возвращает период окна для отчёта о передаче на NAS (NAS_TRANSFER_ALERT_HOURS)."""
+    try:
+        from core.config_manager import config_manager
+
+        value = config_manager.get_setting("NAS_TRANSFER_ALERT_HOURS", default)
+        return int(value)
+    except (TypeError, ValueError, Exception):
+        return default
+
+
+def show_nas_transfers(query, backup_bot, hours=None):
     """Показывает итоги передачи бэкапов 1С на NAS."""
     try:
+        if hours is None:
+            hours = _get_nas_alert_hours()
         transfers = backup_bot.get_nas_transfers(hours=hours, limit=10)
 
         navigation = [
+            [InlineKeyboardButton("⚙️ Настройки", callback_data="backup_nas_settings")],
             [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
             [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
         ]
@@ -1020,6 +1034,62 @@ def show_nas_transfers(query, backup_bot, hours=48):
     except Exception as e:
         logger.error(f"Ошибка в show_nas_transfers: {e}")
         query.edit_message_text("❌ Ошибка при получении данных по передаче на NAS")
+
+
+def show_nas_settings(query):
+    """Меню настроек расширения «Передача бэкапов на NAS»."""
+    try:
+        current_hours = _get_nas_alert_hours()
+        message = (
+            "⚙️ *Настройки: Передача бэкапов на NAS*\n\n"
+            f"• Период отчёта: *{current_hours}ч*\n\n"
+            "Выберите период, за который показывать прогоны:"
+        )
+
+        presets = [24, 48, 72, 168]
+        hour_buttons = []
+        for value in presets:
+            label = f"{'✅ ' if value == current_hours else ''}{value}ч"
+            hour_buttons.append(
+                InlineKeyboardButton(label, callback_data=f"backup_nas_hours|{value}")
+            )
+
+        keyboard = [
+            hour_buttons[:2],
+            hour_buttons[2:],
+            [InlineKeyboardButton("↩️ Назад", callback_data="backup_nas_transfer")],
+            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+        ]
+        query.edit_message_text(
+            message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except BadRequest as exc:
+        if "Message is not modified" in str(exc):
+            query.answer("Меню уже открыто", show_alert=False)
+            return
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка в show_nas_settings: {e}")
+        query.edit_message_text("❌ Ошибка при открытии настроек передачи на NAS")
+
+
+def set_nas_alert_hours(query, raw_value):
+    """Сохраняет период отчёта NAS_TRANSFER_ALERT_HOURS и возвращает в меню настроек."""
+    try:
+        hours = int(str(raw_value).strip())
+        if hours <= 0:
+            raise ValueError("hours must be positive")
+        from core.config_manager import config_manager
+
+        config_manager.set_setting("NAS_TRANSFER_ALERT_HOURS", hours, "nas_transfer")
+        query.answer(f"✅ Период: {hours}ч", show_alert=False)
+    except (TypeError, ValueError):
+        query.answer("❌ Некорректное значение", show_alert=True)
+    except Exception as e:
+        logger.error(f"Ошибка сохранения NAS_TRANSFER_ALERT_HOURS: {e}")
+        query.answer("❌ Ошибка сохранения", show_alert=True)
+    show_nas_settings(query)
 
 
 def show_stock_loads(query, backup_bot, hours=24):

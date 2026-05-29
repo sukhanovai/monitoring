@@ -2560,6 +2560,7 @@ private fun MonitoringApp(
                 }
             } else if (extension.id == "nas_transfer_monitor") {
                 {
+                    showNasTransferDialog = true
                     onAction("backup_nas_transfer")
                 }
             } else if (extension.id == "zfs_monitor") {
@@ -5381,6 +5382,53 @@ private fun MonitoringApp(
                         }
                     } else {
                         Text("Пока нет данных о передачах ZFS-снэпшотов. Нажми «Обновить» сверху или потяни список вниз в оперативном центре.")
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showNasTransferDialog) {
+        AlertDialog(
+            onDismissRequest = { showNasTransferDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "📤 Передача бэкапов на NAS",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { onAction("backup_nas_transfer") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Обновить данные о передаче на NAS"
+                        )
+                    }
+                    IconButton(onClick = { showNasTransferDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть сведения о передаче на NAS"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.message.isNotBlank() && state.messageSource == "global") {
+                        Text(state.message)
+                    } else {
+                        Text("Загружаем данные о передаче бэкапов на NAS…")
                     }
                 }
             },

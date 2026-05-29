@@ -1,3 +1,11 @@
+## [8.62.69] - 2026-05-29
+
+### Added
+- RU: Telegram-бот — у экрана «📤 Передача бэкапов на NAS» появилась кнопка «⚙️ Настройки» (callback `backup_nas_settings`): меню с выбором периода отчёта (`NAS_TRANSFER_ALERT_HOURS`) пресетами 24/48/72/168ч (callback `backup_nas_hours|<n>`, сохранение через `config_manager`). Сам отчёт теперь читает период из настройки, а не из хардкода 48ч.
+- EN: Telegram bot — the "📤 NAS backup transfer" screen now has a "⚙️ Settings" button (callback `backup_nas_settings`): a menu to pick the report window (`NAS_TRANSFER_ALERT_HOURS`) via 24/48/72/168h presets (callback `backup_nas_hours|<n>`, saved through `config_manager`). The report now reads the window from the setting instead of a hardcoded 48h.
+- RU: Android — тап по плашке «NAS» с уже загруженными данными открывает диалог с подробностями прогона (`showNasTransferDialog`, с кнопкой обновления), как у остатков/снэпшотов. На пустой плашке тап по-прежнему запускает запрос данных.
+- EN: Android — tapping the "NAS" tile that already has data opens a details dialog for the run (`showNasTransferDialog`, with a refresh button), like stock/snapshots. On an empty tile the tap still triggers a data fetch.
+
 ## [8.62.68] - 2026-05-29
 
 ### Fixed
