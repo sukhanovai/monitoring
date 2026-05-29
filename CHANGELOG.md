@@ -1,3 +1,9 @@
+## [8.62.67] - 2026-05-29
+
+### Fixed
+- RU: `scripts/move_and_clear_backups.sh` — исправлено определение монтирования NAS. Точкой NFS-монтирования является `/NAS`, а каталог назначения `/NAS/backup.1c` — подкаталог внутри неё, поэтому `mountpoint -q "$nas"` всегда возвращал false и письмо сообщало «NAS примонтирован: нет» (статус `SKIPPED`) при реально подключённом NAS. Заменено на функцию `nas_is_mounted()`, сравнивающую номер устройства ФС каталога назначения с корневым (`stat -c %d`) — работает независимо от уровня точки монтирования.
+- EN: `scripts/move_and_clear_backups.sh` — fixed NAS mount detection. The NFS mount point is `/NAS`, while the destination dir `/NAS/backup.1c` is a subdirectory inside it, so `mountpoint -q "$nas"` always returned false and the email reported "NAS примонтирован: нет" (status `SKIPPED`) even with the NAS actually mounted. Replaced with a `nas_is_mounted()` helper that compares the destination dir's filesystem device id against root's (`stat -c %d`) — works regardless of the mount point level.
+
 ## [8.62.66] - 2026-05-29
 
 ### Added
