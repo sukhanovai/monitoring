@@ -1,3 +1,13 @@
+## [8.62.72] - 2026-05-29
+
+### Fixed
+- RU: Android — шестерёнка и долгий тап по плашке «NAS» больше не уводят в общий список настроек расширений, а открывают **собственный диалог настроек** этого расширения (`settings_ext_nas`): период отчёта и управление игнор-списком (удаление баз/очистка). Сделан отдельный `showNasSettingsDialog`, который рендерит `state.extensionSettingsMenuOptions` (действия `nas_set_hours|`, `nas_unignore|`, `nas_ignore_clear`) без открытия общего оверлея.
+- EN: Android — the gear and long-press on the "NAS" tile no longer jump to the generic extensions settings list; they open this extension's **own settings dialog** (`settings_ext_nas`): report window and ignore-list management (remove/clear). Added a dedicated `showNasSettingsDialog` that renders `state.extensionSettingsMenuOptions` (`nas_set_hours|`, `nas_unignore|`, `nas_ignore_clear`) without opening the general overlay.
+
+### Added
+- RU: Android — в окно результатов «Передача бэкапов на NAS» добавлена шестерёнка (⚙️), открывающая диалог настроек этого расширения.
+- EN: Android — the "NAS backup transfer" results dialog gains a gear (⚙️) that opens this extension's settings dialog.
+
 ## [8.62.71] - 2026-05-29
 
 ### Fixed
