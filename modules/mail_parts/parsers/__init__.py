@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/__init__.py
-Server Monitoring System v8.62.65
+Server Monitoring System v8.62.66
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Parser-mixins для BackupProcessor (PR6c серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.65
+Версия: 8.62.66
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пять mixin'ов, по одному на семейство писем-отчётов: Proxmox vzdump,

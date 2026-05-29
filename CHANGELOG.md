@@ -1,3 +1,9 @@
+## [8.62.66] - 2026-05-29
+
+### Added
+- RU: В репозиторий добавлен эталонный скрипт `scripts/move_and_clear_backups.sh` для сервера бэкапов (`sr-bup`): переносит бэкапы 1С на NAS, чистит старое и отправляет одно итоговое письмо на прогон в формате расширения `nas_transfer_monitor` (тема `NAS transfer <host> OK|ERROR|SKIPPED`, тело с полями Начало/Завершено/NAS примонтирован/Баз обработано/Ошибок/Проблемные базы). Проблемные базы и их количество берутся из лога `ERROR_<дата>.log`. Исправлен баг ветки `longtime` (было `${folder_name#.}` → двойной префикс `longtime.longtime.<base>`; стало `${folder_name#*.}`).
+- EN: Added the reference script `scripts/move_and_clear_backups.sh` for the backup server (`sr-bup`) to the repo: it copies 1C backups to the NAS, cleans old ones and sends one summary email per run in the `nas_transfer_monitor` format (subject `NAS transfer <host> OK|ERROR|SKIPPED`, body with start/finish/NAS-mounted/bases-processed/errors/problem-bases fields). Problem bases and their count are read from `ERROR_<date>.log`. Fixed a bug in the `longtime` branch (was `${folder_name#.}` → double prefix `longtime.longtime.<base>`; now `${folder_name#*.}`).
+
 ## [8.62.65] - 2026-05-29
 
 ### Fixed
