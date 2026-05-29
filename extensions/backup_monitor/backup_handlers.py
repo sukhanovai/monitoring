@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.62.70
+Server Monitoring System v8.62.71
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.62.70
+Версия: 8.62.71
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -1102,38 +1102,57 @@ def show_nas_settings(query):
 
 
 def prompt_nas_ignore_add(query, context):
-    """Просит ввести имя базы для добавления в игнор-список."""
+    """Просит ввести имена баз для добавления в игнор-список."""
     context.user_data["nas_add_ignore_base"] = True
     keyboard = [[InlineKeyboardButton("↩️ Отмена", callback_data="backup_nas_settings")]]
     query.edit_message_text(
-        "➕ *Добавление базы в игнор-список*\n\n"
-        "Отправьте сообщением имя базы (как в названии каталога `current.<base>`), "
-        "например `Plastkor.zip` или `sklad`.",
+        "➕ *Добавление баз в игнор-список*\n\n"
+        "Отправьте сообщением имена баз (как в названии каталога `current.<base>`).\n"
+        "Можно несколько сразу — через запятую, пробел или с новой строки, например:\n"
+        "`Plastkor.zip, sklad, Trade1`",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 
-def add_nas_ignore_base_value(update, base_name):
-    """Добавляет базу в игнор-список (вызывается из обработчика текстового ввода)."""
+def add_nas_ignore_base_value(update, raw_text):
+    """Добавляет одну или несколько баз в игнор-список (из обработчика ввода)."""
+    import re as _re
+
     from .backup_utils import get_nas_ignore_bases, save_nas_ignore_bases
 
-    name = str(base_name or "").strip()
-    if not name:
+    text = str(raw_text or "")
+    names = [part.strip() for part in _re.split(r"[,\n;]+", text) if part.strip()]
+    if len(names) == 1 and " " in names[0]:
+        names = [part for part in names[0].split() if part]
+    if not names:
         update.message.reply_text("❌ Имя базы не может быть пустым.")
         return
 
     bases = get_nas_ignore_bases()
-    if name.lower() in {b.lower() for b in bases}:
-        text = f"ℹ️ База `{name}` уже в игнор-списке."
-    else:
-        bases.append(name)
-        save_nas_ignore_bases(bases)
-        text = f"✅ База `{name}` добавлена в игнор-список."
+    existing = {b.lower() for b in bases}
+    added, skipped = [], []
+    for name in names:
+        if name.lower() in existing:
+            skipped.append(name)
+        else:
+            bases.append(name)
+            existing.add(name.lower())
+            added.append(name)
+    save_nas_ignore_bases(bases)
 
+    lines = []
+    if added:
+        lines.append("✅ Добавлены в игнор: " + ", ".join(added))
+    if skipped:
+        lines.append("ℹ️ Уже были в списке: " + ", ".join(skipped))
+    if not lines:
+        lines.append("Ничего не добавлено.")
+    lines.append(f"\nВсего в игнор-списке: {len(bases)}")
+
+    # Без parse_mode — имена баз могут содержать символы Markdown.
     update.message.reply_text(
-        text,
-        parse_mode="Markdown",
+        "\n".join(lines),
         reply_markup=InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton("⚙️ Настройки NAS", callback_data="backup_nas_settings")],

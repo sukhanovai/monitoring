@@ -2601,10 +2601,26 @@ private fun MonitoringApp(
                     showZfsPoolHostsSettingsDialog = true
                     onAction("zfsp_hosts_list")
                 }
+            } else if (extension.id == "nas_transfer_monitor") {
+                {
+                    settingsSection = "extensions"
+                    showSettingsSectionOverlay = true
+                    onExtensionsSettingsAction("settings_ext_nas")
+                    screensScope.launch { screensPagerState.animateScrollToPage(2) }
+                }
             } else {
                 null
             },
-            onSettingsClick = null
+            onSettingsClick = if (extension.id == "nas_transfer_monitor") {
+                {
+                    settingsSection = "extensions"
+                    showSettingsSectionOverlay = true
+                    onExtensionsSettingsAction("settings_ext_nas")
+                    screensScope.launch { screensPagerState.animateScrollToPage(2) }
+                }
+            } else {
+                null
+            }
         )
     }
     val allOpsTiles = opsTiles + extensionOpsTiles
