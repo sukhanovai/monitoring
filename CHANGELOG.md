@@ -1,3 +1,13 @@
+## [8.62.68] - 2026-05-29
+
+### Fixed
+- RU: Кнопка «📤 Передача бэкапов на NAS» теперь добавляется и в **главное меню** Telegram-бота (`bot/menu/builder.py:main_menu`), а не только в подменю бэкапов. Раньше в главном меню перечислялись отдельные кнопки бэкапов (Proxmox/БД/почта/остатки), но NAS среди них не было — поэтому расширение было не видно. Кнопка гейтится `is_extension_enabled("nas_transfer_monitor")`, callback `backup_nas_transfer` уже обрабатывается.
+- EN: The "📤 NAS backup transfer" button is now added to the Telegram bot **main menu** (`bot/menu/builder.py:main_menu`), not only the backups submenu. The main menu lists individual backup buttons (Proxmox/DB/mail/stock) but NAS was missing — so the extension was invisible there. The button is gated by `is_extension_enabled("nas_transfer_monitor")`; the `backup_nas_transfer` callback is already handled.
+
+### Added
+- RU: `scripts/move_and_clear_backups.sh` — настраиваемый список игнорируемых баз. Массив `IGNORE_BASES` (по умолчанию `Agreement Hold Koyvan`) можно расширять через файл `/opt/nas_transfer_ignore.txt` (по одному имени в строке, поддержка `#`-комментариев) без правки логики. Игнорируемые базы не пишутся в `ERROR`-лог и отсеиваются из письма (поля «Ошибок»/«Проблемные базы»), что убирает ложные ошибки от устаревших/пустых каталогов (например `Plastkor.zip`, `sklad`, `Trade1`).
+- EN: `scripts/move_and_clear_backups.sh` — configurable ignore list of bases. The `IGNORE_BASES` array (default `Agreement Hold Koyvan`) can be extended via `/opt/nas_transfer_ignore.txt` (one name per line, `#` comments supported) without touching the logic. Ignored bases are neither written to the `ERROR` log nor counted in the email («Ошибок»/«Проблемные базы»), removing false errors from stale/empty dirs (e.g. `Plastkor.zip`, `sklad`, `Trade1`).
+
 ## [8.62.67] - 2026-05-29
 
 ### Fixed
