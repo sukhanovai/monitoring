@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.69
+Server Monitoring System v8.62.70
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.69
+Версия: 8.62.70
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -381,7 +381,7 @@ _EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict(
             "nas_transfer_monitor",
             {
                 "label": "📤 передача бэкапов на NAS",
-                "keys": ["NAS_TRANSFER_ALERT_HOURS"],
+                "keys": ["NAS_TRANSFER_ALERT_HOURS", "NAS_TRANSFER_IGNORE_BASES"],
                 "categories": ["nas_transfer"],
             },
         ),
@@ -1630,6 +1630,12 @@ class MatrixCommandBot:
                 (f"-{hours} hours",),
             )
             rows = cursor.fetchall()
+            try:
+                from extensions.backup_monitor.backup_utils import filter_nas_transfer_row
+
+                rows = [filter_nas_transfer_row(tuple(row)) for row in rows]
+            except Exception:
+                pass
         except sqlite3.OperationalError:
             pass
         except Exception as exc:

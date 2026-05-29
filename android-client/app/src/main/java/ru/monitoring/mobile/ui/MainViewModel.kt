@@ -134,7 +134,7 @@ class MainViewModel(
         Triple("mail_backup_monitor", "📬 Бэкапы почты", "settings_ext_backup_mail"),
         Triple("zfs_pool_free_space_monitor", "💽 zfs место", "zfs_pool_free_space_menu"),
         Triple("stock_load_monitor", "📦 Загрузка остатков 1С", "settings_ext_stock_load"),
-        Triple("nas_transfer_monitor", "📤 Передача на NAS", "backup_nas_transfer"),
+        Triple("nas_transfer_monitor", "📤 Передача на NAS", "settings_ext_nas"),
         Triple("supplier_stock_files", "📦 Остатки поставщиков", "settings_ext_supplier_stock"),
         Triple("resource_monitor", "💻 Ресурсы", "settings_resources")
     )

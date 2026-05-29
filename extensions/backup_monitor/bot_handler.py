@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.62.69
+Server Monitoring System v8.62.70
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.62.69
+Версия: 8.62.70
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -31,6 +31,10 @@ from extensions.backup_monitor.backup_handlers import (
     show_host_status,
     show_hosts_management_menu,
     show_hosts_menu,
+    add_nas_ignore_base_value,
+    clear_nas_ignore_bases,
+    prompt_nas_ignore_add,
+    remove_nas_ignore_base,
     set_nas_alert_hours,
     show_mail_backups,
     show_main_menu,
@@ -460,7 +464,7 @@ class BackupMonitorBot(BackupBase):
             return []
 
     def get_nas_transfers(self, hours=48, limit=10):
-        """Получает последние итоги передачи бэкапов на NAS."""
+        """Получает последние итоги передачи бэкапов на NAS (с учётом игнор-списка)."""
         since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
         query = """
             SELECT host_name, status, nas_mounted, started_at_text, completed_at_text,
@@ -471,7 +475,10 @@ class BackupMonitorBot(BackupBase):
             LIMIT ?
         """
         try:
-            return self.execute_query(query, (since_time, limit))
+            rows = self.execute_query(query, (since_time, limit))
+            from extensions.backup_monitor.backup_utils import filter_nas_transfer_row
+
+            return [filter_nas_transfer_row(tuple(row)) for row in rows]
         except Exception as exc:
             logger.error(f"Ошибка получения передач на NAS: {exc}")
             return []
@@ -749,6 +756,24 @@ def backup_callback(update, context):
                 return
             set_nas_alert_hours(query, data.split("|", 1)[1])
 
+        elif data == "backup_nas_ignore_add":
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            prompt_nas_ignore_add(query, context)
+
+        elif data.startswith("backup_nas_unignore|"):
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            remove_nas_ignore_base(query, data.split("|", 1)[1])
+
+        elif data == "backup_nas_ignore_clear":
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            clear_nas_ignore_bases(query)
+
         elif data == "backup_proxmox":
             if not extension_manager.is_extension_enabled("backup_monitor"):
                 query.edit_message_text("🖥️ Мониторинг бэкапов Proxmox отключён")
@@ -936,6 +961,13 @@ def backup_host_settings_input_handler(update, context):
 
     backup_bot = BackupMonitorBot()
     message_text = (update.message.text or "").strip()
+
+    # Добавление базы в игнор-список NAS (ввод инициирован prompt_nas_ignore_add)
+    if context.user_data.get("nas_add_ignore_base"):
+        context.user_data.pop("nas_add_ignore_base", None)
+        add_nas_ignore_base_value(update, message_text)
+        return
+
     if not message_text:
         update.message.reply_text("❌ Имя хоста не может быть пустым. Попробуйте снова.")
         return

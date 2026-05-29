@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.62.69
+Server Monitoring System v8.62.70
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.62.69
+Версия: 8.62.70
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -603,6 +603,97 @@ def get_stock_load_summary(period_hours=16) -> str:
     except Exception as exc:
         logger.exception("Ошибка формирования сводки остатков: %s", exc)
         return "❌ Ошибка формирования отчета о загрузке остатков\n"
+
+
+# === ИГНОР-СПИСОК БАЗ ДЛЯ ПЕРЕДАЧИ НА NAS (nas_transfer_monitor) ===
+
+
+def get_nas_ignore_bases() -> list:
+    """Возвращает список баз, проблемы которых игнорируются (NAS_TRANSFER_IGNORE_BASES)."""
+    try:
+        import json
+
+        from core.config_manager import config_manager
+
+        raw = config_manager.get_setting("NAS_TRANSFER_IGNORE_BASES", [])
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except Exception:
+                raw = [part for part in raw.split(",")]
+        if not isinstance(raw, list):
+            return []
+        return [str(item).strip() for item in raw if str(item).strip()]
+    except Exception as exc:
+        logger.error("Ошибка чтения NAS_TRANSFER_IGNORE_BASES: %s", exc)
+        return []
+
+
+def save_nas_ignore_bases(values) -> list:
+    """Сохраняет нормализованный (без дублей, без пустых) игнор-список баз NAS."""
+    cleaned: list = []
+    seen: set = set()
+    for value in values or []:
+        text = str(value).strip()
+        key = text.lower()
+        if text and key not in seen:
+            seen.add(key)
+            cleaned.append(text)
+    try:
+        from core.config_manager import config_manager
+
+        config_manager.set_setting("NAS_TRANSFER_IGNORE_BASES", cleaned, "nas_transfer")
+    except Exception as exc:
+        logger.error("Ошибка сохранения NAS_TRANSFER_IGNORE_BASES: %s", exc)
+    return cleaned
+
+
+def filter_nas_transfer_row(row: tuple) -> tuple:
+    """Применяет игнор-список к строке передачи на NAS.
+
+    row = (host_name, status, nas_mounted, started_at_text, completed_at_text,
+           bases_processed, error_count, problem_bases, received_at)
+    Возвращает строку с пересчитанными problem_bases/error_count и, если все
+    проблемы отфильтрованы, статусом OK вместо ERROR.
+    """
+    try:
+        ignore = {item.lower() for item in get_nas_ignore_bases()}
+        if not ignore:
+            return row
+        (
+            host_name,
+            status,
+            nas_mounted,
+            started_at_text,
+            completed_at_text,
+            bases_processed,
+            error_count,
+            problem_bases,
+            received_at,
+        ) = row
+        parsed = [part.strip() for part in (problem_bases or "").split(",") if part.strip()]
+        if not parsed:
+            return row
+        remaining = [part for part in parsed if part.lower() not in ignore]
+        new_problem = ", ".join(remaining)
+        new_error_count = len(remaining)
+        new_status = status
+        if str(status or "").upper() == "ERROR" and new_error_count == 0:
+            new_status = "OK"
+        return (
+            host_name,
+            new_status,
+            nas_mounted,
+            started_at_text,
+            completed_at_text,
+            bases_processed,
+            new_error_count,
+            new_problem or None,
+            received_at,
+        )
+    except Exception as exc:
+        logger.error("Ошибка фильтрации строки NAS по игнор-списку: %s", exc)
+        return row
 
 
 class BackupBase:

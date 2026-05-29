@@ -1,3 +1,9 @@
+## [8.62.70] - 2026-05-29
+
+### Added
+- RU: Расширение `nas_transfer_monitor` — управляемый из бота/приложения список игнорируемых баз `NAS_TRANSFER_IGNORE_BASES`. Базы из списка не считаются ошибкой: при отображении (Telegram/Matrix/Android) проблемные базы фильтруются (`filter_nas_transfer_row` в `backup_utils.py`), пересчитывается «Ошибок», а статус прогона понижается ERROR→OK, если после фильтра проблем не осталось. Telegram: в «⚙️ Настройки» добавлены добавление базы (ввод текста), удаление по кнопке и очистка списка. Android: пункт настроек NAS теперь открывает серверное меню (`settings_ext_nas`) с выбором периода и управлением игнор-списком (удаление/очистка; добавление — в Telegram). Matrix: ключ виден в `!settings`.
+- EN: `nas_transfer_monitor` extension — a bot/app-managed ignore list `NAS_TRANSFER_IGNORE_BASES`. Ignored bases no longer count as errors: on display (Telegram/Matrix/Android) problem bases are filtered (`filter_nas_transfer_row` in `backup_utils.py`), the error count is recomputed and the run status is downgraded ERROR→OK when nothing problematic remains. Telegram: the "⚙️ Settings" screen gains add-base (text input), per-base remove buttons and clear. Android: the NAS settings entry now opens a server-driven menu (`settings_ext_nas`) to pick the window and manage the ignore list (remove/clear; adding is done in Telegram). Matrix: the key shows up in `!settings`.
+
 ## [8.62.69] - 2026-05-29
 
 ### Added

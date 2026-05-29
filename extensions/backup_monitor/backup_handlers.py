@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.62.69
+Server Monitoring System v8.62.70
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.62.69
+Версия: 8.62.70
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -1039,11 +1039,18 @@ def show_nas_transfers(query, backup_bot, hours=None):
 def show_nas_settings(query):
     """Меню настроек расширения «Передача бэкапов на NAS»."""
     try:
+        from .backup_utils import get_nas_ignore_bases
+
         current_hours = _get_nas_alert_hours()
+        ignore_bases = get_nas_ignore_bases()
+
+        ignore_text = ", ".join(_md(b) for b in ignore_bases) if ignore_bases else "—"
         message = (
             "⚙️ *Настройки: Передача бэкапов на NAS*\n\n"
-            f"• Период отчёта: *{current_hours}ч*\n\n"
-            "Выберите период, за который показывать прогоны:"
+            f"• Период отчёта: *{current_hours}ч*\n"
+            f"• Игнорируемые базы: {ignore_text}\n\n"
+            "Игнорируемые базы не считаются ошибкой и не подсвечиваются.\n"
+            "Выберите период отчёта или измените список игнорируемых баз:"
         )
 
         presets = [24, 48, 72, 168]
@@ -1054,13 +1061,33 @@ def show_nas_settings(query):
                 InlineKeyboardButton(label, callback_data=f"backup_nas_hours|{value}")
             )
 
-        keyboard = [
-            hour_buttons[:2],
-            hour_buttons[2:],
-            [InlineKeyboardButton("↩️ Назад", callback_data="backup_nas_transfer")],
-            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
-            [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
-        ]
+        keyboard = [hour_buttons[:2], hour_buttons[2:]]
+
+        # Кнопки удаления конкретных баз из игнор-списка
+        for base in ignore_bases:
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"🗑 {base}", callback_data=f"backup_nas_unignore|{base}"
+                    )
+                ]
+            )
+
+        keyboard.append(
+            [InlineKeyboardButton("➕ Добавить базу в игнор", callback_data="backup_nas_ignore_add")]
+        )
+        if ignore_bases:
+            keyboard.append(
+                [InlineKeyboardButton("🧹 Очистить игнор-список", callback_data="backup_nas_ignore_clear")]
+            )
+
+        keyboard.extend(
+            [
+                [InlineKeyboardButton("↩️ Назад", callback_data="backup_nas_transfer")],
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+            ]
+        )
         query.edit_message_text(
             message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -1072,6 +1099,68 @@ def show_nas_settings(query):
     except Exception as e:
         logger.error(f"Ошибка в show_nas_settings: {e}")
         query.edit_message_text("❌ Ошибка при открытии настроек передачи на NAS")
+
+
+def prompt_nas_ignore_add(query, context):
+    """Просит ввести имя базы для добавления в игнор-список."""
+    context.user_data["nas_add_ignore_base"] = True
+    keyboard = [[InlineKeyboardButton("↩️ Отмена", callback_data="backup_nas_settings")]]
+    query.edit_message_text(
+        "➕ *Добавление базы в игнор-список*\n\n"
+        "Отправьте сообщением имя базы (как в названии каталога `current.<base>`), "
+        "например `Plastkor.zip` или `sklad`.",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+def add_nas_ignore_base_value(update, base_name):
+    """Добавляет базу в игнор-список (вызывается из обработчика текстового ввода)."""
+    from .backup_utils import get_nas_ignore_bases, save_nas_ignore_bases
+
+    name = str(base_name or "").strip()
+    if not name:
+        update.message.reply_text("❌ Имя базы не может быть пустым.")
+        return
+
+    bases = get_nas_ignore_bases()
+    if name.lower() in {b.lower() for b in bases}:
+        text = f"ℹ️ База `{name}` уже в игнор-списке."
+    else:
+        bases.append(name)
+        save_nas_ignore_bases(bases)
+        text = f"✅ База `{name}` добавлена в игнор-список."
+
+    update.message.reply_text(
+        text,
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("⚙️ Настройки NAS", callback_data="backup_nas_settings")],
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            ]
+        ),
+    )
+
+
+def remove_nas_ignore_base(query, base_name):
+    """Удаляет базу из игнор-списка и возвращает в меню настроек."""
+    from .backup_utils import get_nas_ignore_bases, save_nas_ignore_bases
+
+    name = str(base_name or "").strip()
+    bases = [b for b in get_nas_ignore_bases() if b.lower() != name.lower()]
+    save_nas_ignore_bases(bases)
+    query.answer(f"🗑 {name} удалена", show_alert=False)
+    show_nas_settings(query)
+
+
+def clear_nas_ignore_bases(query):
+    """Очищает игнор-список и возвращает в меню настроек."""
+    from .backup_utils import save_nas_ignore_bases
+
+    save_nas_ignore_bases([])
+    query.answer("🧹 Игнор-список очищен", show_alert=False)
+    show_nas_settings(query)
 
 
 def set_nas_alert_hours(query, raw_value):
