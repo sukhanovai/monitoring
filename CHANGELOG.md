@@ -1,4 +1,4 @@
-## [8.62.64] - 2026-05-28
+## [8.62.65] - 2026-05-29
 
 ### Fixed
 - RU: Исправлен регресс PR11-разбиения `settings_handlers`: `settings_callback_handler` переехал в `callback_dispatcher.py`, но обращался к именам, оставшимся в `_legacy.py` (`settings_command`, `_safe_query_answer`, `show_telegram_settings` и др.), которые не были связаны в namespace нового модуля. Любой callback настроек падал с `NameError: name 'settings_command' is not defined`. Статический импорт `_legacy` в `callback_dispatcher` невозможен (циклический импорт — `_legacy` сам делает `from .callback_dispatcher import *`), поэтому имена подтягиваются лениво на первом вызове через `_ensure_legacy_bindings()` (`setdefault`, без перетирания собственных имён модуля). Добавлен регрессионный тест `test_settings_dispatcher_resolves_legacy_names`.
