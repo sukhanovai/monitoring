@@ -2603,20 +2603,16 @@ private fun MonitoringApp(
                 }
             } else if (extension.id == "nas_transfer_monitor") {
                 {
-                    settingsSection = "extensions"
-                    showSettingsSectionOverlay = true
+                    showNasSettingsDialog = true
                     onExtensionsSettingsAction("settings_ext_nas")
-                    screensScope.launch { screensPagerState.animateScrollToPage(2) }
                 }
             } else {
                 null
             },
             onSettingsClick = if (extension.id == "nas_transfer_monitor") {
                 {
-                    settingsSection = "extensions"
-                    showSettingsSectionOverlay = true
+                    showNasSettingsDialog = true
                     onExtensionsSettingsAction("settings_ext_nas")
-                    screensScope.launch { screensPagerState.animateScrollToPage(2) }
                 }
             } else {
                 null
@@ -5419,6 +5415,15 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
+                    IconButton(onClick = {
+                        showNasSettingsDialog = true
+                        onExtensionsSettingsAction("settings_ext_nas")
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Настройки передачи на NAS"
+                        )
+                    }
                     IconButton(onClick = { onAction("backup_nas_transfer") }) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
@@ -5445,6 +5450,83 @@ private fun MonitoringApp(
                         Text(state.message)
                     } else {
                         Text("Загружаем данные о передаче бэкапов на NAS…")
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showNasSettingsDialog) {
+        val nasSettingsCurrent = state.messageSource == "extensions_settings" &&
+            (state.extensionSettingsMenuAction == "settings_ext_nas" ||
+                state.extensionSettingsMenuAction.startsWith("nas_"))
+        val nasSettingsOptions = if (nasSettingsCurrent) {
+            state.extensionSettingsMenuOptions.mapNotNull { option ->
+                val action = resolveMenuOptionAction(option)
+                val label = option.label?.trim().orEmpty()
+                if (label.isBlank() || action.isBlank()) return@mapNotNull null
+                val keep = action.startsWith("nas_set_hours") ||
+                    action.startsWith("nas_unignore") ||
+                    action == "nas_ignore_clear"
+                if (!keep) return@mapNotNull null
+                label to action
+            }.distinctBy { (_, action) -> action }
+        } else {
+            emptyList()
+        }
+        AlertDialog(
+            onDismissRequest = { showNasSettingsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⚙️ Настройки: Передача на NAS",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { onExtensionsSettingsAction("settings_ext_nas") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Обновить настройки передачи на NAS"
+                        )
+                    }
+                    IconButton(onClick = { showNasSettingsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть настройки передачи на NAS"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (nasSettingsCurrent && state.message.isNotBlank()) {
+                        Text(state.message)
+                    } else {
+                        Text("Загружаем настройки передачи на NAS…")
+                    }
+                    nasSettingsOptions.forEach { (label, action) ->
+                        Button(
+                            onClick = { onExtensionsSettingsAction(action) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text(label)
+                        }
                     }
                 }
             },
