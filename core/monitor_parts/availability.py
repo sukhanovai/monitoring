@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/availability.py
-Server Monitoring System v8.62.64
+Server Monitoring System v8.62.65
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server availability transition handlers extracted from
 core/monitor_core.py (PR5 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.64
+Версия: 8.62.65
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики смены статуса сервера UP/DOWN, выделенные из монолитного
