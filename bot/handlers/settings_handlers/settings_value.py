@@ -38,6 +38,7 @@ from bot.handlers.settings_handlers.backups.snapshot import *  # noqa: F401, F40
 from bot.handlers.settings_handlers.supplier_stock import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.windows_creds import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.zfs import *  # noqa: F401, F403
+from bot.handlers.tls_cert_handlers import handle_text_input as handle_tls_text_input
 from bot.handlers.zfs_pool_free_space_handlers import handle_text_input as handle_zfsp_text_input
 from config.db_settings import BACKUP_DATABASE_CONFIG, load_all_settings
 from config.settings import BACKUP_DB_FILE, BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS
@@ -92,6 +93,9 @@ def handle_setting_value(update, context):
         return
 
     if handle_zfsp_text_input(update, context):
+        return
+
+    if handle_tls_text_input(update, context):
         return
 
     # Сначала проверяем, не добавляется ли Windows учетная запись
