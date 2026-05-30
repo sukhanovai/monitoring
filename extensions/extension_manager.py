@@ -71,6 +71,16 @@ AVAILABLE_EXTENSIONS = {
         "handlers": [],
         "enabled_by_default": True,
     },
+    "tls_cert_monitor": {
+        "name": "🔐 TLS-сертификаты",
+        "description": (
+            "Проверка срока TLS-сертификатов, ручной перевыпуск certbot по SSH "
+            "и загрузка платного сертификата 202020.ru"
+        ),
+        "commands": [],
+        "handlers": ["tls_"],
+        "enabled_by_default": True,
+    },
     "mail_backup_monitor": {
         "name": "📬 Мониторинг бэкапов почтового сервера",
         "description": "Отслеживание результата бэкапов Zimbra по почтовым уведомлениям",

@@ -361,6 +361,13 @@ def callback_router(update, context):
         from bot.handlers.zfs_pool_free_space_handlers import handle_callbacks
 
         handle_callbacks(update, context, data)
+    elif data == "tls_cert_menu" or data.startswith("tls_"):
+        if not extension_manager.is_extension_enabled("tls_cert_monitor"):
+            query.edit_message_text("🔐 Мониторинг TLS-сертификатов отключён")
+            return
+        from bot.handlers.tls_cert_handlers import handle_callbacks as tls_handle_callbacks
+
+        tls_handle_callbacks(update, context, data)
     elif data == "snapshot_transfer_menu":
         if not extension_manager.is_extension_enabled("snapshot_transfer_monitor"):
             query.edit_message_text("📸 Мониторинг передачи снэпшотов отключён")

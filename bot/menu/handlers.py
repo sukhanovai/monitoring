@@ -217,6 +217,8 @@ def start_command(update, context):
         keyboard.append(
             [InlineKeyboardButton("📸 Передачи снэпшотов", callback_data="snapshot_transfer_menu")]
         )
+    if extension_manager.is_extension_enabled("tls_cert_monitor"):
+        keyboard.append([InlineKeyboardButton("🔐 TLS-сертификаты", callback_data="tls_cert_menu")])
 
     keyboard.extend(
         [

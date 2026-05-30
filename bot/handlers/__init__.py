@@ -55,8 +55,12 @@ def get_message_handlers():
         return []
 
     from bot.handlers.settings_handlers import handle_setting_value
+    from bot.handlers.tls_cert_handlers import handle_document_input
 
-    return [MessageHandler(Filters.text & ~Filters.command, handle_setting_value)]
+    return [
+        MessageHandler(Filters.text & ~Filters.command, handle_setting_value),
+        MessageHandler(Filters.document, handle_document_input),
+    ]
 
 
 __all__ = [

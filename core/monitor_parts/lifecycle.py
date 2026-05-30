@@ -51,6 +51,7 @@ def start_monitoring() -> None:
         check_server_availability,
         initialize_servers,
     )
+    from extensions.tls_cert_monitor import check_tls_cert_alerts
     from extensions.zfs_pool_free_space import check_zfs_pool_free_space_alerts
     from lib.alerts import init_telegram_bot, is_startup_muted
     from modules.morning_report import morning_report
@@ -243,6 +244,16 @@ def start_monitoring() -> None:
                 )
             except Exception as exc:
                 debug_log(f"⚠️ Ошибка плановой проверки свободного места ZFS пулов: {exc}")
+
+            try:
+                check_tls_cert_alerts(
+                    send_alert_func=send_alert,
+                    repeat_interval_seconds=max(
+                        int(config.RESOURCE_ALERT_INTERVAL), int(config.CHECK_INTERVAL)
+                    ),
+                )
+            except Exception as exc:
+                debug_log(f"⚠️ Ошибка плановой проверки TLS-сертификатов: {exc}")
 
         time.sleep(config.CHECK_INTERVAL)
 
