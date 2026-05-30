@@ -1,3 +1,13 @@
+## [8.62.77] - 2026-05-30
+
+### Changed
+- RU: `tls_cert_monitor` — настройка платного сертификата переосмыслена как **URL проверки сертификата на валидность** (живой HTTPS-эндпоинт, на котором отдаётся сертификат домена), а не «URL получения». Telegram: переименованы подписи, кнопка «📜 Платный сертификат» (убрано упоминание `202020.ru`), добавлена кнопка «✅ Проверить по URL» (читает живой сертификат через `openssl` и показывает срок/издателя). Новая функция ядра `check_paid_cert_url()`.
+- EN: `tls_cert_monitor` — the paid-certificate setting is reframed as a **certificate validation URL** (the live HTTPS endpoint that serves the domain certificate) instead of a "download URL". Telegram: relabeled fields, the "📜 Paid certificate" button (dropped the `202020.ru` mention), and a new "✅ Check via URL" button (reads the live cert through `openssl` and shows expiry/issuer). New core helper `check_paid_cert_url()`.
+
+### Added
+- RU: Android — диалог настроек плашки «🔐 TLS» расширен: показываются все настройки расширения (URL проверки, SSH-хост, команды certbot/nginx, порог алерта, число доменов), добавлены пресеты порога алерта (7/14/30/60 дн.), кнопка проверки по URL и **перевыпуск сертификата по каждому домену** (`tls_reissue|<domain>`). В окне статуса «🔐 TLS-сертификаты» добавлена шестерёнка, открывающая эти настройки. Серверные действия `tls_set_alert_days|<n>`, `tls_reissue|<domain>`, `tls_check_paid_url` в `/v1/settings/extensions/actions`.
+- EN: Android — the "🔐 TLS" tile settings dialog now shows all extension settings (validation URL, SSH host, certbot/nginx commands, alert threshold, domain count), adds alert-threshold presets (7/14/30/60 days), a check-via-URL button and **per-domain certificate re-issue** (`tls_reissue|<domain>`). The "🔐 TLS certificates" status window gains a gear that opens these settings. New server actions `tls_set_alert_days|<n>`, `tls_reissue|<domain>`, `tls_check_paid_url` in `/v1/settings/extensions/actions`.
+
 ## [8.62.76] - 2026-05-30
 
 ### Added
