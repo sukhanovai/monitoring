@@ -250,3 +250,27 @@ def test_matrix_bot_exposes_tls_extension() -> None:
     settings = dict(m._EXTENSION_SETTINGS)
     assert "tls_cert_monitor" in settings
     assert "TLS_CERT_DOMAINS" in settings["tls_cert_monitor"]["keys"]
+
+
+def test_paid_cert_url_roundtrip(monkeypatch) -> None:
+    """URL платного сертификата сохраняется и читается через настройки."""
+    import extensions.tls_cert_monitor as mod
+
+    store: dict = {}
+
+    def fake_get(key, default=None, **kwargs):
+        return store.get(key, default)
+
+    def fake_set(key, value, *a, **k):
+        store[key] = value
+        return True
+
+    monkeypatch.setattr(mod.config_manager, "get_setting", fake_get)
+    monkeypatch.setattr(mod.config_manager, "set_setting", fake_set)
+
+    assert mod.get_paid_cert_url() == ""
+    mod.set_paid_cert_url("https://provider.example/cert/202020.ru")
+    assert mod.get_paid_cert_url() == "https://provider.example/cert/202020.ru"
+    # Пустое значение очищает URL.
+    mod.set_paid_cert_url("")
+    assert mod.get_paid_cert_url() == ""

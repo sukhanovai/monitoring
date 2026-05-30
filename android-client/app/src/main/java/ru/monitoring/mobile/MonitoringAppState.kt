@@ -162,5 +162,7 @@ class MonitoringAppState {
     var showNasSettingsDialog by mutableStateOf(false)
     var nasIgnoreInput by mutableStateOf("")
     var showTlsCertDialog by mutableStateOf(false)
+    var showTlsSettingsDialog by mutableStateOf(false)
+    var tlsPaidUrlInput by mutableStateOf("")
     var showMorningReportDialog by mutableStateOf(false)
 }

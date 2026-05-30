@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 /scripts/bump_version.py
-Server Monitoring System v8.62.75
+Server Monitoring System v8.62.76
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Version bump helper extracted from the manual procedure in CLAUDE.md
 (PR9 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.75
+Версия: 8.62.76
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Скрипт автоматизирует ручную процедуру синхронизации версии,

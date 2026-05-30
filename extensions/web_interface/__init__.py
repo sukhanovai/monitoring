@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.75
+Server Monitoring System v8.62.76
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.75
+Версия: 8.62.76
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -5920,6 +5920,62 @@ def v1_extensions_actions():
                 {"label": "✖️ Закрыть", "action": "close"},
             ]
         )
+
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": message,
+                    "menu_options": menu_options,
+                }
+            ),
+            200,
+        )
+
+    if action == "settings_ext_tls" or action.startswith("tls_set_paid_url|"):
+        from extensions.tls_cert_monitor import (
+            get_paid_cert_info,
+            get_paid_cert_url,
+            set_paid_cert_url,
+        )
+
+        notice = ""
+        if action.startswith("tls_set_paid_url|"):
+            raw_value = unquote(raw_action.split("|", 1)[1]).strip()
+            if raw_value in ("", "-"):
+                set_paid_cert_url("")
+                notice = "🔗 URL получения очищен\n\n"
+            elif raw_value.startswith("http://") or raw_value.startswith("https://"):
+                set_paid_cert_url(raw_value)
+                notice = "✅ URL получения сохранён\n\n"
+            else:
+                notice = "❌ URL должен начинаться с http:// или https://\n\n"
+
+        paid_url = get_paid_cert_url()
+        info = get_paid_cert_info()
+        if info.get("ok"):
+            end = info["not_after"].strftime("%Y-%m-%d") if info.get("not_after") else "?"
+            cert_line = f"🟢 загружен, действует до {end} ({info.get('days_left')} дн.)"
+        elif info.get("error"):
+            cert_line = f"⚠️ {info['error']}"
+        else:
+            cert_line = "❌ не загружен"
+
+        message = (
+            f"{notice}🔐 TLS-сертификаты — настройки\n\n"
+            f"• Платный сертификат 202020.ru: {cert_line}\n"
+            f"• URL получения: {paid_url or 'не задан'}\n\n"
+            "Измените URL страницы провайдера в поле ниже "
+            "(начиная с https://, или «-» чтобы очистить)."
+        )
+
+        menu_options = [
+            {"label": "🏠 На главную", "action": "main_menu"},
+            {"label": "↩️ Назад", "action": "settings_extensions"},
+            {"label": "✖️ Закрыть", "action": "close"},
+        ]
 
         return (
             jsonify(
