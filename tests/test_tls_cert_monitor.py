@@ -274,3 +274,33 @@ def test_paid_cert_url_roundtrip(monkeypatch) -> None:
     # Пустое значение очищает URL.
     mod.set_paid_cert_url("")
     assert mod.get_paid_cert_url() == ""
+
+
+def test_check_paid_cert_url_parses_host_port(monkeypatch) -> None:
+    """check_paid_cert_url разбирает host:port из URL и зовёт check_certificate."""
+    import extensions.tls_cert_monitor as mod
+
+    captured: dict = {}
+
+    def fake_check(domain, port=443, timeout=12):
+        captured["domain"] = domain
+        captured["port"] = port
+        return {"ok": True, "not_after": None, "days_left": 100}
+
+    monkeypatch.setattr(mod, "get_paid_cert_url", lambda: "https://202020.ru:8443/health")
+    monkeypatch.setattr(mod, "check_certificate", fake_check)
+
+    info = mod.check_paid_cert_url()
+    assert info["ok"] is True
+    assert captured["domain"] == "202020.ru"
+    assert captured["port"] == 8443
+    assert info["url"] == "https://202020.ru:8443/health"
+
+
+def test_check_paid_cert_url_no_url(monkeypatch) -> None:
+    import extensions.tls_cert_monitor as mod
+
+    monkeypatch.setattr(mod, "get_paid_cert_url", lambda: "")
+    info = mod.check_paid_cert_url()
+    assert info["ok"] is False
+    assert "не задан" in info["error"]

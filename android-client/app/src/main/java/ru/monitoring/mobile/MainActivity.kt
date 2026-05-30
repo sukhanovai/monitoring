@@ -5496,6 +5496,15 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
+                    IconButton(onClick = {
+                        showTlsSettingsDialog = true
+                        onExtensionsSettingsAction("settings_ext_tls")
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Настройки и перевыпуск TLS-сертификатов"
+                        )
+                    }
                     IconButton(onClick = { onAction("tls_cert_monitor_status") }) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
@@ -5697,8 +5706,8 @@ private fun MonitoringApp(
                     OutlinedTextField(
                         value = tlsPaidUrlInput,
                         onValueChange = { tlsPaidUrlInput = it },
-                        label = { Text("URL платного сертификата") },
-                        placeholder = { Text("https://provider.example/cert/202020.ru") },
+                        label = { Text("URL проверки сертификата") },
+                        placeholder = { Text("https://example.com") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )

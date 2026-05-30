@@ -1,12 +1,12 @@
 """
 /extensions/tls_cert_monitor.py
-Server Monitoring System v8.62.76
+Server Monitoring System v8.62.77
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 TLS certificate monitor: expiry checks, manual certbot re-issue over SSH and
 manual upload of the paid 202020.ru certificate.
 Система мониторинга серверов
-Версия: 8.62.76
+Версия: 8.62.77
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг TLS-сертификатов: проверка срока, ручной перевыпуск через certbot по
@@ -154,12 +154,13 @@ def save_settings(settings: dict[str, Any]) -> None:
 
 
 def get_paid_cert_url() -> str:
-    """URL страницы провайдера для получения платного сертификата 202020.ru."""
+    """URL проверки сертификата на валидность — живой HTTPS-эндпоинт, где
+    отдаётся сертификат домена и его можно проверить."""
     return str(get_settings().get("paid_cert_url", "") or "").strip()
 
 
 def set_paid_cert_url(url: str) -> None:
-    """Сохраняет URL получения платного сертификата (пустая строка — сбросить)."""
+    """Сохраняет URL проверки сертификата (пустая строка — сбросить)."""
     save_settings({"paid_cert_url": str(url or "").strip()})
 
 
@@ -236,6 +237,28 @@ def check_certificate(domain: str, port: int = 443, timeout: int = 12) -> dict[s
     else:
         result["error"] = "не удалось разобрать срок действия сертификата"
     return result
+
+
+def check_paid_cert_url(timeout: int = 12) -> dict[str, Any]:
+    """Проверяет сертификат на валидность по настроенному URL проверки.
+
+    Разбирает host:port из URL и читает живой сертификат через openssl.
+    """
+    url = get_paid_cert_url()
+    if not url:
+        return {"ok": False, "error": "URL проверки не задан", "url": ""}
+
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url if "://" in url else f"https://{url}")
+    host = parsed.hostname
+    if not host:
+        return {"ok": False, "error": "не удалось разобрать хост из URL", "url": url}
+    port = parsed.port or (80 if parsed.scheme == "http" else 443)
+
+    info = check_certificate(host, port, timeout=timeout)
+    info["url"] = url
+    return info
 
 
 def collect_certificates() -> tuple[list[dict[str, Any]], list[str]]:
