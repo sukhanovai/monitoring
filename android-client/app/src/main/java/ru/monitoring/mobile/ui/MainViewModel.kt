@@ -375,9 +375,10 @@ class MainViewModel(
         if (response == null) return null
 
         // build_status_lines() из extensions/tls_cert_monitor.py выдаёт строку
-        // "• Доменов: N · 🚨 M" — берём всего/проблемных оттуда.
+        // "• Сертификатов: N · 🚨 M" — берём всего/проблемных оттуда
+        // (раньше было «Доменов», поддерживаем оба варианта).
         val message = resolveControlActionMessage(response)
-        val match = Regex("""Доменов:\s*(\d+).*?🚨\s*(\d+)""")
+        val match = Regex("""(?:Сертификатов|Доменов):\s*(\d+).*?🚨\s*(\d+)""")
             .find(message.replace("\n", " "))
         if (match != null) {
             val total = match.groupValues.getOrNull(1)?.toIntOrNull()

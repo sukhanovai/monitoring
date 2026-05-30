@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.78
+Server Monitoring System v8.62.79
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.78
+Версия: 8.62.79
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -5938,11 +5938,18 @@ def v1_extensions_actions():
         action == "settings_ext_tls"
         or action.startswith("tls_set_alert_days|")
         or action.startswith("tls_reissue|")
+        or action.startswith("tls_cert_toggle|")
+        or action.startswith("tls_cert_delete|")
+        or action.startswith("tls_cert_upsert|")
+        or action == "tls_certs_reset"
     ):
         from extensions.tls_cert_monitor import (
+            DEFAULT_CERTS,
             get_domains_config,
             get_settings,
+            normalize_domains,
             reissue_certificate,
+            save_domains_config,
             save_settings,
         )
 
@@ -5961,6 +5968,60 @@ def v1_extensions_actions():
             cert_name = unquote(raw_action.split("|", 1)[1]).strip()
             _ok_reissue, reissue_msg = reissue_certificate(cert_name)
             notice = f"{reissue_msg}\n\n"
+        elif action.startswith("tls_cert_toggle|"):
+            cert_name = unquote(raw_action.split("|", 1)[1]).strip()
+            certs_cfg = get_domains_config()
+            if cert_name in certs_cfg:
+                certs_cfg[cert_name]["enabled"] = not bool(
+                    certs_cfg[cert_name].get("enabled", True)
+                )
+                save_domains_config(certs_cfg)
+                state_txt = "включён" if certs_cfg[cert_name]["enabled"] else "выключен"
+                notice = f"✅ {cert_name}: {state_txt}\n\n"
+            else:
+                notice = "❌ Сертификат не найден\n\n"
+        elif action.startswith("tls_cert_delete|"):
+            cert_name = unquote(raw_action.split("|", 1)[1]).strip()
+            certs_cfg = get_domains_config()
+            if certs_cfg.pop(cert_name, None) is not None:
+                save_domains_config(certs_cfg)
+                notice = f"🗑 Сертификат {cert_name} удалён\n\n"
+            else:
+                notice = "❌ Сертификат не найден\n\n"
+        elif action.startswith("tls_cert_upsert|"):
+            # Формат: tls_cert_upsert|<name>|<host>|<port>|<domains через запятую>
+            parts = raw_action.split("|")
+            name = unquote(parts[1]).strip() if len(parts) > 1 else ""
+            host = unquote(parts[2]).strip() if len(parts) > 2 else ""
+            port_raw = unquote(parts[3]).strip() if len(parts) > 3 else ""
+            domains_raw = unquote(parts[4]).strip() if len(parts) > 4 else ""
+            if not name:
+                notice = "❌ Не указан cert-name\n\n"
+            else:
+                try:
+                    port_val = int(port_raw) if port_raw else 443
+                    if port_val < 1 or port_val > 65535:
+                        raise ValueError
+                except (TypeError, ValueError):
+                    port_val = 443
+                domains_list = [
+                    p.strip() for p in domains_raw.replace(",", " ").split() if p.strip()
+                ] or [name]
+                certs_cfg = get_domains_config()
+                existed = name in certs_cfg
+                default_alert = int(get_settings().get("alert_days_default", 14))
+                certs_cfg[name] = {
+                    "enabled": certs_cfg.get(name, {}).get("enabled", True),
+                    "check_host": host or name,
+                    "port": port_val,
+                    "alert_days": certs_cfg.get(name, {}).get("alert_days", default_alert),
+                    "domains": domains_list,
+                }
+                save_domains_config(certs_cfg)
+                notice = f"{'✏️ Обновлён' if existed else '➕ Добавлен'} сертификат {name}\n\n"
+        elif action == "tls_certs_reset":
+            save_domains_config(normalize_domains(DEFAULT_CERTS))
+            notice = "🔄 Список сертификатов сброшен к значениям по умолчанию\n\n"
 
         settings = get_settings()
         certs = get_domains_config()
@@ -5981,8 +6042,10 @@ def v1_extensions_actions():
             f"• Перезапуск nginx: {settings.get('nginx_reload_cmd')}\n"
             f"• Порог алерта по умолчанию: {alert_days} дн.\n\n"
             f"Сертификаты ({len(certs)}):\n{certs_block}\n\n"
-            "Ниже — пресеты порога алерта и перевыпуск по каждому сертификату. "
-            "SSH-хост, команды certbot/nginx и список доменов меняются в Telegram-боте."
+            "Добавить/изменить сертификат — заполните поля ниже и нажмите «Сохранить» "
+            "(если cert-name существует — он обновится). Кнопки ниже: перевыпуск, "
+            "вкл/выкл и удаление по каждому сертификату. SSH-хост и команды "
+            "certbot/nginx меняются в Telegram-боте."
         )
 
         menu_options = []
@@ -5992,9 +6055,18 @@ def v1_extensions_actions():
                 {"label": f"{prefix}алерт {value}д", "action": f"tls_set_alert_days|{value}"}
             )
         for cert_name in sorted(certs.keys()):
+            enabled = bool(certs[cert_name].get("enabled", True))
+            toggle_label = "🔴 Выкл." if enabled else "🟢 Вкл."
             menu_options.append(
                 {"label": f"♻️ Перевыпуск {cert_name}", "action": f"tls_reissue|{cert_name}"}
             )
+            menu_options.append(
+                {"label": f"{toggle_label} {cert_name}", "action": f"tls_cert_toggle|{cert_name}"}
+            )
+            menu_options.append(
+                {"label": f"🗑 Удалить {cert_name}", "action": f"tls_cert_delete|{cert_name}"}
+            )
+        menu_options.append({"label": "🔄 Сбросить к дефолтам", "action": "tls_certs_reset"})
         menu_options.extend(
             [
                 {"label": "🏠 На главную", "action": "main_menu"},

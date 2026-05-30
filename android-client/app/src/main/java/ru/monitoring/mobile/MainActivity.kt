@@ -5645,8 +5645,10 @@ private fun MonitoringApp(
     if (showTlsSettingsDialog) {
         val tlsSettingsCurrent = state.messageSource == "extensions_settings" &&
             (state.extensionSettingsMenuAction == "settings_ext_tls" ||
+                state.extensionSettingsMenuAction == "tls_certs_reset" ||
                 state.extensionSettingsMenuAction.startsWith("tls_set_alert_days") ||
-                state.extensionSettingsMenuAction.startsWith("tls_reissue"))
+                state.extensionSettingsMenuAction.startsWith("tls_reissue") ||
+                state.extensionSettingsMenuAction.startsWith("tls_cert_"))
         val tlsSettingsOptions = if (tlsSettingsCurrent) {
             state.extensionSettingsMenuOptions.mapNotNull { option ->
                 val action = resolveMenuOptionAction(option)
@@ -5701,6 +5703,67 @@ private fun MonitoringApp(
                         Text(state.message)
                     } else {
                         Text("Загружаем настройки TLS-сертификатов…")
+                    }
+
+                    // Добавление/редактирование сертификата (upsert по cert-name).
+                    Text(
+                        "Добавить / изменить сертификат",
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    OutlinedTextField(
+                        value = tlsCertNameInput,
+                        onValueChange = { tlsCertNameInput = it },
+                        label = { Text("Cert-name (certbot)") },
+                        placeholder = { Text("например chat.202020.ru") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = tlsCertHostInput,
+                        onValueChange = { tlsCertHostInput = it },
+                        label = { Text("Хост проверки (Enter — cert-name)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = tlsCertPortInput,
+                        onValueChange = { tlsCertPortInput = it },
+                        label = { Text("Порт (по умолчанию 443)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = tlsCertDomainsInput,
+                        onValueChange = { tlsCertDomainsInput = it },
+                        label = { Text("Домены -d (через запятую)") },
+                        placeholder = { Text("Enter — только cert-name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = {
+                            val name = tlsCertNameInput.trim()
+                            if (name.isNotEmpty()) {
+                                val host = tlsCertHostInput.trim()
+                                val port = tlsCertPortInput.trim()
+                                val domains = tlsCertDomainsInput.trim()
+                                onExtensionsSettingsAction(
+                                    "tls_cert_upsert|" + Uri.encode(name) +
+                                        "|" + Uri.encode(host) +
+                                        "|" + Uri.encode(port) +
+                                        "|" + Uri.encode(domains)
+                                )
+                                tlsCertNameInput = ""
+                                tlsCertHostInput = ""
+                                tlsCertPortInput = ""
+                                tlsCertDomainsInput = ""
+                            }
+                        },
+                        enabled = tlsCertNameInput.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("💾 Сохранить сертификат")
                     }
 
                     tlsSettingsOptions.forEach { (label, action) ->
