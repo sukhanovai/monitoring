@@ -2,21 +2,16 @@
 Unit-тесты расширения мониторинга TLS-сертификатов
 (`extensions.tls_cert_monitor`).
 
-Проверяют чистые функции (нормализация конфигурации доменов, парсинг дат
-openssl, сборка статуса, поведение перевыпуска без SSH-хоста) и — при наличии
-бинарника openssl — валидацию загруженного сертификата/ключа и проверку пары.
+Проверяют чистые функции: нормализацию конфигурации сертификатов (cert-name,
+хост проверки, домены `-d`), парсинг дат openssl, сборку статуса и поведение
+перевыпуска (в т.ч. мультидоменного) certbot по SSH.
 """
 
 from __future__ import annotations
 
-import shutil
-import subprocess
-from datetime import datetime, timedelta
+from datetime import datetime
 
-import pytest
-
-OPENSSL = shutil.which("openssl")
-requires_openssl = pytest.mark.skipif(OPENSSL is None, reason="openssl не установлен")
+import pytest  # noqa: F401  (используется через monkeypatch-фикстуру)
 
 
 def test_normalize_domains_clamps_and_defaults() -> None:
@@ -24,19 +19,49 @@ def test_normalize_domains_clamps_and_defaults() -> None:
 
     result = normalize_domains(
         {
-            "  API.202020.ru ": {"port": "8443", "alert_days": "300", "enabled": False},
+            "api.202020.ru": {"port": "8443", "alert_days": "300", "enabled": False},
             "bad.example": "не-словарь",
             "": {"port": 443},
             123: {"port": 443},
         }
     )
 
-    assert "api.202020.ru" in result  # нормализация регистра и пробелов
-    assert result["api.202020.ru"] == {"enabled": False, "port": 8443, "alert_days": 180}
-    # Значение-строка превращается в дефолт.
-    assert result["bad.example"] == {"enabled": True, "port": 443, "alert_days": 14}
+    assert result["api.202020.ru"] == {
+        "enabled": False,
+        "check_host": "api.202020.ru",
+        "port": 8443,
+        "alert_days": 180,  # клампится к 180
+        "domains": ["api.202020.ru"],
+    }
+    # Значение-строка превращается в дефолт с домен-списком из cert-name.
+    assert result["bad.example"]["domains"] == ["bad.example"]
+    assert result["bad.example"]["check_host"] == "bad.example"
     # Пустые/нестроковые ключи отбрасываются.
     assert "" not in result and 123 not in result
+
+
+def test_normalize_domains_multidomain_and_check_host() -> None:
+    from extensions.tls_cert_monitor import normalize_domains
+
+    result = normalize_domains(
+        {
+            "202020.ru": {
+                "check_host": "202020.ru",
+                "port": 443,
+                "domains": ["202020.ru", "www.202020.ru", "mail.202020.ru"],
+            }
+        }
+    )
+    entry = result["202020.ru"]
+    assert entry["domains"] == ["202020.ru", "www.202020.ru", "mail.202020.ru"]
+    assert entry["check_host"] == "202020.ru"
+
+
+def test_normalize_domains_domains_from_string() -> None:
+    from extensions.tls_cert_monitor import normalize_domains
+
+    result = normalize_domains({"c": {"domains": "a.ru, b.ru  c.ru"}})
+    assert result["c"]["domains"] == ["a.ru", "b.ru", "c.ru"]
 
 
 def test_normalize_domains_invalid_input() -> None:
@@ -58,11 +83,13 @@ def test_parse_openssl_date() -> None:
 def test_get_domains_config_falls_back_to_defaults(monkeypatch) -> None:
     import extensions.tls_cert_monitor as mod
 
-    # Пустое хранилище → дефолтные пять доменов.
     monkeypatch.setattr(mod.config_manager, "get_setting", lambda *a, **k: {})
     cfg = mod.get_domains_config()
-    assert set(cfg.keys()) == set(mod.DEFAULT_DOMAINS.keys())
+    assert set(cfg.keys()) == set(mod.DEFAULT_CERTS.keys())
+    assert "rtc.matrix.202020.ru" in cfg
     assert cfg["api.202020.ru"]["port"] == 8443
+    # Мультидоменный сертификат 202020.ru.
+    assert len(cfg["202020.ru"]["domains"]) > 1
 
 
 def test_get_settings_merges_defaults(monkeypatch) -> None:
@@ -71,7 +98,6 @@ def test_get_settings_merges_defaults(monkeypatch) -> None:
     monkeypatch.setattr(mod.config_manager, "get_setting", lambda *a, **k: {"ssh_host": "10.0.0.5"})
     s = mod.get_settings()
     assert s["ssh_host"] == "10.0.0.5"
-    # Остальное берётся из дефолтов.
     assert s["certbot_cmd"] == mod.DEFAULT_CERTBOT_CMD
     assert s["nginx_reload_cmd"] == mod.DEFAULT_NGINX_RELOAD_CMD
 
@@ -79,14 +105,16 @@ def test_get_settings_merges_defaults(monkeypatch) -> None:
 def test_reissue_without_ssh_host_returns_error(monkeypatch) -> None:
     import extensions.tls_cert_monitor as mod
 
-    monkeypatch.setattr(mod, "get_domains_config", lambda: {"api.202020.ru": {"port": 8443}})
+    monkeypatch.setattr(
+        mod, "get_domains_config", lambda: {"api.202020.ru": {"domains": ["api.202020.ru"]}}
+    )
     monkeypatch.setattr(mod, "get_settings", lambda: dict(mod.DEFAULT_SETTINGS))
     ok, msg = mod.reissue_certificate("api.202020.ru")
     assert ok is False
     assert "SSH" in msg
 
 
-def test_reissue_unknown_domain(monkeypatch) -> None:
+def test_reissue_unknown_cert(monkeypatch) -> None:
     import extensions.tls_cert_monitor as mod
 
     monkeypatch.setattr(mod, "get_domains_config", lambda: {})
@@ -95,7 +123,7 @@ def test_reissue_unknown_domain(monkeypatch) -> None:
     assert "не настроен" in msg
 
 
-def test_reissue_builds_command_and_calls_ssh(monkeypatch) -> None:
+def test_reissue_multidomain_builds_all_d_args(monkeypatch) -> None:
     import extensions.tls_cert_monitor as mod
 
     captured: dict = {}
@@ -105,135 +133,62 @@ def test_reissue_builds_command_and_calls_ssh(monkeypatch) -> None:
         captured["command"] = command
         return True, "Congratulations! certificate issued", ""
 
-    monkeypatch.setattr(mod, "get_domains_config", lambda: {"matrix.202020.ru": {"port": 443}})
     monkeypatch.setattr(
         mod,
-        "get_settings",
-        lambda: {
-            **mod.DEFAULT_SETTINGS,
-            "ssh_host": "10.0.0.5",
-        },
+        "get_domains_config",
+        lambda: {"202020.ru": {"domains": ["202020.ru", "www.202020.ru", "mail.202020.ru"]}},
+    )
+    monkeypatch.setattr(
+        mod, "get_settings", lambda: {**mod.DEFAULT_SETTINGS, "ssh_host": "10.0.0.5"}
     )
     monkeypatch.setattr(mod, "run_ssh_command", fake_ssh)
 
-    ok, msg = mod.reissue_certificate("matrix.202020.ru")
+    ok, _msg = mod.reissue_certificate("202020.ru")
     assert ok is True
     assert captured["host"] == "10.0.0.5"
-    assert "--cert-name matrix.202020.ru" in captured["command"]
+    assert "--cert-name 202020.ru" in captured["command"]
+    # Все домены попали в аргументы -d.
+    assert "-d 202020.ru" in captured["command"]
+    assert "-d www.202020.ru" in captured["command"]
+    assert "-d mail.202020.ru" in captured["command"]
     assert "service nginx restart" in captured["command"]
 
 
-def test_build_status_lines_renders_alert(monkeypatch) -> None:
+def test_build_status_lines_renders_cert_name_and_alert() -> None:
     import extensions.tls_cert_monitor as mod
 
-    monkeypatch.setattr(mod, "get_paid_cert_info", lambda: {"ok": False, "error": None})
     results = [
         {
-            "domain": "api.202020.ru",
+            "cert_name": "api.202020.ru",
+            "check_host": "api.202020.ru",
             "port": 8443,
             "ok": True,
             "days_left": 5,
             "not_after": datetime(2026, 6, 4),
             "is_alert": True,
             "alert_days": 14,
+            "domains": ["api.202020.ru"],
         },
         {
-            "domain": "rtc.202020.ru",
+            "cert_name": "202020.ru",
+            "check_host": "202020.ru",
             "port": 443,
-            "ok": False,
-            "is_alert": True,
-            "error": "таймаут",
+            "ok": True,
+            "days_left": 64,
+            "not_after": datetime(2026, 8, 3),
+            "is_alert": False,
+            "alert_days": 14,
+            "domains": ["202020.ru", "www.202020.ru"],
         },
     ]
-    text = "\n".join(mod.build_status_lines(results, ["❌ rtc.202020.ru:443: таймаут"]))
+    text = "\n".join(mod.build_status_lines(results, []))
+    assert "api.202020.ru" in text
     assert "api.202020.ru:8443" in text
     assert "осталось 5 дн." in text
-    assert "rtc.202020.ru" in text
-    assert "не загружен" in text
-
-
-def _make_self_signed(tmp_path):
-    """Генерирует самоподписанный сертификат и ключ для тестов."""
-    key = tmp_path / "k.pem"
-    crt = tmp_path / "c.pem"
-    subprocess.run(
-        [
-            OPENSSL,
-            "req",
-            "-x509",
-            "-newkey",
-            "rsa:2048",
-            "-nodes",
-            "-keyout",
-            str(key),
-            "-out",
-            str(crt),
-            "-days",
-            "30",
-            "-subj",
-            "/CN=202020.ru",
-        ],
-        check=True,
-        capture_output=True,
-    )
-    return crt.read_bytes(), key.read_bytes()
-
-
-@requires_openssl
-def test_validate_and_match_paid_certificate(tmp_path, monkeypatch) -> None:
-    import extensions.tls_cert_monitor as mod
-
-    cert_bytes, key_bytes = _make_self_signed(tmp_path)
-
-    store = tmp_path / "certs"
-    monkeypatch.setattr(mod, "PAID_CERT_DIR", store)
-    monkeypatch.setattr(mod, "PAID_CERT_FILE", store / "202020.ru.crt")
-    monkeypatch.setattr(mod, "PAID_KEY_FILE", store / "202020.ru.key")
-
-    ok, _ = mod.save_paid_certificate(cert_bytes)
-    assert ok is True
-    ok, _ = mod.save_paid_key(key_bytes)
-    assert ok is True
-
-    match_ok, match_msg = mod.certificate_key_match()
-    assert match_ok is True, match_msg
-
-    info = mod.get_paid_cert_info()
-    assert info["ok"] is True
-    assert info["has_key"] is True
-    assert info["days_left"] is not None and info["days_left"] > 0
-
-
-@requires_openssl
-def test_validate_rejects_garbage(tmp_path, monkeypatch) -> None:
-    import extensions.tls_cert_monitor as mod
-
-    monkeypatch.setattr(mod, "PAID_CERT_DIR", tmp_path / "certs")
-    ok, msg = mod.validate_certificate_pem(b"not a certificate")
-    assert ok is False
-    ok, msg = mod.validate_private_key_pem(b"not a key")
-    assert ok is False
-
-
-@requires_openssl
-def test_mismatched_cert_and_key(tmp_path, monkeypatch) -> None:
-    import extensions.tls_cert_monitor as mod
-
-    cert_a, _ = _make_self_signed(tmp_path)
-    # Второй независимый ключ в отдельной папке.
-    sub = tmp_path / "second"
-    sub.mkdir()
-    _, key_b = _make_self_signed(sub)
-
-    store = tmp_path / "certs"
-    monkeypatch.setattr(mod, "PAID_CERT_DIR", store)
-    monkeypatch.setattr(mod, "PAID_CERT_FILE", store / "202020.ru.crt")
-    monkeypatch.setattr(mod, "PAID_KEY_FILE", store / "202020.ru.key")
-
-    mod.save_paid_certificate(cert_a)
-    mod.save_paid_key(key_b)
-    match_ok, _ = mod.certificate_key_match()
-    assert match_ok is False
+    # Мультидоменный сертификат помечается числом доменов.
+    assert "2 доменов" in text
+    # Платный сертификат больше не упоминается.
+    assert "латный" not in text
 
 
 def test_matrix_bot_exposes_tls_extension() -> None:
@@ -242,65 +197,8 @@ def test_matrix_bot_exposes_tls_extension() -> None:
 
     ids = [item.extension_id for item in m.EXTENSION_MENU_ITEMS]
     assert "tls_cert_monitor" in ids
-    # Команда !tls маршрутизируется автоматически.
     assert m._EXT_ITEM_BY_COMMAND.get("!tls") is not None
-    # Async-обработчик существует в классе бота.
     assert hasattr(m.MatrixCommandBot, "_handle_ext_tls_cert")
-    # Настройки расширения видны в !settings.
     settings = dict(m._EXTENSION_SETTINGS)
     assert "tls_cert_monitor" in settings
     assert "TLS_CERT_DOMAINS" in settings["tls_cert_monitor"]["keys"]
-
-
-def test_paid_cert_url_roundtrip(monkeypatch) -> None:
-    """URL платного сертификата сохраняется и читается через настройки."""
-    import extensions.tls_cert_monitor as mod
-
-    store: dict = {}
-
-    def fake_get(key, default=None, **kwargs):
-        return store.get(key, default)
-
-    def fake_set(key, value, *a, **k):
-        store[key] = value
-        return True
-
-    monkeypatch.setattr(mod.config_manager, "get_setting", fake_get)
-    monkeypatch.setattr(mod.config_manager, "set_setting", fake_set)
-
-    assert mod.get_paid_cert_url() == ""
-    mod.set_paid_cert_url("https://provider.example/cert/202020.ru")
-    assert mod.get_paid_cert_url() == "https://provider.example/cert/202020.ru"
-    # Пустое значение очищает URL.
-    mod.set_paid_cert_url("")
-    assert mod.get_paid_cert_url() == ""
-
-
-def test_check_paid_cert_url_parses_host_port(monkeypatch) -> None:
-    """check_paid_cert_url разбирает host:port из URL и зовёт check_certificate."""
-    import extensions.tls_cert_monitor as mod
-
-    captured: dict = {}
-
-    def fake_check(domain, port=443, timeout=12):
-        captured["domain"] = domain
-        captured["port"] = port
-        return {"ok": True, "not_after": None, "days_left": 100}
-
-    monkeypatch.setattr(mod, "get_paid_cert_url", lambda: "https://202020.ru:8443/health")
-    monkeypatch.setattr(mod, "check_certificate", fake_check)
-
-    info = mod.check_paid_cert_url()
-    assert info["ok"] is True
-    assert captured["domain"] == "202020.ru"
-    assert captured["port"] == 8443
-    assert info["url"] == "https://202020.ru:8443/health"
-
-
-def test_check_paid_cert_url_no_url(monkeypatch) -> None:
-    import extensions.tls_cert_monitor as mod
-
-    monkeypatch.setattr(mod, "get_paid_cert_url", lambda: "")
-    info = mod.check_paid_cert_url()
-    assert info["ok"] is False
-    assert "не задан" in info["error"]

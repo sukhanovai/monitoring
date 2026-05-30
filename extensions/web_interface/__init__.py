@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.77
+Server Monitoring System v8.62.78
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.77
+Версия: 8.62.78
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -5936,34 +5936,18 @@ def v1_extensions_actions():
 
     if (
         action == "settings_ext_tls"
-        or action.startswith("tls_set_paid_url|")
         or action.startswith("tls_set_alert_days|")
         or action.startswith("tls_reissue|")
-        or action == "tls_check_paid_url"
     ):
         from extensions.tls_cert_monitor import (
-            check_paid_cert_url,
             get_domains_config,
-            get_paid_cert_info,
-            get_paid_cert_url,
             get_settings,
             reissue_certificate,
             save_settings,
-            set_paid_cert_url,
         )
 
         notice = ""
-        if action.startswith("tls_set_paid_url|"):
-            raw_value = unquote(raw_action.split("|", 1)[1]).strip()
-            if raw_value in ("", "-"):
-                set_paid_cert_url("")
-                notice = "🔗 URL проверки очищен\n\n"
-            elif raw_value.startswith("http://") or raw_value.startswith("https://"):
-                set_paid_cert_url(raw_value)
-                notice = "✅ URL проверки сохранён\n\n"
-            else:
-                notice = "❌ URL должен начинаться с http:// или https://\n\n"
-        elif action.startswith("tls_set_alert_days|"):
+        if action.startswith("tls_set_alert_days|"):
             raw_value = raw_action.split("|", 1)[1].strip()
             try:
                 days_value = int(raw_value)
@@ -5974,63 +5958,42 @@ def v1_extensions_actions():
             except (TypeError, ValueError):
                 notice = "❌ Некорректное число дней (1-180)\n\n"
         elif action.startswith("tls_reissue|"):
-            domain = unquote(raw_action.split("|", 1)[1]).strip()
-            ok_reissue, reissue_msg = reissue_certificate(domain)
+            cert_name = unquote(raw_action.split("|", 1)[1]).strip()
+            _ok_reissue, reissue_msg = reissue_certificate(cert_name)
             notice = f"{reissue_msg}\n\n"
-        elif action == "tls_check_paid_url":
-            check_info = check_paid_cert_url()
-            if check_info.get("ok"):
-                c_end = (
-                    check_info["not_after"].strftime("%Y-%m-%d")
-                    if check_info.get("not_after")
-                    else "?"
-                )
-                notice = (
-                    f"✅ Сертификат по URL валиден до {c_end} "
-                    f"(осталось {check_info.get('days_left')} дн.)\n\n"
-                )
-            else:
-                notice = f"❌ Проверка по URL: {check_info.get('error', 'ошибка')}\n\n"
 
         settings = get_settings()
-        paid_url = get_paid_cert_url()
-        info = get_paid_cert_info()
-        if info.get("ok"):
-            end = info["not_after"].strftime("%Y-%m-%d") if info.get("not_after") else "?"
-            cert_line = f"🟢 загружен, действует до {end} ({info.get('days_left')} дн.)"
-        elif info.get("error"):
-            cert_line = f"⚠️ {info['error']}"
-        else:
-            cert_line = "❌ не загружен"
-
-        domains = get_domains_config()
+        certs = get_domains_config()
         alert_days = settings.get("alert_days_default", 14)
+        cert_lines = []
+        for cert_name in sorted(certs.keys()):
+            cfg = certs[cert_name]
+            status = "🟢" if cfg.get("enabled", True) else "🔴"
+            host = cfg.get("check_host", cert_name)
+            ndom = len(cfg.get("domains") or [cert_name])
+            cert_lines.append(f"{status} {cert_name} → {host}:{cfg.get('port', 443)} ({ndom} дом.)")
+        certs_block = "\n".join(cert_lines) if cert_lines else "—"
+
         message = (
             f"{notice}🔐 TLS-сертификаты — настройки\n\n"
-            f"• Платный сертификат: {cert_line}\n"
-            f"• URL проверки сертификата: {paid_url or 'не задан'}\n"
             f"• SSH-хост certbot: {settings.get('ssh_host') or 'не задан'}\n"
             f"• Команда certbot: {settings.get('certbot_cmd')}\n"
             f"• Перезапуск nginx: {settings.get('nginx_reload_cmd')}\n"
-            f"• Порог алерта по умолчанию: {alert_days} дн.\n"
-            f"• Доменов: {len(domains)}\n\n"
-            "Измените URL проверки в поле ниже (https://, или «-» чтобы очистить). "
-            "SSH-хост и команды certbot/nginx меняются в Telegram-боте."
+            f"• Порог алерта по умолчанию: {alert_days} дн.\n\n"
+            f"Сертификаты ({len(certs)}):\n{certs_block}\n\n"
+            "Ниже — пресеты порога алерта и перевыпуск по каждому сертификату. "
+            "SSH-хост, команды certbot/nginx и список доменов меняются в Telegram-боте."
         )
 
         menu_options = []
-        if paid_url:
-            menu_options.append(
-                {"label": "✅ Проверить по URL", "action": "tls_check_paid_url"}
-            )
         for value in (7, 14, 30, 60):
             prefix = "✅ " if value == int(alert_days) else ""
             menu_options.append(
                 {"label": f"{prefix}алерт {value}д", "action": f"tls_set_alert_days|{value}"}
             )
-        for domain in sorted(domains.keys()):
+        for cert_name in sorted(certs.keys()):
             menu_options.append(
-                {"label": f"♻️ Перевыпуск {domain}", "action": f"tls_reissue|{domain}"}
+                {"label": f"♻️ Перевыпуск {cert_name}", "action": f"tls_reissue|{cert_name}"}
             )
         menu_options.extend(
             [

@@ -1,11 +1,11 @@
 """
 /bot/handlers/tls_cert_handlers.py
-Server Monitoring System v8.62.77
+Server Monitoring System v8.62.78
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram handlers for the TLS certificate monitor extension
 Система мониторинга серверов
-Версия: 8.62.77
+Версия: 8.62.78
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Telegram-обработчики расширения мониторинга TLS-сертификатов
@@ -14,26 +14,16 @@ Telegram-обработчики расширения мониторинга TLS-
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from extensions.tls_cert_monitor import (
-    DEFAULT_DOMAINS,
-    PAID_CERT_DOMAIN,
+    DEFAULT_CERTS,
     build_status_lines,
-    certificate_key_match,
     collect_certificates,
     get_domains_config,
-    get_paid_cert_info,
-    get_paid_cert_url,
     get_settings,
     normalize_domains,
     reissue_certificate,
     save_domains_config,
-    save_paid_certificate,
-    save_paid_key,
     save_settings,
-    set_paid_cert_url,
 )
-
-# Максимальный размер загружаемого cert/key (защита от мусора).
-_MAX_UPLOAD_BYTES = 256 * 1024
 
 
 # ---------------------------------------------------------------------------
@@ -43,8 +33,7 @@ def _menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [InlineKeyboardButton("🔄 Проверить сейчас", callback_data="tls_check_now")],
-            [InlineKeyboardButton("♻️ Перевыпуск (certbot)", callback_data="tls_domains")],
-            [InlineKeyboardButton("📜 Платный сертификат", callback_data="tls_paid")],
+            [InlineKeyboardButton("♻️ Перевыпуск (certbot)", callback_data="tls_reissue_list")],
             [InlineKeyboardButton("⚙️ Настройки", callback_data="tls_settings")],
             [
                 InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
@@ -66,11 +55,11 @@ def show_menu(update, context):
 # ---------------------------------------------------------------------------
 # Перевыпуск через certbot
 # ---------------------------------------------------------------------------
-def show_domains_reissue(update, context):
+def show_reissue_list(update, context):
     query = update.callback_query
     query.answer()
 
-    domains = get_domains_config()
+    certs = get_domains_config()
     settings = get_settings()
     ssh_host = str(settings.get("ssh_host", "")).strip()
 
@@ -80,14 +69,14 @@ def show_domains_reissue(update, context):
     else:
         lines.append("⚠️ SSH-хост не задан — укажите его в ⚙️ Настройках.")
     lines.append("")
-    lines.append("Нажмите домен, чтобы перевыпустить сертификат:")
+    lines.append("Нажмите сертификат, чтобы перевыпустить:")
 
     keyboard = []
-    for domain in sorted(domains.keys()):
-        cfg = domains[domain]
+    for cert_name in sorted(certs.keys()):
+        cfg = certs[cert_name]
         mark = "" if cfg.get("enabled", True) else " (выкл.)"
         keyboard.append(
-            [InlineKeyboardButton(f"♻️ {domain}{mark}", callback_data=f"tls_reissue_{domain}")]
+            [InlineKeyboardButton(f"♻️ {cert_name}{mark}", callback_data=f"tls_rs|{cert_name}")]
         )
 
     keyboard.append(
@@ -101,181 +90,46 @@ def show_domains_reissue(update, context):
     )
 
 
-def confirm_reissue(update, context, domain: str):
+def confirm_reissue(update, context, cert_name: str):
     query = update.callback_query
     query.answer()
+    certs = get_domains_config()
+    cfg = certs.get(cert_name, {})
+    domains = cfg.get("domains") or [cert_name]
+    domains_text = ", ".join(domains)
     keyboard = [
-        [InlineKeyboardButton("✅ Да, перевыпустить", callback_data=f"tls_reissue_do_{domain}")],
-        [InlineKeyboardButton("❌ Отмена", callback_data="tls_domains")],
+        [InlineKeyboardButton("✅ Да, перевыпустить", callback_data=f"tls_rsdo|{cert_name}")],
+        [InlineKeyboardButton("❌ Отмена", callback_data="tls_reissue_list")],
     ]
     query.edit_message_text(
-        f"♻️ *Перевыпуск сертификата*\n\nДомен: `{domain}`\n\n"
-        "Будет выполнено на SSH-хосте:\n"
-        "`certbot certonly --nginx --force-renewal` + перезапуск nginx.\n\n"
-        "Продолжить?",
+        f"♻️ *Перевыпуск сертификата*\n\n"
+        f"Cert-name: `{cert_name}`\n"
+        f"Домены (-d): `{domains_text}`\n\n"
+        "На SSH-хосте будет выполнено:\n"
+        "`certbot certonly --nginx --cert-name … -d … --force-renewal`\n"
+        "+ перезапуск nginx.\n\nПродолжить?",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 
-def do_reissue(update, context, domain: str):
+def do_reissue(update, context, cert_name: str):
     query = update.callback_query
     query.answer("Запускаю перевыпуск…")
     query.edit_message_text(
-        f"♻️ Перевыпускаю `{domain}`…\nЭто может занять до нескольких минут.",
+        f"♻️ Перевыпускаю `{cert_name}`…\nЭто может занять до нескольких минут.",
         parse_mode="Markdown",
     )
-    success, message = reissue_certificate(domain)
+    success, message = reissue_certificate(cert_name)
     keyboard = [
         [InlineKeyboardButton("🔄 Проверить статус", callback_data="tls_check_now")],
         [
-            InlineKeyboardButton("↩️ К списку", callback_data="tls_domains"),
+            InlineKeyboardButton("↩️ К списку", callback_data="tls_reissue_list"),
             InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
         ],
     ]
-    # Сообщение certbot может содержать спецсимволы — без Markdown.
+    # Вывод certbot может содержать спецсимволы — без Markdown.
     query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard))
-
-
-# ---------------------------------------------------------------------------
-# Платный сертификат 202020.ru
-# ---------------------------------------------------------------------------
-def show_paid_menu(update, context):
-    query = update.callback_query
-    query.answer()
-
-    info = get_paid_cert_info()
-    paid_url = get_paid_cert_url()
-    lines = [f"📜 *Платный сертификат* `{PAID_CERT_DOMAIN}`", ""]
-    if info.get("ok"):
-        end = info["not_after"].strftime("%Y-%m-%d") if info.get("not_after") else "?"
-        lines.append(f"🟢 Сертификат загружен, действует до {end} ({info.get('days_left')} дн.)")
-        lines.append(f"   Файл: `{info.get('cert_path')}`")
-    elif info.get("error"):
-        lines.append(f"⚠️ {info['error']}")
-    else:
-        lines.append("❌ Сертификат не загружен.")
-    lines.append(f"Ключ: {'🟢 загружен' if info.get('has_key') else '❌ нет'}")
-    lines.append(f"🔗 URL проверки сертификата: {paid_url or 'не задан'}")
-    lines.append("")
-    lines.append("Загрузите файлы как *документы* (PEM): сначала нажмите кнопку,")
-    lines.append("затем пришлите соответствующий файл в этот чат.")
-    lines.append("")
-    lines.append("Файлы сохраняются в `data/certificates`; применение в nginx — вручную.")
-
-    keyboard = [
-        [InlineKeyboardButton("⬆️ Загрузить сертификат (.crt/.pem)", callback_data="tls_paid_cert")],
-        [InlineKeyboardButton("🔑 Загрузить ключ (.key)", callback_data="tls_paid_key")],
-        [InlineKeyboardButton("🔍 Проверить пару cert/key", callback_data="tls_paid_match")],
-        [InlineKeyboardButton("✅ Проверить по URL", callback_data="tls_paid_check_url")],
-        [InlineKeyboardButton("🔗 Изменить URL проверки", callback_data="tls_set_paid_url")],
-        [
-            InlineKeyboardButton("↩️ Назад", callback_data="tls_cert_menu"),
-            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
-        ],
-    ]
-    query.edit_message_text(
-        "\n".join(lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-
-def check_paid_url(update, context):
-    query = update.callback_query
-    query.answer("Проверяю сертификат по URL…")
-    from extensions.tls_cert_monitor import check_paid_cert_url
-
-    info = check_paid_cert_url()
-    lines = ["✅ *Проверка сертификата по URL*", ""]
-    lines.append(f"URL: `{info.get('url') or 'не задан'}`")
-    if info.get("ok"):
-        end = info["not_after"].strftime("%Y-%m-%d") if info.get("not_after") else "?"
-        days = info.get("days_left")
-        icon = "🟢" if (days is None or days > 0) else "⛔️"
-        lines.append(f"{icon} Сертификат валиден до {end} (осталось {days} дн.)")
-        if info.get("issuer"):
-            lines.append(f"Издатель: `{info['issuer']}`")
-    else:
-        lines.append(f"❌ {info.get('error', 'не удалось проверить')}")
-
-    query.edit_message_text(
-        "\n".join(lines),
-        parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("↩️ Назад", callback_data="tls_paid")]]
-        ),
-    )
-
-
-def prompt_paid_upload(update, context, kind: str):
-    query = update.callback_query
-    query.answer()
-    context.user_data["tls_paid_upload"] = kind
-    label = "сертификата (PEM/CRT)" if kind == "cert" else "приватного ключа (PEM/KEY)"
-    query.edit_message_text(
-        f"⬆️ Пришлите файл {label} как *документ* в этот чат.\n\n" "Для отмены нажмите «Назад».",
-        parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("↩️ Назад", callback_data="tls_paid")]]
-        ),
-    )
-
-
-def check_paid_match(update, context):
-    query = update.callback_query
-    query.answer()
-    ok, message = certificate_key_match()
-    icon = "✅" if ok else "❌"
-    query.edit_message_text(
-        f"{icon} {message}",
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("↩️ Назад", callback_data="tls_paid")]]
-        ),
-    )
-
-
-def handle_document_input(update, context):
-    """Обрабатывает загруженный документ (cert или key). Возвращает True, если обработал."""
-    kind = context.user_data.get("tls_paid_upload")
-    if not kind:
-        return False
-
-    message = update.message
-    document = getattr(message, "document", None)
-    if document is None:
-        message.reply_text("❌ Пришлите файл именно как документ (вложение).")
-        return True
-
-    if document.file_size and document.file_size > _MAX_UPLOAD_BYTES:
-        message.reply_text("❌ Файл слишком большой для сертификата/ключа.")
-        context.user_data.pop("tls_paid_upload", None)
-        return True
-
-    try:
-        tg_file = context.bot.get_file(document.file_id)
-        data = bytes(tg_file.download_as_bytearray())
-    except Exception as exc:  # pragma: no cover - сетевые ошибки Telegram
-        message.reply_text(f"❌ Не удалось скачать файл: {exc}")
-        context.user_data.pop("tls_paid_upload", None)
-        return True
-
-    if kind == "cert":
-        ok, msg = save_paid_certificate(data)
-    else:
-        ok, msg = save_paid_key(data)
-
-    context.user_data.pop("tls_paid_upload", None)
-    icon = "✅" if ok else "❌"
-    extra = ""
-    if ok:
-        match_ok, match_msg = certificate_key_match()
-        extra = f"\n{'✅' if match_ok else '⚠️'} {match_msg}"
-    message.reply_text(
-        f"{icon} {msg}{extra}",
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("📜 К платному сертификату", callback_data="tls_paid")]]
-        ),
-    )
-    return True
 
 
 # ---------------------------------------------------------------------------
@@ -286,23 +140,20 @@ def show_settings(update, context):
     query.answer()
 
     s = get_settings()
-    domains = get_domains_config()
-    paid_url = get_paid_cert_url()
+    certs = get_domains_config()
     lines = ["⚙️ *Настройки TLS-мониторинга*", ""]
     lines.append(f"🖥 SSH-хост certbot: `{s.get('ssh_host') or 'не задан'}`")
     lines.append(f"🧩 Команда certbot: `{s.get('certbot_cmd')}`")
     lines.append(f"🔁 Перезапуск nginx: `{s.get('nginx_reload_cmd')}`")
     lines.append(f"⏰ Порог алерта по умолчанию: `{s.get('alert_days_default')}` дн.")
-    lines.append(f"🔗 URL проверки сертификата: `{paid_url or 'не задан'}`")
-    lines.append(f"📋 Доменов настроено: `{len(domains)}`")
+    lines.append(f"📋 Сертификатов настроено: `{len(certs)}`")
 
     keyboard = [
         [InlineKeyboardButton("🖥 SSH-хост", callback_data="tls_set_ssh")],
         [InlineKeyboardButton("🧩 Команда certbot", callback_data="tls_set_certbot")],
         [InlineKeyboardButton("🔁 Перезапуск nginx", callback_data="tls_set_nginx")],
         [InlineKeyboardButton("⏰ Порог алерта", callback_data="tls_set_alert")],
-        [InlineKeyboardButton("🔗 URL проверки сертификата", callback_data="tls_set_paid_url")],
-        [InlineKeyboardButton("📋 Домены", callback_data="tls_domains_cfg")],
+        [InlineKeyboardButton("📋 Сертификаты", callback_data="tls_certs_cfg")],
         [
             InlineKeyboardButton("↩️ Назад", callback_data="tls_cert_menu"),
             InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
@@ -327,44 +178,33 @@ def _prompt(update, context, flag: str, text: str, back: str = "tls_settings"):
 
 
 # ---------------------------------------------------------------------------
-# Настройка доменов
+# Список сертификатов
 # ---------------------------------------------------------------------------
-def show_domains_cfg(update, context):
+def show_certs_cfg(update, context):
     query = update.callback_query
     query.answer()
 
-    domains = get_domains_config()
-    lines = ["📋 *Домены под мониторингом*", ""]
-    if not domains:
-        lines.append("❌ Домены не настроены.")
+    certs = get_domains_config()
+    lines = ["📋 *Сертификаты под мониторингом*", ""]
+    if not certs:
+        lines.append("❌ Сертификаты не настроены.")
     else:
-        for domain in sorted(domains.keys()):
-            cfg = domains[domain]
+        for cert_name in sorted(certs.keys()):
+            cfg = certs[cert_name]
             status = "🟢" if cfg.get("enabled", True) else "🔴"
+            host = cfg.get("check_host", cert_name)
+            ndom = len(cfg.get("domains") or [cert_name])
             lines.append(
-                f"{status} `{domain}` · порт `{cfg.get('port', 443)}` · "
-                f"алерт `{cfg.get('alert_days', 14)}` дн."
+                f"{status} `{cert_name}` → {host}:{cfg.get('port', 443)} · "
+                f"алерт {cfg.get('alert_days', 14)}д · доменов {ndom}"
             )
 
     keyboard = []
-    for domain in sorted(domains.keys()):
-        cfg = domains[domain]
-        enabled = bool(cfg.get("enabled", True))
-        toggle = "⛔️ Откл." if enabled else "✅ Вкл."
+    for cert_name in sorted(certs.keys()):
         keyboard.append(
-            [
-                InlineKeyboardButton(f"🔌 {domain}: порт", callback_data=f"tls_port_{domain}"),
-                InlineKeyboardButton("⏰ алерт", callback_data=f"tls_alert_{domain}"),
-            ]
+            [InlineKeyboardButton(f"⚙️ {cert_name}", callback_data=f"tls_cd|{cert_name}")]
         )
-        keyboard.append(
-            [
-                InlineKeyboardButton(f"{toggle}", callback_data=f"tls_toggle_{domain}"),
-                InlineKeyboardButton("🗑 Удалить", callback_data=f"tls_del_{domain}"),
-            ]
-        )
-
-    keyboard.append([InlineKeyboardButton("➕ Добавить домен", callback_data="tls_add")])
+    keyboard.append([InlineKeyboardButton("➕ Добавить сертификат", callback_data="tls_add")])
     keyboard.append([InlineKeyboardButton("🔄 Сбросить к дефолтам", callback_data="tls_reset")])
     keyboard.append(
         [
@@ -377,70 +217,147 @@ def show_domains_cfg(update, context):
     )
 
 
-def add_domain_prompt(update, context):
+def show_cert_detail(update, context, cert_name: str):
     query = update.callback_query
     query.answer()
-    context.user_data["tls_add_stage"] = "domain"
+    certs = get_domains_config()
+    cfg = certs.get(cert_name)
+    if cfg is None:
+        show_certs_cfg(update, context)
+        return
+
+    enabled = bool(cfg.get("enabled", True))
+    domains = cfg.get("domains") or [cert_name]
+    lines = [
+        f"⚙️ *Сертификат* `{cert_name}`",
+        "",
+        f"Статус: {'🟢 включён' if enabled else '🔴 выключен'}",
+        f"Хост проверки: `{cfg.get('check_host', cert_name)}`",
+        f"Порт: `{cfg.get('port', 443)}`",
+        f"Порог алерта: `{cfg.get('alert_days', 14)}` дн.",
+        f"Домены (-d, {len(domains)}): `{', '.join(domains)}`",
+    ]
+    toggle = "⛔️ Выключить" if enabled else "✅ Включить"
+    keyboard = [
+        [
+            InlineKeyboardButton("🌐 Хост проверки", callback_data=f"tls_eh|{cert_name}"),
+            InlineKeyboardButton("🔌 Порт", callback_data=f"tls_ep|{cert_name}"),
+        ],
+        [
+            InlineKeyboardButton("⏰ Порог алерта", callback_data=f"tls_ea|{cert_name}"),
+            InlineKeyboardButton("📝 Домены (-d)", callback_data=f"tls_ed|{cert_name}"),
+        ],
+        [
+            InlineKeyboardButton("♻️ Перевыпустить", callback_data=f"tls_rs|{cert_name}"),
+            InlineKeyboardButton(toggle, callback_data=f"tls_tg|{cert_name}"),
+        ],
+        [InlineKeyboardButton("🗑 Удалить сертификат", callback_data=f"tls_rm|{cert_name}")],
+        [
+            InlineKeyboardButton("↩️ К списку", callback_data="tls_certs_cfg"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
+    ]
     query.edit_message_text(
-        "➕ *Добавление домена*\n\nВведите имя домена (например `chat.202020.ru`):",
+        "\n".join(lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+def add_cert_prompt(update, context):
+    query = update.callback_query
+    query.answer()
+    context.user_data["tls_add_stage"] = "name"
+    query.edit_message_text(
+        "➕ *Добавление сертификата*\n\nВведите cert-name (имя сертификата certbot, "
+        "например `chat.202020.ru`):",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("❌ Отмена", callback_data="tls_domains_cfg")]]
+            [[InlineKeyboardButton("❌ Отмена", callback_data="tls_certs_cfg")]]
         ),
     )
 
 
-def toggle_domain(update, context, domain: str):
+def toggle_cert(update, context, cert_name: str):
     query = update.callback_query
     query.answer()
-    domains = get_domains_config()
-    if domain in domains:
-        domains[domain]["enabled"] = not bool(domains[domain].get("enabled", True))
-        save_domains_config(domains)
-    show_domains_cfg(update, context)
+    certs = get_domains_config()
+    if cert_name in certs:
+        certs[cert_name]["enabled"] = not bool(certs[cert_name].get("enabled", True))
+        save_domains_config(certs)
+    show_cert_detail(update, context, cert_name)
 
 
-def delete_domain(update, context, domain: str):
+def delete_cert(update, context, cert_name: str):
     query = update.callback_query
     query.answer()
-    domains = get_domains_config()
-    domains.pop(domain, None)
-    save_domains_config(domains)
-    show_domains_cfg(update, context)
+    certs = get_domains_config()
+    certs.pop(cert_name, None)
+    save_domains_config(certs)
+    show_certs_cfg(update, context)
 
 
-def reset_domains(update, context):
+def reset_certs(update, context):
     query = update.callback_query
     query.answer("Сброшено к значениям по умолчанию")
-    save_domains_config(normalize_domains(DEFAULT_DOMAINS))
-    show_domains_cfg(update, context)
+    save_domains_config(normalize_domains(DEFAULT_CERTS))
+    show_certs_cfg(update, context)
 
 
-def edit_port_prompt(update, context, domain: str):
-    context.user_data["tls_edit_port_domain"] = domain
+def edit_host_prompt(update, context, cert_name: str):
+    context.user_data["tls_edit_host_cert"] = cert_name
+    _prompt(
+        update,
+        context,
+        "tls_edit_host",
+        f"🌐 *Хост проверки для* `{cert_name}`\n\nВведите хост (домен/IP), к которому "
+        "подключаться для живой проверки сертификата:",
+        back="tls_certs_cfg",
+    )
+
+
+def edit_port_prompt(update, context, cert_name: str):
+    context.user_data["tls_edit_port_cert"] = cert_name
     _prompt(
         update,
         context,
         "tls_edit_port",
-        f"🔌 *Порт для* `{domain}`\n\nВведите номер порта (1-65535):",
-        back="tls_domains_cfg",
+        f"🔌 *Порт для* `{cert_name}`\n\nВведите номер порта (1-65535):",
+        back="tls_certs_cfg",
     )
 
 
-def edit_alert_prompt(update, context, domain: str):
-    context.user_data["tls_edit_alert_domain"] = domain
+def edit_alert_prompt(update, context, cert_name: str):
+    context.user_data["tls_edit_alert_cert"] = cert_name
     _prompt(
         update,
         context,
         "tls_edit_alert",
-        f"⏰ *Порог алерта для* `{domain}`\n\nВведите число дней до истечения (1-180):",
-        back="tls_domains_cfg",
+        f"⏰ *Порог алерта для* `{cert_name}`\n\nВведите число дней до истечения (1-180):",
+        back="tls_certs_cfg",
+    )
+
+
+def edit_domains_prompt(update, context, cert_name: str):
+    certs = get_domains_config()
+    current = ", ".join(certs.get(cert_name, {}).get("domains") or [cert_name])
+    context.user_data["tls_edit_domains_cert"] = cert_name
+    _prompt(
+        update,
+        context,
+        "tls_edit_domains",
+        f"📝 *Домены (-d) для* `{cert_name}`\n\nТекущие: `{current}`\n\n"
+        "Введите список доменов через запятую/пробел — они пойдут в аргументы "
+        "`-d` при перевыпуске:",
+        back="tls_certs_cfg",
     )
 
 
 # ---------------------------------------------------------------------------
 # Текстовый ввод
 # ---------------------------------------------------------------------------
+def _split_domains(text: str) -> list[str]:
+    return [part.strip() for part in text.replace(",", " ").split() if part.strip()]
+
+
 def handle_text_input(update, context):
     """Единый обработчик текстового ввода для tls_*. Возвращает True, если обработал."""
     text = (update.message.text or "").strip()
@@ -452,9 +369,11 @@ def handle_text_input(update, context):
         return True
 
     if ud.pop("tls_set_certbot", False):
-        if "{domain}" not in text:
+        if "{cert_name}" not in text and "{domain}" not in text:
             update.message.reply_text(
-                "❌ В команде должен быть плейсхолдер `{domain}`.", parse_mode="Markdown"
+                "❌ В команде должен быть плейсхолдер `{cert_name}` (и желательно "
+                "`{domain_args}`).",
+                parse_mode="Markdown",
             )
             return True
         save_settings({"certbot_cmd": text})
@@ -464,24 +383,6 @@ def handle_text_input(update, context):
     if ud.pop("tls_set_nginx", False):
         save_settings({"nginx_reload_cmd": text})
         update.message.reply_text("✅ Команда перезапуска nginx сохранена.")
-        return True
-
-    if ud.pop("tls_set_paid_url", False):
-        if text and not (text.startswith("http://") or text.startswith("https://")):
-            update.message.reply_text(
-                "❌ URL должен начинаться с http:// или https:// "
-                "(или отправьте «-», чтобы очистить)."
-            )
-            ud["tls_set_paid_url"] = True
-            return True
-        cleaned = "" if text in ("", "-") else text
-        set_paid_cert_url(cleaned)
-        update.message.reply_text(
-            f"✅ URL проверки сертификата сохранён: {cleaned or '(очищено)'}",
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("📜 К платному сертификату", callback_data="tls_paid")]]
-            ),
-        )
         return True
 
     if ud.pop("tls_set_alert", False):
@@ -496,8 +397,21 @@ def handle_text_input(update, context):
         update.message.reply_text(f"✅ Порог алерта по умолчанию: {days} дн.")
         return True
 
+    if ud.get("tls_edit_host"):
+        cert_name = ud.get("tls_edit_host_cert", "")
+        certs = get_domains_config()
+        if cert_name in certs and text:
+            certs[cert_name]["check_host"] = text
+            save_domains_config(certs)
+            update.message.reply_text(f"✅ Хост проверки для {cert_name}: {text}")
+        else:
+            update.message.reply_text("❌ Сертификат не найден или пустой хост.")
+        ud.pop("tls_edit_host", None)
+        ud.pop("tls_edit_host_cert", None)
+        return True
+
     if ud.get("tls_edit_port"):
-        domain = ud.get("tls_edit_port_domain", "")
+        cert_name = ud.get("tls_edit_port_cert", "")
         try:
             port = int(text)
             if port < 1 or port > 65535:
@@ -505,19 +419,19 @@ def handle_text_input(update, context):
         except ValueError:
             update.message.reply_text("❌ Порт должен быть числом от 1 до 65535.")
             return True
-        domains = get_domains_config()
-        if domain in domains:
-            domains[domain]["port"] = port
-            save_domains_config(domains)
-            update.message.reply_text(f"✅ Порт для {domain}: {port}")
+        certs = get_domains_config()
+        if cert_name in certs:
+            certs[cert_name]["port"] = port
+            save_domains_config(certs)
+            update.message.reply_text(f"✅ Порт для {cert_name}: {port}")
         else:
-            update.message.reply_text("❌ Домен не найден.")
+            update.message.reply_text("❌ Сертификат не найден.")
         ud.pop("tls_edit_port", None)
-        ud.pop("tls_edit_port_domain", None)
+        ud.pop("tls_edit_port_cert", None)
         return True
 
     if ud.get("tls_edit_alert"):
-        domain = ud.get("tls_edit_alert_domain", "")
+        cert_name = ud.get("tls_edit_alert_cert", "")
         try:
             days = int(text)
             if days < 1 or days > 180:
@@ -525,27 +439,55 @@ def handle_text_input(update, context):
         except ValueError:
             update.message.reply_text("❌ Введите число от 1 до 180.")
             return True
-        domains = get_domains_config()
-        if domain in domains:
-            domains[domain]["alert_days"] = days
-            save_domains_config(domains)
-            update.message.reply_text(f"✅ Порог алерта для {domain}: {days} дн.")
+        certs = get_domains_config()
+        if cert_name in certs:
+            certs[cert_name]["alert_days"] = days
+            save_domains_config(certs)
+            update.message.reply_text(f"✅ Порог алерта для {cert_name}: {days} дн.")
         else:
-            update.message.reply_text("❌ Домен не найден.")
+            update.message.reply_text("❌ Сертификат не найден.")
         ud.pop("tls_edit_alert", None)
-        ud.pop("tls_edit_alert_domain", None)
+        ud.pop("tls_edit_alert_cert", None)
+        return True
+
+    if ud.get("tls_edit_domains"):
+        cert_name = ud.get("tls_edit_domains_cert", "")
+        domains = _split_domains(text)
+        certs = get_domains_config()
+        if cert_name in certs and domains:
+            certs[cert_name]["domains"] = domains
+            save_domains_config(certs)
+            update.message.reply_text(
+                f"✅ Домены для {cert_name}: {', '.join(domains)}",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("📋 К списку", callback_data="tls_certs_cfg")]]
+                ),
+            )
+        else:
+            update.message.reply_text("❌ Сертификат не найден или пустой список доменов.")
+        ud.pop("tls_edit_domains", None)
+        ud.pop("tls_edit_domains_cert", None)
         return True
 
     stage = ud.get("tls_add_stage")
-    if stage == "domain":
-        domain = text.lower()
-        if not domain or "." not in domain:
-            update.message.reply_text("❌ Введите корректное имя домена.")
+    if stage == "name":
+        name = text
+        if not name or "." not in name:
+            update.message.reply_text("❌ Введите корректный cert-name (например chat.202020.ru).")
             return True
-        if domain in get_domains_config():
-            update.message.reply_text("❌ Такой домен уже есть.")
+        if name in get_domains_config():
+            update.message.reply_text("❌ Такой сертификат уже есть.")
             return True
-        ud["tls_new_domain"] = domain
+        ud["tls_new_name"] = name
+        ud["tls_add_stage"] = "host"
+        update.message.reply_text(
+            f"🌐 Введите хост проверки (Enter «{name}» — взять как cert-name):"
+        )
+        return True
+
+    if stage == "host":
+        name = str(ud.get("tls_new_name", "")).strip()
+        ud["tls_new_host"] = text or name
         ud["tls_add_stage"] = "port"
         update.message.reply_text("🔌 Введите порт (по умолчанию 443):")
         return True
@@ -559,25 +501,39 @@ def handle_text_input(update, context):
         except ValueError:
             update.message.reply_text("❌ Порт должен быть числом от 1 до 65535.")
             return True
-        domain = str(ud.get("tls_new_domain", "")).strip()
-        if not domain:
-            for key in ("tls_add_stage", "tls_new_domain"):
+        ud["tls_new_port"] = port
+        ud["tls_add_stage"] = "domains"
+        name = str(ud.get("tls_new_name", "")).strip()
+        update.message.reply_text(
+            f"📝 Введите домены (-d) через запятую (Enter — только `{name}`):"
+        )
+        return True
+
+    if stage == "domains":
+        name = str(ud.get("tls_new_name", "")).strip()
+        host = str(ud.get("tls_new_host", "")).strip() or name
+        port = int(ud.get("tls_new_port", 443))
+        domains = _split_domains(text) or [name]
+        if not name:
+            for key in ("tls_add_stage", "tls_new_name", "tls_new_host", "tls_new_port"):
                 ud.pop(key, None)
             update.message.reply_text("❌ Ошибка. Повторите добавление.")
             return True
-        domains = get_domains_config()
-        domains[domain] = {
+        certs = get_domains_config()
+        certs[name] = {
             "enabled": True,
+            "check_host": host,
             "port": port,
             "alert_days": get_settings().get("alert_days_default", 14),
+            "domains": domains,
         }
-        save_domains_config(domains)
-        for key in ("tls_add_stage", "tls_new_domain"):
+        save_domains_config(certs)
+        for key in ("tls_add_stage", "tls_new_name", "tls_new_host", "tls_new_port"):
             ud.pop(key, None)
         update.message.reply_text(
-            f"✅ Домен {domain}:{port} добавлен.",
+            f"✅ Сертификат {name} добавлен ({host}:{port}, доменов {len(domains)}).",
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("📋 К доменам", callback_data="tls_domains_cfg")]]
+                [[InlineKeyboardButton("📋 К списку", callback_data="tls_certs_cfg")]]
             ),
         )
         return True
@@ -589,30 +545,18 @@ def handle_text_input(update, context):
 # Диспетчер callback'ов
 # ---------------------------------------------------------------------------
 def handle_callbacks(update, context, data: str):
-    if data == "tls_cert_menu":
+    if data in ("tls_cert_menu", "tls_check_now"):
         show_menu(update, context)
-    elif data == "tls_check_now":
-        show_menu(update, context)
-    elif data == "tls_domains":
-        show_domains_reissue(update, context)
+    elif data == "tls_reissue_list":
+        show_reissue_list(update, context)
     elif data == "tls_settings":
         show_settings(update, context)
-    elif data == "tls_domains_cfg":
-        show_domains_cfg(update, context)
-    elif data == "tls_paid":
-        show_paid_menu(update, context)
-    elif data == "tls_paid_cert":
-        prompt_paid_upload(update, context, "cert")
-    elif data == "tls_paid_key":
-        prompt_paid_upload(update, context, "key")
-    elif data == "tls_paid_match":
-        check_paid_match(update, context)
-    elif data == "tls_paid_check_url":
-        check_paid_url(update, context)
+    elif data == "tls_certs_cfg":
+        show_certs_cfg(update, context)
     elif data == "tls_add":
-        add_domain_prompt(update, context)
+        add_cert_prompt(update, context)
     elif data == "tls_reset":
-        reset_domains(update, context)
+        reset_certs(update, context)
     elif data == "tls_set_ssh":
         _prompt(
             update,
@@ -626,8 +570,8 @@ def handle_callbacks(update, context, data: str):
             update,
             context,
             "tls_set_certbot",
-            "🧩 *Команда certbot*\n\nВведите шаблон (используйте `{domain}`):\n"
-            "`certbot certonly --nginx --cert-name {domain} -d {domain} --force-renewal`",
+            "🧩 *Команда certbot*\n\nШаблон с плейсхолдерами `{cert_name}` и `{domain_args}`:\n"
+            "`certbot certonly --nginx --cert-name {cert_name} {domain_args} --force-renewal`",
         )
     elif data == "tls_set_nginx":
         _prompt(
@@ -643,24 +587,21 @@ def handle_callbacks(update, context, data: str):
             "tls_set_alert",
             "⏰ *Порог алерта по умолчанию*\n\nВведите число дней (1-180):",
         )
-    elif data == "tls_set_paid_url":
-        _prompt(
-            update,
-            context,
-            "tls_set_paid_url",
-            "🔗 *URL проверки сертификата*\n\nВведите URL живого эндпоинта, на котором "
-            "отдаётся сертификат домена и его можно проверить на валидность "
-            "(начиная с https://).\nОтправьте «-», чтобы очистить.",
-        )
-    elif data.startswith("tls_reissue_do_"):
-        do_reissue(update, context, data[len("tls_reissue_do_") :])
-    elif data.startswith("tls_reissue_"):
-        confirm_reissue(update, context, data[len("tls_reissue_") :])
-    elif data.startswith("tls_toggle_"):
-        toggle_domain(update, context, data[len("tls_toggle_") :])
-    elif data.startswith("tls_del_"):
-        delete_domain(update, context, data[len("tls_del_") :])
-    elif data.startswith("tls_port_"):
-        edit_port_prompt(update, context, data[len("tls_port_") :])
-    elif data.startswith("tls_alert_"):
-        edit_alert_prompt(update, context, data[len("tls_alert_") :])
+    elif data.startswith("tls_rsdo|"):
+        do_reissue(update, context, data.split("|", 1)[1])
+    elif data.startswith("tls_rs|"):
+        confirm_reissue(update, context, data.split("|", 1)[1])
+    elif data.startswith("tls_cd|"):
+        show_cert_detail(update, context, data.split("|", 1)[1])
+    elif data.startswith("tls_eh|"):
+        edit_host_prompt(update, context, data.split("|", 1)[1])
+    elif data.startswith("tls_ep|"):
+        edit_port_prompt(update, context, data.split("|", 1)[1])
+    elif data.startswith("tls_ea|"):
+        edit_alert_prompt(update, context, data.split("|", 1)[1])
+    elif data.startswith("tls_ed|"):
+        edit_domains_prompt(update, context, data.split("|", 1)[1])
+    elif data.startswith("tls_tg|"):
+        toggle_cert(update, context, data.split("|", 1)[1])
+    elif data.startswith("tls_rm|"):
+        delete_cert(update, context, data.split("|", 1)[1])
