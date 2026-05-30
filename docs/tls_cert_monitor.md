@@ -4,8 +4,9 @@
 **перевыпускать их по кнопке** через `certbot` (по SSH на хосте с nginx) и
 **загружать платный сертификат `202020.ru`** через Telegram-бот.
 
-> Объём текущей итерации: бэкенд + Telegram. Отображение/настройка в Matrix-боте
-> и Android-приложении — следующий этап (точки интеграции описаны ниже).
+> Доступно во всех клиентах: Telegram (полное управление), Matrix-бот
+> (команда `!tls` + статус, ключи в `!settings`) и Android-приложение
+> (плашка «🔐 TLS» со сводкой и диалогом статуса).
 
 ## Что делает
 
@@ -52,6 +53,22 @@
 - **⚙️ Настройки** — SSH-хост, команда `certbot`, команда перезапуска nginx,
   порог алерта по умолчанию, управление списком доменов.
 
+## Matrix-бот
+
+- Команда `!tls` или пункт «🔐 TLS-сертификаты доменов» в подменю `!extensions`
+  выводят статус всех сертификатов (тот же `build_status_lines`, что и в Telegram).
+- Ключи `TLS_CERT_DOMAINS` / `TLS_CERT_SETTINGS` видны через `!settings`.
+- Перевыпуск/загрузка платного сертификата выполняются из Telegram (Matrix —
+  только просмотр статуса).
+
+## Android-приложение
+
+- На главном экране — плашка «🔐 TLS» со сводкой `ok/всего` и индикатором
+  проблемы (красится, если есть истекающие/недоступные сертификаты).
+- Тап по плашке открывает диалог со статусом по доменам и кнопкой «Обновить».
+- Данные приходят через мобильное действие `tls_cert_monitor_status`
+  (`POST /v1/control/actions`).
+
 ## Настройки (хранятся в `settings.db` через `config_manager`)
 
 - `TLS_CERT_DOMAINS` — словарь доменов `{domain: {enabled, port, alert_days}}`.
@@ -66,7 +83,7 @@
 - SSH-доступ к хосту с `certbot`/`nginx` настроен через `SSH_KEY_PATH` /
   `SSH_USERNAME` (как у расширения свободного места ZFS).
 
-## Точки интеграции (для будущих Matrix/Android)
+## Точки интеграции (карта кода)
 
 - Ядро логики: `extensions/tls_cert_monitor.py` (чистые функции — переиспользуемы
   любым клиентом).
@@ -75,8 +92,11 @@
   `bot/menu/handlers.py`, ввод текста в
   `bot/handlers/settings_handlers/settings_value.py`, приём документа в
   `bot/handlers/__init__.py`.
-- Matrix: добавить `ExtensionMenuItem` и запись в `_EXTENSION_SETTINGS`
-  (`lib/matrix_commands.py`), хендлер вызывает `collect_certificates()` /
-  `build_status_lines()`.
-- Android: REST-эндпоинты `/v1/certificates/*` в
-  `extensions/web_interface/__init__.py` поверх тех же функций ядра.
+- Matrix: `ExtensionMenuItem` + запись в `_EXTENSION_SETTINGS` и обработчик
+  `_handle_ext_tls_cert` в `lib/matrix_commands.py` (вызывают
+  `collect_certificates()` / `build_status_lines()`).
+- Android: действие `tls_cert_monitor_status` в
+  `extensions/web_interface/__init__.py` (`_execute_mobile_control_action`);
+  на клиенте — плашка/диалог в `MainActivity.kt`, состояние и парсинг сводки
+  (`buildTlsCertTileSummary`) в `ui/MainViewModel.kt`, флаг диалога в
+  `MonitoringAppState.kt`.

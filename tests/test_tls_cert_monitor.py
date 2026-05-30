@@ -234,3 +234,19 @@ def test_mismatched_cert_and_key(tmp_path, monkeypatch) -> None:
     mod.save_paid_key(key_b)
     match_ok, _ = mod.certificate_key_match()
     assert match_ok is False
+
+
+def test_matrix_bot_exposes_tls_extension() -> None:
+    """Расширение TLS должно быть встроено в Matrix-бота (меню + настройки)."""
+    import lib.matrix_commands as m
+
+    ids = [item.extension_id for item in m.EXTENSION_MENU_ITEMS]
+    assert "tls_cert_monitor" in ids
+    # Команда !tls маршрутизируется автоматически.
+    assert m._EXT_ITEM_BY_COMMAND.get("!tls") is not None
+    # Async-обработчик существует в классе бота.
+    assert hasattr(m.MatrixCommandBot, "_handle_ext_tls_cert")
+    # Настройки расширения видны в !settings.
+    settings = dict(m._EXTENSION_SETTINGS)
+    assert "tls_cert_monitor" in settings
+    assert "TLS_CERT_DOMAINS" in settings["tls_cert_monitor"]["keys"]

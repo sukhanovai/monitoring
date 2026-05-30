@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.74
+Server Monitoring System v8.62.75
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.74
+Версия: 8.62.75
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1546,6 +1546,7 @@ def _execute_mobile_control_action(action: str):
         "zfs_free_space",
         "zfs_pool_free_space_menu",
         "snapshot_transfer_menu",
+        "tls_cert_monitor_status",
     }
     resource_threshold_settings = {
         "set_cpu_warning": ("CPU_WARNING", "CPU предупреждение"),
@@ -1644,6 +1645,10 @@ def _execute_mobile_control_action(action: str):
                 "snapshot_transfer_monitor",
                 "📸 Мониторинг передач ZFS-снэпшотов отключён",
             ),
+            "tls_cert_monitor_status": (
+                "tls_cert_monitor",
+                "🔐 Мониторинг TLS-сертификатов отключён",
+            ),
         }
 
         extension_requirement = extension_requirements.get(action)
@@ -1693,6 +1698,24 @@ def _execute_mobile_control_action(action: str):
                 "accepted",
                 [
                     {"label": "🔄 Обновить", "action": "zfs_pool_free_space_menu"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            )
+
+        if action == "tls_cert_monitor_status":
+            from extensions.tls_cert_monitor import (
+                build_status_lines as tls_build_status_lines,
+                collect_certificates,
+            )
+
+            results, errors = collect_certificates()
+            status_message = "\n".join(tls_build_status_lines(results, errors))
+            return (
+                True,
+                status_message,
+                "accepted",
+                [
+                    {"label": "🔄 Обновить", "action": "tls_cert_monitor_status"},
                     {"label": "✖️ Закрыть", "action": "close"},
                 ],
             )
