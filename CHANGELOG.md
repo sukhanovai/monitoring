@@ -1,3 +1,9 @@
+## [8.62.76] - 2026-05-30
+
+### Added
+- RU: Расширение `tls_cert_monitor` получило настраиваемый **URL платного сертификата** `202020.ru` (`paid_cert_url` в `TLS_CERT_SETTINGS`). Telegram: в «⚙️ Настройки» и в разделе «📜 Платный 202020.ru» добавлена кнопка «🔗 URL платного сертификата» — URL отображается и меняется вводом (валидация http/https, «-» очищает). Android: на плашке «🔐 TLS» появилась шестерёнка и долгий тап, открывающие диалог настроек расширения (серверное действие `settings_ext_tls`) с полем ввода URL и кнопками сохранить/очистить (`tls_set_paid_url|<url>` через `/v1/settings/extensions/actions`).
+- EN: The `tls_cert_monitor` extension gained a configurable **paid-certificate URL** for `202020.ru` (`paid_cert_url` in `TLS_CERT_SETTINGS`). Telegram: the "⚙️ Settings" screen and the "📜 Paid 202020.ru" section now have a "🔗 Paid certificate URL" button — the URL is shown and editable via text input (http/https validation, "-" clears it). Android: the "🔐 TLS" tile gains a gear and long-press that open the extension settings dialog (server action `settings_ext_tls`) with a URL input field and save/clear buttons (`tls_set_paid_url|<url>` via `/v1/settings/extensions/actions`).
+
 ## [8.62.75] - 2026-05-30
 
 ### Added

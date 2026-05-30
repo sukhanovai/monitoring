@@ -1,12 +1,12 @@
 """
 /extensions/tls_cert_monitor.py
-Server Monitoring System v8.62.75
+Server Monitoring System v8.62.76
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 TLS certificate monitor: expiry checks, manual certbot re-issue over SSH and
 manual upload of the paid 202020.ru certificate.
 Система мониторинга серверов
-Версия: 8.62.75
+Версия: 8.62.76
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг TLS-сертификатов: проверка срока, ручной перевыпуск через certbot по
@@ -59,6 +59,9 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "nginx_reload_cmd": DEFAULT_NGINX_RELOAD_CMD,
     "alert_days_default": 14,
     "reissue_timeout": 300,
+    # URL, по которому провайдер выдаёт платный сертификат 202020.ru
+    # (личный кабинет/страница загрузки). Меняется из бота/приложения.
+    "paid_cert_url": "",
 }
 
 _ALERT_SENT_AT: dict[str, datetime] = {}
@@ -148,6 +151,16 @@ def save_settings(settings: dict[str, Any]) -> None:
         current = {}
     current.update(settings)
     config_manager.set_setting(SETTINGS_KEY, current)
+
+
+def get_paid_cert_url() -> str:
+    """URL страницы провайдера для получения платного сертификата 202020.ru."""
+    return str(get_settings().get("paid_cert_url", "") or "").strip()
+
+
+def set_paid_cert_url(url: str) -> None:
+    """Сохраняет URL получения платного сертификата (пустая строка — сбросить)."""
+    save_settings({"paid_cert_url": str(url or "").strip()})
 
 
 # ---------------------------------------------------------------------------

@@ -1,11 +1,11 @@
 """
 /bot/handlers/tls_cert_handlers.py
-Server Monitoring System v8.62.75
+Server Monitoring System v8.62.76
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram handlers for the TLS certificate monitor extension
 Система мониторинга серверов
-Версия: 8.62.75
+Версия: 8.62.76
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Telegram-обработчики расширения мониторинга TLS-сертификатов
@@ -21,6 +21,7 @@ from extensions.tls_cert_monitor import (
     collect_certificates,
     get_domains_config,
     get_paid_cert_info,
+    get_paid_cert_url,
     get_settings,
     normalize_domains,
     reissue_certificate,
@@ -28,6 +29,7 @@ from extensions.tls_cert_monitor import (
     save_paid_certificate,
     save_paid_key,
     save_settings,
+    set_paid_cert_url,
 )
 
 # Максимальный размер загружаемого cert/key (защита от мусора).
@@ -143,6 +145,7 @@ def show_paid_menu(update, context):
     query.answer()
 
     info = get_paid_cert_info()
+    paid_url = get_paid_cert_url()
     lines = [f"📜 *Платный сертификат* `{PAID_CERT_DOMAIN}`", ""]
     if info.get("ok"):
         end = info["not_after"].strftime("%Y-%m-%d") if info.get("not_after") else "?"
@@ -153,6 +156,7 @@ def show_paid_menu(update, context):
     else:
         lines.append("❌ Сертификат не загружен.")
     lines.append(f"Ключ: {'🟢 загружен' if info.get('has_key') else '❌ нет'}")
+    lines.append(f"🔗 URL получения: {paid_url or 'не задан'}")
     lines.append("")
     lines.append("Загрузите файлы как *документы* (PEM): сначала нажмите кнопку,")
     lines.append("затем пришлите соответствующий файл в этот чат.")
@@ -167,6 +171,7 @@ def show_paid_menu(update, context):
         ],
         [InlineKeyboardButton("🔑 Загрузить ключ (.key)", callback_data="tls_paid_key")],
         [InlineKeyboardButton("🔍 Проверить пару cert/key", callback_data="tls_paid_match")],
+        [InlineKeyboardButton("🔗 Изменить URL получения", callback_data="tls_set_paid_url")],
         [
             InlineKeyboardButton("↩️ Назад", callback_data="tls_cert_menu"),
             InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
@@ -258,11 +263,13 @@ def show_settings(update, context):
 
     s = get_settings()
     domains = get_domains_config()
+    paid_url = get_paid_cert_url()
     lines = ["⚙️ *Настройки TLS-мониторинга*", ""]
     lines.append(f"🖥 SSH-хост certbot: `{s.get('ssh_host') or 'не задан'}`")
     lines.append(f"🧩 Команда certbot: `{s.get('certbot_cmd')}`")
     lines.append(f"🔁 Перезапуск nginx: `{s.get('nginx_reload_cmd')}`")
     lines.append(f"⏰ Порог алерта по умолчанию: `{s.get('alert_days_default')}` дн.")
+    lines.append(f"🔗 URL платного сертификата: `{paid_url or 'не задан'}`")
     lines.append(f"📋 Доменов настроено: `{len(domains)}`")
 
     keyboard = [
@@ -270,6 +277,7 @@ def show_settings(update, context):
         [InlineKeyboardButton("🧩 Команда certbot", callback_data="tls_set_certbot")],
         [InlineKeyboardButton("🔁 Перезапуск nginx", callback_data="tls_set_nginx")],
         [InlineKeyboardButton("⏰ Порог алерта", callback_data="tls_set_alert")],
+        [InlineKeyboardButton("🔗 URL платного сертификата", callback_data="tls_set_paid_url")],
         [InlineKeyboardButton("📋 Домены", callback_data="tls_domains_cfg")],
         [
             InlineKeyboardButton("↩️ Назад", callback_data="tls_cert_menu"),
@@ -434,6 +442,24 @@ def handle_text_input(update, context):
         update.message.reply_text("✅ Команда перезапуска nginx сохранена.")
         return True
 
+    if ud.pop("tls_set_paid_url", False):
+        if text and not (text.startswith("http://") or text.startswith("https://")):
+            update.message.reply_text(
+                "❌ URL должен начинаться с http:// или https:// "
+                "(или отправьте «-», чтобы очистить)."
+            )
+            ud["tls_set_paid_url"] = True
+            return True
+        cleaned = "" if text in ("", "-") else text
+        set_paid_cert_url(cleaned)
+        update.message.reply_text(
+            f"✅ URL платного сертификата сохранён: {cleaned or '(очищено)'}",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("📜 К платному сертификату", callback_data="tls_paid")]]
+            ),
+        )
+        return True
+
     if ud.pop("tls_set_alert", False):
         try:
             days = int(text)
@@ -590,6 +616,15 @@ def handle_callbacks(update, context, data: str):
             context,
             "tls_set_alert",
             "⏰ *Порог алерта по умолчанию*\n\nВведите число дней (1-180):",
+        )
+    elif data == "tls_set_paid_url":
+        _prompt(
+            update,
+            context,
+            "tls_set_paid_url",
+            "🔗 *URL платного сертификата*\n\nВведите ссылку на страницу провайдера, "
+            "где вы получаете сертификат `202020.ru` (начиная с https://).\n"
+            "Отправьте «-», чтобы очистить.",
         )
     elif data.startswith("tls_reissue_do_"):
         do_reissue(update, context, data[len("tls_reissue_do_") :])

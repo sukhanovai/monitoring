@@ -2620,6 +2620,11 @@ private fun MonitoringApp(
                     showNasSettingsDialog = true
                     onExtensionsSettingsAction("settings_ext_nas")
                 }
+            } else if (extension.id == "tls_cert_monitor") {
+                {
+                    showTlsSettingsDialog = true
+                    onExtensionsSettingsAction("settings_ext_tls")
+                }
             } else {
                 null
             },
@@ -2627,6 +2632,11 @@ private fun MonitoringApp(
                 {
                     showNasSettingsDialog = true
                     onExtensionsSettingsAction("settings_ext_nas")
+                }
+            } else if (extension.id == "tls_cert_monitor") {
+                {
+                    showTlsSettingsDialog = true
+                    onExtensionsSettingsAction("settings_ext_tls")
                 }
             } else {
                 null
@@ -5605,6 +5615,125 @@ private fun MonitoringApp(
                     }
 
                     nasSettingsOptions.forEach { (label, action) ->
+                        Button(
+                            onClick = { onExtensionsSettingsAction(action) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showTlsSettingsDialog) {
+        val tlsSettingsCurrent = state.messageSource == "extensions_settings" &&
+            (state.extensionSettingsMenuAction == "settings_ext_tls" ||
+                state.extensionSettingsMenuAction.startsWith("tls_set_paid_url"))
+        val tlsSettingsOptions = if (tlsSettingsCurrent) {
+            state.extensionSettingsMenuOptions.mapNotNull { option ->
+                val action = resolveMenuOptionAction(option)
+                val label = option.label?.trim().orEmpty()
+                if (label.isBlank() || action.isBlank()) return@mapNotNull null
+                if (action == "main_menu" || action == "close" ||
+                    action == "settings_extensions"
+                ) {
+                    return@mapNotNull null
+                }
+                label to action
+            }.distinctBy { (_, action) -> action }
+        } else {
+            emptyList()
+        }
+        AlertDialog(
+            onDismissRequest = { showTlsSettingsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⚙️ Настройки: TLS-сертификаты",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { onExtensionsSettingsAction("settings_ext_tls") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Обновить настройки TLS-сертификатов"
+                        )
+                    }
+                    IconButton(onClick = { showTlsSettingsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть настройки TLS-сертификатов"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (tlsSettingsCurrent && state.message.isNotBlank()) {
+                        Text(state.message)
+                    } else {
+                        Text("Загружаем настройки TLS-сертификатов…")
+                    }
+
+                    // URL получения платного сертификата 202020.ru (редактируемый).
+                    OutlinedTextField(
+                        value = tlsPaidUrlInput,
+                        onValueChange = { tlsPaidUrlInput = it },
+                        label = { Text("URL платного сертификата") },
+                        placeholder = { Text("https://provider.example/cert/202020.ru") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = {
+                            val value = tlsPaidUrlInput.trim()
+                            if (value.isNotEmpty()) {
+                                onExtensionsSettingsAction(
+                                    "tls_set_paid_url|" + Uri.encode(value)
+                                )
+                                tlsPaidUrlInput = ""
+                            }
+                        },
+                        enabled = tlsPaidUrlInput.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("🔗 Сохранить URL")
+                    }
+                    Button(
+                        onClick = {
+                            onExtensionsSettingsAction("tls_set_paid_url|-")
+                            tlsPaidUrlInput = ""
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Text("🧹 Очистить URL")
+                    }
+
+                    tlsSettingsOptions.forEach { (label, action) ->
                         Button(
                             onClick = { onExtensionsSettingsAction(action) },
                             modifier = Modifier.fillMaxWidth(),
