@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/patterns.py
-Server Monitoring System v8.62.79
+Server Monitoring System v8.62.80
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Pattern helpers extracted from modules/mail_monitor.py (PR6 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.79
+Версия: 8.62.80
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Сборщики regex/glob-паттернов из конфигурации БД для разных типов писем
@@ -221,6 +221,32 @@ def get_nas_transfer_patterns_from_config() -> list[str]:
 
     except Exception as exc:
         logger.error(f"❌ Ошибка извлечения паттернов передачи на NAS: {exc}")
+        return []
+
+
+def get_config_console_patterns_from_config() -> list[str]:
+    """Извлекает паттерны для писем о бэкапе конфигов и историй консолей."""
+    try:
+        patterns = config_manager.get_backup_patterns()
+        cfg_patterns = patterns.get("config_console", {})
+        subject_patterns: list[str] = []
+
+        if isinstance(cfg_patterns, dict):
+            subject_patterns = cfg_patterns.get("subject", [])
+        elif isinstance(cfg_patterns, list):
+            subject_patterns = cfg_patterns
+
+        if not subject_patterns:
+            fallback = BACKUP_PATTERNS.get("config_console", {})
+            if isinstance(fallback, dict):
+                subject_patterns = fallback.get("subject", [])
+            elif isinstance(fallback, list):
+                subject_patterns = fallback
+
+        return [pattern for pattern in subject_patterns if isinstance(pattern, str)]
+
+    except Exception as exc:
+        logger.error(f"❌ Ошибка извлечения паттернов конфигов/историй: {exc}")
         return []
 
 

@@ -1,11 +1,11 @@
 """
 /extensions/extension_manager.py
-Server Monitoring System v8.62.79
+Server Monitoring System v8.62.80
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extension Manager for Monitoring
 Система мониторинга серверов
-Версия: 8.62.79
+Версия: 8.62.80
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер расширений для мониторинга
@@ -60,6 +60,16 @@ AVAILABLE_EXTENSIONS = {
     "nas_transfer_monitor": {
         "name": "📤 Передача бэкапов на NAS",
         "description": "Отслеживание копирования бэкапов 1С на NAS (письмо от sr-bup)",
+        "commands": [],
+        "handlers": [],
+        "enabled_by_default": True,
+    },
+    "config_console_backup_monitor": {
+        "name": "🗂️ Бэкап конфигов и историй",
+        "description": (
+            "Копирование конфигов VM/LXC и историй консолей хостов на "
+            "бэкап-сервер/NAS по SSH (письмо от copy_configs_ssh.sh)"
+        ),
         "commands": [],
         "handlers": [],
         "enabled_by_default": True,

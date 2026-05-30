@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/__init__.py
-Server Monitoring System v8.62.79
+Server Monitoring System v8.62.80
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Settings handlers package — точка входа пакета декомпозиции
 bot/handlers/settings_handlers (PR7 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.79
+Версия: 8.62.80
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет settings_handlers — на этом этапе содержит единый legacy-модуль

@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/processor.py
-Server Monitoring System v8.62.79
+Server Monitoring System v8.62.80
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 BackupProcessor extracted from modules/mail_monitor.py (PR6 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.79
+Версия: 8.62.80
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Координатор обработки писем с отчётами о резервных копиях: чтение Maildir
@@ -52,6 +52,7 @@ from lib.logging import setup_logging
 from modules.mail_parts import logger
 from modules.mail_parts.db.schema import create_schema
 from modules.mail_parts.parsers import (
+    ConfigConsoleBackupParserMixin,
     DatabaseBackupParserMixin,
     MailBackupParserMixin,
     NasTransferParserMixin,
@@ -74,6 +75,7 @@ class BackupProcessor(
     ZfsBackupParserMixin,
     MailBackupParserMixin,
     NasTransferParserMixin,
+    ConfigConsoleBackupParserMixin,
     StockLoadParserMixin,
 ):
     """Обработчик бэкапов."""

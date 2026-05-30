@@ -1,0 +1,39 @@
+# /etc/copy_configs.conf — опциональный override для copy_configs_ssh.sh
+# Server Monitoring System v8.62.80
+#
+# Скрипт copy_configs_ssh.sh байт-идентичен на всех хостах и бэкап-серверах.
+# Различия задаются ТОЛЬКО здесь. Если файла нет — работают дефолты из скрипта
+# (приёмник = бэкап-сервер sr-bup). Скопируйте этот пример в /etc/copy_configs.conf
+# и отредактируйте под конкретную машину.
+#
+# Переменные перечитываются как обычный bash (файл подключается через `.`),
+# поэтому не используйте пробелы вокруг "=" и кавычьте значения с пробелами.
+
+# --- Куда доставлять (приёмник SSH) ---------------------------------------
+# На обычных хостах: приёмник = бэкап-сервер (как в дефолтах, можно не задавать).
+# На БЭКАП-СЕРВЕРАХ: переопределите приёмник на NAS, например:
+#   RECEIVER_HOST="nas-01"
+#   RECEIVER_BASE="/volume1/backup/configs"
+RECEIVER_HOST="sr-bup"
+RECEIVER_USER="root"
+RECEIVER_BASE="/bup/backup"
+
+# --- SSH-доступ -----------------------------------------------------------
+# Приватный ключ должен быть разложен заранее; публичный — в authorized_keys
+# приёмника. Реальные ключи в репозиторий НЕ коммитим.
+SSH_KEY="/root/.ssh/id_ed25519_backup"
+SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
+
+# --- Прочее ---------------------------------------------------------------
+# 1 — забирать ~/.psql_history у пользователей контейнеров (обычно postgres).
+COLLECT_PSQL_HISTORY=1
+
+# Ящик-приёмник отчётов (на сервере проекта фильтры парсят тему "Config backup").
+MAIL_TO="katok@202020.ru"
+
+# Лог отладки на самой машине.
+DEBUG_LOG="/var/log/copy_configs_ssh.log"
+
+# Дополнительно можно переопределить наборы конфигов:
+# HOST_CONFIG_DIRS=("/etc/pve/lxc" "/etc/pve/qemu-server" "/opt")
+# HOST_CONFIG_FILES=("/etc/network/interfaces" "/etc/fstab" "/etc/postfix/main.cf")

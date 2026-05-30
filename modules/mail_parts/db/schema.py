@@ -1,12 +1,12 @@
 """
 /modules/mail_parts/db/schema.py
-Server Monitoring System v8.62.79
+Server Monitoring System v8.62.80
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 SQL DDL for backups.db extracted from BackupProcessor.init_database
 (PR6b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.79
+Версия: 8.62.80
 Автор: Александр Суханов (c)
 Лицензия: MIT
 DDL таблиц backups.db (`proxmox_backups`, `zfs_pool_status`,
@@ -113,6 +113,27 @@ CREATE TABLE IF NOT EXISTS nas_transfers (
 )
 """
 
+CONFIG_CONSOLE_BACKUPS_DDL = """
+CREATE TABLE IF NOT EXISTS config_console_backups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    host_name TEXT NOT NULL,
+    status TEXT NOT NULL,
+    delivery_method TEXT,
+    receiver TEXT,
+    started_at_text TEXT,
+    completed_at_text TEXT,
+    vm_config_count INTEGER DEFAULT 0,
+    lxc_config_count INTEGER DEFAULT 0,
+    history_container_count INTEGER DEFAULT 0,
+    history_file_count INTEGER DEFAULT 0,
+    error_count INTEGER DEFAULT 0,
+    problem_items TEXT,
+    email_subject TEXT,
+    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(host_name, started_at_text, completed_at_text, received_at)
+)
+"""
+
 INDEX_STATEMENTS = (
     "CREATE INDEX IF NOT EXISTS idx_backups_host_date ON proxmox_backups(host_name, received_at)",
     "CREATE INDEX IF NOT EXISTS idx_zfs_server_date ON zfs_pool_status(server_name, received_at)",
@@ -122,6 +143,8 @@ INDEX_STATEMENTS = (
     "CREATE INDEX IF NOT EXISTS idx_stock_load_date ON stock_load_results(received_at)",
     "CREATE INDEX IF NOT EXISTS idx_nas_transfers_host_date "
     "ON nas_transfers(host_name, received_at)",
+    "CREATE INDEX IF NOT EXISTS idx_config_console_host_date "
+    "ON config_console_backups(host_name, received_at)",
 )
 
 TABLE_DDLS = (
@@ -131,6 +154,7 @@ TABLE_DDLS = (
     MAIL_SERVER_BACKUPS_DDL,
     STOCK_LOAD_RESULTS_DDL,
     NAS_TRANSFERS_DDL,
+    CONFIG_CONSOLE_BACKUPS_DDL,
 )
 
 
@@ -158,6 +182,7 @@ def create_schema(conn: sqlite3.Connection) -> None:
 
 
 __all__ = [
+    "CONFIG_CONSOLE_BACKUPS_DDL",
     "INDEX_STATEMENTS",
     "MAIL_SERVER_BACKUPS_DDL",
     "NAS_TRANSFERS_DDL",
