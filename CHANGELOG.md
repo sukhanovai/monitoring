@@ -1,3 +1,13 @@
+## [8.62.79] - 2026-05-30
+
+### Fixed
+- RU: Android — плашка «🔐 TLS» больше не показывает прочерк. Парсер сводки (`buildTlsCertTileSummary`) искал строку «Доменов», а серверный статус после перехода на cert-name выдаёт «Сертификатов» — регэксп теперь принимает оба варианта. Тап по плашке корректно подтягивает данные при старте.
+- EN: Android — the "🔐 TLS" tile no longer shows a dash. The summary parser (`buildTlsCertTileSummary`) looked for "Доменов", but after the cert-name switch the server status emits "Сертификатов" — the regex now accepts both. Tapping the tile correctly pulls data at startup.
+
+### Added
+- RU: Android — окно настроек «TLS-сертификаты» получило полноценное управление сертификатами: форма добавления/редактирования (cert-name, хост проверки, порт, домены `-d`; upsert по cert-name) и кнопки по каждому сертификату — перевыпуск, вкл/выкл, удаление, плюс «🔄 Сбросить к дефолтам». Новые серверные действия `tls_cert_upsert|…`, `tls_cert_toggle|…`, `tls_cert_delete|…`, `tls_certs_reset` в `/v1/settings/extensions/actions`.
+- EN: Android — the "TLS certificates" settings screen gained full certificate management: an add/edit form (cert-name, check host, port, `-d` domains; upsert by cert-name) and per-certificate buttons — re-issue, enable/disable, delete, plus "🔄 Reset to defaults". New server actions `tls_cert_upsert|…`, `tls_cert_toggle|…`, `tls_cert_delete|…`, `tls_certs_reset` in `/v1/settings/extensions/actions`.
+
 ## [8.62.78] - 2026-05-30
 
 ### Changed

@@ -163,5 +163,9 @@ class MonitoringAppState {
     var nasIgnoreInput by mutableStateOf("")
     var showTlsCertDialog by mutableStateOf(false)
     var showTlsSettingsDialog by mutableStateOf(false)
+    var tlsCertNameInput by mutableStateOf("")
+    var tlsCertHostInput by mutableStateOf("")
+    var tlsCertPortInput by mutableStateOf("")
+    var tlsCertDomainsInput by mutableStateOf("")
     var showMorningReportDialog by mutableStateOf(false)
 }

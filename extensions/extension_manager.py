@@ -1,11 +1,11 @@
 """
 /extensions/extension_manager.py
-Server Monitoring System v8.62.78
+Server Monitoring System v8.62.79
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extension Manager for Monitoring
 Система мониторинга серверов
-Версия: 8.62.78
+Версия: 8.62.79
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер расширений для мониторинга
@@ -74,8 +74,7 @@ AVAILABLE_EXTENSIONS = {
     "tls_cert_monitor": {
         "name": "🔐 TLS-сертификаты",
         "description": (
-            "Проверка срока TLS-сертификатов, ручной перевыпуск certbot по SSH "
-            "и загрузка платного сертификата 202020.ru"
+            "Проверка срока TLS-сертификатов (certbot) и ручной перевыпуск по SSH"
         ),
         "commands": [],
         "handlers": ["tls_"],
