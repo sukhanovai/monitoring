@@ -1,3 +1,13 @@
+## [8.62.78] - 2026-05-30
+
+### Changed
+- RU: `tls_cert_monitor` переведён на модель сертификатов **по cert-name certbot** (а не «домен»). Удалён неиспользуемый блок платного сертификата (загрузка cert/key, URL проверки) — все сертификаты теперь обычные certbot-управляемые. Каждый сертификат хранит: `check_host` (хост живой проверки), `port`, `alert_days` и `domains` (список для аргументов `-d` при перевыпуске, поддержка мультидоменных сертификатов вроде `202020.ru` с 13 SAN). Перевыпуск формирует `certbot certonly --nginx --cert-name <name> -d … -d … --force-renewal`. Дефолты обновлены под реальный вывод `certbot certificates` (api/rtc.matrix/202020.ru/chat/share/matrix). Telegram: раздел настроек теперь со списком сертификатов и экраном по каждому (хост проверки, порт, порог алерта, домены `-d`, перевыпуск, вкл/выкл, удаление, добавление). Android: `settings_ext_tls` показывает все сертификаты и даёт перевыпуск по каждому + пресеты порога; убрано поле URL платного сертификата.
+- EN: `tls_cert_monitor` switched to a **certbot cert-name** certificate model (instead of "domain"). Removed the unused paid-certificate block (cert/key upload, validation URL) — all certificates are now ordinary certbot-managed ones. Each certificate stores: `check_host` (live-check host), `port`, `alert_days` and `domains` (the `-d` argument list for re-issue, supporting multi-domain certs like `202020.ru` with 13 SANs). Re-issue builds `certbot certonly --nginx --cert-name <name> -d … -d … --force-renewal`. Defaults updated to the real `certbot certificates` output (api/rtc.matrix/202020.ru/chat/share/matrix). Telegram: the settings section now lists certificates with a per-cert screen (check host, port, alert threshold, `-d` domains, re-issue, enable/disable, delete, add). Android: `settings_ext_tls` shows all certificates with per-cert re-issue and threshold presets; the paid-certificate URL field was removed.
+
+### Changed (Android)
+- RU: Кнопка «🔐 Сертификат BFF» перемещена из оперативного центра в раздел **Настройки → BFF** (под кнопкой «Проверить связь с BFF»).
+- EN: The "🔐 BFF certificate" button moved from the operations center to **Settings → BFF** (below the "Check BFF connection" button).
+
 ## [8.62.77] - 2026-05-30
 
 ### Changed

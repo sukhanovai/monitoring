@@ -3047,12 +3047,6 @@ private fun MonitoringApp(
                                 Text(if (areOpsTilesExpanded) "Свернуть" else "Развернуть")
                             }
                         }
-                        CertificateStatusTile(
-                            statusText = state.bffCertificateStatusText,
-                            warningText = state.bffCertificateWarningText,
-                            isLoading = state.isLoading,
-                            onClick = onCheckCertificateOnly
-                        )
                     }
                 }
             }
@@ -3226,6 +3220,12 @@ private fun MonitoringApp(
                             label = "Проверить связь с BFF",
                             isTesting = state.isTestingBff,
                             onClick = onTestBffConnection
+                        )
+                        CertificateStatusTile(
+                            statusText = state.bffCertificateStatusText,
+                            warningText = state.bffCertificateWarningText,
+                            isLoading = state.isLoading,
+                            onClick = onCheckCertificateOnly
                         )
                         if (state.message.isNotBlank() && state.messageSource == "bff_settings") {
                             BotSettingsMessageCard(
@@ -5645,7 +5645,8 @@ private fun MonitoringApp(
     if (showTlsSettingsDialog) {
         val tlsSettingsCurrent = state.messageSource == "extensions_settings" &&
             (state.extensionSettingsMenuAction == "settings_ext_tls" ||
-                state.extensionSettingsMenuAction.startsWith("tls_set_paid_url"))
+                state.extensionSettingsMenuAction.startsWith("tls_set_alert_days") ||
+                state.extensionSettingsMenuAction.startsWith("tls_reissue"))
         val tlsSettingsOptions = if (tlsSettingsCurrent) {
             state.extensionSettingsMenuOptions.mapNotNull { option ->
                 val action = resolveMenuOptionAction(option)
@@ -5700,46 +5701,6 @@ private fun MonitoringApp(
                         Text(state.message)
                     } else {
                         Text("Загружаем настройки TLS-сертификатов…")
-                    }
-
-                    // URL получения платного сертификата 202020.ru (редактируемый).
-                    OutlinedTextField(
-                        value = tlsPaidUrlInput,
-                        onValueChange = { tlsPaidUrlInput = it },
-                        label = { Text("URL проверки сертификата") },
-                        placeholder = { Text("https://example.com") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Button(
-                        onClick = {
-                            val value = tlsPaidUrlInput.trim()
-                            if (value.isNotEmpty()) {
-                                onExtensionsSettingsAction(
-                                    "tls_set_paid_url|" + Uri.encode(value)
-                                )
-                                tlsPaidUrlInput = ""
-                            }
-                        },
-                        enabled = tlsPaidUrlInput.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("🔗 Сохранить URL")
-                    }
-                    Button(
-                        onClick = {
-                            onExtensionsSettingsAction("tls_set_paid_url|-")
-                            tlsPaidUrlInput = ""
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    ) {
-                        Text("🧹 Очистить URL")
                     }
 
                     tlsSettingsOptions.forEach { (label, action) ->
