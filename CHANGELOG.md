@@ -1,8 +1,12 @@
-## [8.62.73] - 2026-05-29
+## [8.62.74] - 2026-05-30
 
 ### Added
 - RU: Новое расширение `tls_cert_monitor` — мониторинг TLS-сертификатов. Проверяет срок действия живых сертификатов доменов через `openssl s_client` (по умолчанию `api.202020.ru:8443`, `rtc/chat/share/matrix.202020.ru:443`), шлёт алерты при приближении истечения (плановая проверка встроена в основной цикл мониторинга). В Telegram-боте появился раздел «🔐 TLS-сертификаты»: статус по всем доменам, **ручной перевыпуск по кнопке** (выполняет `certbot certonly --nginx --cert-name <d> -d <d> --force-renewal && service nginx restart` на удалённом хосте по SSH; SSH-хост и шаблоны команд настраиваются), управление списком доменов (добавить/удалить/вкл-выкл, порт, порог алерта) и **загрузка платного сертификата `202020.ru`**: пришлите cert и key документами в чат — файлы валидируются (`openssl`), проверяется соответствие пары и сохраняются в `data/certificates` (применение в nginx — вручную).
 - EN: New `tls_cert_monitor` extension — TLS certificate monitoring. Checks live certificate expiry per domain via `openssl s_client` (defaults: `api.202020.ru:8443`, `rtc/chat/share/matrix.202020.ru:443`) and raises alerts as expiry approaches (the scheduled check is wired into the main monitoring loop). The Telegram bot gains a "🔐 TLS certificates" section: status for all domains, **one-button manual re-issue** (runs `certbot certonly --nginx --cert-name <d> -d <d> --force-renewal && service nginx restart` on a remote host over SSH; SSH host and command templates are configurable), domain list management (add/remove/enable-disable, port, alert threshold) and **upload of the paid `202020.ru` certificate**: send the cert and key as documents to the chat — files are validated (`openssl`), the cert/key pair match is verified and they are stored in `data/certificates` (nginx wiring stays manual).
+
+## [8.62.73] - 2026-05-29
+
+### Added
 - RU: Android — в диалоге настроек «Передача на NAS» появилось поле ввода для **добавления новой игнорируемой базы** (можно несколько через запятую). По кнопке «➕ Добавить в игнор» вызывается серверное действие `nas_ignore_add|<base>` (`/v1/settings/extensions/actions`), список сразу обновляется. Раньше добавление было доступно только в Telegram.
 - EN: Android — the "NAS transfer" settings dialog now has an input field to **add a new ignored base** (several at once, comma-separated). The "➕ Add to ignore" button calls the server action `nas_ignore_add|<base>` (`/v1/settings/extensions/actions`) and the list refreshes immediately. Previously adding was only possible in Telegram.
 
