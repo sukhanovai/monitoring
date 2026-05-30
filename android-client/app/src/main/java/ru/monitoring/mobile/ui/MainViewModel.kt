@@ -101,6 +101,7 @@ class MainViewModel(
         "backup_mail",
         "backup_stock_loads",
         "backup_nas_transfer",
+        "tls_cert_monitor_status",
         "supplier_stock_reports",
         "settings_patterns_proxmox"
     )
@@ -112,6 +113,7 @@ class MainViewModel(
         "backup_proxmox",
         "backup_stock_loads",
         "backup_nas_transfer",
+        "tls_cert_monitor_status",
         "supplier_stock_reports",
     )
     private val extensionSettingsControlActions = extensionControlActions + setOf("open_extensions_settings")
@@ -125,6 +127,7 @@ class MainViewModel(
         Pair({ action -> action.startsWith("backup_mail") }, "mail_backup_monitor"),
         Pair({ action -> action == "backup_stock_loads" }, "stock_load_monitor"),
         Pair({ action -> action == "backup_nas_transfer" }, "nas_transfer_monitor"),
+        Pair({ action -> action == "tls_cert_monitor_status" }, "tls_cert_monitor"),
         Pair({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files")
     )
     private val extensionSettingsFallbackActions = listOf(
@@ -364,6 +367,28 @@ class MainViewModel(
                 ratioText = "$ok/$total",
                 hasProblem = problems > 0
             )
+        }
+        return null
+    }
+
+    private fun buildTlsCertTileSummary(response: ControlActionResult?): BackupTileSummary? {
+        if (response == null) return null
+
+        // build_status_lines() из extensions/tls_cert_monitor.py выдаёт строку
+        // "• Доменов: N · 🚨 M" — берём всего/проблемных оттуда.
+        val message = resolveControlActionMessage(response)
+        val match = Regex("""Доменов:\s*(\d+).*?🚨\s*(\d+)""")
+            .find(message.replace("\n", " "))
+        if (match != null) {
+            val total = match.groupValues.getOrNull(1)?.toIntOrNull()
+            val alerts = match.groupValues.getOrNull(2)?.toIntOrNull()
+            if (total != null && alerts != null) {
+                val ok = (total - alerts).coerceAtLeast(0)
+                return BackupTileSummary(
+                    ratioText = "$ok/$total",
+                    hasProblem = alerts > 0
+                )
+            }
         }
         return null
     }
@@ -1159,6 +1184,7 @@ class MainViewModel(
                 val zfsPoolFreeSpaceSummary = fetchOrLog("runControlAction(zfs_pool_free_space_menu)") { currentApi().runControlAction(ControlActionRequest("zfs_pool_free_space_menu")) }
                 val snapshotTransferSummary = fetchOrLog("runControlAction(snapshot_transfer_menu)") { currentApi().runControlAction(ControlActionRequest("snapshot_transfer_menu")) }
                 val nasTransferSummary = fetchOrLog("runControlAction(backup_nas_transfer)") { currentApi().runControlAction(ControlActionRequest("backup_nas_transfer")) }
+                val tlsCertSummary = fetchOrLog("runControlAction(tls_cert_monitor_status)") { currentApi().runControlAction(ControlActionRequest("tls_cert_monitor_status")) }
                 listOf(
                     monitoring,
                     bot,
@@ -1178,7 +1204,8 @@ class MainViewModel(
                     zfsPoolFreeSpaceSummary,
                     matrixBot,
                     snapshotTransferSummary,
-                    nasTransferSummary
+                    nasTransferSummary,
+                    tlsCertSummary
                 )
             }
 
@@ -1211,6 +1238,7 @@ class MainViewModel(
             val matrixBot = result[16] as? ru.monitoring.mobile.api.SettingsMatrixBotResponse
             val snapshotTransferSummary = buildSnapshotTransferTileSummary(result[17] as? ControlActionResult)
             val nasTransferSummary = buildBackupTileSummary(result[18] as? ControlActionResult)
+            val tlsCertSummary = buildTlsCertTileSummary(result[19] as? ControlActionResult)
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -1287,6 +1315,7 @@ class MainViewModel(
                 zfsPoolFreeSpaceSummary = zfsPoolFreeSpaceSummary?.ratioText ?: state.zfsPoolFreeSpaceSummary,
                 snapshotTransferSummary = snapshotTransferSummary?.ratioText ?: state.snapshotTransferSummary,
                 backupNasTransferSummary = nasTransferSummary?.ratioText ?: state.backupNasTransferSummary,
+                tlsCertSummary = tlsCertSummary?.ratioText ?: state.tlsCertSummary,
                 backupProxmoxHasProblemItems = proxmoxBackupSummary?.hasProblem ?: state.backupProxmoxHasProblemItems,
                 backupDatabasesHasProblemItems = dbBackupSummary?.hasProblem ?: state.backupDatabasesHasProblemItems,
                 backupStockLoadsHasProblemItems = stockLoadSummary?.hasProblem ?: state.backupStockLoadsHasProblemItems,
@@ -1296,6 +1325,7 @@ class MainViewModel(
                 zfsPoolFreeSpaceHasProblemItems = zfsPoolFreeSpaceSummary?.hasProblem ?: state.zfsPoolFreeSpaceHasProblemItems,
                 snapshotTransferHasProblemItems = snapshotTransferSummary?.hasProblem ?: state.snapshotTransferHasProblemItems,
                 backupNasTransferHasProblemItems = nasTransferSummary?.hasProblem ?: state.backupNasTransferHasProblemItems,
+                tlsCertHasProblemItems = tlsCertSummary?.hasProblem ?: state.tlsCertHasProblemItems,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -2347,6 +2377,11 @@ class MainViewModel(
                             } else {
                                 null
                             }
+                            val tlsCertSummary = if (normalizedAction == "tls_cert_monitor_status") {
+                                buildTlsCertTileSummary(response)
+                            } else {
+                                null
+                            }
                             state = state.copy(
                                 isLoading = false,
                                 message = resolveControlActionMessage(zfsPrimaryResponse).ifBlank { "Команда отправлена" },
@@ -2380,6 +2415,9 @@ class MainViewModel(
                                 snapshotTransferSummary = snapshotTransferSummary?.ratioText ?: state.snapshotTransferSummary,
                                 snapshotTransferHasProblemItems = snapshotTransferSummary?.hasProblem
                                     ?: state.snapshotTransferHasProblemItems,
+                                tlsCertSummary = tlsCertSummary?.ratioText ?: state.tlsCertSummary,
+                                tlsCertHasProblemItems = tlsCertSummary?.hasProblem
+                                    ?: state.tlsCertHasProblemItems,
                                 mailBackupLastVolume = mailHistory?.items?.firstOrNull()?.size
                                     ?: extractMailBackupVolume(resolveControlActionMessage(zfsPrimaryResponse))
                                     ?: state.mailBackupLastVolume
@@ -3272,6 +3310,7 @@ data class MainUiState(
     val zfsPoolFreeSpaceSummary: String = "",
     val snapshotTransferSummary: String = "",
     val backupNasTransferSummary: String = "",
+    val tlsCertSummary: String = "",
     val backupProxmoxHasProblemItems: Boolean = false,
     val backupDatabasesHasProblemItems: Boolean = false,
     val backupStockLoadsHasProblemItems: Boolean = false,
@@ -3281,6 +3320,7 @@ data class MainUiState(
     val zfsPoolFreeSpaceHasProblemItems: Boolean = false,
     val snapshotTransferHasProblemItems: Boolean = false,
     val backupNasTransferHasProblemItems: Boolean = false,
+    val tlsCertHasProblemItems: Boolean = false,
     val mailBackupHistoryTitle: String = "",
     val mailBackupHistoryItems: List<MailBackupHistoryItem> = emptyList(),
     val zfsStatusMessage: String = "",

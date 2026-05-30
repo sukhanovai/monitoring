@@ -1,12 +1,12 @@
 """
 /extensions/tls_cert_monitor.py
-Server Monitoring System v8.62.74
+Server Monitoring System v8.62.75
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 TLS certificate monitor: expiry checks, manual certbot re-issue over SSH and
 manual upload of the paid 202020.ru certificate.
 Система мониторинга серверов
-Версия: 8.62.74
+Версия: 8.62.75
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг TLS-сертификатов: проверка срока, ручной перевыпуск через certbot по

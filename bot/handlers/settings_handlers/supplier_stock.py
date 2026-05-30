@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/supplier_stock.py
-Server Monitoring System v8.62.74
+Server Monitoring System v8.62.75
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock UI handlers extracted from
 bot/handlers/settings_handlers/_legacy.py (PR7b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.74
+Версия: 8.62.75
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самодостаточный блок UI Telegram-бота для настроек supplier-stock

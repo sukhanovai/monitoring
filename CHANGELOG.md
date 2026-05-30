@@ -1,3 +1,9 @@
+## [8.62.75] - 2026-05-30
+
+### Added
+- RU: Расширение `tls_cert_monitor` теперь доступно в **Matrix-боте** и **Android-приложении** (раньше только Telegram). Matrix: команда `!tls` и пункт «🔐 TLS-сертификаты доменов» в `!extensions` показывают статус всех сертификатов (`collect_certificates` + `build_status_lines`), ключи `TLS_CERT_DOMAINS`/`TLS_CERT_SETTINGS` видны в `!settings`. Android: на главном экране появилась плашка «🔐 TLS» со сводкой `ok/всего` и индикатором проблемы; тап открывает диалог со статусом по доменам и кнопкой обновления. Серверный мобильный API получил действие `tls_cert_monitor_status` (`/v1/control/actions`).
+- EN: The `tls_cert_monitor` extension is now available in the **Matrix bot** and **Android app** (previously Telegram-only). Matrix: the `!tls` command and the "🔐 TLS certificates" item in `!extensions` show the status of all certificates (`collect_certificates` + `build_status_lines`); the `TLS_CERT_DOMAINS`/`TLS_CERT_SETTINGS` keys are visible in `!settings`. Android: the home screen gains a "🔐 TLS" tile with an `ok/total` summary and a problem indicator; tapping it opens a dialog with the per-domain status and a refresh button. The mobile server API gained the `tls_cert_monitor_status` action (`/v1/control/actions`).
+
 ## [8.62.74] - 2026-05-30
 
 ### Added

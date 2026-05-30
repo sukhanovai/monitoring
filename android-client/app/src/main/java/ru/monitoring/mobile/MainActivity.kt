@@ -2512,6 +2512,15 @@ private fun MonitoringApp(
                 )
             )
         }
+        extensionsById["tls_cert_monitor"]?.takeIf { it.enabled }?.let { extension ->
+            add(
+                buildExtensionDataTile(
+                    extension = extension.copy(name = "🔐 TLS"),
+                    summaryOverride = state.tlsCertSummary,
+                    hasProblemOverride = state.tlsCertHasProblemItems
+                )
+            )
+        }
         extensionsById["web_interface"]?.takeIf { it.enabled }?.let { extension ->
             add(buildToggleDataTile(label = "web", enabled = extension.enabled))
         }
@@ -2562,6 +2571,11 @@ private fun MonitoringApp(
                 {
                     showNasTransferDialog = true
                     onAction("backup_nas_transfer")
+                }
+            } else if (extension.id == "tls_cert_monitor") {
+                {
+                    showTlsCertDialog = true
+                    onAction("tls_cert_monitor_status")
                 }
             } else if (extension.id == "zfs_monitor") {
                 {
@@ -5450,6 +5464,56 @@ private fun MonitoringApp(
                         Text(state.message)
                     } else {
                         Text("Загружаем данные о передаче бэкапов на NAS…")
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showTlsCertDialog) {
+        val tlsIsCurrent = state.extensionMenuAction == "tls_cert_monitor_status"
+        AlertDialog(
+            onDismissRequest = { showTlsCertDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🔐 TLS-сертификаты",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { onAction("tls_cert_monitor_status") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Обновить статус TLS-сертификатов"
+                        )
+                    }
+                    IconButton(onClick = { showTlsCertDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть сведения о TLS-сертификатах"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.isLoading && !tlsIsCurrent) {
+                        Text("Загружаем данные о TLS-сертификатах…")
+                    } else if (tlsIsCurrent && state.message.isNotBlank() && state.messageSource == "global") {
+                        Text(state.message)
+                    } else {
+                        Text("Пока нет данных о TLS-сертификатах. Нажми «Обновить» сверху.")
                     }
                 }
             },

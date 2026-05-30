@@ -161,5 +161,6 @@ class MonitoringAppState {
     var showNasTransferDialog by mutableStateOf(false)
     var showNasSettingsDialog by mutableStateOf(false)
     var nasIgnoreInput by mutableStateOf("")
+    var showTlsCertDialog by mutableStateOf(false)
     var showMorningReportDialog by mutableStateOf(false)
 }

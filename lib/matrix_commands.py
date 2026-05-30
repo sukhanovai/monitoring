@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.74
+Server Monitoring System v8.62.75
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.74
+Версия: 8.62.75
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -215,6 +215,13 @@ EXTENSION_MENU_ITEMS: List[ExtensionMenuItem] = [
         "адрес веб-интерфейса",
         "_handle_ext_web",
     ),
+    ExtensionMenuItem(
+        "tls_cert_monitor",
+        "🔐",
+        "!tls",
+        "TLS-сертификаты доменов",
+        "_handle_ext_tls_cert",
+    ),
 ]
 _EXT_ITEM_BY_COMMAND: Dict[str, ExtensionMenuItem] = {
     item.command: item for item in EXTENSION_MENU_ITEMS
@@ -391,6 +398,14 @@ _EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict(
                 "label": "🌐 веб-интерфейс",
                 "keys": ["WEB_PORT", "WEB_HOST"],
                 "categories": ["web"],
+            },
+        ),
+        (
+            "tls_cert_monitor",
+            {
+                "label": "🔐 TLS-сертификаты",
+                "keys": ["TLS_CERT_DOMAINS", "TLS_CERT_SETTINGS"],
+                "categories": ["tls_cert"],
             },
         ),
     )
@@ -1727,6 +1742,15 @@ class MatrixCommandBot:
             f"• http://{host}:{port}\n"
             "Открой адрес в браузере из доверенной сети."
         )
+
+    async def _handle_ext_tls_cert(self) -> str:
+        from extensions.tls_cert_monitor import (
+            build_status_lines,
+            collect_certificates,
+        )
+
+        results, errors = collect_certificates()
+        return "\n".join(build_status_lines(results, errors))
 
     def _extensions_menu_text(self, enabled: Optional[Set[str]] = None) -> str:
         if enabled is None:
