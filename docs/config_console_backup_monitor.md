@@ -29,9 +29,16 @@
   - запущенные контейнеры читаются через `pct exec <id> -- cat …` (путь раздела не нужен);
   - остановленные — rootfs определяется из `pct config <id>` + `zfs get mountpoint`,
     с фолбэком на glob `/rpool/subvol-<id>-disk-*` (покрывает любой суффикс `-disk-N`).
-- **Истории всех пользователей контейнера**: забираются `.bash_history` каждого
-  пользователя (root, postgres, … — `/root` + `/home/*`), а также (опционально,
-  `COLLECT_PSQL_HISTORY=1`) `.psql_history` (обычно у postgres).
+- **Истории всех пользователей контейнера**: список пользователей берётся из
+  `getent passwd` (а не из `/home/*`), поэтому забираются `.bash_history` и
+  пользователей вне `/home` — в частности **postgres** (`/var/lib/postgresql`),
+  а также root (`/root`) и обычных из `/home/*`. Дополнительно (опционально,
+  `COLLECT_PSQL_HISTORY=1`) забирается `.psql_history` (обычно у postgres).
+- **Версионирование на приёмнике**: rsync идёт с `--backup --suffix='~'` и без
+  `--delete`. Конфиги перезаписываются, но прошлая версия остаётся рядом как
+  `<file>~` (как старый `cp -b`). Истории сохраняются новым файлом с timestamp в
+  имени (`.bash_history.<ts>`, `.psql_history.<ts>`) и не перезаписываются —
+  накапливаются.
 - Конфиги хоста (`/etc/pve/lxc`, `/etc/pve/qemu-server`, `/opt`, `interfaces`, `fstab`,
   `main.cf`, `crontab`, host `.bash_history`) собираются как и раньше.
 
