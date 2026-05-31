@@ -27,11 +27,11 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 RECEIVER_HOST="sr-bup"                          # приёмник SSH (на бэкап-серверах → NAS)
 RECEIVER_USER="root"
-RECEIVER_BASE="/bup/backup"                     # база на приёмнике; финал: $RECEIVER_BASE/<host>
-SSH_KEY="/root/.ssh/id_ed25519_backup"          # приватный ключ для неинтерактивного rsync
+RECEIVER_BASE="/zfs/nfs/backup"                 # база на приёмнике; финал: $RECEIVER_BASE/<host>
+SSH_KEY="/root/.ssh/id_rsa"                     # приватный ключ для неинтерактивного rsync
 SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
 
-COLLECT_PSQL_HISTORY=1                           # 1 — забирать ~/.psql_history у postgres
+COLLECT_PSQL_HISTORY=0                           # 1 — забирать ~/.psql_history у postgres
 MAIL_TO="katok@202020.ru"
 DEBUG_LOG="${DEBUG_LOG:-/var/log/copy_configs_ssh.log}"
 DRY_RUN="${DRY_RUN:-0}"                          # 1 — не слать rsync/письмо, только печать плана

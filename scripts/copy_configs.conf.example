@@ -16,12 +16,12 @@
 #   RECEIVER_BASE="/volume1/backup/configs"
 RECEIVER_HOST="sr-bup"
 RECEIVER_USER="root"
-RECEIVER_BASE="/bup/backup"
+RECEIVER_BASE="/zfs/nfs/backup"
 
 # --- SSH-доступ -----------------------------------------------------------
 # Приватный ключ должен быть разложен заранее; публичный — в authorized_keys
 # приёмника. Реальные ключи в репозиторий НЕ коммитим.
-SSH_KEY="/root/.ssh/id_ed25519_backup"
+SSH_KEY="/root/.ssh//root/.ssh/id_rsa"
 SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
 
 # --- Прочее ---------------------------------------------------------------
