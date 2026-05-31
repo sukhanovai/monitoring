@@ -113,6 +113,24 @@ LXC конфигов: 9
 
 Проверка без побочных эффектов: `DRY_RUN=1 DEBUG_LOG=/tmp/cc.log /opt/copy_configs_ssh.sh`.
 
+## Сопутствующие скрипты на бэкап-сервере
+
+На бэкап-сервере (нет VM/LXC) используются два отдельных скрипта вместо
+`copy_configs_ssh.sh`:
+
+- **`scripts/backup_server_configs_local.sh`** — локальный бэкап конфигов и
+  историй самого бэкап-сервера в `/zfs/nfs/backup/<host>/` (без SSH, без обхода
+  гостей). Истории всех пользователей хоста (root, postgres, …) берутся из
+  `getent passwd`. Шлёт письмо «Config backup <host> …» со «Способ доставки:
+  local» — попадает в это же расширение. Override: `/etc/backup_server_configs.conf`.
+- **`scripts/transfer_backup_to_nas.sh`** — надёжная передача `/zfs/nfs/backup`
+  на NAS. Вместо постоянного fstab-маунта (`soft`, может «протухнуть») монтирует
+  NFS **по требованию** на время прогона, проверяет монтирование тестовой
+  записью, переносит rsync'ом по каталогам и отмонтирует. Шлёт письмо «NAS
+  transfer <host> …» (расширение `nas_transfer_monitor`; «Баз обработано» = число
+  перенесённых каталогов). Override: `/etc/transfer_backup_to_nas.conf`.
+  Проверка: `DRY_RUN=1 SRC=/zfs/nfs/backup DEBUG_LOG=/tmp/nas.log /opt/transfer_backup_to_nas.sh`.
+
 ## Настройка расширения
 
 - Включение/выключение — в списке расширений Telegram-бота, Matrix-бота

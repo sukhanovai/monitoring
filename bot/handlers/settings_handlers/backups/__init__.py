@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/__init__.py
-Server Monitoring System v8.62.81
+Server Monitoring System v8.62.82
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Backup-семейство UI Telegram-бота (PR7d серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.81
+Версия: 8.62.82
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Подпакет настроек разных типов резервных копий, выделенный из

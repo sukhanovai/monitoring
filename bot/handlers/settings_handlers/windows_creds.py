@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/windows_creds.py
-Server Monitoring System v8.62.81
+Server Monitoring System v8.62.82
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Windows credentials input handler (PR7f серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.81
+Версия: 8.62.82
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имена
