@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.62.83
+Server Monitoring System v8.62.84
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.62.83
+Версия: 8.62.84
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -37,6 +37,7 @@ from extensions.backup_monitor.backup_handlers import (
     remove_nas_ignore_base,
     set_nas_alert_hours,
     show_config_console_backups,
+    show_cc_server_detail,
     show_cc_settings,
     set_cc_alert_hours,
     prompt_cc_server_add,
@@ -809,6 +810,18 @@ def backup_callback(update, context):
                 query.edit_message_text("🗂️ Мониторинг бэкапа конфигов и историй отключён")
                 return
             show_config_console_backups(query, backup_bot)
+
+        elif data.startswith("backup_cc_host|"):
+            if not extension_manager.is_extension_enabled("config_console_backup_monitor"):
+                query.edit_message_text("🗂️ Мониторинг бэкапа конфигов и историй отключён")
+                return
+            show_cc_server_detail(query, backup_bot, data.split("|", 1)[1])
+
+        elif data == "backup_cc_final":
+            if not extension_manager.is_extension_enabled("config_console_backup_monitor"):
+                query.edit_message_text("🗂️ Мониторинг бэкапа конфигов и историй отключён")
+                return
+            show_cc_server_detail(query, backup_bot, "__final__")
 
         elif data == "backup_cc_settings":
             if not extension_manager.is_extension_enabled("config_console_backup_monitor"):

@@ -1,3 +1,11 @@
+## [8.62.84] - 2026-05-31
+
+### Changed
+- RU: `backup_server_configs_local.sh` теперь выставляет права в `/zfs/nfs/backup` — каталоги `755`, файлы `644` (`drwxr-xr-x` вместо `drwx------`): `chmod` в staging + `rsync --chmod=D755,F644` + подстраховочный `chmod -R` в целевом каталоге.
+- RU: «Бэкап конфигов и историй» теперь показывается списком **кнопок с именами серверов** — тап по серверу открывает его подробности; финальная передача на NAS — отдельной кнопкой 📦. Telegram (inline-кнопки `backup_cc_host|<host>` / `backup_cc_final`), Matrix (`!configbackup <сервер>` / `!configbackup final`), Android (кнопки из `menu_options` в диалоге плитки).
+- EN: `backup_server_configs_local.sh` now sets `/zfs/nfs/backup` perms — dirs `755`, files `644` (`drwxr-xr-x` instead of `drwx------`): staging `chmod` + `rsync --chmod=D755,F644` + safety `chmod -R` on the destination.
+- EN: "Config & console backups" is now shown as a **list of server-name buttons** — tapping a server opens its details; the final NAS transfer is a separate 📦 button. Telegram (inline buttons `backup_cc_host|<host>` / `backup_cc_final`), Matrix (`!configbackup <server>` / `!configbackup final`), Android (buttons from `menu_options` in the tile dialog).
+
 ## [8.62.83] - 2026-05-31
 
 ### Changed

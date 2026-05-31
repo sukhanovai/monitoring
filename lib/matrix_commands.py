@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.83
+Server Monitoring System v8.62.84
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.83
+Версия: 8.62.84
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -1724,7 +1724,7 @@ class MatrixCommandBot:
         lines.append(f"Всего прогонов: {len(rows)} · 🟢 {ok_count} · 🔴 {err_count}")
         return "\n".join(lines)
 
-    async def _handle_ext_config_console(self) -> str:
+    async def _handle_ext_config_console(self, arg: str = "") -> str:
         import sqlite3
 
         from config.settings import BACKUP_DB_FILE
@@ -1805,26 +1805,42 @@ class MatrixCommandBot:
             expected = []
             grouped = {"servers": [], "final": None, "missing": []}
 
-        lines = [f"🗂️ Бэкап конфигов и историй (за {hours}ч)", ""]
         if not grouped["servers"] and grouped["final"] is None:
-            lines.append("ℹ️ Нет данных за период.")
-            return "\n".join(lines)
+            return f"🗂️ Бэкап конфигов и историй (за {hours}ч)\n\nℹ️ Нет данных за период."
 
+        # Детализация по одному серверу: !configbackup <host> | final
+        if arg:
+            key = arg.strip().lower()
+            if key in ("final", "nas", "📦"):
+                if grouped["final"] is None:
+                    return "📦 Финальная передача на NAS\n\nНет данных."
+                return "📦 Финальная передача всех конфигов на NAS:\n" + _fmt(grouped["final"])
+            entry = next(
+                (e for e in grouped["servers"] if e["host"].lower() == key), None
+            )
+            if entry is None:
+                avail = ", ".join(e["host"] for e in grouped["servers"]) or "—"
+                return f"❓ Сервер «{arg}» не найден.\nДоступны: {avail}"
+            if entry["missing"] or entry["latest"] is None:
+                return f"🗂️ {entry['host']}\n\n⛔ Нет свежего отчёта за период."
+            return f"🗂️ {entry['host']}\n" + _fmt(entry["latest"])
+
+        # Список серверов «кнопками» (в Matrix — команды для перехода).
+        lines = [f"🗂️ Бэкап конфигов и историй (за {hours}ч)", ""]
         ok_count = 0
         for entry in grouped["servers"]:
+            host = entry["host"]
             if entry["missing"]:
-                lines.append(f"⛔ {entry['host']} — нет свежего отчёта")
-                continue
-            row = entry["latest"]
-            if str(row[1] or "").upper().strip() == "OK":
-                ok_count += 1
-            lines.append(_fmt(row))
-
+                icon = "⛔"
+            else:
+                sn = str(entry["latest"][1] or "").upper().strip()
+                if sn == "OK":
+                    ok_count += 1
+                icon = _icon(sn)
+            lines.append(f"{icon} {host}  →  !configbackup {host}")
         if grouped["final"] is not None:
-            lines.append("")
-            lines.append("📦 Финальная передача всех конфигов на NAS:")
-            lines.append(_fmt(grouped["final"]))
-
+            icon = _icon(str(grouped["final"][1] or "").upper().strip())
+            lines.append(f"📦 {icon} Финальная передача на NAS  →  !configbackup final")
         lines.append("")
         if expected:
             lines.append(
@@ -1833,6 +1849,7 @@ class MatrixCommandBot:
             )
         else:
             lines.append(f"Серверов: {len(grouped['servers'])} · 🟢 {ok_count}")
+        lines.append("Подробности: !configbackup <сервер>")
         return "\n".join(lines)
 
     async def _handle_ext_supplier(self) -> str:
@@ -2513,6 +2530,15 @@ class MatrixCommandBot:
             if arg:
                 return command, await self._handle_db_backup_detail(arg)
             return command, await self._handle_ext_db_backup()
+        if command == "!configbackup":
+            if "config_console_backup_monitor" not in self._enabled_extensions():
+                return command, (
+                    "❌ Команда !configbackup недоступна: расширение "
+                    "«config_console_backup_monitor» выключено."
+                )
+            parts = normalized.split(maxsplit=1)
+            arg = parts[1].strip() if len(parts) > 1 else ""
+            return command, await self._handle_ext_config_console(arg)
         ext_item = _EXT_ITEM_BY_COMMAND.get(command)
         if ext_item is not None:
             return command, await self._run_extension_command(ext_item)

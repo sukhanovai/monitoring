@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.62.83
+Server Monitoring System v8.62.84
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.62.83
+Версия: 8.62.84
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -1090,7 +1090,7 @@ def _format_config_console_row(row, backup_bot, status_icons) -> str:
 
 
 def show_config_console_backups(query, backup_bot, hours=None):
-    """Показывает бэкап конфигов/историй, сгруппированный по серверам."""
+    """Показывает список серверов бэкапа конфигов/историй кнопками."""
     try:
         from .backup_utils import get_config_console_servers, group_config_console_rows
 
@@ -1124,30 +1124,119 @@ def show_config_console_backups(query, backup_bot, hours=None):
         status_icons = {"OK": "✅", "PARTIAL": "🟡", "ERROR": "🚨"}
 
         ok_count = 0
-        present = 0
-        message = f"🗂️ *Бэкап конфигов и историй (за {hours}ч)*\n\n"
+        # Кнопки по серверам (по 1 в ряд: имя может быть длинным).
+        keyboard = []
         for entry in servers:
+            host = entry["host"]
             if entry["missing"]:
-                message += f"⛔ *{_md(entry['host'])}* — нет свежего отчёта\n"
-                continue
-            present += 1
-            row = entry["latest"]
-            if str(row[1] or "").upper().strip() == "OK":
-                ok_count += 1
-            message += _format_config_console_row(row, backup_bot, status_icons)
+                icon = "⛔"
+            else:
+                row = entry["latest"]
+                sn = str(row[1] or "").upper().strip()
+                if sn == "OK":
+                    ok_count += 1
+                icon = status_icons.get(sn, "⚪")
+            keyboard.append(
+                [InlineKeyboardButton(f"{icon} {host}", callback_data=f"backup_cc_host|{host}")]
+            )
 
         if final_row is not None:
-            message += "\n━━━━━━━━━━━━━━\n"
-            message += "📦 *Финальная передача всех конфигов на NAS*\n"
-            message += _format_config_console_row(final_row, backup_bot, status_icons)
+            sn = str(final_row[1] or "").upper().strip()
+            icon = status_icons.get(sn, "⚪")
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"📦 {icon} Финальная передача на NAS",
+                        callback_data="backup_cc_final",
+                    )
+                ]
+            )
 
         if expected:
-            message += (
-                f"\nИтого серверов: {len(servers)} · 🟢 {ok_count} · "
-                f"⛔ пропустили {len(grouped['missing'])}"
+            summary = (
+                f"🗂️ *Бэкап конфигов и историй (за {hours}ч)*\n\n"
+                f"Серверов: {len(servers)} · 🟢 {ok_count} · "
+                f"⛔ пропустили {len(grouped['missing'])}\n\n"
+                "Выберите сервер для подробностей:"
             )
         else:
-            message += f"\nИтого серверов: {present} · 🟢 {ok_count}"
+            summary = (
+                f"🗂️ *Бэкап конфигов и историй (за {hours}ч)*\n\n"
+                f"Серверов: {len(servers)} · 🟢 {ok_count}\n\n"
+                "Выберите сервер для подробностей:"
+            )
+
+        keyboard.extend(navigation)
+        query.edit_message_text(
+            summary, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+    except BadRequest as exc:
+        if "Message is not modified" in str(exc):
+            query.answer("Меню уже открыто", show_alert=False)
+            return
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка в show_config_console_backups: {e}")
+        query.edit_message_text("❌ Ошибка при получении данных по бэкапу конфигов/историй")
+
+
+def show_cc_server_detail(query, backup_bot, host, hours=None):
+    """Показывает подробности по одному серверу (или финальной передаче)."""
+    try:
+        from .backup_utils import (
+            get_config_console_servers,
+            group_config_console_rows,
+            is_final_config_console_row,
+        )
+
+        if hours is None:
+            hours = _get_config_console_alert_hours()
+        rows = backup_bot.get_config_console_backups(hours=hours, limit=200)
+        grouped = group_config_console_rows(rows, expected_servers=get_config_console_servers())
+        status_icons = {"OK": "✅", "PARTIAL": "🟡", "ERROR": "🚨"}
+
+        navigation = [
+            [InlineKeyboardButton("↩️ К списку серверов", callback_data="backup_config_console")],
+            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+        ]
+
+        if host == "__final__":
+            final_row = grouped["final"]
+            if final_row is None:
+                query.edit_message_text(
+                    "📦 *Финальная передача на NAS*\n\nНет данных.",
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup(navigation),
+                )
+                return
+            message = "📦 *Финальная передача всех конфигов на NAS*\n\n"
+            message += _format_config_console_row(final_row, backup_bot, status_icons)
+            if final_row[3]:
+                message += f"   Приёмник: {_md(final_row[3])}\n"
+            query.edit_message_text(
+                message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(navigation)
+            )
+            return
+
+        entry = next(
+            (e for e in grouped["servers"] if e["host"].lower() == host.lower()), None
+        )
+        message = f"🗂️ *{_md(host)}*\n\n"
+        if entry is None or entry["missing"] or entry["latest"] is None:
+            message += "⛔ Нет свежего отчёта за период.\n"
+        else:
+            row = entry["latest"]
+            message += _format_config_console_row(row, backup_bot, status_icons)
+            if row[2]:
+                message += f"   Способ доставки: {_md(row[2])}\n"
+            if row[3]:
+                message += f"   Приёмник: {_md(row[3])}\n"
+            if row[4]:
+                message += f"   Начало: {_md(row[4])}\n"
+            if not is_final_config_console_row(row[2]):
+                message += f"   Прогонов за период: {entry['runs']}\n"
 
         query.edit_message_text(
             message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(navigation)
@@ -1159,8 +1248,8 @@ def show_config_console_backups(query, backup_bot, hours=None):
             return
         raise
     except Exception as e:
-        logger.error(f"Ошибка в show_config_console_backups: {e}")
-        query.edit_message_text("❌ Ошибка при получении данных по бэкапу конфигов/историй")
+        logger.error(f"Ошибка в show_cc_server_detail: {e}")
+        query.edit_message_text("❌ Ошибка при получении подробностей по серверу")
 
 
 def show_cc_settings(query):
