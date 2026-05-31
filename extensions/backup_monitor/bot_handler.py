@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.62.79
+Server Monitoring System v8.62.80
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.62.79
+Версия: 8.62.80
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -481,6 +481,25 @@ class BackupMonitorBot(BackupBase):
             return [filter_nas_transfer_row(tuple(row)) for row in rows]
         except Exception as exc:
             logger.error(f"Ошибка получения передач на NAS: {exc}")
+            return []
+
+    def get_config_console_backups(self, hours=48, limit=50):
+        """Получает последние итоги бэкапа конфигов/историй консолей хостов."""
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        query = """
+            SELECT host_name, status, delivery_method, receiver, started_at_text,
+                   completed_at_text, vm_config_count, lxc_config_count,
+                   history_container_count, history_file_count, error_count,
+                   problem_items, received_at
+            FROM config_console_backups
+            WHERE received_at >= ?
+            ORDER BY received_at DESC
+            LIMIT ?
+        """
+        try:
+            return self.execute_query(query, (since_time, limit))
+        except Exception as exc:
+            logger.error(f"Ошибка получения бэкапов конфигов/историй: {exc}")
             return []
 
     # === МЕТОДЫ ДЛЯ ЗАГРУЗКИ ОСТАТКОВ ===

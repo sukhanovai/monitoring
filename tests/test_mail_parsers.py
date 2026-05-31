@@ -149,9 +149,9 @@ def test_seconds_to_duration(processor, raw: int, expected: str) -> None:
 # ---- create_schema ----------------------------------------------------------
 
 
-def test_create_schema_creates_all_six_tables() -> None:
-    """DDL должен создать ровно те 6 таблиц (5 базовых + индексы), на которые
-    рассчитывает остаток BackupProcessor.save_* методов."""
+def test_create_schema_creates_all_tables() -> None:
+    """DDL должен создать ровно те таблицы, на которые рассчитывает
+    остаток BackupProcessor.save_* методов."""
     from modules.mail_parts.db.schema import create_schema
 
     conn = sqlite3.connect(":memory:")
@@ -168,6 +168,8 @@ def test_create_schema_creates_all_six_tables() -> None:
             "snapshot_transfers",
             "mail_server_backups",
             "stock_load_results",
+            "nas_transfers",
+            "config_console_backups",
         }
 
         cursor.execute("SELECT name FROM sqlite_master WHERE type='index'")
@@ -178,6 +180,8 @@ def test_create_schema_creates_all_six_tables() -> None:
             "idx_snapshot_transfers_host_date",
             "idx_mail_backup_date",
             "idx_stock_load_date",
+            "idx_nas_transfers_host_date",
+            "idx_config_console_host_date",
         ):
             assert expected_idx in indexes, expected_idx
     finally:
@@ -198,8 +202,8 @@ def test_create_schema_is_idempotent() -> None:
         cursor.execute(
             "SELECT COUNT(*) FROM sqlite_master " "WHERE type='table' AND name NOT LIKE 'sqlite_%'"
         )
-        # количество таблиц остаётся 5 (плюс sqlite_sequence фильтруем)
-        assert cursor.fetchone()[0] == 5
+        # количество таблиц остаётся стабильным (плюс sqlite_sequence фильтруем)
+        assert cursor.fetchone()[0] == 7
     finally:
         conn.close()
 
@@ -237,5 +241,120 @@ def test_create_schema_migrates_source_name_column() -> None:
         cursor.execute("PRAGMA table_info(stock_load_results)")
         columns = {row[1] for row in cursor.fetchall()}
         assert "source_name" in columns
+    finally:
+        conn.close()
+
+
+# ---- config_console backup --------------------------------------------------
+
+
+_CONFIG_CONSOLE_BODY = """Хост: sr-pve5
+Способ доставки: ssh-rsync
+Приёмник: root@sr-bup:/bup/backup/sr-pve5
+Начало: 2026-05-30 03:00:01
+Завершено: 2026-05-30 03:02:17
+VM конфигов: 4
+LXC конфигов: 9
+Контейнеров с историей: 9
+Файлов истории: 17
+Ошибок: 1
+Проблемные элементы: lxc-164/postgres
+"""
+
+
+def test_parse_config_console_backup_extracts_fields(processor, monkeypatch) -> None:
+    """Парсер достаёт хост/статус из темы и счётчики из тела письма."""
+    from extensions.extension_manager import extension_manager
+
+    monkeypatch.setattr(extension_manager, "is_extension_enabled", lambda _id: True)
+
+    info = processor.parse_config_console_backup(
+        "Config backup sr-pve5 PARTIAL", _CONFIG_CONSOLE_BODY
+    )
+    assert info is not None
+    assert info["host_name"] == "sr-pve5"
+    assert info["status"] == "PARTIAL"
+    assert info["delivery_method"] == "ssh-rsync"
+    assert info["receiver"] == "root@sr-bup:/bup/backup/sr-pve5"
+    assert info["vm_config_count"] == 4
+    assert info["lxc_config_count"] == 9
+    assert info["history_container_count"] == 9
+    assert info["history_file_count"] == 17
+    assert info["error_count"] == 1
+    assert info["problem_items"] == "lxc-164/postgres"
+
+
+def test_parse_config_console_backup_disabled_returns_none(processor, monkeypatch) -> None:
+    """При выключенном расширении парсер ничего не возвращает."""
+    from extensions.extension_manager import extension_manager
+
+    monkeypatch.setattr(extension_manager, "is_extension_enabled", lambda _id: False)
+    assert (
+        processor.parse_config_console_backup(
+            "Config backup sr-pve5 OK", _CONFIG_CONSOLE_BODY
+        )
+        is None
+    )
+
+
+def test_parse_email_file_dispatches_config_console(processor, monkeypatch, tmp_path) -> None:
+    """Полный путь: письмо проходит через parse_email_file и пишется в БД."""
+    import sqlite3 as _sqlite3
+    from pathlib import Path
+
+    from extensions.extension_manager import extension_manager
+
+    monkeypatch.setattr(extension_manager, "is_extension_enabled", lambda _id: True)
+
+    eml = (
+        "From: root@sr-pve5\nTo: katok@202020.ru\n"
+        "Subject: Config backup sr-pve5 PARTIAL\n"
+        "Date: Fri, 30 May 2026 03:02:17 +0700\n"
+        "Content-Type: text/plain; charset=utf-8\n\n" + _CONFIG_CONSOLE_BODY
+    )
+    eml_path = Path(tmp_path) / "msg.eml"
+    eml_path.write_text(eml, encoding="utf-8")
+
+    result = processor.parse_email_file(eml_path)
+    assert result and "config_console_backup" in result
+
+    conn = _sqlite3.connect(str(processor.db_path))
+    try:
+        row = conn.execute(
+            "SELECT host_name, status, lxc_config_count, error_count "
+            "FROM config_console_backups WHERE host_name = ?",
+            ("sr-pve5",),
+        ).fetchone()
+        assert row == ("sr-pve5", "PARTIAL", 9, 1)
+    finally:
+        conn.close()
+
+
+def test_save_config_console_backup_is_idempotent(monkeypatch) -> None:
+    """INSERT OR IGNORE не плодит дублей при повторной обработке письма."""
+    import sqlite3 as _sqlite3
+    from datetime import datetime
+
+    from extensions.extension_manager import extension_manager
+    from modules.mail_parts.processor import BackupProcessor
+
+    monkeypatch.setattr(extension_manager, "is_extension_enabled", lambda _id: True)
+
+    proc = BackupProcessor()
+    info = proc.parse_config_console_backup(
+        "Config backup sr-pve5 PARTIAL", _CONFIG_CONSOLE_BODY
+    )
+    email_date = datetime(2026, 5, 30, 3, 2, 17)
+    proc.save_config_console_backup(info, "Config backup sr-pve5 PARTIAL", email_date)
+    proc.save_config_console_backup(info, "Config backup sr-pve5 PARTIAL", email_date)
+
+    conn = _sqlite3.connect(str(proc.db_path))
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT COUNT(*) FROM config_console_backups WHERE host_name = ?",
+            ("sr-pve5",),
+        )
+        assert cursor.fetchone()[0] == 1
     finally:
         conn.close()
