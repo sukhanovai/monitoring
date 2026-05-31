@@ -1,3 +1,13 @@
+## [8.62.82] - 2026-05-31
+
+### Added
+- RU: Два скрипта для бэкап-сервера. `scripts/backup_server_configs_local.sh` — локальный бэкап конфигов и историй самого бэкап-сервера в `/zfs/nfs/backup/<host>/` (нет VM/LXC, поэтому без SSH и обхода гостей; истории всех пользователей хоста из `getent passwd`, конфиги с версией `~`, истории — новым файлом с timestamp). Письмо «Config backup <host> …» со «Способ доставки: local» — в расширение `config_console_backup_monitor`. `scripts/transfer_backup_to_nas.sh` — надёжная передача `/zfs/nfs/backup` на NAS: вместо постоянного fstab-маунта (`soft`, склонен к stale) монтирует NFS по требованию, проверяет монтирование тестовой записью, переносит rsync'ом по каталогам и отмонтирует; письмо «NAS transfer <host> …» (расширение `nas_transfer_monitor`).
+- EN: Two backup-server scripts. `scripts/backup_server_configs_local.sh` — local backup of the backup server's own configs and histories into `/zfs/nfs/backup/<host>/` (no VM/LXC, so no SSH/guest traversal; all host users' histories via `getent passwd`, configs versioned as `~`, histories as new timestamped files). Sends "Config backup <host> …" with "Способ доставки: local" into the `config_console_backup_monitor` extension. `scripts/transfer_backup_to_nas.sh` — reliable transfer of `/zfs/nfs/backup` to NAS: instead of a permanent fstab mount (`soft`, prone to going stale) it mounts NFS on demand, verifies the mount with a write probe, rsyncs per top-level directory and unmounts; sends "NAS transfer <host> …" (`nas_transfer_monitor` extension).
+
+### Fixed
+- RU: Telegram — в главном меню (`bot/menu/builder.py`) добавлена кнопка «🗂️ Бэкап конфигов и историй» (`backup_config_console`) — раньше она была только во вложенном меню бэкапов.
+- EN: Telegram — added the "🗂️ Бэкап конфигов и историй" button (`backup_config_console`) to the main menu (`bot/menu/builder.py`); previously it existed only in the nested backups submenu.
+
 ## [8.62.81] - 2026-05-31
 
 ### Added
