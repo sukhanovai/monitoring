@@ -161,6 +161,7 @@ class MonitoringAppState {
     var showNasTransferDialog by mutableStateOf(false)
     var showNasSettingsDialog by mutableStateOf(false)
     var nasIgnoreInput by mutableStateOf("")
+    var showConfigConsoleDialog by mutableStateOf(false)
     var showTlsCertDialog by mutableStateOf(false)
     var showTlsSettingsDialog by mutableStateOf(false)
     var tlsCertNameInput by mutableStateOf("")

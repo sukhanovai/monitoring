@@ -101,6 +101,7 @@ class MainViewModel(
         "backup_mail",
         "backup_stock_loads",
         "backup_nas_transfer",
+        "backup_config_console",
         "tls_cert_monitor_status",
         "supplier_stock_reports",
         "settings_patterns_proxmox"
@@ -113,6 +114,7 @@ class MainViewModel(
         "backup_proxmox",
         "backup_stock_loads",
         "backup_nas_transfer",
+        "backup_config_console",
         "tls_cert_monitor_status",
         "supplier_stock_reports",
     )
@@ -127,6 +129,7 @@ class MainViewModel(
         Pair({ action -> action.startsWith("backup_mail") }, "mail_backup_monitor"),
         Pair({ action -> action == "backup_stock_loads" }, "stock_load_monitor"),
         Pair({ action -> action == "backup_nas_transfer" }, "nas_transfer_monitor"),
+        Pair({ action -> action == "backup_config_console" }, "config_console_backup_monitor"),
         Pair({ action -> action == "tls_cert_monitor_status" }, "tls_cert_monitor"),
         Pair({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files")
     )
@@ -714,6 +717,16 @@ class MainViewModel(
                         backupNasTransferHasProblemItems = summary?.hasProblem ?: state.backupNasTransferHasProblemItems
                     )
                 }
+                "extension_config_console_backup_monitor" -> {
+                    val response = withContext(Dispatchers.IO) {
+                        runCatching { currentApi().runControlAction(ControlActionRequest("backup_config_console")) }.getOrNull()
+                    }
+                    val summary = buildBackupTileSummary(response)
+                    state = state.copy(
+                        backupConfigConsoleSummary = summary?.ratioText ?: state.backupConfigConsoleSummary,
+                        backupConfigConsoleHasProblemItems = summary?.hasProblem ?: state.backupConfigConsoleHasProblemItems
+                    )
+                }
                 "extension_supplier_stock_files" -> {
                     val response = withContext(Dispatchers.IO) {
                         runCatching { currentApi().runControlAction(ControlActionRequest("supplier_stock_reports")) }.getOrNull()
@@ -1186,6 +1199,7 @@ class MainViewModel(
                 val snapshotTransferSummary = fetchOrLog("runControlAction(snapshot_transfer_menu)") { currentApi().runControlAction(ControlActionRequest("snapshot_transfer_menu")) }
                 val nasTransferSummary = fetchOrLog("runControlAction(backup_nas_transfer)") { currentApi().runControlAction(ControlActionRequest("backup_nas_transfer")) }
                 val tlsCertSummary = fetchOrLog("runControlAction(tls_cert_monitor_status)") { currentApi().runControlAction(ControlActionRequest("tls_cert_monitor_status")) }
+                val configConsoleSummary = fetchOrLog("runControlAction(backup_config_console)") { currentApi().runControlAction(ControlActionRequest("backup_config_console")) }
                 listOf(
                     monitoring,
                     bot,
@@ -1206,7 +1220,8 @@ class MainViewModel(
                     matrixBot,
                     snapshotTransferSummary,
                     nasTransferSummary,
-                    tlsCertSummary
+                    tlsCertSummary,
+                    configConsoleSummary
                 )
             }
 
@@ -1240,6 +1255,7 @@ class MainViewModel(
             val snapshotTransferSummary = buildSnapshotTransferTileSummary(result[17] as? ControlActionResult)
             val nasTransferSummary = buildBackupTileSummary(result[18] as? ControlActionResult)
             val tlsCertSummary = buildTlsCertTileSummary(result[19] as? ControlActionResult)
+            val configConsoleSummary = buildBackupTileSummary(result[20] as? ControlActionResult)
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -1316,6 +1332,7 @@ class MainViewModel(
                 zfsPoolFreeSpaceSummary = zfsPoolFreeSpaceSummary?.ratioText ?: state.zfsPoolFreeSpaceSummary,
                 snapshotTransferSummary = snapshotTransferSummary?.ratioText ?: state.snapshotTransferSummary,
                 backupNasTransferSummary = nasTransferSummary?.ratioText ?: state.backupNasTransferSummary,
+                backupConfigConsoleSummary = configConsoleSummary?.ratioText ?: state.backupConfigConsoleSummary,
                 tlsCertSummary = tlsCertSummary?.ratioText ?: state.tlsCertSummary,
                 backupProxmoxHasProblemItems = proxmoxBackupSummary?.hasProblem ?: state.backupProxmoxHasProblemItems,
                 backupDatabasesHasProblemItems = dbBackupSummary?.hasProblem ?: state.backupDatabasesHasProblemItems,
@@ -1326,6 +1343,7 @@ class MainViewModel(
                 zfsPoolFreeSpaceHasProblemItems = zfsPoolFreeSpaceSummary?.hasProblem ?: state.zfsPoolFreeSpaceHasProblemItems,
                 snapshotTransferHasProblemItems = snapshotTransferSummary?.hasProblem ?: state.snapshotTransferHasProblemItems,
                 backupNasTransferHasProblemItems = nasTransferSummary?.hasProblem ?: state.backupNasTransferHasProblemItems,
+                backupConfigConsoleHasProblemItems = configConsoleSummary?.hasProblem ?: state.backupConfigConsoleHasProblemItems,
                 tlsCertHasProblemItems = tlsCertSummary?.hasProblem ?: state.tlsCertHasProblemItems,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
@@ -3311,6 +3329,7 @@ data class MainUiState(
     val zfsPoolFreeSpaceSummary: String = "",
     val snapshotTransferSummary: String = "",
     val backupNasTransferSummary: String = "",
+    val backupConfigConsoleSummary: String = "",
     val tlsCertSummary: String = "",
     val backupProxmoxHasProblemItems: Boolean = false,
     val backupDatabasesHasProblemItems: Boolean = false,
@@ -3321,6 +3340,7 @@ data class MainUiState(
     val zfsPoolFreeSpaceHasProblemItems: Boolean = false,
     val snapshotTransferHasProblemItems: Boolean = false,
     val backupNasTransferHasProblemItems: Boolean = false,
+    val backupConfigConsoleHasProblemItems: Boolean = false,
     val tlsCertHasProblemItems: Boolean = false,
     val mailBackupHistoryTitle: String = "",
     val mailBackupHistoryItems: List<MailBackupHistoryItem> = emptyList(),

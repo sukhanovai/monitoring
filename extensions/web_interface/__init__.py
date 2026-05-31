@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.80
+Server Monitoring System v8.62.81
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.80
+Версия: 8.62.81
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1540,6 +1540,7 @@ def _execute_mobile_control_action(action: str):
         "backup_mail",
         "backup_stock_loads",
         "backup_nas_transfer",
+        "backup_config_console",
         "supplier_stock_reports",
         "zfs",
         "zfs_menu",
@@ -1633,6 +1634,10 @@ def _execute_mobile_control_action(action: str):
             "backup_nas_transfer": (
                 "nas_transfer_monitor",
                 "📤 Мониторинг передачи на NAS отключён",
+            ),
+            "backup_config_console": (
+                "config_console_backup_monitor",
+                "🗂️ Мониторинг бэкапа конфигов и историй отключён",
             ),
             "supplier_stock_reports": ("supplier_stock_files", "📦 Остатки поставщиков отключены"),
             "zfs": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
@@ -2360,6 +2365,65 @@ def _execute_mobile_control_action(action: str):
                 [
                     "",
                     f"Итого: {ok_count}/{len(transfers)} успешно",
+                    f"🚨 С проблемами: {problem_count}",
+                ]
+            )
+            return True, "\n".join(lines), "accepted", None
+
+        if action == "backup_config_console":
+            try:
+                cfg_hours = int(
+                    settings_manager.get_setting("CONFIG_CONSOLE_ALERT_HOURS", 168) or 168
+                )
+            except (TypeError, ValueError):
+                cfg_hours = 168
+            rows = backup_bot.get_config_console_backups(hours=cfg_hours, limit=30)
+            if not rows:
+                return (
+                    True,
+                    "🗂️ Бэкап конфигов и историй\n\nДанные пока отсутствуют.",
+                    "accepted",
+                    None,
+                )
+            status_icons = {"OK": "✅", "PARTIAL": "🟡", "ERROR": "🚨"}
+            ok_count = 0
+            problem_count = 0
+            lines = [f"🗂️ Бэкап конфигов и историй (за {cfg_hours}ч)", ""]
+            for (
+                host_name,
+                status,
+                _delivery_method,
+                _receiver,
+                _started_at_text,
+                completed_at_text,
+                vm_config_count,
+                lxc_config_count,
+                history_container_count,
+                history_file_count,
+                error_count,
+                problem_items,
+                received_at,
+            ) in rows:
+                status_norm = str(status or "").upper().strip()
+                if status_norm == "OK":
+                    ok_count += 1
+                else:
+                    problem_count += 1
+                icon = status_icons.get(status_norm, "⚪")
+                time_ago = backup_bot.format_time_ago(received_at)
+                lines.append(
+                    f"{icon} {host_name} · {status_norm or '—'} · "
+                    f"VM {vm_config_count or 0} · LXC {lxc_config_count or 0} · "
+                    f"контейнеров {history_container_count or 0} · "
+                    f"файлов {history_file_count or 0} · ошибок {error_count or 0} "
+                    f"({completed_at_text or time_ago})"
+                )
+                if problem_items:
+                    lines.append(f"   ⚠️ Проблемные элементы: {problem_items}")
+            lines.extend(
+                [
+                    "",
+                    f"Итого: {ok_count}/{len(rows)} успешно",
                     f"🚨 С проблемами: {problem_count}",
                 ]
             )

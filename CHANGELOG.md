@@ -1,3 +1,9 @@
+## [8.62.81] - 2026-05-31
+
+### Added
+- RU: Поверхности UI для расширения `config_console_backup_monitor` (бэкап конфигов VM/LXC и историй консолей на NAS), бэкенд которого добавлен в 8.62.80. Telegram: в меню бэкапов кнопка «🗂️ Конфиги и истории» (`backup_config_console`) показывает сводку по хостам (статус OK/PARTIAL/ERROR, число VM/LXC-конфигов, контейнеров и файлов истории, ошибки, проблемные элементы). Matrix: команда `!configbackup` и пункт в `!extensions`. Android: плитка «Конфиги» в обзоре + диалог с детализацией; серверное mobile-действие `backup_config_console` в `/v1/control/actions`. Новая настройка окна отчёта `CONFIG_CONSOLE_ALERT_HOURS` (по умолчанию 168ч). Данные читаются через `BackupBot.get_config_console_backups`.
+- EN: UI surfaces for the `config_console_backup_monitor` extension (VM/LXC config + console-history backups to NAS) whose backend landed in 8.62.80. Telegram: a "🗂️ Конфиги и истории" button (`backup_config_console`) in the backups menu shows a per-host summary (OK/PARTIAL/ERROR status, VM/LXC config counts, container and history-file counts, errors, problem items). Matrix: `!configbackup` command and an `!extensions` entry. Android: a "Конфиги" overview tile + a detail dialog; server mobile action `backup_config_console` in `/v1/control/actions`. New report-window setting `CONFIG_CONSOLE_ALERT_HOURS` (default 168h). Data is read via `BackupBot.get_config_console_backups`.
+
 ## [8.62.80] - 2026-05-30
 
 ### Added

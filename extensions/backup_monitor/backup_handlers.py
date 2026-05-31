@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.62.80
+Server Monitoring System v8.62.81
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.62.80
+Версия: 8.62.81
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -55,6 +55,11 @@ def create_main_menu():
     if extension_manager.is_extension_enabled("nas_transfer_monitor"):
         keyboard.append(
             [InlineKeyboardButton("📤 Передача на NAS", callback_data="backup_nas_transfer")]
+        )
+
+    if extension_manager.is_extension_enabled("config_console_backup_monitor"):
+        keyboard.append(
+            [InlineKeyboardButton("🗂️ Конфиги и истории", callback_data="backup_config_console")]
         )
 
     keyboard.extend(
@@ -1034,6 +1039,92 @@ def show_nas_transfers(query, backup_bot, hours=None):
     except Exception as e:
         logger.error(f"Ошибка в show_nas_transfers: {e}")
         query.edit_message_text("❌ Ошибка при получении данных по передаче на NAS")
+
+
+def _get_config_console_alert_hours(default: int = 168) -> int:
+    """Возвращает окно отчёта о бэкапе конфигов/историй (CONFIG_CONSOLE_ALERT_HOURS)."""
+    try:
+        from core.config_manager import config_manager
+
+        value = config_manager.get_setting("CONFIG_CONSOLE_ALERT_HOURS", default)
+        return int(value)
+    except (TypeError, ValueError, Exception):
+        return default
+
+
+def show_config_console_backups(query, backup_bot, hours=None):
+    """Показывает итоги бэкапа конфигов VM/LXC и историй консолей хостов."""
+    try:
+        if hours is None:
+            hours = _get_config_console_alert_hours()
+        rows = backup_bot.get_config_console_backups(hours=hours, limit=50)
+
+        navigation = [
+            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+        ]
+
+        if not rows:
+            message = (
+                "🗂️ *Бэкап конфигов и историй*\n\n"
+                f"❌ Нет данных за последние {hours} часов."
+            )
+            query.edit_message_text(
+                message,
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(navigation),
+            )
+            return
+
+        status_icons = {"OK": "✅", "PARTIAL": "🟡", "ERROR": "🚨"}
+
+        ok_count = 0
+        message = f"🗂️ *Бэкап конфигов и историй (за {hours}ч)*\n\n"
+        for (
+            host_name,
+            status,
+            _delivery_method,
+            _receiver,
+            _started_at_text,
+            completed_at_text,
+            vm_config_count,
+            lxc_config_count,
+            history_container_count,
+            history_file_count,
+            error_count,
+            problem_items,
+            received_at,
+        ) in rows:
+            status_norm = str(status or "").upper().strip()
+            if status_norm == "OK":
+                ok_count += 1
+            icon = status_icons.get(status_norm, "⚪")
+            time_ago = backup_bot.format_time_ago(received_at)
+            message += f"{icon} *{_md(host_name)}* — {_md(status)} ({_md(time_ago)})\n"
+            message += (
+                f"   VM: {vm_config_count or 0}, LXC: {lxc_config_count or 0}, "
+                f"контейнеров: {history_container_count or 0}, "
+                f"файлов истории: {history_file_count or 0}, ошибок: {error_count or 0}\n"
+            )
+            if completed_at_text:
+                message += f"   Завершено: {_md(completed_at_text)}\n"
+            if problem_items:
+                message += f"   ⚠️ Проблемные элементы: {_md(problem_items)}\n"
+
+        message += f"\nИтого: {ok_count}/{len(rows)} успешно"
+
+        query.edit_message_text(
+            message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(navigation)
+        )
+
+    except BadRequest as exc:
+        if "Message is not modified" in str(exc):
+            query.answer("Меню уже открыто", show_alert=False)
+            return
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка в show_config_console_backups: {e}")
+        query.edit_message_text("❌ Ошибка при получении данных по бэкапу конфигов/историй")
 
 
 def show_nas_settings(query):
