@@ -117,9 +117,14 @@ LXC конфигов: 9
 
 - Включение/выключение — в списке расширений Telegram-бота, Matrix-бота
   (`!extensions`) и Android-приложения (тумблер в разделе «Расширения»).
+- `CONFIG_CONSOLE_ALERT_HOURS` (по умолчанию 168) — окно, за которое показываются
+  прогоны. Читается ботами, веб-control action `backup_config_console` и
+  Android-плиткой.
 
 ## Где смотреть результат
 
 - **Backend:** таблица `config_console_backups` в `backups.db`; getter
   `BackupBot.get_config_console_backups(hours, limit)`.
-- **Telegram / Matrix / Android:** UI-обвязка добавляется следующим PR (см. CHANGELOG).
+- **Telegram:** меню бэкапов → «🗂️ Конфиги и истории» (`backup_config_console`).
+- **Matrix:** команда `!configbackup` (или кнопка в `!extensions`).
+- **Android:** плитка «Конфиги» в обзоре; тап открывает сводку прогонов.

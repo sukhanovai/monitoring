@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.62.80
+Server Monitoring System v8.62.81
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.62.80
+Версия: 8.62.81
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -36,6 +36,7 @@ from extensions.backup_monitor.backup_handlers import (
     prompt_nas_ignore_add,
     remove_nas_ignore_base,
     set_nas_alert_hours,
+    show_config_console_backups,
     show_mail_backups,
     show_main_menu,
     show_nas_settings,
@@ -792,6 +793,12 @@ def backup_callback(update, context):
                 query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
                 return
             clear_nas_ignore_bases(query)
+
+        elif data == "backup_config_console":
+            if not extension_manager.is_extension_enabled("config_console_backup_monitor"):
+                query.edit_message_text("🗂️ Мониторинг бэкапа конфигов и историй отключён")
+                return
+            show_config_console_backups(query, backup_bot)
 
         elif data == "backup_proxmox":
             if not extension_manager.is_extension_enabled("backup_monitor"):

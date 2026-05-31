@@ -2501,6 +2501,15 @@ private fun MonitoringApp(
                 )
             )
         }
+        extensionsById["config_console_backup_monitor"]?.takeIf { it.enabled }?.let { extension ->
+            add(
+                buildExtensionDataTile(
+                    extension = extension.copy(name = "Конфиги"),
+                    summaryOverride = state.backupConfigConsoleSummary,
+                    hasProblemOverride = state.backupConfigConsoleHasProblemItems
+                )
+            )
+        }
         findExtensionByIds(extensionsById, "supplier_stock_files", "supplier_stock_reports")
             ?.takeIf { it.enabled }
             ?.let { extension ->
@@ -2571,6 +2580,11 @@ private fun MonitoringApp(
                 {
                     showNasTransferDialog = true
                     onAction("backup_nas_transfer")
+                }
+            } else if (extension.id == "config_console_backup_monitor") {
+                {
+                    showConfigConsoleDialog = true
+                    onAction("backup_config_console")
                 }
             } else if (extension.id == "tls_cert_monitor") {
                 {
@@ -5474,6 +5488,53 @@ private fun MonitoringApp(
                         Text(state.message)
                     } else {
                         Text("Загружаем данные о передаче бэкапов на NAS…")
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showConfigConsoleDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfigConsoleDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🗂️ Бэкап конфигов и историй",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { onAction("backup_config_console") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Обновить данные о бэкапе конфигов и историй"
+                        )
+                    }
+                    IconButton(onClick = { showConfigConsoleDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть сведения о бэкапе конфигов и историй"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.message.isNotBlank() && state.messageSource == "global") {
+                        Text(state.message)
+                    } else {
+                        Text("Загружаем данные о бэкапе конфигов и историй…")
                     }
                 }
             },

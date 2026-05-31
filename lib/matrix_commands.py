@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.80
+Server Monitoring System v8.62.81
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.80
+Версия: 8.62.81
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -202,6 +202,13 @@ EXTENSION_MENU_ITEMS: List[ExtensionMenuItem] = [
         "_handle_ext_nas_transfer",
     ),
     ExtensionMenuItem(
+        "config_console_backup_monitor",
+        "🗂️",
+        "!configbackup",
+        "бэкап конфигов и историй",
+        "_handle_ext_config_console",
+    ),
+    ExtensionMenuItem(
         "supplier_stock_files",
         "🏷️",
         "!supplier",
@@ -390,6 +397,14 @@ _EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict(
                 "label": "📤 передача бэкапов на NAS",
                 "keys": ["NAS_TRANSFER_ALERT_HOURS", "NAS_TRANSFER_IGNORE_BASES"],
                 "categories": ["nas_transfer"],
+            },
+        ),
+        (
+            "config_console_backup_monitor",
+            {
+                "label": "🗂️ бэкап конфигов и историй",
+                "keys": ["CONFIG_CONSOLE_ALERT_HOURS"],
+                "categories": ["config_console"],
             },
         ),
         (
@@ -1704,6 +1719,92 @@ class MatrixCommandBot:
             )
             if problem_bases:
                 lines.append(f"   ⚠️ Проблемные базы: {problem_bases}")
+
+        lines.append("")
+        lines.append(f"Всего прогонов: {len(rows)} · 🟢 {ok_count} · 🔴 {err_count}")
+        return "\n".join(lines)
+
+    async def _handle_ext_config_console(self) -> str:
+        import sqlite3
+
+        from config.settings import BACKUP_DB_FILE
+        from core.config_manager import config_manager
+
+        try:
+            hours = int(config_manager.get_setting("CONFIG_CONSOLE_ALERT_HOURS", 168) or 168)
+        except (TypeError, ValueError):
+            hours = 168
+
+        rows: List[Tuple] = []
+        try:
+            conn = sqlite3.connect(str(BACKUP_DB_FILE))
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT host_name, status, vm_config_count, lxc_config_count,
+                       history_container_count, history_file_count, error_count,
+                       problem_items, completed_at_text, received_at
+                FROM config_console_backups
+                WHERE datetime(received_at) >= datetime('now', ?)
+                ORDER BY datetime(received_at) DESC, id DESC
+                LIMIT 30
+                """,
+                (f"-{hours} hours",),
+            )
+            rows = cursor.fetchall()
+        except sqlite3.OperationalError:
+            pass
+        except Exception as exc:
+            debug_log(f"⚠️ config_console Matrix handler: {exc}")
+        finally:
+            try:
+                conn.close()  # type: ignore[name-defined]
+            except Exception:
+                pass
+
+        def _icon(status_val: str) -> str:
+            normalized = (status_val or "").upper()
+            if normalized == "OK":
+                return "🟢"
+            if normalized == "PARTIAL":
+                return "🟡"
+            if normalized == "ERROR":
+                return "🔴"
+            return "⚪️"
+
+        lines = [f"🗂️ Бэкап конфигов и историй (за {hours}ч)", ""]
+        if not rows:
+            lines.append("ℹ️ Нет данных за период.")
+            return "\n".join(lines)
+
+        ok_count = 0
+        err_count = 0
+        for (
+            host_name,
+            status_val,
+            vm_config_count,
+            lxc_config_count,
+            history_container_count,
+            history_file_count,
+            error_count,
+            problem_items,
+            completed_at_text,
+            received_at,
+        ) in rows:
+            status_norm = str(status_val or "").upper().strip()
+            if status_norm == "OK":
+                ok_count += 1
+            elif status_norm == "ERROR":
+                err_count += 1
+            lines.append(
+                f"{_icon(status_norm)} {host_name} · {status_norm or '—'} · "
+                f"VM {vm_config_count or 0} · LXC {lxc_config_count or 0} · "
+                f"контейнеров {history_container_count or 0} · "
+                f"файлов {history_file_count or 0} · ошибок {error_count or 0} "
+                f"({completed_at_text or received_at or '—'})"
+            )
+            if problem_items:
+                lines.append(f"   ⚠️ Проблемные элементы: {problem_items}")
 
         lines.append("")
         lines.append(f"Всего прогонов: {len(rows)} · 🟢 {ok_count} · 🔴 {err_count}")
