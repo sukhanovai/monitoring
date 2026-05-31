@@ -85,13 +85,10 @@ for dir in "${HOST_CONFIG_DIRS[@]}"; do
     fi
 done
 
-# Подсчёт конфигов LXC/VM (по числу файлов-конфигов *.conf в /etc/pve/*).
-if [ -d "/etc/pve/lxc" ]; then
-    LXC_CONFIG_COUNT=$(find /etc/pve/lxc -maxdepth 1 -name '*.conf' -type f 2>/dev/null | wc -l)
-fi
-if [ -d "/etc/pve/qemu-server" ]; then
-    VM_CONFIG_COUNT=$(find /etc/pve/qemu-server -maxdepth 1 -name '*.conf' -type f 2>/dev/null | wc -l)
-fi
+# Подсчёт конфигов LXC/VM — по числу реально собранных в staging файлов *.conf.
+# (Считаем из staging, а не из /etc/pve: на pmxcfs `find -type f` бывает пустым.)
+LXC_CONFIG_COUNT=$(find "$STAGING/config/etc_pve_lxc" -maxdepth 1 -name '*.conf' 2>/dev/null | wc -l | tr -d ' ')
+VM_CONFIG_COUNT=$(find "$STAGING/config/etc_pve_qemu-server" -maxdepth 1 -name '*.conf' 2>/dev/null | wc -l | tr -d ' ')
 
 # Одиночные файлы конфигов.
 mkstage "config"
@@ -118,11 +115,25 @@ fi
 # Для остановленных — определяем rootfs из `pct config` + zfs mountpoint, с
 # фолбэком на glob /rpool/subvol-<id>-disk-* (покрывает -disk-0, -disk-1 и пр.).
 
-# Печатает каталоги пользователей внутри контейнера: /root и /home/*.
-container_user_homes_running() {
+# Печатает "user<TAB>home" для всех пользователей контейнера с реальным домашним
+# каталогом. Источник — passwd, поэтому ловит и root (/root), и postgres
+# (/var/lib/postgresql), и обычных из /home — без хардкода путей. Дубли по
+# домашнему каталогу схлопываются.
+container_users_running() {
     local id="$1"
-    pct exec "$id" -- sh -c 'printf "%s\n" /root; for d in /home/*; do [ -d "$d" ] && printf "%s\n" "$d"; done' \
-        2>>"$DEBUG_LOG"
+    pct exec "$id" -- getent passwd 2>>"$DEBUG_LOG" \
+        | awk -F: '$6 != "" && $6 != "/" && $6 != "/nonexistent" && $6 != "/dev/null" \
+                   { print $1"\t"$6 }' \
+        | sort -u -t"$(printf '\t')" -k2,2
+}
+
+# То же для остановленного контейнера — из <rootfs>/etc/passwd.
+container_users_offline() {
+    local rootfs="$1"
+    [ -f "$rootfs/etc/passwd" ] || return 0
+    awk -F: '$6 != "" && $6 != "/" && $6 != "/nonexistent" && $6 != "/dev/null" \
+             { print $1"\t"$6 }' "$rootfs/etc/passwd" \
+        | sort -u -t"$(printf '\t')" -k2,2
 }
 
 # Определяет путь rootfs остановленного контейнера на ФС бэкап-хоста.
@@ -145,63 +156,65 @@ container_rootfs_offline() {
     return 1
 }
 
-# Кладёт один файл истории в staging: lxc_historyes/<id>/<user>/.bash_history.<ts>
-stage_history_file() {
-    local id="$1" user="$2" src_print_cmd="$3"
+# Сохраняет содержимое одного файла истории в staging с timestamp
+# (истории всегда новый файл — не перезаписываются). $3 — exit code источника.
+stage_history() {
+    local id="$1" user="$2" kind="$3" status="$4"
     local dest="lxc_historyes/$id/$user"
-    mkstage "$dest"
-    if eval "$src_print_cmd" > "$STAGING/$dest/.bash_history.$(TS)" 2>>"$DEBUG_LOG"; then
+    if [ "$status" -eq 0 ]; then
         HISTORY_FILE_COUNT=$((HISTORY_FILE_COUNT + 1))
         return 0
     fi
-    rm -f "$STAGING/$dest/.bash_history."* 2>/dev/null
+    rm -f "$STAGING/$dest/.${kind}."* 2>/dev/null
     return 1
 }
 
 collect_container_histories() {
-    local id="$1" status="$2" got=0 home user rootfs hist psql
+    local id="$1" status="$2" got=0 user home dest rootfs hpath
+
     if [ "$status" = "running" ]; then
-        while IFS= read -r home; do
+        while IFS="$(printf '\t')" read -r user home; do
             [ -n "$home" ] || continue
-            user="$(basename "$home")"
-            [ "$home" = "/root" ] && user="root"
+            dest="lxc_historyes/$id/$user"
+            # .bash_history
             if pct exec "$id" -- test -f "$home/.bash_history" 2>>"$DEBUG_LOG"; then
-                stage_history_file "$id" "$user" \
-                    "pct exec $id -- cat '$home/.bash_history'" && got=1
+                mkstage "$dest"
+                pct exec "$id" -- cat "$home/.bash_history" \
+                    > "$STAGING/$dest/.bash_history.$(TS)" 2>>"$DEBUG_LOG"
+                stage_history "$id" "$user" "bash_history" "$?" && got=1
             fi
-            # psql-история (опционально, best-effort) — обычно у postgres.
-            if [ "$COLLECT_PSQL_HISTORY" = "1" ]; then
-                if pct exec "$id" -- test -f "$home/.psql_history" 2>>"$DEBUG_LOG"; then
-                    mkstage "lxc_historyes/$id/$user"
-                    pct exec "$id" -- cat "$home/.psql_history" \
-                        > "$STAGING/lxc_historyes/$id/$user/.psql_history.$(TS)" \
-                        2>>"$DEBUG_LOG" && HISTORY_FILE_COUNT=$((HISTORY_FILE_COUNT + 1))
-                fi
+            # .psql_history (опционально, best-effort) — обычно у postgres.
+            if [ "$COLLECT_PSQL_HISTORY" = "1" ] \
+               && pct exec "$id" -- test -f "$home/.psql_history" 2>>"$DEBUG_LOG"; then
+                mkstage "$dest"
+                pct exec "$id" -- cat "$home/.psql_history" \
+                    > "$STAGING/$dest/.psql_history.$(TS)" 2>>"$DEBUG_LOG"
+                stage_history "$id" "$user" "psql_history" "$?" && got=1
             fi
-        done < <(container_user_homes_running "$id")
+        done < <(container_users_running "$id")
     else
         rootfs="$(container_rootfs_offline "$id")" || {
             log "Не удалось определить rootfs остановленного контейнера $id"
             add_problem "lxc-$id/rootfs"
             return 1
         }
-        for hist in "$rootfs/root/.bash_history" "$rootfs"/home/*/.bash_history; do
-            [ -f "$hist" ] || continue
-            user="root"
-            [[ "$hist" == "$rootfs"/home/* ]] && user="$(basename "$(dirname "$hist")")"
-            stage_history_file "$id" "$user" "cat '$hist'" && got=1
-        done
-        if [ "$COLLECT_PSQL_HISTORY" = "1" ]; then
-            for psql in "$rootfs/root/.psql_history" "$rootfs"/home/*/.psql_history; do
-                [ -f "$psql" ] || continue
-                user="root"
-                [[ "$psql" == "$rootfs"/home/* ]] && user="$(basename "$(dirname "$psql")")"
-                mkstage "lxc_historyes/$id/$user"
-                cp -a "$psql" "$STAGING/lxc_historyes/$id/$user/.psql_history.$(TS)" \
-                    2>>"$DEBUG_LOG" && HISTORY_FILE_COUNT=$((HISTORY_FILE_COUNT + 1))
-            done
-        fi
+        while IFS="$(printf '\t')" read -r user home; do
+            [ -n "$home" ] || continue
+            dest="lxc_historyes/$id/$user"
+            hpath="$rootfs$home"
+            if [ -f "$hpath/.bash_history" ]; then
+                mkstage "$dest"
+                cp -a "$hpath/.bash_history" "$STAGING/$dest/.bash_history.$(TS)" 2>>"$DEBUG_LOG"
+                stage_history "$id" "$user" "bash_history" "$?" && got=1
+            fi
+            if [ "$COLLECT_PSQL_HISTORY" = "1" ] && [ -f "$hpath/.psql_history" ]; then
+                mkstage "$dest"
+                cp -a "$hpath/.psql_history" "$STAGING/$dest/.psql_history.$(TS)" 2>>"$DEBUG_LOG"
+                stage_history "$id" "$user" "psql_history" "$?" && got=1
+            fi
+        done < <(container_users_offline "$rootfs")
     fi
+
     [ "$got" = "1" ] && HISTORY_CONTAINER_COUNT=$((HISTORY_CONTAINER_COUNT + 1))
     return 0
 }
@@ -229,7 +242,11 @@ if [ "$DRY_RUN" = "1" ]; then
     echo "DRY_RUN staging tree:" >> "$DEBUG_LOG"
     find "$STAGING" -maxdepth 3 >> "$DEBUG_LOG" 2>&1
 else
-    if rsync -az --delete \
+    # --backup --suffix='~': при перезаписи конфига его прошлая версия остаётся
+    #   рядом как <file>~ (как старый `cp -b`). Файлы историй имеют уникальный
+    #   timestamp в имени, поэтому никогда не перезаписываются — копятся.
+    # Без --delete: ранее собранные истории на приёмнике не удаляются.
+    if rsync -az --backup --suffix='~' \
         -e "ssh -i ${SSH_KEY} ${SSH_OPTS}" \
         "$STAGING/" "${RECEIVER}/" >>"$DEBUG_LOG" 2>&1; then
         log "rsync успешно: $RECEIVER"
