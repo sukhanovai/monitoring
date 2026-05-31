@@ -15,11 +15,17 @@
 # уже примонтирован (например, штатным fstab) — переиспользует его и НЕ
 # отмонтирует.
 #
-# Итоговое письмо — в формате расширения nas_transfer_monitor:
-#   Тема: NAS transfer <host> OK|ERROR|SKIPPED
-#   Тело (UTF-8, ключ:значение): Хост/NAS примонтирован/Начало/Завершено/
-#   Баз обработано/Ошибок/Проблемные базы. Здесь «Баз обработано» = число
-#   каталогов верхнего уровня в источнике, перенесённых на NAS.
+# ВАЖНО: это ФИНАЛЬНАЯ передача всех собранных конфигов/историй на NAS, поэтому
+# письмо идёт в формате расширения config_console_backup_monitor (НЕ
+# nas_transfer_monitor — тот про бэкапы 1С из move_and_clear_backups.sh, у него
+# отдельная тема "NAS transfer ..."). Здесь:
+#   Тема: Config backup <host> OK|PARTIAL|ERROR
+#   Тело (UTF-8, ключ:значение):
+#     Хост / Способ доставки: nas-final / Приёмник / Начало / Завершено /
+#     VM конфигов: 0 / LXC конфигов: 0 / Контейнеров с историей: 0 /
+#     Файлов истории: <перенесено каталогов> / Ошибок / Проблемные элементы.
+# Признак «Способ доставки: nas-final» позволяет боту выделить эту запись как
+# общую финальную передачу всех конфигов на NAS.
 
 set -o pipefail
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -176,13 +182,12 @@ fi
 
 RUN_END="$(date '+%Y-%m-%d %H:%M:%S')"
 
-# Статус: SKIPPED — NAS недоступен (ничего не перенесли); ERROR — были сбои
-# переноса; OK — всё успешно.
+# Статус: ERROR — NAS недоступен или были сбои переноса; PARTIAL — доставка
+# прошла, но часть каталогов не перенеслась; OK — всё успешно.
 if [ "$NAS_MOUNTED" = "нет" ] || [ "$DELIVERY_OK" -eq 0 ]; then
-    STATUS="SKIPPED"
-    [ "$DELIVERY_OK" -eq 0 ] && [ "$NAS_MOUNTED" = "да" ] && STATUS="ERROR"
-elif [ "$ERROR_COUNT" -gt 0 ]; then
     STATUS="ERROR"
+elif [ "$ERROR_COUNT" -gt 0 ]; then
+    STATUS="PARTIAL"
 else
     STATUS="OK"
 fi
@@ -193,9 +198,10 @@ if [ "${#PROBLEM_ITEMS[@]}" -gt 0 ]; then
     PROBLEM_STR="${PROBLEM_STR%, }"
 fi
 
-SUBJECT="NAS transfer ${HOST} ${STATUS}"
-MOUNT_REPORT="$NAS_MOUNTED"
-[ "$DRY_RUN" = "1" ] && MOUNT_REPORT="нет"
+# Письмо в формате config_console_backup_monitor (финальная передача на NAS).
+SUBJECT="Config backup ${HOST} ${STATUS}"
+RECEIVER_REPORT="${NFS_SERVER}:${NFS_EXPORT} → ${DEST}"
+[ "$DRY_RUN" = "1" ] && RECEIVER_REPORT="${DEST} (dry-run)"
 
 send_report() {
     if command -v sendmail >/dev/null 2>&1; then
@@ -207,22 +213,30 @@ Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8bit
 
 Хост: ${HOST}
-NAS примонтирован: ${MOUNT_REPORT}
+Способ доставки: nas-final
+Приёмник: ${RECEIVER_REPORT}
 Начало: ${RUN_START}
 Завершено: ${RUN_END}
-Баз обработано: ${BASES_PROCESSED}
+VM конфигов: 0
+LXC конфигов: 0
+Контейнеров с историей: 0
+Файлов истории: ${BASES_PROCESSED}
 Ошибок: ${ERROR_COUNT}
-Проблемные базы: ${PROBLEM_STR}
+Проблемные элементы: ${PROBLEM_STR}
 EOF
     else
         printf '%s\n' \
             "Хост: ${HOST}" \
-            "NAS примонтирован: ${MOUNT_REPORT}" \
+            "Способ доставки: nas-final" \
+            "Приёмник: ${RECEIVER_REPORT}" \
             "Начало: ${RUN_START}" \
             "Завершено: ${RUN_END}" \
-            "Баз обработано: ${BASES_PROCESSED}" \
+            "VM конфигов: 0" \
+            "LXC конфигов: 0" \
+            "Контейнеров с историей: 0" \
+            "Файлов истории: ${BASES_PROCESSED}" \
             "Ошибок: ${ERROR_COUNT}" \
-            "Проблемные базы: ${PROBLEM_STR}" \
+            "Проблемные элементы: ${PROBLEM_STR}" \
             | mail -s "$SUBJECT" "$MAIL_TO"
     fi
 }
@@ -230,11 +244,11 @@ EOF
 if [ "$DRY_RUN" = "1" ]; then
     log "DRY_RUN: письмо не отправлено. Subject='${SUBJECT}' bases=${BASES_PROCESSED}"
     echo "SUBJECT: $SUBJECT"
-    echo "mounted=$MOUNT_REPORT bases=$BASES_PROCESSED errors=$ERROR_COUNT"
+    echo "delivery=nas-final dirs=$BASES_PROCESSED errors=$ERROR_COUNT"
     echo "problems: $PROBLEM_STR"
 else
     send_report
 fi
 
-log "Завершено: ${SUBJECT} (mounted=${MOUNT_REPORT} bases=${BASES_PROCESSED} errors=${ERROR_COUNT})"
+log "Завершено: ${SUBJECT} (delivery=nas-final dirs=${BASES_PROCESSED} errors=${ERROR_COUNT})"
 ################### Конец скрипта ###################################

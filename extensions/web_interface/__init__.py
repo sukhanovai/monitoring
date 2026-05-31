@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.82
+Server Monitoring System v8.62.83
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.82
+Версия: 8.62.83
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2377,8 +2377,18 @@ def _execute_mobile_control_action(action: str):
                 )
             except (TypeError, ValueError):
                 cfg_hours = 168
-            rows = backup_bot.get_config_console_backups(hours=cfg_hours, limit=30)
-            if not rows:
+            rows = backup_bot.get_config_console_backups(hours=cfg_hours, limit=200)
+
+            from extensions.backup_monitor.backup_utils import (
+                get_config_console_servers,
+                group_config_console_rows,
+            )
+
+            expected = get_config_console_servers()
+            grouped = group_config_console_rows(rows, expected_servers=expected)
+            servers = grouped["servers"]
+            final_row = grouped["final"]
+            if not servers and final_row is None:
                 return (
                     True,
                     "🗂️ Бэкап конфигов и историй\n\nДанные пока отсутствуют.",
@@ -2386,47 +2396,47 @@ def _execute_mobile_control_action(action: str):
                     None,
                 )
             status_icons = {"OK": "✅", "PARTIAL": "🟡", "ERROR": "🚨"}
-            ok_count = 0
-            problem_count = 0
-            lines = [f"🗂️ Бэкап конфигов и историй (за {cfg_hours}ч)", ""]
-            for (
-                host_name,
-                status,
-                _delivery_method,
-                _receiver,
-                _started_at_text,
-                completed_at_text,
-                vm_config_count,
-                lxc_config_count,
-                history_container_count,
-                history_file_count,
-                error_count,
-                problem_items,
-                received_at,
-            ) in rows:
-                status_norm = str(status or "").upper().strip()
-                if status_norm == "OK":
-                    ok_count += 1
-                else:
-                    problem_count += 1
-                icon = status_icons.get(status_norm, "⚪")
+
+            def _fmt_cc(row):
+                (
+                    host_name, status, _dm, _rc, _st, completed_at_text,
+                    vm, lxc, hist_c, hist_f, err, problem_items, received_at,
+                ) = row
+                sn = str(status or "").upper().strip()
+                icon = status_icons.get(sn, "⚪")
                 time_ago = backup_bot.format_time_ago(received_at)
-                lines.append(
-                    f"{icon} {host_name} · {status_norm or '—'} · "
-                    f"VM {vm_config_count or 0} · LXC {lxc_config_count or 0} · "
-                    f"контейнеров {history_container_count or 0} · "
-                    f"файлов {history_file_count or 0} · ошибок {error_count or 0} "
+                out = (
+                    f"{icon} {host_name} · {sn or '—'} · "
+                    f"VM {vm or 0} · LXC {lxc or 0} · контейнеров {hist_c or 0} · "
+                    f"файлов {hist_f or 0} · ошибок {err or 0} "
                     f"({completed_at_text or time_ago})"
                 )
                 if problem_items:
-                    lines.append(f"   ⚠️ Проблемные элементы: {problem_items}")
-            lines.extend(
-                [
-                    "",
-                    f"Итого: {ok_count}/{len(rows)} успешно",
-                    f"🚨 С проблемами: {problem_count}",
-                ]
-            )
+                    out += f"\n   ⚠️ Проблемные элементы: {problem_items}"
+                return out
+
+            ok_count = 0
+            lines = [f"🗂️ Бэкап конфигов и историй (за {cfg_hours}ч)", ""]
+            for entry in servers:
+                if entry["missing"]:
+                    lines.append(f"⛔ {entry['host']} — нет свежего отчёта")
+                    continue
+                row = entry["latest"]
+                if str(row[1] or "").upper().strip() == "OK":
+                    ok_count += 1
+                lines.append(_fmt_cc(row))
+            if final_row is not None:
+                lines.append("")
+                lines.append("📦 Финальная передача всех конфигов на NAS:")
+                lines.append(_fmt_cc(final_row))
+            lines.append("")
+            if expected:
+                lines.append(
+                    f"Итого: {ok_count}/{len(servers)} успешно · "
+                    f"⛔ пропустили {len(grouped['missing'])}"
+                )
+            else:
+                lines.append(f"Итого: {ok_count}/{len(servers)} успешно")
             return True, "\n".join(lines), "accepted", None
 
         if action == "supplier_stock_reports" or action in {
@@ -5898,6 +5908,138 @@ def v1_extensions_actions():
                         {"label": "↩️ Назад", "action": back_action},
                         {"label": "✖️ Закрыть", "action": "close"},
                     ],
+                }
+            ),
+            200,
+        )
+
+    if action == "settings_ext_config_console" or action in (
+        "cc_server_clear",
+    ) or action.startswith(
+        ("cc_set_hours|", "cc_server_add|", "cc_unserver|", "cc_pat_add|", "cc_pat_del|")
+    ):
+        from extensions.backup_monitor.backup_utils import (
+            get_config_console_patterns_from_config,
+            get_config_console_servers,
+            save_config_console_patterns,
+            save_config_console_servers,
+        )
+
+        notice = ""
+        if action.startswith("cc_set_hours|"):
+            raw_hours = raw_action.split("|", 1)[1].strip()
+            try:
+                hours_value = int(raw_hours)
+                if hours_value <= 0:
+                    raise ValueError
+                settings_manager.set_setting(
+                    "CONFIG_CONSOLE_ALERT_HOURS", hours_value, "config_console"
+                )
+                notice = f"✅ Период отчёта: {hours_value}ч\n\n"
+            except (TypeError, ValueError):
+                notice = "❌ Некорректное значение периода\n\n"
+        elif action.startswith("cc_server_add|"):
+            raw_value = unquote(raw_action.split("|", 1)[1])
+            names = [p.strip() for p in re.split(r"[,\n;]+", raw_value) if p.strip()]
+            servers = get_config_console_servers()
+            existing = {s.lower() for s in servers}
+            added = []
+            for name in names:
+                if name.lower() not in existing:
+                    servers.append(name)
+                    existing.add(name.lower())
+                    added.append(name)
+            save_config_console_servers(servers)
+            notice = (
+                f"✅ Добавлены серверы: {', '.join(added)}\n\n"
+                if added
+                else "ℹ️ Ничего не добавлено (пусто или дубли)\n\n"
+            )
+        elif action.startswith("cc_unserver|"):
+            srv = unquote(raw_action.split("|", 1)[1]).strip()
+            remaining = [s for s in get_config_console_servers() if s.lower() != srv.lower()]
+            save_config_console_servers(remaining)
+            notice = f"🗑 Сервер «{srv}» удалён из списка\n\n"
+        elif action == "cc_server_clear":
+            save_config_console_servers([])
+            notice = "🧹 Список серверов очищен\n\n"
+        elif action.startswith("cc_pat_add|"):
+            raw_value = unquote(raw_action.split("|", 1)[1]).strip()
+            if not raw_value:
+                notice = "❌ Паттерн не может быть пустым\n\n"
+            else:
+                try:
+                    re.compile(raw_value)
+                    patterns = get_config_console_patterns_from_config()
+                    if raw_value in patterns:
+                        notice = "ℹ️ Такой паттерн уже есть\n\n"
+                    else:
+                        patterns.append(raw_value)
+                        save_config_console_patterns(patterns)
+                        notice = "✅ Паттерн добавлен\n\n"
+                except re.error as exc:
+                    notice = f"❌ Некорректный regex: {exc}\n\n"
+        elif action.startswith("cc_pat_del|"):
+            raw_idx = raw_action.split("|", 1)[1].strip()
+            patterns = get_config_console_patterns_from_config()
+            try:
+                idx = int(raw_idx)
+                if 0 <= idx < len(patterns):
+                    removed = patterns.pop(idx)
+                    save_config_console_patterns(patterns)
+                    notice = f"🗑 Паттерн удалён: {removed[:40]}\n\n"
+                else:
+                    notice = "❌ Нет такого паттерна\n\n"
+            except (TypeError, ValueError):
+                notice = "❌ Некорректный индекс\n\n"
+
+        try:
+            current_hours = int(
+                settings_manager.get_setting("CONFIG_CONSOLE_ALERT_HOURS", 168) or 168
+            )
+        except (TypeError, ValueError):
+            current_hours = 168
+        servers = get_config_console_servers()
+        patterns = get_config_console_patterns_from_config()
+
+        servers_text = ", ".join(servers) if servers else "— (по факту)"
+        patterns_text = "\n".join(f"  • {p}" for p in patterns) if patterns else "— (дефолт)"
+        message = (
+            f"{notice}⚙️ Бэкап конфигов и историй — настройки\n\n"
+            f"• Период отчёта: {current_hours}ч\n"
+            f"• Ожидаемые серверы: {servers_text}\n"
+            f"• Паттерны темы письма:\n{patterns_text}\n\n"
+            "Серверы из списка группируются и подсвечиваются при отсутствии "
+            "свежего отчёта. Добавьте сервер или паттерн в поле ниже."
+        )
+
+        menu_options = []
+        for value in (48, 72, 168, 336):
+            prefix = "✅ " if value == current_hours else ""
+            menu_options.append({"label": f"{prefix}{value}ч", "action": f"cc_set_hours|{value}"})
+        for srv in servers:
+            menu_options.append({"label": f"🗑 {srv}", "action": f"cc_unserver|{srv}"})
+        if servers:
+            menu_options.append({"label": "🧹 Очистить серверы", "action": "cc_server_clear"})
+        for idx, pat in enumerate(patterns):
+            short = pat if len(pat) <= 28 else pat[:25] + "…"
+            menu_options.append({"label": f"🗑 паттерн: {short}", "action": f"cc_pat_del|{idx}"})
+        menu_options.extend(
+            [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
+        )
+
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": message,
+                    "menu_options": menu_options,
                 }
             ),
             200,
