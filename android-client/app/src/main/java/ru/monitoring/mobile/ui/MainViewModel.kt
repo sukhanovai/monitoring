@@ -141,6 +141,7 @@ class MainViewModel(
         Triple("zfs_pool_free_space_monitor", "💽 zfs место", "zfs_pool_free_space_menu"),
         Triple("stock_load_monitor", "📦 Загрузка остатков 1С", "settings_ext_stock_load"),
         Triple("nas_transfer_monitor", "📤 Передача на NAS", "settings_ext_nas"),
+        Triple("config_console_backup_monitor", "🗂️ Конфиги и истории", "settings_ext_config_console"),
         Triple("supplier_stock_files", "📦 Остатки поставщиков", "settings_ext_supplier_stock"),
         Triple("resource_monitor", "💻 Ресурсы", "settings_resources")
     )

@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.82
+Server Monitoring System v8.62.83
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.82
+Версия: 8.62.83
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -403,7 +403,7 @@ _EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict(
             "config_console_backup_monitor",
             {
                 "label": "🗂️ бэкап конфигов и историй",
-                "keys": ["CONFIG_CONSOLE_ALERT_HOURS"],
+                "keys": ["CONFIG_CONSOLE_ALERT_HOURS", "CONFIG_CONSOLE_SERVERS"],
                 "categories": ["config_console"],
             },
         ),
@@ -1735,19 +1735,23 @@ class MatrixCommandBot:
         except (TypeError, ValueError):
             hours = 168
 
+        # Колонки в порядке backup_utils.group_config_console_rows:
+        # host, status, delivery_method, receiver, started, completed,
+        # vm, lxc, hist_containers, hist_files, errors, problem_items, received_at
         rows: List[Tuple] = []
         try:
             conn = sqlite3.connect(str(BACKUP_DB_FILE))
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT host_name, status, vm_config_count, lxc_config_count,
-                       history_container_count, history_file_count, error_count,
-                       problem_items, completed_at_text, received_at
+                SELECT host_name, status, delivery_method, receiver,
+                       started_at_text, completed_at_text, vm_config_count,
+                       lxc_config_count, history_container_count,
+                       history_file_count, error_count, problem_items, received_at
                 FROM config_console_backups
                 WHERE datetime(received_at) >= datetime('now', ?)
                 ORDER BY datetime(received_at) DESC, id DESC
-                LIMIT 30
+                LIMIT 200
                 """,
                 (f"-{hours} hours",),
             )
@@ -1772,42 +1776,63 @@ class MatrixCommandBot:
                 return "🔴"
             return "⚪️"
 
+        def _fmt(row) -> str:
+            (
+                host_name, status_val, _dm, _rc, _st, completed_at_text,
+                vm, lxc, hist_c, hist_f, err, problem_items, received_at,
+            ) = row
+            sn = str(status_val or "").upper().strip()
+            text = (
+                f"{_icon(sn)} {host_name} · {sn or '—'} · "
+                f"VM {vm or 0} · LXC {lxc or 0} · контейнеров {hist_c or 0} · "
+                f"файлов {hist_f or 0} · ошибок {err or 0} "
+                f"({completed_at_text or received_at or '—'})"
+            )
+            if problem_items:
+                text += f"\n   ⚠️ Проблемные элементы: {problem_items}"
+            return text
+
+        try:
+            from extensions.backup_monitor.backup_utils import (
+                get_config_console_servers,
+                group_config_console_rows,
+            )
+
+            expected = get_config_console_servers()
+            grouped = group_config_console_rows(rows, expected_servers=expected)
+        except Exception as exc:
+            debug_log(f"⚠️ config_console grouping: {exc}")
+            expected = []
+            grouped = {"servers": [], "final": None, "missing": []}
+
         lines = [f"🗂️ Бэкап конфигов и историй (за {hours}ч)", ""]
-        if not rows:
+        if not grouped["servers"] and grouped["final"] is None:
             lines.append("ℹ️ Нет данных за период.")
             return "\n".join(lines)
 
         ok_count = 0
-        err_count = 0
-        for (
-            host_name,
-            status_val,
-            vm_config_count,
-            lxc_config_count,
-            history_container_count,
-            history_file_count,
-            error_count,
-            problem_items,
-            completed_at_text,
-            received_at,
-        ) in rows:
-            status_norm = str(status_val or "").upper().strip()
-            if status_norm == "OK":
+        for entry in grouped["servers"]:
+            if entry["missing"]:
+                lines.append(f"⛔ {entry['host']} — нет свежего отчёта")
+                continue
+            row = entry["latest"]
+            if str(row[1] or "").upper().strip() == "OK":
                 ok_count += 1
-            elif status_norm == "ERROR":
-                err_count += 1
-            lines.append(
-                f"{_icon(status_norm)} {host_name} · {status_norm or '—'} · "
-                f"VM {vm_config_count or 0} · LXC {lxc_config_count or 0} · "
-                f"контейнеров {history_container_count or 0} · "
-                f"файлов {history_file_count or 0} · ошибок {error_count or 0} "
-                f"({completed_at_text or received_at or '—'})"
-            )
-            if problem_items:
-                lines.append(f"   ⚠️ Проблемные элементы: {problem_items}")
+            lines.append(_fmt(row))
+
+        if grouped["final"] is not None:
+            lines.append("")
+            lines.append("📦 Финальная передача всех конфигов на NAS:")
+            lines.append(_fmt(grouped["final"]))
 
         lines.append("")
-        lines.append(f"Всего прогонов: {len(rows)} · 🟢 {ok_count} · 🔴 {err_count}")
+        if expected:
+            lines.append(
+                f"Серверов: {len(grouped['servers'])} · 🟢 {ok_count} · "
+                f"⛔ пропустили {len(grouped['missing'])}"
+            )
+        else:
+            lines.append(f"Серверов: {len(grouped['servers'])} · 🟢 {ok_count}")
         return "\n".join(lines)
 
     async def _handle_ext_supplier(self) -> str:

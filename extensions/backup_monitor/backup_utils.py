@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.62.82
+Server Monitoring System v8.62.83
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.62.82
+Версия: 8.62.83
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -694,6 +694,197 @@ def filter_nas_transfer_row(row: tuple) -> tuple:
     except Exception as exc:
         logger.error("Ошибка фильтрации строки NAS по игнор-списку: %s", exc)
         return row
+
+
+def get_config_console_servers() -> list:
+    """Список серверов, ожидаемых в «Бэкап конфигов и историй».
+
+    Хранится в настройке CONFIG_CONSOLE_SERVERS (список коротких имён хостов).
+    По нему UI группирует записи и подсвечивает хосты без свежего отчёта.
+    Пустой список означает «без явного списка» (группировка по факту).
+    """
+    try:
+        import json
+
+        from core.config_manager import config_manager
+
+        raw = config_manager.get_setting("CONFIG_CONSOLE_SERVERS", [])
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except Exception:
+                raw = [part for part in raw.split(",")]
+        if not isinstance(raw, list):
+            return []
+        return [str(item).strip() for item in raw if str(item).strip()]
+    except Exception as exc:
+        logger.error("Ошибка чтения CONFIG_CONSOLE_SERVERS: %s", exc)
+        return []
+
+
+def save_config_console_servers(values) -> list:
+    """Сохраняет нормализованный (без дублей/пустых) список серверов."""
+    cleaned: list = []
+    seen: set = set()
+    for value in values or []:
+        text = str(value).strip()
+        key = text.lower()
+        if text and key not in seen:
+            seen.add(key)
+            cleaned.append(text)
+    try:
+        from core.config_manager import config_manager
+
+        config_manager.set_setting("CONFIG_CONSOLE_SERVERS", cleaned, "config_console")
+    except Exception as exc:
+        logger.error("Ошибка сохранения CONFIG_CONSOLE_SERVERS: %s", exc)
+    return cleaned
+
+
+def get_config_console_patterns_from_config() -> list:
+    """Паттерны темы письма config_console из таблицы backup_patterns.
+
+    Если в таблице ничего нет — отдаём дефолтный паттерн из config.settings,
+    чтобы UI всегда показывал актуальное поведение парсера.
+    """
+    try:
+        from core.config_manager import config_manager
+
+        patterns = config_manager.get_backup_patterns()
+        section = patterns.get("config_console", {})
+        result = []
+        if isinstance(section, dict):
+            result = list(section.get("subject", []) or [])
+        elif isinstance(section, list):
+            result = list(section)
+        result = [str(p) for p in result if str(p).strip()]
+        if result:
+            return result
+    except Exception as exc:
+        logger.error("Ошибка чтения паттернов config_console: %s", exc)
+    # Фолбэк на дефолт
+    try:
+        from config.settings import BACKUP_PATTERNS
+
+        fallback = BACKUP_PATTERNS.get("config_console", {})
+        if isinstance(fallback, dict):
+            return [str(p) for p in fallback.get("subject", []) if str(p).strip()]
+    except Exception:
+        pass
+    return []
+
+
+def save_config_console_patterns(patterns) -> list:
+    """Перезаписывает паттерны темы config_console в таблице backup_patterns.
+
+    Хранятся строками (pattern_type='subject', category='config_console'). Старые
+    записи этой категории удаляются и заменяются переданным списком (без дублей).
+    """
+    cleaned: list = []
+    seen: set = set()
+    for value in patterns or []:
+        text = str(value).strip()
+        if text and text not in seen:
+            seen.add(text)
+            cleaned.append(text)
+    try:
+        from core.config_manager import config_manager
+
+        conn = config_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM backup_patterns WHERE category = 'config_console'")
+        for pattern in cleaned:
+            cursor.execute(
+                """
+                INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+                VALUES ('subject', ?, 'config_console', 1)
+                """,
+                (pattern,),
+            )
+        conn.commit()
+    except Exception as exc:
+        logger.error("Ошибка сохранения паттернов config_console: %s", exc)
+    return cleaned
+
+
+def is_final_config_console_row(delivery_method) -> bool:
+    """True для строки финальной передачи всех конфигов на NAS (nas-final)."""
+    return str(delivery_method or "").strip().lower() == "nas-final"
+
+
+def group_config_console_rows(rows, expected_servers=None):
+    """Группирует строки config_console_backups по серверам для UI.
+
+    rows — список кортежей из BackupBot.get_config_console_backups (по убыванию
+    received_at). Возвращает dict:
+      {
+        "servers": [
+            {"host", "latest": row|None, "is_final": bool, "missing": bool,
+             "runs": int}
+        ],          # сначала по списку expected, потом прочие фактические
+        "final": row|None,          # последняя финальная передача на NAS
+        "missing": [host, ...],     # ожидаемые, но без свежего отчёта
+      }
+    Для каждого хоста берём самую свежую запись (rows уже отсортированы).
+    Записи финальной передачи (nas-final) не считаются per-host отчётом —
+    выносятся отдельно как общий финальный шаг.
+    """
+    expected = list(expected_servers or [])
+    latest_by_host: dict = {}
+    runs_by_host: dict = {}
+    final_row = None
+
+    for row in rows:
+        # row: host_name, status, delivery_method, receiver, started_at_text,
+        #      completed_at_text, vm, lxc, hist_containers, hist_files,
+        #      error_count, problem_items, received_at
+        host = row[0]
+        delivery = row[2]
+        if is_final_config_console_row(delivery):
+            if final_row is None:
+                final_row = row
+            continue
+        runs_by_host[host] = runs_by_host.get(host, 0) + 1
+        if host not in latest_by_host:
+            latest_by_host[host] = row
+
+    ordered_hosts: list = []
+    seen = set()
+    for host in expected:
+        key = host.lower()
+        if key not in seen:
+            seen.add(key)
+            ordered_hosts.append(host)
+    # фактические хосты, которых нет в списке ожидаемых — в конец
+    for host in latest_by_host:
+        if host.lower() not in seen:
+            seen.add(host.lower())
+            ordered_hosts.append(host)
+
+    # сопоставление ожидаемых имён с фактическими (без учёта регистра)
+    latest_ci = {h.lower(): (h, r) for h, r in latest_by_host.items()}
+
+    servers = []
+    missing = []
+    for host in ordered_hosts:
+        actual = latest_ci.get(host.lower())
+        if actual is None:
+            servers.append(
+                {"host": host, "latest": None, "missing": True, "runs": 0}
+            )
+            missing.append(host)
+        else:
+            real_host, row = actual
+            servers.append(
+                {
+                    "host": real_host,
+                    "latest": row,
+                    "missing": False,
+                    "runs": runs_by_host.get(real_host, 1),
+                }
+            )
+
+    return {"servers": servers, "final": final_row, "missing": missing}
 
 
 class BackupBase:

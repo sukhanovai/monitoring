@@ -32,6 +32,7 @@ SSH_KEY="/root/.ssh/id_rsa"                     # приватный ключ д
 SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
 
 COLLECT_PSQL_HISTORY=0                           # 1 — забирать ~/.psql_history у postgres
+REMOTE_CHMOD=1                                    # 1 — chmod -R на приёмнике после rsync (755/644)
 MAIL_TO="katok@202020.ru"
 DEBUG_LOG="${DEBUG_LOG:-/var/log/copy_configs_ssh.log}"
 DRY_RUN="${DRY_RUN:-0}"                          # 1 — не слать rsync/письмо, только печать плана
@@ -242,14 +243,27 @@ if [ "$DRY_RUN" = "1" ]; then
     echo "DRY_RUN staging tree:" >> "$DEBUG_LOG"
     find "$STAGING" -maxdepth 3 >> "$DEBUG_LOG" 2>&1
 else
+    # Выравниваем права в staging до доставки: каталоги 755, файлы 644
+    # (mktemp -d создаёт 700, из-за чего на приёмнике было drwx------).
+    chmod -R u=rwX,go=rX "$STAGING" 2>>"$DEBUG_LOG"
+
     # --backup --suffix='~': при перезаписи конфига его прошлая версия остаётся
     #   рядом как <file>~ (как старый `cp -b`). Файлы историй имеют уникальный
     #   timestamp в имени, поэтому никогда не перезаписываются — копятся.
     # Без --delete: ранее собранные истории на приёмнике не удаляются.
-    if rsync -az --backup --suffix='~' \
+    # --chmod=D755,F644: задаёт права на приёмнике (drwxr-xr-x / -rw-r--r--),
+    #   в т.ч. обновляет уже существующие там файлы/каталоги.
+    if rsync -az --backup --suffix='~' --chmod=D755,F644 \
         -e "ssh -i ${SSH_KEY} ${SSH_OPTS}" \
         "$STAGING/" "${RECEIVER}/" >>"$DEBUG_LOG" 2>&1; then
         log "rsync успешно: $RECEIVER"
+        # Подстраховка: принудительно выставляем права во всём каталоге хоста на
+        # приёмнике (на случай старых файлов от прежней версии скрипта).
+        if [ "${REMOTE_CHMOD:-1}" = "1" ]; then
+            ssh -i "${SSH_KEY}" ${SSH_OPTS} "${RECEIVER_USER}@${RECEIVER_HOST}" \
+                "chmod -R u=rwX,go=rX '${RECEIVER_PATH}'" >>"$DEBUG_LOG" 2>&1 \
+                || log "⚠️ Не удалось выставить права на приёмнике (chmod)"
+        fi
     else
         DELIVERY_OK=0
         log "ОШИБКА rsync на $RECEIVER"

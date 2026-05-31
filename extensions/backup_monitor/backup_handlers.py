@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.62.82
+Server Monitoring System v8.62.83
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.62.82
+Версия: 8.62.83
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -22,6 +22,10 @@ from telegram.error import BadRequest
 from extensions.extension_manager import extension_manager
 
 from .backup_utils import DisplayFormatters
+from .backup_utils import (
+    get_config_console_patterns_from_config,
+    save_config_console_patterns,
+)
 
 formatters = DisplayFormatters()
 from telegram.utils.helpers import escape_markdown
@@ -1052,19 +1056,60 @@ def _get_config_console_alert_hours(default: int = 168) -> int:
         return default
 
 
+def _format_config_console_row(row, backup_bot, status_icons) -> str:
+    """Форматирует одну запись config_console для Telegram (Markdown)."""
+    (
+        host_name,
+        status,
+        _delivery_method,
+        _receiver,
+        _started_at_text,
+        completed_at_text,
+        vm_config_count,
+        lxc_config_count,
+        history_container_count,
+        history_file_count,
+        error_count,
+        problem_items,
+        received_at,
+    ) = row
+    status_norm = str(status or "").upper().strip()
+    icon = status_icons.get(status_norm, "⚪")
+    time_ago = backup_bot.format_time_ago(received_at)
+    text = f"{icon} *{_md(host_name)}* — {_md(status)} ({_md(time_ago)})\n"
+    text += (
+        f"   VM: {vm_config_count or 0}, LXC: {lxc_config_count or 0}, "
+        f"контейнеров: {history_container_count or 0}, "
+        f"файлов истории: {history_file_count or 0}, ошибок: {error_count or 0}\n"
+    )
+    if completed_at_text:
+        text += f"   Завершено: {_md(completed_at_text)}\n"
+    if problem_items:
+        text += f"   ⚠️ Проблемные элементы: {_md(problem_items)}\n"
+    return text
+
+
 def show_config_console_backups(query, backup_bot, hours=None):
-    """Показывает итоги бэкапа конфигов VM/LXC и историй консолей хостов."""
+    """Показывает бэкап конфигов/историй, сгруппированный по серверам."""
     try:
+        from .backup_utils import get_config_console_servers, group_config_console_rows
+
         if hours is None:
             hours = _get_config_console_alert_hours()
-        rows = backup_bot.get_config_console_backups(hours=hours, limit=50)
+        rows = backup_bot.get_config_console_backups(hours=hours, limit=200)
 
         navigation = [
+            [InlineKeyboardButton("⚙️ Настройки", callback_data="backup_cc_settings")],
             [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
             [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
         ]
 
-        if not rows:
+        expected = get_config_console_servers()
+        grouped = group_config_console_rows(rows, expected_servers=expected)
+        servers = grouped["servers"]
+        final_row = grouped["final"]
+
+        if not servers and final_row is None:
             message = (
                 "🗂️ *Бэкап конфигов и историй*\n\n"
                 f"❌ Нет данных за последние {hours} часов."
@@ -1079,39 +1124,30 @@ def show_config_console_backups(query, backup_bot, hours=None):
         status_icons = {"OK": "✅", "PARTIAL": "🟡", "ERROR": "🚨"}
 
         ok_count = 0
+        present = 0
         message = f"🗂️ *Бэкап конфигов и историй (за {hours}ч)*\n\n"
-        for (
-            host_name,
-            status,
-            _delivery_method,
-            _receiver,
-            _started_at_text,
-            completed_at_text,
-            vm_config_count,
-            lxc_config_count,
-            history_container_count,
-            history_file_count,
-            error_count,
-            problem_items,
-            received_at,
-        ) in rows:
-            status_norm = str(status or "").upper().strip()
-            if status_norm == "OK":
+        for entry in servers:
+            if entry["missing"]:
+                message += f"⛔ *{_md(entry['host'])}* — нет свежего отчёта\n"
+                continue
+            present += 1
+            row = entry["latest"]
+            if str(row[1] or "").upper().strip() == "OK":
                 ok_count += 1
-            icon = status_icons.get(status_norm, "⚪")
-            time_ago = backup_bot.format_time_ago(received_at)
-            message += f"{icon} *{_md(host_name)}* — {_md(status)} ({_md(time_ago)})\n"
-            message += (
-                f"   VM: {vm_config_count or 0}, LXC: {lxc_config_count or 0}, "
-                f"контейнеров: {history_container_count or 0}, "
-                f"файлов истории: {history_file_count or 0}, ошибок: {error_count or 0}\n"
-            )
-            if completed_at_text:
-                message += f"   Завершено: {_md(completed_at_text)}\n"
-            if problem_items:
-                message += f"   ⚠️ Проблемные элементы: {_md(problem_items)}\n"
+            message += _format_config_console_row(row, backup_bot, status_icons)
 
-        message += f"\nИтого: {ok_count}/{len(rows)} успешно"
+        if final_row is not None:
+            message += "\n━━━━━━━━━━━━━━\n"
+            message += "📦 *Финальная передача всех конфигов на NAS*\n"
+            message += _format_config_console_row(final_row, backup_bot, status_icons)
+
+        if expected:
+            message += (
+                f"\nИтого серверов: {len(servers)} · 🟢 {ok_count} · "
+                f"⛔ пропустили {len(grouped['missing'])}"
+            )
+        else:
+            message += f"\nИтого серверов: {present} · 🟢 {ok_count}"
 
         query.edit_message_text(
             message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(navigation)
@@ -1125,6 +1161,266 @@ def show_config_console_backups(query, backup_bot, hours=None):
     except Exception as e:
         logger.error(f"Ошибка в show_config_console_backups: {e}")
         query.edit_message_text("❌ Ошибка при получении данных по бэкапу конфигов/историй")
+
+
+def show_cc_settings(query):
+    """Меню настроек расширения «Бэкап конфигов и историй»."""
+    try:
+        from .backup_utils import get_config_console_servers
+
+        current_hours = _get_config_console_alert_hours()
+        servers = get_config_console_servers()
+        patterns = get_config_console_patterns_from_config()
+
+        servers_text = ", ".join(_md(s) for s in servers) if servers else "— (по факту)"
+        patterns_text = "\n".join(f"`{p}`" for p in patterns) if patterns else "— (дефолт)"
+        message = (
+            "⚙️ *Настройки: Бэкап конфигов и историй*\n\n"
+            f"• Период отчёта: *{current_hours}ч*\n"
+            f"• Ожидаемые серверы: {servers_text}\n"
+            f"• Паттерны темы письма:\n{patterns_text}\n\n"
+            "Серверы из списка группируются и подсвечиваются, если нет свежего "
+            "отчёта. Выберите период или измените списки:"
+        )
+
+        presets = [48, 72, 168, 336]
+        hour_buttons = [
+            InlineKeyboardButton(
+                f"{'✅ ' if v == current_hours else ''}{v}ч",
+                callback_data=f"backup_cc_hours|{v}",
+            )
+            for v in presets
+        ]
+        keyboard = [hour_buttons[:2], hour_buttons[2:]]
+
+        for srv in servers:
+            keyboard.append(
+                [InlineKeyboardButton(f"🗑 {srv}", callback_data=f"backup_cc_unserver|{srv}")]
+            )
+        keyboard.append(
+            [InlineKeyboardButton("➕ Добавить сервер", callback_data="backup_cc_server_add")]
+        )
+        if servers:
+            keyboard.append(
+                [InlineKeyboardButton("🧹 Очистить список серверов", callback_data="backup_cc_server_clear")]
+            )
+        keyboard.append(
+            [InlineKeyboardButton("✏️ Паттерны темы письма", callback_data="backup_cc_patterns")]
+        )
+        keyboard.extend(
+            [
+                [InlineKeyboardButton("↩️ Назад", callback_data="backup_config_console")],
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+            ]
+        )
+        query.edit_message_text(
+            message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except BadRequest as exc:
+        if "Message is not modified" in str(exc):
+            query.answer("Меню уже открыто", show_alert=False)
+            return
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка в show_cc_settings: {e}")
+        query.edit_message_text("❌ Ошибка при открытии настроек бэкапа конфигов/историй")
+
+
+def set_cc_alert_hours(query, raw_value):
+    """Сохраняет CONFIG_CONSOLE_ALERT_HOURS и возвращает в меню настроек."""
+    try:
+        hours = int(str(raw_value).strip())
+        if hours <= 0:
+            raise ValueError("hours must be positive")
+        from core.config_manager import config_manager
+
+        config_manager.set_setting("CONFIG_CONSOLE_ALERT_HOURS", hours, "config_console")
+        query.answer(f"✅ Период: {hours}ч", show_alert=False)
+    except (TypeError, ValueError):
+        query.answer("❌ Некорректное значение", show_alert=True)
+    except Exception as e:
+        logger.error(f"Ошибка сохранения CONFIG_CONSOLE_ALERT_HOURS: {e}")
+        query.answer("❌ Ошибка сохранения", show_alert=True)
+    show_cc_settings(query)
+
+
+def prompt_cc_server_add(query, context):
+    """Просит ввести имена серверов для добавления в список ожидаемых."""
+    context.user_data["cc_add_server"] = True
+    keyboard = [[InlineKeyboardButton("↩️ Отмена", callback_data="backup_cc_settings")]]
+    query.edit_message_text(
+        "➕ *Добавление серверов*\n\n"
+        "Отправьте сообщением короткие имена хостов (как в теме письма "
+        "`Config backup <host> …`).\nМожно несколько — через запятую, пробел или "
+        "с новой строки, например:\n`sr-pve5, sr-pve6, sr-bup`",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+def add_cc_server_value(update, raw_text):
+    """Добавляет один или несколько серверов в список ожидаемых."""
+    import re as _re
+
+    from .backup_utils import get_config_console_servers, save_config_console_servers
+
+    text = str(raw_text or "")
+    names = [part.strip() for part in _re.split(r"[,\n;]+", text) if part.strip()]
+    if len(names) == 1 and " " in names[0]:
+        names = [part for part in names[0].split() if part]
+    if not names:
+        update.message.reply_text("❌ Имя сервера не может быть пустым.")
+        return
+
+    servers = get_config_console_servers()
+    existing = {s.lower() for s in servers}
+    added, skipped = [], []
+    for name in names:
+        if name.lower() in existing:
+            skipped.append(name)
+        else:
+            servers.append(name)
+            existing.add(name.lower())
+            added.append(name)
+    save_config_console_servers(servers)
+
+    lines = []
+    if added:
+        lines.append("✅ Добавлены: " + ", ".join(added))
+    if skipped:
+        lines.append("ℹ️ Уже были в списке: " + ", ".join(skipped))
+    if not lines:
+        lines.append("Ничего не добавлено.")
+    lines.append(f"\nВсего серверов: {len(servers)}")
+    update.message.reply_text(
+        "\n".join(lines),
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("⚙️ Настройки", callback_data="backup_cc_settings")],
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            ]
+        ),
+    )
+
+
+def remove_cc_server(query, server_name):
+    """Удаляет сервер из списка и возвращает в меню настроек."""
+    from .backup_utils import get_config_console_servers, save_config_console_servers
+
+    name = str(server_name or "").strip()
+    servers = [s for s in get_config_console_servers() if s.lower() != name.lower()]
+    save_config_console_servers(servers)
+    query.answer(f"🗑 {name} удалён", show_alert=False)
+    show_cc_settings(query)
+
+
+def clear_cc_servers(query):
+    """Очищает список серверов и возвращает в меню настроек."""
+    from .backup_utils import save_config_console_servers
+
+    save_config_console_servers([])
+    query.answer("🧹 Список серверов очищен", show_alert=False)
+    show_cc_settings(query)
+
+
+def show_cc_patterns(query):
+    """Меню редактирования паттернов темы письма config_console."""
+    try:
+        patterns = get_config_console_patterns_from_config()
+        listing = "\n".join(f"`{p}`" for p in patterns) if patterns else "— (используется дефолт)"
+        message = (
+            "✏️ *Паттерны темы письма (Config backup)*\n\n"
+            f"{listing}\n\n"
+            "Паттерн — это regex для темы письма с именованными группами "
+            "`(?P<host>…)` и `(?P<status>…)`. Добавьте свой или удалите лишний:"
+        )
+        keyboard = []
+        for idx, _p in enumerate(patterns):
+            keyboard.append(
+                [InlineKeyboardButton(f"🗑 Паттерн #{idx + 1}", callback_data=f"backup_cc_pat_del|{idx}")]
+            )
+        keyboard.append(
+            [InlineKeyboardButton("➕ Добавить паттерн", callback_data="backup_cc_pat_add")]
+        )
+        keyboard.extend(
+            [
+                [InlineKeyboardButton("↩️ Назад", callback_data="backup_cc_settings")],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+            ]
+        )
+        query.edit_message_text(
+            message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except BadRequest as exc:
+        if "Message is not modified" in str(exc):
+            query.answer("Меню уже открыто", show_alert=False)
+            return
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка в show_cc_patterns: {e}")
+        query.edit_message_text("❌ Ошибка при открытии паттернов")
+
+
+def prompt_cc_pattern_add(query, context):
+    """Просит ввести новый regex-паттерн темы письма."""
+    context.user_data["cc_add_pattern"] = True
+    keyboard = [[InlineKeyboardButton("↩️ Отмена", callback_data="backup_cc_patterns")]]
+    query.edit_message_text(
+        "➕ *Новый паттерн темы письма*\n\n"
+        "Отправьте regex с группами `(?P<host>…)` и `(?P<status>…)`. Пример:\n"
+        "`^Config backup (?P<host>[\\w.-]+) (?P<status>OK|PARTIAL|ERROR)$`",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+def add_cc_pattern_value(update, raw_text):
+    """Сохраняет новый паттерн темы в CONFIG_CONSOLE настройках (config_console)."""
+    import re as _re
+
+    from .backup_utils import save_config_console_patterns
+
+    pattern = str(raw_text or "").strip()
+    if not pattern:
+        update.message.reply_text("❌ Паттерн не может быть пустым.")
+        return
+    try:
+        _re.compile(pattern)
+    except _re.error as exc:
+        update.message.reply_text(f"❌ Некорректный regex: {exc}")
+        return
+
+    patterns = get_config_console_patterns_from_config()
+    if pattern in patterns:
+        update.message.reply_text("ℹ️ Такой паттерн уже есть.")
+        return
+    patterns.append(pattern)
+    save_config_console_patterns(patterns)
+    update.message.reply_text(
+        f"✅ Паттерн добавлен. Всего: {len(patterns)}",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("✏️ Паттерны", callback_data="backup_cc_patterns")]]
+        ),
+    )
+
+
+def remove_cc_pattern(query, raw_index):
+    """Удаляет паттерн по индексу и возвращает в меню паттернов."""
+    from .backup_utils import save_config_console_patterns
+
+    patterns = get_config_console_patterns_from_config()
+    try:
+        idx = int(str(raw_index).strip())
+        if 0 <= idx < len(patterns):
+            removed = patterns.pop(idx)
+            save_config_console_patterns(patterns)
+            query.answer(f"🗑 Удалён: {removed[:30]}", show_alert=False)
+        else:
+            query.answer("❌ Нет такого паттерна", show_alert=True)
+    except (TypeError, ValueError):
+        query.answer("❌ Некорректный индекс", show_alert=True)
+    show_cc_patterns(query)
 
 
 def show_nas_settings(query):

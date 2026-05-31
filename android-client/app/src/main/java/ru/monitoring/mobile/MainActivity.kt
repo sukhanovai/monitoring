@@ -5509,6 +5509,15 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
+                    IconButton(onClick = {
+                        showCcSettingsDialog = true
+                        onExtensionsSettingsAction("settings_ext_config_console")
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Настройки бэкапа конфигов и историй"
+                        )
+                    }
                     IconButton(onClick = { onAction("backup_config_console") }) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
@@ -5535,6 +5544,133 @@ private fun MonitoringApp(
                         Text(state.message)
                     } else {
                         Text("Загружаем данные о бэкапе конфигов и историй…")
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showCcSettingsDialog) {
+        val ccCurrent = state.messageSource == "extensions_settings" &&
+            (state.extensionSettingsMenuAction == "settings_ext_config_console" ||
+                state.extensionSettingsMenuAction.startsWith("cc_"))
+        val ccOptions = if (ccCurrent) {
+            state.extensionSettingsMenuOptions.mapNotNull { option ->
+                val action = resolveMenuOptionAction(option)
+                val label = option.label?.trim().orEmpty()
+                if (label.isBlank() || action.isBlank()) return@mapNotNull null
+                val keep = action.startsWith("cc_set_hours") ||
+                    action.startsWith("cc_unserver") ||
+                    action == "cc_server_clear" ||
+                    action.startsWith("cc_pat_del")
+                if (!keep) return@mapNotNull null
+                label to action
+            }.distinctBy { (_, action) -> action }
+        } else {
+            emptyList()
+        }
+        AlertDialog(
+            onDismissRequest = { showCcSettingsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⚙️ Настройки: Конфиги и истории",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { onExtensionsSettingsAction("settings_ext_config_console") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Обновить настройки бэкапа конфигов и историй"
+                        )
+                    }
+                    IconButton(onClick = { showCcSettingsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть настройки бэкапа конфигов и историй"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (ccCurrent && state.message.isNotBlank()) {
+                        Text(state.message)
+                    } else {
+                        Text("Загружаем настройки бэкапа конфигов и историй…")
+                    }
+
+                    // Добавление ожидаемого сервера (можно несколько через запятую)
+                    OutlinedTextField(
+                        value = ccServerInput,
+                        onValueChange = { ccServerInput = it },
+                        label = { Text("Новый сервер") },
+                        placeholder = { Text("например sr-pve5, sr-pve6") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = {
+                            val value = ccServerInput.trim()
+                            if (value.isNotEmpty()) {
+                                onExtensionsSettingsAction("cc_server_add|" + Uri.encode(value))
+                                ccServerInput = ""
+                            }
+                        },
+                        enabled = ccServerInput.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("➕ Добавить сервер")
+                    }
+
+                    // Добавление regex-паттерна темы письма
+                    OutlinedTextField(
+                        value = ccPatternInput,
+                        onValueChange = { ccPatternInput = it },
+                        label = { Text("Новый паттерн темы") },
+                        placeholder = { Text("^Config backup (?P<host>…) (?P<status>…)$") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = {
+                            val value = ccPatternInput.trim()
+                            if (value.isNotEmpty()) {
+                                onExtensionsSettingsAction("cc_pat_add|" + Uri.encode(value))
+                                ccPatternInput = ""
+                            }
+                        },
+                        enabled = ccPatternInput.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("➕ Добавить паттерн")
+                    }
+
+                    ccOptions.forEach { (label, action) ->
+                        Button(
+                            onClick = { onExtensionsSettingsAction(action) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text(label)
+                        }
                     }
                 }
             },

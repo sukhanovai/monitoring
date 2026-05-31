@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.62.82
+Server Monitoring System v8.62.83
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.62.82
+Версия: 8.62.83
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -37,6 +37,16 @@ from extensions.backup_monitor.backup_handlers import (
     remove_nas_ignore_base,
     set_nas_alert_hours,
     show_config_console_backups,
+    show_cc_settings,
+    set_cc_alert_hours,
+    prompt_cc_server_add,
+    add_cc_server_value,
+    remove_cc_server,
+    clear_cc_servers,
+    show_cc_patterns,
+    prompt_cc_pattern_add,
+    add_cc_pattern_value,
+    remove_cc_pattern,
     show_mail_backups,
     show_main_menu,
     show_nas_settings,
@@ -800,6 +810,33 @@ def backup_callback(update, context):
                 return
             show_config_console_backups(query, backup_bot)
 
+        elif data == "backup_cc_settings":
+            if not extension_manager.is_extension_enabled("config_console_backup_monitor"):
+                query.edit_message_text("🗂️ Мониторинг бэкапа конфигов и историй отключён")
+                return
+            show_cc_settings(query)
+
+        elif data.startswith("backup_cc_hours|"):
+            set_cc_alert_hours(query, data.split("|", 1)[1])
+
+        elif data == "backup_cc_server_add":
+            prompt_cc_server_add(query, context)
+
+        elif data.startswith("backup_cc_unserver|"):
+            remove_cc_server(query, data.split("|", 1)[1])
+
+        elif data == "backup_cc_server_clear":
+            clear_cc_servers(query)
+
+        elif data == "backup_cc_patterns":
+            show_cc_patterns(query)
+
+        elif data == "backup_cc_pat_add":
+            prompt_cc_pattern_add(query, context)
+
+        elif data.startswith("backup_cc_pat_del|"):
+            remove_cc_pattern(query, data.split("|", 1)[1])
+
         elif data == "backup_proxmox":
             if not extension_manager.is_extension_enabled("backup_monitor"):
                 query.edit_message_text("🖥️ Мониторинг бэкапов Proxmox отключён")
@@ -992,6 +1029,18 @@ def backup_host_settings_input_handler(update, context):
     if context.user_data.get("nas_add_ignore_base"):
         context.user_data.pop("nas_add_ignore_base", None)
         add_nas_ignore_base_value(update, message_text)
+        return
+
+    # Добавление серверов в список config_console (prompt_cc_server_add)
+    if context.user_data.get("cc_add_server"):
+        context.user_data.pop("cc_add_server", None)
+        add_cc_server_value(update, message_text)
+        return
+
+    # Добавление паттерна темы письма config_console (prompt_cc_pattern_add)
+    if context.user_data.get("cc_add_pattern"):
+        context.user_data.pop("cc_add_pattern", None)
+        add_cc_pattern_value(update, message_text)
         return
 
     if not message_text:

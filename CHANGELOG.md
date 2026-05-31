@@ -1,3 +1,15 @@
+## [8.62.83] - 2026-05-31
+
+### Changed
+- RU: `copy_configs_ssh.sh` теперь выставляет права на приёмнике (`/zfs/nfs/backup`): каталоги `755`, файлы `644` (`drwxr-xr-x`) вместо `drwx------`. Делается через `chmod` в staging + `rsync --chmod=D755,F644`, плюс подстраховочный `chmod -R` по SSH в каталоге хоста (отключается `REMOTE_CHMOD=0`).
+- RU: Исправлен `transfer_backup_to_nas.sh` — раньше слал письмо, идентичное `move_and_clear_backups.sh` (тема `NAS transfer …`, расширение `nas_transfer_monitor`). Теперь это ФИНАЛЬНАЯ передача всех конфигов, поэтому письмо идёт в формате `config_console_backup_monitor` (`Config backup <host> …`, `Способ доставки: nas-final`) и попадает в «Бэкап конфигов и историй» отдельной выделенной записью.
+- EN: `copy_configs_ssh.sh` now sets receiver-side permissions on `/zfs/nfs/backup`: dirs `755`, files `644` (`drwxr-xr-x`) instead of `drwx------`, via staging `chmod` + `rsync --chmod=D755,F644` plus a safety `chmod -R` over SSH (disable with `REMOTE_CHMOD=0`).
+- EN: Fixed `transfer_backup_to_nas.sh` — it previously sent an email identical to `move_and_clear_backups.sh` (`NAS transfer …`, `nas_transfer_monitor`). As it is the FINAL transfer of all configs, it now emits a `config_console_backup_monitor` email (`Config backup <host> …`, `Способ доставки: nas-final`) shown as a highlighted entry inside "Бэкап конфигов и историй".
+
+### Added
+- RU: «Бэкап конфигов и историй» теперь группирует записи по серверам и подсвечивает ожидаемые серверы без свежего отчёта (⛔). Новая настройка `CONFIG_CONSOLE_SERVERS` (список ожидаемых хостов) и редактор паттернов темы письма (`CONFIG_CONSOLE` категория `backup_patterns`). Реализовано в Telegram (меню «⚙️ Настройки»: период, серверы add/remove/clear, паттерны add/remove), Matrix (`!configbackup` + ключи в `!settings`) и Android (диалог настроек с полями ввода сервера и паттерна). Финальная передача на NAS (`nas-final`) выделяется отдельным блоком «📦 Финальная передача всех конфигов на NAS».
+- EN: "Config & console backups" now groups entries per server and highlights expected servers without a fresh report (⛔). New `CONFIG_CONSOLE_SERVERS` setting (expected-hosts list) and an email-subject pattern editor (`CONFIG_CONSOLE` category in `backup_patterns`). Implemented in Telegram (⚙️ settings menu: hours, servers add/remove/clear, patterns add/remove), Matrix (`!configbackup` + keys in `!settings`), and Android (settings dialog with server/pattern input fields). The final NAS transfer (`nas-final`) is shown as a separate highlighted "📦 Final transfer of all configs to NAS" block.
+
 ## [8.62.82] - 2026-05-31
 
 ### Added
