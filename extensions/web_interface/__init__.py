@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.83
+Server Monitoring System v8.62.84
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.83
+Версия: 8.62.84
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1619,6 +1619,8 @@ def _execute_mobile_control_action(action: str):
     if (
         action in menu_actions
         or action.startswith("backup_host_")
+        or action.startswith("backup_cc_host|")
+        or action == "backup_cc_final"
         or action.startswith("zfsp_")
         or action.startswith("db_detail_")
         or action.startswith("settings_db_toggle_monitor_")
@@ -1670,6 +1672,13 @@ def _execute_mobile_control_action(action: str):
             extension_requirement = (
                 "snapshot_transfer_monitor",
                 "📸 Мониторинг передач ZFS-снэпшотов отключён",
+            )
+        if extension_requirement is None and (
+            action.startswith("backup_cc_host|") or action == "backup_cc_final"
+        ):
+            extension_requirement = (
+                "config_console_backup_monitor",
+                "🗂️ Мониторинг бэкапа конфигов и историй отключён",
             )
         if extension_requirement is not None:
             extension_id, disabled_message = extension_requirement
@@ -2370,7 +2379,9 @@ def _execute_mobile_control_action(action: str):
             )
             return True, "\n".join(lines), "accepted", None
 
-        if action == "backup_config_console":
+        if action == "backup_config_console" or action.startswith("backup_cc_host|") or (
+            action == "backup_cc_final"
+        ):
             try:
                 cfg_hours = int(
                     settings_manager.get_setting("CONFIG_CONSOLE_ALERT_HOURS", 168) or 168
@@ -2388,18 +2399,11 @@ def _execute_mobile_control_action(action: str):
             grouped = group_config_console_rows(rows, expected_servers=expected)
             servers = grouped["servers"]
             final_row = grouped["final"]
-            if not servers and final_row is None:
-                return (
-                    True,
-                    "🗂️ Бэкап конфигов и историй\n\nДанные пока отсутствуют.",
-                    "accepted",
-                    None,
-                )
             status_icons = {"OK": "✅", "PARTIAL": "🟡", "ERROR": "🚨"}
 
             def _fmt_cc(row):
                 (
-                    host_name, status, _dm, _rc, _st, completed_at_text,
+                    host_name, status, dm, rc, st, completed_at_text,
                     vm, lxc, hist_c, hist_f, err, problem_items, received_at,
                 ) = row
                 sn = str(status or "").upper().strip()
@@ -2411,33 +2415,79 @@ def _execute_mobile_control_action(action: str):
                     f"файлов {hist_f or 0} · ошибок {err or 0} "
                     f"({completed_at_text or time_ago})"
                 )
+                if dm:
+                    out += f"\nСпособ доставки: {dm}"
+                if rc:
+                    out += f"\nПриёмник: {rc}"
                 if problem_items:
-                    out += f"\n   ⚠️ Проблемные элементы: {problem_items}"
+                    out += f"\n⚠️ Проблемные элементы: {problem_items}"
                 return out
 
+            # Кнопки по серверам + финальная передача — общие для всех экранов.
             ok_count = 0
-            lines = [f"🗂️ Бэкап конфигов и историй (за {cfg_hours}ч)", ""]
+            menu_options = []
             for entry in servers:
+                host = entry["host"]
                 if entry["missing"]:
-                    lines.append(f"⛔ {entry['host']} — нет свежего отчёта")
-                    continue
-                row = entry["latest"]
-                if str(row[1] or "").upper().strip() == "OK":
-                    ok_count += 1
-                lines.append(_fmt_cc(row))
+                    icon = "⛔"
+                else:
+                    sn = str(entry["latest"][1] or "").upper().strip()
+                    if sn == "OK":
+                        ok_count += 1
+                    icon = status_icons.get(sn, "⚪")
+                menu_options.append(
+                    {"label": f"{icon} {host}", "action": f"backup_cc_host|{host}"}
+                )
             if final_row is not None:
-                lines.append("")
-                lines.append("📦 Финальная передача всех конфигов на NAS:")
-                lines.append(_fmt_cc(final_row))
-            lines.append("")
+                sn = str(final_row[1] or "").upper().strip()
+                icon = status_icons.get(sn, "⚪")
+                menu_options.append(
+                    {"label": f"📦 {icon} Финальная передача на NAS", "action": "backup_cc_final"}
+                )
+            menu_options.extend(
+                [
+                    {"label": "🔄 Обновить", "action": "backup_config_console"},
+                    {"label": "🏠 На главную", "action": "main_menu"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ]
+            )
+
+            # Детализация одного сервера / финальной передачи.
+            if action.startswith("backup_cc_host|") or action == "backup_cc_final":
+                if action == "backup_cc_final":
+                    if final_row is None:
+                        msg = "📦 Финальная передача на NAS\n\nНет данных."
+                    else:
+                        msg = "📦 Финальная передача всех конфигов на NAS\n\n" + _fmt_cc(final_row)
+                else:
+                    host = action.split("|", 1)[1]
+                    entry = next(
+                        (e for e in servers if e["host"].lower() == host.lower()), None
+                    )
+                    if entry is None or entry["missing"] or entry["latest"] is None:
+                        msg = f"🗂️ {host}\n\n⛔ Нет свежего отчёта за период."
+                    else:
+                        msg = f"🗂️ {entry['host']}\n\n" + _fmt_cc(entry["latest"])
+                        msg += f"\nПрогонов за период: {entry['runs']}"
+                return True, msg, "accepted", menu_options
+
+            # Сводный экран со списком серверов-кнопок.
+            if not servers and final_row is None:
+                return (
+                    True,
+                    "🗂️ Бэкап конфигов и историй\n\nДанные пока отсутствуют.",
+                    "accepted",
+                    menu_options,
+                )
+            head = f"🗂️ Бэкап конфигов и историй (за {cfg_hours}ч)\n\n"
             if expected:
-                lines.append(
-                    f"Итого: {ok_count}/{len(servers)} успешно · "
-                    f"⛔ пропустили {len(grouped['missing'])}"
+                head += (
+                    f"Серверов: {len(servers)} · 🟢 {ok_count} · "
+                    f"⛔ пропустили {len(grouped['missing'])}\n\nВыберите сервер:"
                 )
             else:
-                lines.append(f"Итого: {ok_count}/{len(servers)} успешно")
-            return True, "\n".join(lines), "accepted", None
+                head += f"Серверов: {len(servers)} · 🟢 {ok_count}\n\nВыберите сервер:"
+            return True, head, "accepted", menu_options
 
         if action == "supplier_stock_reports" or action in {
             "supplier_stock_reports_download",

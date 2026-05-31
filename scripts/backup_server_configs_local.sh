@@ -122,8 +122,17 @@ if [ "$DRY_RUN" = "1" ]; then
 else
     mkdir -p "$DEST" 2>>"$DEBUG_LOG" || { DELIVERY_OK=0; add_problem "mkdir:$DEST"; }
     if [ "$DELIVERY_OK" -eq 1 ]; then
-        if rsync -a --backup --suffix='~' "$STAGING/" "$DEST/" >>"$DEBUG_LOG" 2>&1; then
+        # Выравниваем права в staging (mktemp -d создаёт 700, из-за чего в
+        # целевом каталоге было drwx------): каталоги 755, файлы 644.
+        chmod -R u=rwX,go=rX "$STAGING" 2>>"$DEBUG_LOG"
+        # --chmod=D755,F644: drwxr-xr-x / -rw-r--r-- в целевом каталоге,
+        #   в т.ч. обновляет уже существующие там файлы/каталоги.
+        if rsync -a --backup --suffix='~' --chmod=D755,F644 \
+            "$STAGING/" "$DEST/" >>"$DEBUG_LOG" 2>&1; then
             log "rsync (local) успешно: $DEST"
+            # Подстраховка для старых файлов от прежней версии скрипта.
+            chmod -R u=rwX,go=rX "$DEST" 2>>"$DEBUG_LOG" \
+                || log "⚠️ Не удалось выставить права в $DEST (chmod)"
         else
             DELIVERY_OK=0
             log "ОШИБКА rsync (local) в $DEST"

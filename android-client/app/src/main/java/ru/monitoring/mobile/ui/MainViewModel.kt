@@ -129,7 +129,7 @@ class MainViewModel(
         Pair({ action -> action.startsWith("backup_mail") }, "mail_backup_monitor"),
         Pair({ action -> action == "backup_stock_loads" }, "stock_load_monitor"),
         Pair({ action -> action == "backup_nas_transfer" }, "nas_transfer_monitor"),
-        Pair({ action -> action == "backup_config_console" }, "config_console_backup_monitor"),
+        Pair({ action -> action == "backup_config_console" || action.startsWith("backup_cc_host|") || action == "backup_cc_final" }, "config_console_backup_monitor"),
         Pair({ action -> action == "tls_cert_monitor_status" }, "tls_cert_monitor"),
         Pair({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files")
     )
@@ -2321,6 +2321,8 @@ class MainViewModel(
             normalizedAction == "backup_proxmox" ||
             normalizedAction == "backup_databases" ||
             normalizedAction.startsWith("backup_host_") ||
+            normalizedAction.startsWith("backup_cc_host|") ||
+            normalizedAction == "backup_cc_final" ||
             normalizedAction.startsWith("db_detail_") ||
             normalizedAction.startsWith("settings_db_toggle_monitor_") ||
             normalizedAction.startsWith("backup_mail") ||
@@ -2334,6 +2336,8 @@ class MainViewModel(
                     normalizedAction.startsWith("zfsp_") ||
                     normalizedAction == "backup_databases" ||
                     normalizedAction.startsWith("backup_host_") ||
+                    normalizedAction.startsWith("backup_cc_host|") ||
+                    normalizedAction == "backup_cc_final" ||
                     normalizedAction.startsWith("db_detail_") ||
                     normalizedAction.startsWith("settings_db_toggle_monitor_") ||
                     normalizedAction.startsWith("backup_mail") ||

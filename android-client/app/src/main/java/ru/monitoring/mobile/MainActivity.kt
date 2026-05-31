@@ -5533,6 +5533,10 @@ private fun MonitoringApp(
                 }
             },
             text = {
+                val ccMenuVisible = state.messageSource == "global" &&
+                    (state.extensionMenuAction == "backup_config_console" ||
+                        state.extensionMenuAction.startsWith("backup_cc_host|") ||
+                        state.extensionMenuAction == "backup_cc_final")
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -5542,6 +5546,29 @@ private fun MonitoringApp(
                 ) {
                     if (state.message.isNotBlank() && state.messageSource == "global") {
                         Text(state.message)
+                        if (ccMenuVisible) {
+                            state.extensionMenuOptions.forEach { option ->
+                                val targetAction = resolveMenuOptionAction(option)
+                                val label = option.label?.trim().orEmpty()
+                                if (label.isNotBlank() && targetAction.isNotBlank() &&
+                                    (targetAction.startsWith("backup_cc_host|") ||
+                                        targetAction == "backup_cc_final" ||
+                                        targetAction == "backup_config_console")
+                                ) {
+                                    Button(
+                                        onClick = { onAction(targetAction) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    ) {
+                                        Text(label)
+                                    }
+                                }
+                            }
+                        }
                     } else {
                         Text("Загружаем данные о бэкапе конфигов и историй…")
                     }
