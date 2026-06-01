@@ -1,3 +1,11 @@
+## [8.62.85] - 2026-06-01
+
+### Changed
+- RU: Android, диалог «Настройка плашек» — плашки теперь располагаются в две колонки с прокруткой, поэтому помещается весь список (раньше длинные элементы не влезали на экран).
+- RU: Android, «Оперативный центр» — шестерёнка настроек добавлена на все плашки, у которых есть свои настройки (ресурсы, proxmox, БД, почта, zfs статусы, zfs место, Конфиги, NAS, TLS). Иконка сделана компактной и прижата к правому краю плашки.
+- EN: Android, "Tile settings" dialog — tiles are now laid out in two scrollable columns so the whole list fits (previously long items overflowed the screen).
+- EN: Android, "Operations center" — a settings gear is now shown on every tile that has its own settings (resources, proxmox, DB, mail, zfs statuses, zfs free space, configs, NAS, TLS). The icon is compact and pinned to the right edge of the tile.
+
 ## [8.62.84] - 2026-05-31
 
 ### Changed

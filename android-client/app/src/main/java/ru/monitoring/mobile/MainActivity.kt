@@ -1241,22 +1241,26 @@ private fun OpsMetricChip(
     ) {
         Box {
             Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 10.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(displayValue, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = valueColor)
                     Text(label, style = MaterialTheme.typography.labelSmall)
                 }
                 if (!isStale && onSettingsClick != null) {
                     IconButton(
                         onClick = onSettingsClick,
-                        modifier = Modifier.height(28.dp)
+                        modifier = Modifier.size(26.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Settings,
-                            contentDescription = "Настройки $label"
+                            contentDescription = "Настройки $label",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
@@ -2642,18 +2646,64 @@ private fun MonitoringApp(
             } else {
                 null
             },
-            onSettingsClick = if (extension.id == "nas_transfer_monitor") {
-                {
-                    showNasSettingsDialog = true
-                    onExtensionsSettingsAction("settings_ext_nas")
+            onSettingsClick = when (extension.id) {
+                "nas_transfer_monitor" -> {
+                    {
+                        showNasSettingsDialog = true
+                        onExtensionsSettingsAction("settings_ext_nas")
+                    }
                 }
-            } else if (extension.id == "tls_cert_monitor") {
-                {
-                    showTlsSettingsDialog = true
-                    onExtensionsSettingsAction("settings_ext_tls")
+                "tls_cert_monitor" -> {
+                    {
+                        showTlsSettingsDialog = true
+                        onExtensionsSettingsAction("settings_ext_tls")
+                    }
                 }
-            } else {
-                null
+                "resource_monitor" -> {
+                    {
+                        showResourceSettingsDialog = true
+                        onExtensionsSettingsAction("settings_resources")
+                    }
+                }
+                "backup_monitor" -> {
+                    {
+                        patternDialogReturnAction = "settings_patterns_proxmox"
+                        showProxmoxPatternsDialog = true
+                        onExtensionsSettingsAction("settings_patterns_proxmox")
+                    }
+                }
+                "database_backup_monitor" -> {
+                    {
+                        patternDialogReturnAction = "settings_patterns_db"
+                        showDatabasePatternsDialog = true
+                        onExtensionsSettingsAction("settings_patterns_db")
+                    }
+                }
+                "mail_backup_monitor" -> {
+                    {
+                        showMailPatternsDialog = true
+                        onExtensionsSettingsAction("settings_patterns_mail")
+                    }
+                }
+                "zfs_monitor" -> {
+                    {
+                        showZfsPatternsDialog = true
+                        onExtensionsSettingsAction("settings_patterns_zfs")
+                    }
+                }
+                "zfs_pool_free_space_monitor" -> {
+                    {
+                        showZfsPoolHostsSettingsDialog = true
+                        onAction("zfsp_hosts_list")
+                    }
+                }
+                "config_console_backup_monitor" -> {
+                    {
+                        showCcSettingsDialog = true
+                        onExtensionsSettingsAction("settings_ext_config_console")
+                    }
+                }
+                else -> null
             }
         )
     }
@@ -8719,24 +8769,40 @@ private fun MonitoringApp(
                 }
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Отметь плашки, которые показывать сразу. Остальные уйдут под «Развернуть».")
-                    allOpsTiles.forEach { tile ->
-                        FilterChip(
-                            selected = tile.id in pinnedOpsTileIds,
-                            onClick = {
-                                val checked = tile.id !in pinnedOpsTileIds
-                                val updated = if (checked) {
-                                    pinnedOpsTileIds + tile.id
-                                } else {
-                                    pinnedOpsTileIds - tile.id
-                                }
-                                pinnedOpsTileIds = if (updated.isEmpty()) setOf(tile.id) else updated
-                                preferences.compactOpsPinnedTileIds = pinnedOpsTileIds.joinToString(",")
-                            },
-                            label = { Text(tile.label, style = MaterialTheme.typography.labelMedium) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 380.dp)
+                            .verticalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        maxItemsInEachRow = 2
+                    ) {
+                        allOpsTiles.forEach { tile ->
+                            FilterChip(
+                                selected = tile.id in pinnedOpsTileIds,
+                                onClick = {
+                                    val checked = tile.id !in pinnedOpsTileIds
+                                    val updated = if (checked) {
+                                        pinnedOpsTileIds + tile.id
+                                    } else {
+                                        pinnedOpsTileIds - tile.id
+                                    }
+                                    pinnedOpsTileIds = if (updated.isEmpty()) setOf(tile.id) else updated
+                                    preferences.compactOpsPinnedTileIds = pinnedOpsTileIds.joinToString(",")
+                                },
+                                label = {
+                                    Text(
+                                        tile.label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        maxLines = 1
+                                    )
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             },
