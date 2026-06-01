@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/snapshot.py
-Server Monitoring System v8.62.85
+Server Monitoring System v8.62.86
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ZFS snapshot transfer settings: hosts toggle/delete, pattern menu/handlers. (PR7d).
 Система мониторинга серверов
-Версия: 8.62.85
+Версия: 8.62.86
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имена сохранены —
@@ -358,6 +358,170 @@ def show_snapshot_transfer_settings(update, context):
         [InlineKeyboardButton("🔍 Паттерны", callback_data="settings_snapshot_patterns")],
         [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
         [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+    ]
+
+    query.edit_message_text(
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+def _snapshot_status_icon(status_val: str) -> str:
+    normalized = (status_val or "").upper()
+    if normalized in {"SUCCESS", "SKIPPED"}:
+        return "🟢"
+    if normalized in {"STARTED", "BUSY"}:
+        return "🟡"
+    if normalized == "ERROR":
+        return "🔴"
+    return "⚪️"
+
+
+def _load_snapshot_latest_by_host() -> dict:
+    """Последний статус передачи снэпшотов по каждому хосту."""
+    transfer_rows: dict[str, dict[str, str]] = {}
+    try:
+        conn = sqlite3.connect(BACKUP_DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT host_name, status, received_at
+            FROM snapshot_transfers
+            ORDER BY datetime(received_at) DESC, id DESC
+            """
+        )
+        for host_name, transfer_status, received_at in cursor.fetchall():
+            host = str(host_name or "").strip()
+            if not host or host in transfer_rows:
+                continue
+            transfer_rows[host] = {
+                "status": str(transfer_status or "").upper().strip(),
+                "received_at": str(received_at or "").strip(),
+            }
+    except Exception as exc:
+        debug_logger(f"⚠️ Не удалось загрузить передачи снэпшотов: {exc}")
+    finally:
+        if "conn" in locals():
+            conn.close()
+    return transfer_rows
+
+
+def show_snapshot_transfers(update, context):
+    """Показать передачи снэпшотов в виде кнопок хостов."""
+    query = update.callback_query
+    query.answer()
+
+    hosts = _get_snapshot_hosts_config()
+    transfer_rows = _load_snapshot_latest_by_host()
+
+    all_hosts = sorted(set(hosts.keys()) | set(transfer_rows.keys()), key=str.lower)
+    ok_hosts = sum(
+        1
+        for host in all_hosts
+        if transfer_rows.get(host, {}).get("status") in {"SUCCESS", "SKIPPED"}
+    )
+    problem_hosts = sum(
+        1 for host in all_hosts if transfer_rows.get(host, {}).get("status") == "ERROR"
+    )
+
+    message = "📸 *Передачи ZFS-снэпшотов*\n\n"
+    if all_hosts:
+        message += (
+            f"Хостов: {len(all_hosts)} · 🟢 {ok_hosts} · 🔴 {problem_hosts}\n\n"
+            "Выберите хост для подробностей:"
+        )
+    else:
+        message += "❌ Пока нет ни хостов, ни записей о передачах."
+
+    keyboard = []
+    for host in all_hosts:
+        latest = transfer_rows.get(host, {})
+        icon = _snapshot_status_icon(latest.get("status") or "")
+        enabled = bool((hosts.get(host) or {}).get("enabled", True)) if host in hosts else True
+        disabled_mark = "" if enabled else "🔕 "
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{icon} {disabled_mark}{host}",
+                    callback_data=f"snapshot_transfer_host|{host}",
+                )
+            ]
+        )
+
+    keyboard.extend(
+        [
+            [InlineKeyboardButton("⚙️ Настройки", callback_data="settings_snapshot_menu")],
+            [InlineKeyboardButton("🔄 Обновить", callback_data="snapshot_transfer_menu")],
+            [
+                InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
+        ]
+    )
+
+    query.edit_message_text(
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+def show_snapshot_transfer_host_details(update, context, host_name: str):
+    """Показать последние записи передач снэпшотов по конкретному хосту."""
+    query = update.callback_query
+    query.answer()
+
+    host_name = (host_name or "").strip()
+    records: list[tuple[str, str, str]] = []
+    try:
+        conn = sqlite3.connect(BACKUP_DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT status, received_at, subject
+            FROM snapshot_transfers
+            WHERE host_name = ?
+            ORDER BY datetime(received_at) DESC, id DESC
+            LIMIT 15
+            """,
+            (host_name,),
+        )
+        for status_val, received_at, subject in cursor.fetchall():
+            records.append(
+                (
+                    str(status_val or "").upper().strip(),
+                    str(received_at or "").strip(),
+                    str(subject or "").strip(),
+                )
+            )
+    except Exception as exc:
+        debug_logger(f"⚠️ Не удалось загрузить передачи снэпшотов по хосту: {exc}")
+    finally:
+        if "conn" in locals():
+            conn.close()
+
+    message = f"📸 *Передачи снэпшотов · {escape_markdown(host_name)}*\n\n"
+    if not records:
+        message += "ℹ️ Записей по хосту пока нет."
+    else:
+        ok_count = sum(1 for status_val, _, _ in records if status_val in {"SUCCESS", "SKIPPED"})
+        err_count = sum(1 for status_val, _, _ in records if status_val == "ERROR")
+        message += f"Показано: {len(records)} · 🟢 {ok_count} · 🔴 {err_count}\n\n"
+        for status_val, received_at, subject in records:
+            icon = _snapshot_status_icon(status_val)
+            line = f"{icon} `{escape_markdown(received_at or '—')}` · `{escape_markdown(status_val or '—')}`"
+            if subject:
+                line += f"\n   ↳ {escape_markdown(subject)}"
+            message += line + "\n"
+
+    keyboard = [
+        [InlineKeyboardButton("↩️ Назад", callback_data="snapshot_transfer_menu")],
+        [
+            InlineKeyboardButton(
+                "🔄 Обновить", callback_data=f"snapshot_transfer_host|{host_name}"
+            )
+        ],
+        [
+            InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(

@@ -1254,13 +1254,13 @@ private fun OpsMetricChip(
                 if (!isStale && onSettingsClick != null) {
                     IconButton(
                         onClick = onSettingsClick,
-                        modifier = Modifier.size(26.dp)
+                        modifier = Modifier.size(34.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Settings,
                             contentDescription = "Настройки $label",
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-                            modifier = Modifier.size(16.dp)
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -2701,6 +2701,12 @@ private fun MonitoringApp(
                     {
                         showCcSettingsDialog = true
                         onExtensionsSettingsAction("settings_ext_config_console")
+                    }
+                }
+                "snapshot_transfer_monitor" -> {
+                    {
+                        showSnapshotSettingsDialog = true
+                        onExtensionsSettingsAction("settings_ext_snapshot")
                     }
                 }
                 else -> null
@@ -5425,6 +5431,15 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
+                    IconButton(onClick = {
+                        showSnapshotSettingsDialog = true
+                        onExtensionsSettingsAction("settings_ext_snapshot")
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Настройки передач снэпшотов"
+                        )
+                    }
                     IconButton(onClick = { onAction("snapshot_transfer_menu") }) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
@@ -5482,6 +5497,130 @@ private fun MonitoringApp(
                         }
                     } else {
                         Text("Пока нет данных о передачах ZFS-снэпшотов. Нажми «Обновить» сверху или потяни список вниз в оперативном центре.")
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showSnapshotSettingsDialog) {
+        val snapshotSettingsCurrent = state.messageSource == "extensions_settings" &&
+            (state.extensionSettingsMenuAction == "settings_ext_snapshot" ||
+                state.extensionSettingsMenuAction.startsWith("snap_"))
+        val snapshotSettingsOptions = if (snapshotSettingsCurrent) {
+            state.extensionSettingsMenuOptions.mapNotNull { option ->
+                val action = resolveMenuOptionAction(option)
+                val label = option.label?.trim().orEmpty()
+                if (label.isBlank() || action.isBlank()) return@mapNotNull null
+                val keep = action.startsWith("snap_host_toggle|") ||
+                    action.startsWith("snap_host_del|") ||
+                    action.startsWith("snap_pat_del|")
+                if (!keep) return@mapNotNull null
+                label to action
+            }.distinctBy { (_, action) -> action }
+        } else {
+            emptyList()
+        }
+        AlertDialog(
+            onDismissRequest = { showSnapshotSettingsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⚙️ Настройки: передачи снэпшотов",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { onExtensionsSettingsAction("settings_ext_snapshot") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Обновить настройки передач снэпшотов"
+                        )
+                    }
+                    IconButton(onClick = { showSnapshotSettingsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть настройки передач снэпшотов"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (snapshotSettingsCurrent && state.message.isNotBlank()) {
+                        Text(state.message)
+                    } else {
+                        Text("Загружаем настройки передач снэпшотов…")
+                    }
+
+                    OutlinedTextField(
+                        value = snapshotHostInput,
+                        onValueChange = { snapshotHostInput = it },
+                        label = { Text("Новый хост передач снэпшотов") },
+                        placeholder = { Text("например sr-srv1") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = {
+                            val value = snapshotHostInput.trim()
+                            if (value.isNotEmpty()) {
+                                onExtensionsSettingsAction("snap_host_add|" + Uri.encode(value))
+                                snapshotHostInput = ""
+                            }
+                        },
+                        enabled = snapshotHostInput.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("➕ Добавить хост")
+                    }
+
+                    OutlinedTextField(
+                        value = snapshotPatternInput,
+                        onValueChange = { snapshotPatternInput = it },
+                        label = { Text("Новый паттерн темы письма") },
+                        placeholder = { Text("например zfs .* snapshot transfer") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = {
+                            val value = snapshotPatternInput.trim()
+                            if (value.isNotEmpty()) {
+                                onExtensionsSettingsAction("snap_pat_add|" + Uri.encode(value))
+                                snapshotPatternInput = ""
+                            }
+                        },
+                        enabled = snapshotPatternInput.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("➕ Добавить паттерн")
+                    }
+
+                    snapshotSettingsOptions.forEach { (label, action) ->
+                        Button(
+                            onClick = { onExtensionsSettingsAction(action) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text(label)
+                        }
                     }
                 }
             },

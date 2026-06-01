@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.62.85
+Server Monitoring System v8.62.86
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.62.85
+Версия: 8.62.86
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -372,9 +372,18 @@ def callback_router(update, context):
         if not extension_manager.is_extension_enabled("snapshot_transfer_monitor"):
             query.edit_message_text("📸 Мониторинг передачи снэпшотов отключён")
             return
-        from bot.handlers.settings_handlers import show_snapshot_transfer_settings
+        from bot.handlers.settings_handlers import show_snapshot_transfers
 
-        show_snapshot_transfer_settings(update, context)
+        show_snapshot_transfers(update, context)
+
+    elif data.startswith("snapshot_transfer_host|"):
+        if not extension_manager.is_extension_enabled("snapshot_transfer_monitor"):
+            query.edit_message_text("📸 Мониторинг передачи снэпшотов отключён")
+            return
+        from bot.handlers.settings_handlers import show_snapshot_transfer_host_details
+
+        host_name = data.split("|", 1)[1] if "|" in data else ""
+        show_snapshot_transfer_host_details(update, context, host_name)
 
     elif data in ("full_report", "daily_report"):
         # в monitor_core это один и тот же handler в старом меню
