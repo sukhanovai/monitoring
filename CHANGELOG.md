@@ -1,3 +1,13 @@
+## [8.62.87] - 2026-06-01
+
+### Fixed
+- RU: Передачи снэпшотов — детализация по хосту (кнопки хостов в боте и Android) не показывала данные: запрос обращался к несуществующей колонке `subject`, тогда как в таблице `snapshot_transfers` она называется `email_subject`. Ошибка молча проглатывалась, и список записей выходил пустым. Исправлено в Telegram-боте и в `web_interface`.
+- EN: Snapshot transfers — the per-host details (host buttons in the bot and Android) showed no data: the query referenced a non-existent `subject` column, while in the `snapshot_transfers` table it is named `email_subject`. The error was silently swallowed and the record list came back empty. Fixed in the Telegram bot and in `web_interface`.
+
+### Changed
+- RU: Android — увеличена шестерёнка «Настройка плашек» (и соседняя иконка синхронизации) в шапке оперативного центра до 28dp: на смартфонах стандартная 24dp выглядела слишком мелкой.
+- EN: Android — enlarged the "Tile settings" gear (and the adjacent sync icon) in the operations center header to 28dp: on phones the default 24dp looked too small.
+
 ## [8.62.86] - 2026-06-01
 
 ### Changed
