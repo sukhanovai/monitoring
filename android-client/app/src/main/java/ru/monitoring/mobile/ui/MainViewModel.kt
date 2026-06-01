@@ -341,7 +341,7 @@ class MainViewModel(
         if (response == null) return null
 
         val message = resolveControlActionMessage(response)
-        val summaryMatch = Regex("""Всего хостов:\s*(\d+).*?🟢\s*(\d+).*?🔴\s*(\d+)""")
+        val summaryMatch = Regex("""(?:Всего хостов|Хостов):\s*(\d+).*?🟢\s*(\d+).*?🔴\s*(\d+)""")
             .find(message.replace("\n", " "))
         if (summaryMatch != null) {
             val total = summaryMatch.groupValues.getOrNull(1)?.toIntOrNull()
@@ -2327,7 +2327,8 @@ class MainViewModel(
             normalizedAction.startsWith("settings_db_toggle_monitor_") ||
             normalizedAction.startsWith("backup_mail") ||
             normalizedAction.startsWith("supplier_stock_reports_") ||
-            normalizedAction.startsWith("supplier_stock_report_source_day|")
+            normalizedAction.startsWith("supplier_stock_report_source_day|") ||
+            normalizedAction.startsWith("snapshot_transfer_host_")
         ) {
             viewModelScope.launch {
                 state = state.copy(isLoading = true)
