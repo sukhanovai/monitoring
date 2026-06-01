@@ -1,3 +1,15 @@
+## [8.62.88] - 2026-06-01
+
+### Fixed
+- RU: Android — тап по кнопке хоста в «Передачах снэпшотов» не подгружал данные: во внешнем условии `sendAction` не было ветки `snapshot_transfer_host_…`, поэтому запрос детализации по хосту вообще не отправлялся (хотя внутренний блок его уже умел обрабатывать). Добавлена ветка — детализация по хосту теперь грузится.
+- RU: Android — поправлен разбор сводки плашки «снэпшоты»: после перехода на кнопки хостов серверная строка стала «Хостов: N», а регэксп всё ещё ждал «Всего хостов:». Теперь принимаются оба варианта.
+- EN: Android — tapping a host button in "Snapshot transfers" loaded no data: the outer `sendAction` guard was missing a `snapshot_transfer_host_…` branch, so the per-host detail request was never sent (even though the inner block already handled it). Added the branch — per-host details now load.
+- EN: Android — fixed the "снэпшоты" tile summary parsing: after switching to host buttons the server line became "Хостов: N", but the regex still expected "Всего хостов:". Both are now accepted.
+
+### Changed
+- RU: Android — шестерёнка «Настройка плашек» в шапке оперативного центра выровнена по габаритам с иконкой синхронизации (обе в кнопках 44dp с иконкой 30dp) — на смартфонах раньше выглядела мельче.
+- EN: Android — the "Tile settings" gear in the operations center header is aligned in size with the sync icon (both 44dp buttons with a 30dp icon) — on phones it previously looked smaller.
+
 ## [8.62.87] - 2026-06-01
 
 ### Fixed

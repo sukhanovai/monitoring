@@ -3026,23 +3026,29 @@ private fun MonitoringApp(
                                 }
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                IconButton(onClick = {
-                                    onRefreshData()
-                                    showServerAvailabilityDialog = false
-                                    showServerResourcesMenu = false
-                                    showServerResourcesDetailsDialog = false
-                                }) {
+                                IconButton(
+                                    onClick = {
+                                        onRefreshData()
+                                        showServerAvailabilityDialog = false
+                                        showServerResourcesMenu = false
+                                        showServerResourcesDetailsDialog = false
+                                    },
+                                    modifier = Modifier.size(44.dp)
+                                ) {
                                     Icon(
                                         imageVector = Icons.Filled.Sync,
                                         contentDescription = "Синхронизировать данные",
-                                        modifier = Modifier.size(28.dp)
+                                        modifier = Modifier.size(30.dp)
                                     )
                                 }
-                                IconButton(onClick = { showTileSettingsDialog = true }) {
+                                IconButton(
+                                    onClick = { showTileSettingsDialog = true },
+                                    modifier = Modifier.size(44.dp)
+                                ) {
                                     Icon(
                                         imageVector = Icons.Filled.Settings,
                                         contentDescription = "Настроить плашки",
-                                        modifier = Modifier.size(28.dp)
+                                        modifier = Modifier.size(30.dp)
                                     )
                                 }
                             }
