@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/stock_load.py
-Server Monitoring System v8.62.84
+Server Monitoring System v8.62.85
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 StockLoadParserMixin — часть BackupProcessor (PR6c серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.84
+Версия: 8.62.85
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Mixin StockLoadParserMixin; объединяется с другими mixin'ами в BackupProcessor.
