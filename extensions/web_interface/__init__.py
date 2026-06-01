@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.86
+Server Monitoring System v8.62.87
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.86
+Версия: 8.62.87
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1855,7 +1855,7 @@ def _execute_mobile_control_action(action: str):
                 snap_cursor = snap_conn.cursor()
                 snap_cursor.execute(
                     """
-                    SELECT status, received_at, subject
+                    SELECT status, received_at, email_subject
                     FROM snapshot_transfers
                     WHERE host_name = ?
                     ORDER BY datetime(received_at) DESC, id DESC

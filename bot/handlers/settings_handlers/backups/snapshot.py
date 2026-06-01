@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/snapshot.py
-Server Monitoring System v8.62.86
+Server Monitoring System v8.62.87
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ZFS snapshot transfer settings: hosts toggle/delete, pattern menu/handlers. (PR7d).
 Система мониторинга серверов
-Версия: 8.62.86
+Версия: 8.62.87
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имена сохранены —
@@ -475,7 +475,7 @@ def show_snapshot_transfer_host_details(update, context, host_name: str):
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT status, received_at, subject
+            SELECT status, received_at, email_subject
             FROM snapshot_transfers
             WHERE host_name = ?
             ORDER BY datetime(received_at) DESC, id DESC

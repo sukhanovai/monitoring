@@ -3034,13 +3034,15 @@ private fun MonitoringApp(
                                 }) {
                                     Icon(
                                         imageVector = Icons.Filled.Sync,
-                                        contentDescription = "Синхронизировать данные"
+                                        contentDescription = "Синхронизировать данные",
+                                        modifier = Modifier.size(28.dp)
                                     )
                                 }
                                 IconButton(onClick = { showTileSettingsDialog = true }) {
                                     Icon(
                                         imageVector = Icons.Filled.Settings,
-                                        contentDescription = "Настроить плашки"
+                                        contentDescription = "Настроить плашки",
+                                        modifier = Modifier.size(28.dp)
                                     )
                                 }
                             }
