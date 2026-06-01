@@ -1,3 +1,13 @@
+## [8.62.86] - 2026-06-01
+
+### Changed
+- RU: Telegram-бот, «📸 Передачи снэпшотов» теперь показывается списком **кнопок хостов** — тап по хосту открывает его последние 15 записей; настройки доступны кнопкой ⚙️. Появились детали по хосту (`snapshot_transfer_host|<host>`).
+- RU: Android — снэпшоты получили экран настроек (хосты add/toggle/delete, паттерны темы письма add/delete) через API `settings_ext_snapshot`/`snap_*`, и на плашке «снэпшоты» появилась шестерёнка. Список передач снэпшотов организован кнопками хостов.
+- RU: Android — увеличена шестерёнка настроек на плашках оперативного центра (была слишком мелкой на реальных устройствах): иконка 20dp в кнопке 34dp.
+- EN: Telegram bot, "📸 Snapshot transfers" is now shown as a **list of host buttons** — tapping a host opens its latest 15 records; settings are available via the ⚙️ button. Added per-host details (`snapshot_transfer_host|<host>`).
+- EN: Android — snapshots gained a settings screen (hosts add/toggle/delete, email-subject patterns add/delete) via the `settings_ext_snapshot`/`snap_*` API, and the "снэпшоты" tile now has a gear. The snapshot transfers list is organised as host buttons.
+- EN: Android — enlarged the per-tile settings gear in the operations center (it was too small on real devices): a 20dp icon inside a 34dp button.
+
 ## [8.62.85] - 2026-06-01
 
 ### Changed

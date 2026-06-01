@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/mail.py
-Server Monitoring System v8.62.85
+Server Monitoring System v8.62.86
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 MailBackupParserMixin — часть BackupProcessor (PR6c серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.85
+Версия: 8.62.86
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Mixin MailBackupParserMixin; объединяется с другими mixin'ами в BackupProcessor.

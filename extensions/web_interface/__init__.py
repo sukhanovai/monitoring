@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.85
+Server Monitoring System v8.62.86
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.85
+Версия: 8.62.86
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1793,37 +1793,38 @@ def _execute_mobile_control_action(action: str):
             problem_hosts = 0
             menu_options: list[dict] = []
 
-            if not hosts_cfg:
-                lines.append("ℹ️ Список хостов передач снэпшотов пуст.")
+            # Хосты — кнопками. В список включаем и настроенные хосты,
+            # и те, по которым есть записи о передачах.
+            all_host_names = sorted(
+                set(hosts_cfg.keys()) | set(transfer_rows.keys()), key=str.lower
+            )
+            total_hosts = len(all_host_names)
+            if not all_host_names:
+                lines.append("ℹ️ Пока нет ни хостов, ни записей о передачах.")
             else:
-                lines.append("📋 Хосты:")
-                for host_name in sorted(hosts_cfg.keys()):
-                    host_cfg = hosts_cfg.get(host_name) or {}
-                    if not isinstance(host_cfg, dict):
-                        host_cfg = {}
-                    enabled = bool(host_cfg.get("enabled", True))
-                    start_time = str(host_cfg.get("start_time") or "—")
-                    host_state = "🟢" if enabled else "🔴"
+                for host_name in all_host_names:
                     latest = transfer_rows.get(host_name, {})
                     latest_status = str(latest.get("status") or "—")
                     transfer_state = _status_icon(latest_status)
-                    received_at = str(latest.get("received_at") or "—")
                     if latest_status in {"SUCCESS", "SKIPPED"}:
                         ok_hosts += 1
                     elif latest_status == "ERROR":
                         problem_hosts += 1
-                    lines.append(
-                        f"{host_state} {host_name} · старт {start_time} · "
-                        f"{transfer_state} {latest_status} ({received_at})"
-                    )
+                    host_cfg = hosts_cfg.get(host_name) or {}
+                    if not isinstance(host_cfg, dict):
+                        host_cfg = {}
+                    disabled_mark = "" if bool(host_cfg.get("enabled", True)) else "🔕 "
                     menu_options.append(
                         {
-                            "label": f"{transfer_state} {host_name}",
+                            "label": f"{transfer_state} {disabled_mark}{host_name}",
                             "action": f"snapshot_transfer_host_{host_name}",
                         }
                     )
+                lines.append(
+                    f"Хостов: {total_hosts} · 🟢 {ok_hosts} · 🔴 {problem_hosts}"
+                )
                 lines.append("")
-                lines.append(f"Всего хостов: {total_hosts} · 🟢 {ok_hosts} · 🔴 {problem_hosts}")
+                lines.append("Выберите хост, чтобы открыть последние 15 записей.")
 
             if recent_rows:
                 lines.append("")
@@ -6169,6 +6170,168 @@ def v1_extensions_actions():
             menu_options.append({"label": f"🗑 {base}", "action": f"nas_unignore|{base}"})
         if ignore_bases:
             menu_options.append({"label": "🧹 Очистить игнор-список", "action": "nas_ignore_clear"})
+        menu_options.extend(
+            [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
+        )
+
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": message,
+                    "menu_options": menu_options,
+                }
+            ),
+            200,
+        )
+
+    if action == "settings_ext_snapshot" or action.startswith(
+        ("snap_host_add|", "snap_host_toggle|", "snap_host_del|", "snap_pat_add|", "snap_pat_del|")
+    ):
+        def _get_snap_hosts() -> dict:
+            stored = settings_manager.get_setting("SNAPSHOT_TRANSFER_HOSTS", {}) or {}
+            return stored if isinstance(stored, dict) else {}
+
+        def _save_snap_hosts(hosts_cfg: dict) -> None:
+            settings_manager.set_setting(
+                "SNAPSHOT_TRANSFER_HOSTS", hosts_cfg, "snapshot_transfer_hosts"
+            )
+
+        def _get_snap_patterns() -> list:
+            rows: list = []
+            try:
+                conn = settings_manager.get_connection()
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id, pattern FROM backup_patterns "
+                    "WHERE category = 'snapshot_transfer' AND pattern_type = 'subject' "
+                    "ORDER BY id"
+                )
+                rows = [(int(r[0]), str(r[1] or "")) for r in cursor.fetchall()]
+            except Exception:
+                rows = []
+            return rows
+
+        notice = ""
+        if action.startswith("snap_host_add|"):
+            raw_value = unquote(raw_action.split("|", 1)[1])
+            names = [p.strip() for p in re.split(r"[,\n;]+", raw_value) if p.strip()]
+            hosts_cfg = _get_snap_hosts()
+            existing = {k.lower() for k in hosts_cfg}
+            added = []
+            for name in names:
+                if name.lower() not in existing:
+                    hosts_cfg[name] = {"enabled": True, "start_time": "03:00"}
+                    existing.add(name.lower())
+                    added.append(name)
+            _save_snap_hosts(hosts_cfg)
+            notice = (
+                f"✅ Добавлены хосты: {', '.join(added)}\n\n"
+                if added
+                else "ℹ️ Ничего не добавлено (пусто или дубли)\n\n"
+            )
+        elif action.startswith("snap_host_toggle|"):
+            name = unquote(raw_action.split("|", 1)[1]).strip()
+            hosts_cfg = _get_snap_hosts()
+            key = next((k for k in hosts_cfg if k.lower() == name.lower()), None)
+            if key is not None:
+                host_cfg = hosts_cfg[key] if isinstance(hosts_cfg[key], dict) else {}
+                host_cfg["enabled"] = not bool(host_cfg.get("enabled", True))
+                hosts_cfg[key] = host_cfg
+                _save_snap_hosts(hosts_cfg)
+                notice = (
+                    f"{'🟢 Включён' if host_cfg['enabled'] else '🔴 Выключен'}: {key}\n\n"
+                )
+            else:
+                notice = "❌ Хост не найден\n\n"
+        elif action.startswith("snap_host_del|"):
+            name = unquote(raw_action.split("|", 1)[1]).strip()
+            hosts_cfg = _get_snap_hosts()
+            key = next((k for k in hosts_cfg if k.lower() == name.lower()), None)
+            if key is not None:
+                hosts_cfg.pop(key, None)
+                _save_snap_hosts(hosts_cfg)
+                notice = f"🗑 Хост «{key}» удалён\n\n"
+            else:
+                notice = "❌ Хост не найден\n\n"
+        elif action.startswith("snap_pat_add|"):
+            raw_value = unquote(raw_action.split("|", 1)[1]).strip()
+            if not raw_value:
+                notice = "❌ Паттерн не может быть пустым\n\n"
+            else:
+                try:
+                    re.compile(raw_value)
+                    if raw_value in [p for _, p in _get_snap_patterns()]:
+                        notice = "ℹ️ Такой паттерн уже есть\n\n"
+                    else:
+                        conn = settings_manager.get_connection()
+                        cursor = conn.cursor()
+                        cursor.execute(
+                            "INSERT INTO backup_patterns "
+                            "(pattern_type, pattern, category, enabled) VALUES (?, ?, ?, 1)",
+                            ("subject", raw_value, "snapshot_transfer"),
+                        )
+                        conn.commit()
+                        notice = "✅ Паттерн добавлен\n\n"
+                except re.error as exc:
+                    notice = f"❌ Некорректный regex: {exc}\n\n"
+        elif action.startswith("snap_pat_del|"):
+            raw_id = raw_action.split("|", 1)[1].strip()
+            try:
+                pat_id = int(raw_id)
+                conn = settings_manager.get_connection()
+                cursor = conn.cursor()
+                cursor.execute(
+                    "DELETE FROM backup_patterns "
+                    "WHERE id = ? AND category = 'snapshot_transfer'",
+                    (pat_id,),
+                )
+                conn.commit()
+                notice = "🗑 Паттерн удалён\n\n" if cursor.rowcount else "❌ Нет такого паттерна\n\n"
+            except (TypeError, ValueError):
+                notice = "❌ Некорректный идентификатор\n\n"
+
+        hosts_cfg = _get_snap_hosts()
+        patterns = _get_snap_patterns()
+
+        if hosts_cfg:
+            host_lines = []
+            for name in sorted(hosts_cfg, key=str.lower):
+                host_cfg = hosts_cfg[name] if isinstance(hosts_cfg[name], dict) else {}
+                state_icon = "🟢" if bool(host_cfg.get("enabled", True)) else "🔴"
+                start_time = str(host_cfg.get("start_time") or "—")
+                host_lines.append(f"  {state_icon} {name} · старт {start_time}")
+            hosts_text = "\n".join(host_lines)
+        else:
+            hosts_text = "  — список пуст"
+        patterns_text = (
+            "\n".join(f"  • {p}" for _, p in patterns) if patterns else "  — (дефолт)"
+        )
+
+        message = (
+            f"{notice}⚙️ Передачи снэпшотов — настройки\n\n"
+            f"• Хосты:\n{hosts_text}\n\n"
+            f"• Паттерны темы письма:\n{patterns_text}\n\n"
+            "Добавьте хост или паттерн в поля ниже. Кнопки 🟢/🔴 включают и "
+            "выключают хост, 🗑 удаляют запись."
+        )
+
+        menu_options = []
+        for name in sorted(hosts_cfg, key=str.lower):
+            host_cfg = hosts_cfg[name] if isinstance(hosts_cfg[name], dict) else {}
+            enabled = bool(host_cfg.get("enabled", True))
+            toggle_label = f"{'🔴 выключить' if enabled else '🟢 включить'}: {name}"
+            menu_options.append({"label": toggle_label, "action": f"snap_host_toggle|{name}"})
+            menu_options.append({"label": f"🗑 {name}", "action": f"snap_host_del|{name}"})
+        for pat_id, pat in patterns:
+            short = pat if len(pat) <= 28 else pat[:25] + "…"
+            menu_options.append({"label": f"🗑 паттерн: {short}", "action": f"snap_pat_del|{pat_id}"})
         menu_options.extend(
             [
                 {"label": "🏠 На главную", "action": "main_menu"},
