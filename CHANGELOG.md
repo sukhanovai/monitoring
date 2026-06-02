@@ -1,3 +1,9 @@
+## [8.62.91] - 2026-06-02
+
+### Fixed
+- RU: Исправлен `NameError: name 'get_config' is not defined` при нажатии «📊 Отправить утренний отчёт» (и в ряде других Telegram-handler'ов). При выносе ~30 handler-функций из `core/monitor_core.py` в `core/monitor_parts/telegram_handlers.py` (рефакторинг PR5b) в новый модуль не перенесли имена, на которые опирались эти функции: `get_config`, `threading`, а также `send_alert`, `is_silent_time`, `get_silent_override`/`set_silent_override`, `get_current_server_status`, `check_server_availability`, `get_web_interface_url`, `_resource_monitor_enabled`, `perform_manual_check` и `perform_cpu/ram/disk_check`. Из-за этого падали `send_morning_report_handler`, `manual_check_handler`, `force_silent_handler` и другие. Добавлена ленивая привязка этих имён в namespace модуля (импорт при первом вызове), что заодно разрывает циклическую зависимость `core.monitor_core ↔ telegram_handlers`.
+- EN: Fixed `NameError: name 'get_config' is not defined` when tapping "📊 Send morning report" (and in several other Telegram handlers). When ~30 handler functions were extracted from `core/monitor_core.py` into `core/monitor_parts/telegram_handlers.py` (the PR5b refactor), the names those functions relied on were not carried over to the new module: `get_config`, `threading`, plus `send_alert`, `is_silent_time`, `get_silent_override`/`set_silent_override`, `get_current_server_status`, `check_server_availability`, `get_web_interface_url`, `_resource_monitor_enabled`, `perform_manual_check` and `perform_cpu/ram/disk_check`. As a result `send_morning_report_handler`, `manual_check_handler`, `force_silent_handler` and others crashed. Added lazy binding of these names into the module namespace (import on first call), which also breaks the `core.monitor_core ↔ telegram_handlers` circular dependency.
+
 ## [8.62.90] - 2026-06-02
 
 ### Added
