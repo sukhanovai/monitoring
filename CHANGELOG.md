@@ -1,3 +1,13 @@
+## [8.62.94] - 2026-06-02
+
+### Fixed
+- RU: Настройка `REPORT_EXTENSIONS` сохранялась в БД как Python-repr со списком в одинарных кавычках (`['backup_monitor', …]`), потому что `set_setting` при явном `data_type="list"` использовал `str(value)` вместо JSON. При чтении `json.loads` падал с «Expecting value», в логах сыпалась ошибка `Ошибка преобразования настройки REPORT_EXTENSIONS`, а выбранный состав отчёта терялся. Теперь list/dict при явном типе сериализуются через `json.dumps`, чтение терпимо к старым «битым» значениям (`ast.literal_eval`-фолбэк), а миграция при старте перезаписывает их в валидный JSON.
+- RU: Стартовое сообщение бота показывало адрес веб-интерфейса по умолчанию из `config/settings.py` (например, `http://192.0.2.1:5000`) вместо настроенного «Адреса для ссылки» (`MONITOR_SERVER_IP`, напр. `help`): сообщение брало `config.settings`, а не конфиг из БД. Теперь используется `config.db_settings`, и в сообщении отображается фактический адрес (`http://help:5000`).
+- RU: Веб-интерфейс (BFF) мог молча не подняться, если в «Хост (bind)» указан недоступный/неверный IP — поток сервера падал, а мобильный клиент получал «нет связи с BFF: HTTP 502». Теперь при ошибке привязки сервер повторно стартует на `0.0.0.0`, оставаясь доступным в локальной сети; bind-хост читается из БД на момент старта.
+- EN: The `REPORT_EXTENSIONS` setting was stored in the DB as a Python repr with single quotes (`['backup_monitor', …]`) because `set_setting` used `str(value)` for an explicit `data_type="list"` instead of JSON. On read, `json.loads` failed with "Expecting value", the log filled with `Ошибка преобразования настройки REPORT_EXTENSIONS`, and the chosen report composition was lost. list/dict with an explicit type are now serialized via `json.dumps`, reads tolerate legacy "broken" values (`ast.literal_eval` fallback), and a startup migration rewrites them as valid JSON.
+- EN: The bot start-up message showed the default web-interface address from `config/settings.py` (e.g. `http://192.0.2.1:5000`) instead of the configured "link address" (`MONITOR_SERVER_IP`, e.g. `help`): the message read `config.settings` rather than the DB-backed config. It now uses `config.db_settings` and displays the actual address (`http://help:5000`).
+- EN: The web interface (BFF) could silently fail to start when "Хост (bind)" pointed to an unavailable/invalid IP — the server thread died and the mobile client reported "нет связи с BFF: HTTP 502". On a bind error the server now restarts on `0.0.0.0`, staying reachable on the LAN; the bind host is read from the DB at start time.
+
 ## [8.62.93] - 2026-06-02
 
 ### Fixed
