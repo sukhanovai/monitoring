@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v8.62.89
+Server Monitoring System v8.62.90
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 8.62.89
+Версия: 8.62.90
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -166,7 +166,47 @@ class ConfigManager:
         self.init_default_settings()
         self._cleanup_legacy_settings()
         self._migrate_setting_categories()
+        self._migrate_report_extensions()
         debug_log("База данных настроек инициализирована")
+
+    def _migrate_report_extensions(self) -> None:
+        """Расширяет состав отчёта для установок со старым дефолтом.
+
+        Если сохранённый REPORT_EXTENSIONS совпадает один-в-один с прежним
+        дефолтом (5 расширений), заменяем его на новый расширенный дефолт.
+        Пользовательские наборы (любой иной состав) не трогаем.
+        """
+        try:
+            from lib.report_settings import (
+                DEFAULT_REPORT_EXTENSIONS,
+                LEGACY_DEFAULT_REPORT_EXTENSIONS,
+            )
+
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT value FROM settings WHERE key = 'REPORT_EXTENSIONS'"
+            )
+            row = cursor.fetchone()
+            if not row or not row[0]:
+                return
+            try:
+                stored = json.loads(row[0])
+            except (ValueError, TypeError):
+                return
+            if not isinstance(stored, list):
+                return
+            if set(stored) == set(LEGACY_DEFAULT_REPORT_EXTENSIONS):
+                cursor.execute(
+                    "UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP "
+                    "WHERE key = 'REPORT_EXTENSIONS'",
+                    (json.dumps(DEFAULT_REPORT_EXTENSIONS, ensure_ascii=False),),
+                )
+                conn.commit()
+                self._cache.pop("REPORT_EXTENSIONS", None)
+                debug_log("REPORT_EXTENSIONS мигрирован со старого дефолта на новый")
+        except Exception as exc:  # pragma: no cover - миграция не критична
+            debug_log(f"⚠️ Миграция REPORT_EXTENSIONS пропущена: {exc}")
 
     # Канонический владелец параметра-расширения: ровно одна категория на ключ.
     # Используется и для починки уже сохранённых БД (раньше set_setting без
@@ -274,7 +314,9 @@ class ConfigManager:
             (
                 "REPORT_EXTENSIONS",
                 '["backup_monitor", "database_backup_monitor", "mail_backup_monitor", '
-                '"stock_load_monitor", "zfs_monitor"]',
+                '"config_console_backup_monitor", "nas_transfer_monitor", '
+                '"stock_load_monitor", "supplier_stock_files", "zfs_monitor", '
+                '"zfs_pool_free_space_monitor", "snapshot_transfer_monitor"]',
                 "report",
                 "Расширения, сведения которых включаются в утренний/ручной отчёт "
                 "(JSON-список ID расширений)",
