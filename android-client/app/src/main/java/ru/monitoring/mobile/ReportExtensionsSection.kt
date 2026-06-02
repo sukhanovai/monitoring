@@ -66,6 +66,13 @@ fun ReportExtensionsSection(
                                 color = MaterialTheme.colorScheme.error
                             )
                         }
+                        if (option.heavy) {
+                            Text(
+                                text = "🐢 live-сбор (SSH/опрос) — может замедлить отчёт",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                     Switch(
                         checked = option.included,

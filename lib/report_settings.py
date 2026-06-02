@@ -1,11 +1,11 @@
 """
 /lib/report_settings.py
-Server Monitoring System v8.62.89
+Server Monitoring System v8.62.90
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Report composition settings helper
 Система мониторинга серверов
-Версия: 8.62.89
+Версия: 8.62.90
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Хелпер настройки состава утреннего/ручного отчёта.
@@ -37,8 +37,15 @@ REPORT_CAPABLE_EXTENSIONS = [
     "backup_monitor",
     "database_backup_monitor",
     "mail_backup_monitor",
+    "config_console_backup_monitor",
+    "nas_transfer_monitor",
     "stock_load_monitor",
+    "supplier_stock_files",
     "zfs_monitor",
+    "zfs_pool_free_space_monitor",
+    "snapshot_transfer_monitor",
+    "tls_cert_monitor",
+    "resource_monitor",
 ]
 
 # Короткие подписи для UI (бот/Matrix). Полные имена берутся из
@@ -48,13 +55,37 @@ REPORT_EXTENSION_LABELS = {
     "backup_monitor": "💾 Бэкапы Proxmox",
     "database_backup_monitor": "🗃️ Бэкапы БД",
     "mail_backup_monitor": "📬 Бэкапы почты",
+    "config_console_backup_monitor": "🗂️ Бэкап конфигов",
+    "nas_transfer_monitor": "📤 Передача на NAS",
     "stock_load_monitor": "📦 Загрузка остатков 1С",
+    "supplier_stock_files": "🏷️ Остатки поставщиков",
     "zfs_monitor": "🧊 Статусы ZFS",
+    "zfs_pool_free_space_monitor": "💽 Свободное место ZFS",
+    "snapshot_transfer_monitor": "📸 Передачи снэпшотов",
+    "tls_cert_monitor": "🔐 TLS-сертификаты",
+    "resource_monitor": "💻 Ресурсы серверов",
 }
 
-# По умолчанию в отчёт включены все поддерживаемые расширения — это сохраняет
-# прежнее поведение отчёта до появления настройки.
-DEFAULT_REPORT_EXTENSIONS = list(REPORT_CAPABLE_EXTENSIONS)
+# Расширения, которые собирают данные «вживую» (SSH/опрос) и потому могут
+# заметно замедлить отчёт. По умолчанию выключены — пользователь включает
+# их осознанно.
+REPORT_HEAVY_EXTENSIONS = {"tls_cert_monitor", "resource_monitor"}
+
+# По умолчанию в отчёт включены все «лёгкие» расширения (читают данные из
+# БД/файловых сводок); «тяжёлые» (live-сбор) — по желанию.
+DEFAULT_REPORT_EXTENSIONS = [
+    ext for ext in REPORT_CAPABLE_EXTENSIONS if ext not in REPORT_HEAVY_EXTENSIONS
+]
+
+# Прежний дефолт (до расширения списка) — используется для one-time миграции
+# уже сохранённого значения настройки к новому составу.
+LEGACY_DEFAULT_REPORT_EXTENSIONS = [
+    "backup_monitor",
+    "database_backup_monitor",
+    "mail_backup_monitor",
+    "stock_load_monitor",
+    "zfs_monitor",
+]
 
 
 def _normalize(raw_value):
@@ -132,6 +163,11 @@ def is_report_extension_enabled(extension_id: str, selected=None) -> bool:
     if selected is None:
         selected = get_report_extensions()
     return extension_id in selected
+
+
+def is_heavy_report_extension(extension_id: str) -> bool:
+    """True для расширений с live-сбором (могут замедлить отчёт)."""
+    return extension_id in REPORT_HEAVY_EXTENSIONS
 
 
 def get_report_extension_label(extension_id: str) -> str:

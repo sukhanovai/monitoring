@@ -1,3 +1,13 @@
+## [8.62.90] - 2026-06-02
+
+### Added
+- RU: В настройку состава утреннего/ручного отчёта добавлены остальные расширения: бэкап конфигов и историй, передача бэкапов на NAS, остатки поставщиков, свободное место ZFS, передачи снэпшотов, а также TLS-сертификаты и ресурсы серверов. Последние два помечены 🐢 (live-сбор по SSH/опросу, могут замедлить отчёт) и по умолчанию выключены. Список доступных расширений теперь общий для Telegram, Matrix (`!report config`) и Android — клиенты подтягивают его динамически с сервера (`/v1/settings/report` отдаёт флаги `heavy`/`extension_enabled`). Для установок со старым дефолтом состава добавлена одноразовая миграция на новый расширенный набор.
+- EN: The morning/manual report composition setting now exposes the remaining extensions: config & console backups, NAS transfers, supplier stock, ZFS free space, snapshot transfers, plus TLS certificates and server resources. The latter two are marked 🐢 (live SSH/poll collection that can slow the report) and are off by default. The list of available extensions is now shared across Telegram, Matrix (`!report config`) and Android — clients fetch it dynamically from the server (`/v1/settings/report` returns `heavy`/`extension_enabled` flags). Installs on the old default composition are migrated once to the new expanded set.
+
+### Changed
+- RU: Полностью переработан внешний вид утреннего/ручного отчёта — стал читабельнее: цветной индикатор состояния в заголовке (🟢/🔴), компактная строка с версией/датой/временем, блок-итог «⚠️ Требует внимания» со списком проблемных разделов, разделители между блоками, каждая секция расширения с маркером 🟢/🔴, подвал с составом отчёта и временем формирования. Секция ZFS теперь показывает «свободное место» и «снэпшоты» только если соответствующие расширения выбраны в составе.
+- EN: Fully reworked the morning/manual report layout for readability — a colour status indicator in the header (🟢/🔴), a compact version/date/time line, an "⚠️ Needs attention" summary block listing problem sections, dividers between blocks, a 🟢/🔴 marker on every extension section, and a footer with the report composition and generation time. The ZFS section now shows "free space" and "snapshots" lines only when their extensions are selected in the composition.
+
 ## [8.62.89] - 2026-06-02
 
 ### Added

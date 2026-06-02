@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.89
+Server Monitoring System v8.62.90
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.89
+Версия: 8.62.90
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3790,6 +3790,7 @@ def _build_report_settings_payload(request_id):
         REPORT_CAPABLE_EXTENSIONS,
         get_report_extension_label,
         get_report_extensions,
+        is_heavy_report_extension,
     )
 
     selected = set(get_report_extensions(use_cache=False))
@@ -3807,6 +3808,7 @@ def _build_report_settings_payload(request_id):
                 "description": info.get("description", ""),
                 "extension_enabled": enabled,
                 "included": ext_id in selected,
+                "heavy": is_heavy_report_extension(ext_id),
             }
         )
 

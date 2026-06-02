@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/report.py
-Server Monitoring System v8.62.89
+Server Monitoring System v8.62.90
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Report composition settings UI (Telegram)
 Система мониторинга серверов
-Версия: 8.62.89
+Версия: 8.62.90
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Меню настройки состава утреннего/ручного отчёта: мультивыбор расширений,
@@ -21,6 +21,7 @@ from lib.report_settings import (
     REPORT_CAPABLE_EXTENSIONS,
     get_report_extension_label,
     get_report_extensions,
+    is_heavy_report_extension,
     set_report_extensions,
     toggle_report_extension,
 )
@@ -45,12 +46,17 @@ def _build_report_settings_view():
 
         mark = "✅" if in_report else "⬜"
         suffix = "" if enabled else " (⚠️ расширение выключено)"
+        if is_heavy_report_extension(ext_id):
+            suffix += " (🐢 live-сбор)"
         message += f"{mark} {label}{suffix}\n"
 
+        button_label = label
+        if is_heavy_report_extension(ext_id):
+            button_label = f"{label} 🐢"
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    f"{mark} {label}",
+                    f"{mark} {button_label}",
                     callback_data=f"report_ext_toggle_{ext_id}",
                 )
             ]
@@ -70,7 +76,8 @@ def _build_report_settings_view():
     )
 
     message += (
-        "\nВыключенные расширения не дают данных, даже если отмечены здесь."
+        "\nВыключенные расширения не дают данных, даже если отмечены здесь.\n"
+        "🐢 — live-сбор (SSH/опрос), может заметно замедлить отчёт."
     )
     return message, InlineKeyboardMarkup(keyboard)
 
