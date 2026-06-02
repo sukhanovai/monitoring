@@ -40,6 +40,9 @@ import ru.monitoring.mobile.api.CreateWindowsTypeRequest
 import ru.monitoring.mobile.api.ControlActionRequest
 import ru.monitoring.mobile.api.ControlActionResult
 import ru.monitoring.mobile.api.ExtensionItem
+import ru.monitoring.mobile.api.ReportExtensionOption
+import ru.monitoring.mobile.api.SettingsReportRequest
+import ru.monitoring.mobile.api.SettingsReportResponse
 import ru.monitoring.mobile.api.ExtensionUpdateRequest
 import ru.monitoring.mobile.api.ExtensionsActionRequest
 import ru.monitoring.mobile.api.ExtensionsActionResponse
@@ -1187,6 +1190,7 @@ class MainViewModel(
                 val winCreds = fetchOrLog("getWindowsCredentials") { currentApi().getWindowsCredentials() }
                 val servers = fetchOrLog("getServersSettings") { currentApi().getServersSettings() }
                 val extensions = fetchOrLog("getExtensionsSettings") { currentApi().getExtensionsSettings() }
+                val reportSettings = fetchOrLog("getReportSettings") { currentApi().getReportSettings() }
                 val proxmoxBackupSummary = fetchOrLog("runControlAction(backup_proxmox)") { currentApi().runControlAction(ControlActionRequest("backup_proxmox")) }
                 val dbBackupSummary = fetchOrLog("runControlAction(backup_databases)") { currentApi().runControlAction(ControlActionRequest("backup_databases")) }
                 val stockLoadSummary = fetchOrLog("runControlAction(backup_stock_loads)") { currentApi().runControlAction(ControlActionRequest("backup_stock_loads")) }
@@ -1222,7 +1226,8 @@ class MainViewModel(
                     snapshotTransferSummary,
                     nasTransferSummary,
                     tlsCertSummary,
-                    configConsoleSummary
+                    configConsoleSummary,
+                    reportSettings
                 )
             }
 
@@ -1257,6 +1262,7 @@ class MainViewModel(
             val nasTransferSummary = buildBackupTileSummary(result[18] as? ControlActionResult)
             val tlsCertSummary = buildTlsCertTileSummary(result[19] as? ControlActionResult)
             val configConsoleSummary = buildBackupTileSummary(result[20] as? ControlActionResult)
+            val reportSettings = result[21] as? SettingsReportResponse
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -1323,6 +1329,7 @@ class MainViewModel(
                 windowsTypes = winTypes?.types ?: state.windowsTypes,
                 managedServers = servers?.items ?: state.managedServers,
                 extensions = extensions?.items ?: state.extensions,
+                reportExtensionOptions = reportSettings?.settings?.available ?: state.reportExtensionOptions,
                 backupProxmoxSummary = proxmoxBackupSummary?.ratioText ?: state.backupProxmoxSummary,
                 backupDatabasesSummary = dbBackupSummary?.ratioText ?: state.backupDatabasesSummary,
                 backupStockLoadsSummary = stockLoadSummary?.ratioText ?: state.backupStockLoadsSummary,
@@ -2263,6 +2270,36 @@ class MainViewModel(
 
     fun disableAllExtensions() {
         runExtensionsAction("disable_all", "Все расширения отключены")
+    }
+
+    fun toggleReportExtension(id: String, included: Boolean) {
+        val extensionId = id.trim()
+        if (extensionId.isBlank()) return
+
+        val current = state.reportExtensionOptions
+            .filter { it.included }
+            .map { it.id }
+            .toMutableSet()
+        if (included) current.add(extensionId) else current.remove(extensionId)
+
+        // Сохраняем канонический порядок из списка доступных опций.
+        val ordered = state.reportExtensionOptions
+            .map { it.id }
+            .filter { it in current }
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().updateReportSettings(SettingsReportRequest(ordered)) }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        reportExtensionOptions = response.settings?.available ?: state.reportExtensionOptions,
+                        message = "Состав отчёта обновлён",
+                        messageSource = "report_settings"
+                    )
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
     }
 
     private fun runExtensionsAction(action: String, fallbackMessage: String) {
@@ -3398,6 +3435,7 @@ data class MainUiState(
     val deleteTargetTypeInput: String = "default",
     val managedServers: List<ManagedServer> = emptyList(),
     val extensions: List<ExtensionItem> = emptyList(),
+    val reportExtensionOptions: List<ReportExtensionOption> = emptyList(),
     val serverEditIp: String = "",
     val serverIpInput: String = "",
     val serverNameInput: String = "",

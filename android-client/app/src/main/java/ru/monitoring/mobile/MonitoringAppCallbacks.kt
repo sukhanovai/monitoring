@@ -26,6 +26,7 @@ class MonitoringAppCallbacks(
     val onToggleExtension: (String, Boolean) -> Unit,
     val onEnableAllExtensions: () -> Unit,
     val onDisableAllExtensions: () -> Unit,
+    val onToggleReportExtension: (String, Boolean) -> Unit,
     val onOpenExtensionsSettingsMenu: () -> Unit,
     val onExtensionsSettingsAction: (String) -> Unit,
     val onAction: (String) -> Unit,

@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.88
+Server Monitoring System v8.62.89
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.88
+Версия: 8.62.89
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -107,7 +107,7 @@ _BUTTON_BY_EMOJI: Dict[str, str] = {emoji: command for emoji, command in MENU_BU
 # с emoji кнопки-реакции под сообщением.
 _MENU_DESCRIPTIONS: Dict[str, str] = {
     "!status": "доступность всех серверов",
-    "!report": "утренний/сводный отчёт",
+    "!report": "утренний/сводный отчёт (!report config — состав)",
     "!servers": "список серверов под мониторингом",
     "!pause": "приостановить мониторинг",
     "!resume": "возобновить мониторинг",
@@ -309,6 +309,7 @@ _CORE_SETTINGS_GROUPS: "OrderedDict[str, List[str]]" = OrderedDict(
                 "SILENT_START",
             ],
         ),
+        ("report", ["REPORT_EXTENSIONS"]),
         ("auth", ["SSH_KEY_PATH", "SSH_USERNAME"]),
     )
 )
@@ -1219,8 +1220,57 @@ class MatrixCommandBot:
             lines.append(f"{flag} {name} ({ip}) [{stype}]")
         return "\n".join(lines)
 
-    async def _handle_report(self) -> str:
+    async def _handle_report(self, command_text: str = "") -> str:
+        parts = command_text.split()
+        if len(parts) >= 2 and parts[1].lower() in (
+            "config",
+            "cfg",
+            "settings",
+            "ext",
+            "extensions",
+        ):
+            return self._handle_report_config(parts[2:])
         return morning_report.force_report()
+
+    def _handle_report_config(self, args: List[str]) -> str:
+        """Просмотр/изменение состава отчёта (какие расширения включать)."""
+        from lib.report_settings import (
+            REPORT_CAPABLE_EXTENSIONS,
+            get_report_extension_label,
+            get_report_extensions,
+            set_report_extensions,
+            toggle_report_extension,
+        )
+
+        if args:
+            action = args[0].strip().lower()
+            if action in ("all", "включить_все"):
+                set_report_extensions(list(REPORT_CAPABLE_EXTENSIONS))
+            elif action in ("none", "clear", "очистить"):
+                set_report_extensions([])
+            elif action in REPORT_CAPABLE_EXTENSIONS:
+                toggle_report_extension(action)
+            else:
+                allowed = ", ".join(REPORT_CAPABLE_EXTENSIONS)
+                return (
+                    f"❌ Неизвестное расширение '{action}'.\n"
+                    f"Доступные: {allowed}\n"
+                    "Также: !report config all | none"
+                )
+
+        selected = set(get_report_extensions(use_cache=False))
+        lines = ["🗒️ Состав утреннего/ручного отчёта:", ""]
+        for ext_id in REPORT_CAPABLE_EXTENSIONS:
+            mark = "✅" if ext_id in selected else "⬜"
+            lines.append(f"{mark} {ext_id} — {get_report_extension_label(ext_id)}")
+        lines += [
+            "",
+            "Базовые данные мониторинга доступности включены всегда.",
+            "Переключить: !report config <ext_id>",
+            "Включить все: !report config all",
+            "Очистить: !report config none",
+        ]
+        return "\n".join(lines)
 
     @staticmethod
     def _set_monitoring_active(active: bool) -> None:
@@ -2468,6 +2518,7 @@ class MatrixCommandBot:
             "• !status — доступность всех серверов\n"
             "• !check <имя|ip> — точечная проверка доступности сервера\n"
             "• !report — утренний/сводный отчёт\n"
+            "• !report config — состав отчёта (какие расширения включать)\n"
             "• !servers — список серверов под мониторингом\n"
             "• !pause / !resume — пауза и возобновление мониторинга\n"
             "• !silent / !loud / !auto — режим тишины\n"
@@ -2553,7 +2604,7 @@ class MatrixCommandBot:
                 )
             return command, await self._handle_targeted(normalized, "resources")
         if command == "!report":
-            return command, await self._handle_report()
+            return command, await self._handle_report(normalized)
         if command == "!settings":
             return command, await self._handle_settings(normalized)
         if command == "!diag":

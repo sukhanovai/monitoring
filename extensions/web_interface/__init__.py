@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.88
+Server Monitoring System v8.62.89
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.88
+Версия: 8.62.89
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3782,6 +3782,123 @@ def v1_patch_settings_extension(extension_id):
         ),
         200,
     )
+
+
+def _build_report_settings_payload(request_id):
+    """Готовит тело ответа для настроек состава отчёта."""
+    from lib.report_settings import (
+        REPORT_CAPABLE_EXTENSIONS,
+        get_report_extension_label,
+        get_report_extensions,
+    )
+
+    selected = set(get_report_extensions(use_cache=False))
+    status_map = extension_manager.get_extensions_status()
+
+    available = []
+    for ext_id in REPORT_CAPABLE_EXTENSIONS:
+        info = (status_map.get(ext_id) or {}).get("info") or {}
+        enabled = bool((status_map.get(ext_id) or {}).get("enabled"))
+        available.append(
+            {
+                "id": ext_id,
+                "name": info.get("name", get_report_extension_label(ext_id)),
+                "label": get_report_extension_label(ext_id),
+                "description": info.get("description", ""),
+                "extension_enabled": enabled,
+                "included": ext_id in selected,
+            }
+        )
+
+    return {
+        "request_id": request_id,
+        "settings": {
+            "report_extensions": [
+                ext_id for ext_id in REPORT_CAPABLE_EXTENSIONS if ext_id in selected
+            ],
+            "available": available,
+        },
+    }
+
+
+@app.route("/v1/settings/report", methods=["GET"])
+def v1_get_settings_report():
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
+
+    app.logger.info("GET /v1/settings/report request_id=%s", request_id)
+    return jsonify(_build_report_settings_payload(request_id)), 200
+
+
+@app.route("/v1/settings/report", methods=["PATCH"])
+def v1_patch_settings_report():
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
+
+    from lib.report_settings import REPORT_CAPABLE_EXTENSIONS, set_report_extensions
+
+    payload = request.get_json(silent=True) or {}
+    extensions_list = payload.get("report_extensions")
+    if extensions_list is None or not isinstance(extensions_list, list):
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "Field 'report_extensions' (list) is required",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
+
+    unknown = [
+        str(item) for item in extensions_list if str(item) not in REPORT_CAPABLE_EXTENSIONS
+    ]
+    if unknown:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": f"Unknown report extensions: {', '.join(unknown)}",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
+
+    set_report_extensions(extensions_list)
+    app.logger.info("PATCH /v1/settings/report request_id=%s", request_id)
+    return jsonify(_build_report_settings_payload(request_id)), 200
 
 
 @app.route("/v1/settings/extensions/actions", methods=["POST"])

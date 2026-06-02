@@ -15,6 +15,7 @@ Last updated: 2026-02-20
 2. `GET /v1/settings/bot`
 3. `GET /v1/settings/time`
 4. `GET /v1/settings/auth`
+5. `GET /v1/settings/report` (+ `PATCH /v1/settings/report`) — состав утреннего/ручного отчёта
 
 ## Ожидаемые поля ответов
 
@@ -71,6 +72,36 @@ Last updated: 2026-02-20
   }
 }
 ```
+
+### 5) Report (состав отчёта)
+
+`GET /v1/settings/report` — какие расширения включать в утренний/ручной
+отчёт помимо базовых данных мониторинга доступности:
+
+```json
+{
+  "request_id": "...",
+  "settings": {
+    "report_extensions": ["backup_monitor", "zfs_monitor"],
+    "available": [
+      {
+        "id": "backup_monitor",
+        "name": "📊 Мониторинг бэкапов Proxmox",
+        "label": "💾 Бэкапы Proxmox",
+        "description": "...",
+        "extension_enabled": true,
+        "included": true
+      }
+    ]
+  }
+}
+```
+
+`PATCH /v1/settings/report` с телом `{ "report_extensions": ["..."] }`
+сохраняет состав и возвращает то же тело, что и GET. Допустимые id —
+только расширения, которые отчёт умеет показывать (`backup_monitor`,
+`database_backup_monitor`, `mail_backup_monitor`, `stock_load_monitor`,
+`zfs_monitor`); неизвестные id отклоняются с `VALIDATION_FAILED`.
 
 ## Важно по безопасности
 

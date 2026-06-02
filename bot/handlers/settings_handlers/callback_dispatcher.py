@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/callback_dispatcher.py
-Server Monitoring System v8.62.88
+Server Monitoring System v8.62.89
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Главный диспатчер callback-кнопок настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.88
+Версия: 8.62.89
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
@@ -31,6 +31,12 @@ from bot.handlers.settings_handlers.backups.db import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.backups.mail import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.backups.proxmox import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.backups.snapshot import *  # noqa: F401, F403
+from bot.handlers.settings_handlers.report import (  # noqa: F401
+    clear_report_extensions_handler,
+    set_all_report_extensions_handler,
+    show_report_settings_menu,
+    toggle_report_extension_handler,
+)
 
 # PR7b: supplier_stock-функции вынесены в одноимённый модуль пакета;
 # реэкспортируем их сюда же, чтобы внутренние ссылки в _legacy.py
@@ -155,6 +161,15 @@ def settings_callback_handler(update, context):
             show_servers_settings(update, context)
         elif data == "settings_backup":
             show_backup_settings(update, context)
+        elif data == "settings_report":
+            show_report_settings_menu(update, context)
+        elif data == "report_ext_all":
+            set_all_report_extensions_handler(update, context)
+        elif data == "report_ext_none":
+            clear_report_extensions_handler(update, context)
+        elif data.startswith("report_ext_toggle_"):
+            extension_id = data.replace("report_ext_toggle_", "", 1)
+            toggle_report_extension_handler(update, context, extension_id)
         elif data == "settings_extensions":
             show_settings_extensions_menu(update, context)
         elif data == "settings_extensions_manage":

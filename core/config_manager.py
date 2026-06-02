@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v8.62.88
+Server Monitoring System v8.62.89
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 8.62.88
+Версия: 8.62.89
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -268,6 +268,17 @@ class ConfigManager:
                 "time",
                 "Время(а) сбора данных для отчета (HH:MM,HH:MM)",
                 "string",
+            ),
+            # Состав утреннего/ручного отчёта — какие расширения включать
+            # помимо базовых данных мониторинга доступности серверов.
+            (
+                "REPORT_EXTENSIONS",
+                '["backup_monitor", "database_backup_monitor", "mail_backup_monitor", '
+                '"stock_load_monitor", "zfs_monitor"]',
+                "report",
+                "Расширения, сведения которых включаются в утренний/ручной отчёт "
+                "(JSON-список ID расширений)",
+                "list",
             ),
             # Настройки ресурсов
             (
