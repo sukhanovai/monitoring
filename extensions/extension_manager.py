@@ -1,11 +1,11 @@
 """
 /extensions/extension_manager.py
-Server Monitoring System v8.62.94
+Server Monitoring System v8.62.95
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extension Manager for Monitoring
 Система мониторинга серверов
-Версия: 8.62.94
+Версия: 8.62.95
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер расширений для мониторинга
@@ -121,7 +121,11 @@ AVAILABLE_EXTENSIONS = {
     },
     "web_interface": {
         "name": "🌐 Веб-интерфейс",
-        "description": "Веб-панель управления по адресу http://192.168.20.2:5000",
+        "description": (
+            "Веб-панель управления по адресу http://192.168.20.2:5000. "
+            "📱 Через веб-интерфейс работает Android-приложение — без него "
+            "приложение не работает."
+        ),
         "commands": [],
         "handlers": [],
         "enabled_by_default": True,

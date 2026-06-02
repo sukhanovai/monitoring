@@ -82,6 +82,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -2749,8 +2750,15 @@ private fun MonitoringApp(
                 }
             } else if (extension.id == "web") {
                 {
-                    settingsSection = "web"
-                    showSettingsSectionOverlay = true
+                    // Короткий тап — вкл/выкл. При выключении показываем яркое
+                    // предупреждение: без веб-интерфейса Android-приложение
+                    // перестаёт работать (оно ходит к нему за данными).
+                    val webEnabled = extensionsById["web_interface"]?.enabled ?: true
+                    if (webEnabled) {
+                        showWebDisableConfirmDialog = true
+                    } else {
+                        onToggleExtension("web_interface", true)
+                    }
                 }
             } else if (
                 extension.id == "zfs_pool_free_space_monitor" ||
@@ -2789,6 +2797,12 @@ private fun MonitoringApp(
                 {
                     showTlsSettingsDialog = true
                     onExtensionsSettingsAction("settings_ext_tls")
+                }
+            } else if (extension.id == "web") {
+                {
+                    // Долгий тап — настройки веб-интерфейса.
+                    settingsSection = "web"
+                    showSettingsSectionOverlay = true
                 }
             } else {
                 null
@@ -3395,6 +3409,62 @@ private fun MonitoringApp(
                             Button(onClick = { onAction("auto_mode") }) { Text("Авто") }
                         }
                     }
+                    if (showWebDisableConfirmDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showWebDisableConfirmDialog = false },
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            titleContentColor = MaterialTheme.colorScheme.onErrorContainer,
+                            textContentColor = MaterialTheme.colorScheme.onErrorContainer,
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Filled.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            },
+                            title = {
+                                Text(
+                                    "⚠️ Выключить веб-интерфейс?",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            text = {
+                                Text(
+                                    "ВНИМАНИЕ! Android-приложение работает ЧЕРЕЗ веб-интерфейс — " +
+                                        "оно берёт все данные именно у него.\n\n" +
+                                        "Если выключить веб-интерфейс, это приложение перестанет " +
+                                        "работать: отчёты, статусы и настройки станут недоступны.\n\n" +
+                                        "Снова включить веб-интерфейс получится только из " +
+                                        "Telegram-бота.",
+                                    fontWeight = FontWeight.Medium
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        showWebDisableConfirmDialog = false
+                                        onToggleExtension("web_interface", false)
+                                    }
+                                ) {
+                                    Text(
+                                        "Всё равно выключить",
+                                        color = MaterialTheme.colorScheme.error,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(
+                                    onClick = { showWebDisableConfirmDialog = false }
+                                ) {
+                                    Text(
+                                        "Оставить включённым",
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+                        )
+                    }
                     if (showSettingsSectionOverlay) {
                         AlertDialog(
                             onDismissRequest = { showSettingsSectionOverlay = false },
@@ -3502,6 +3572,13 @@ private fun MonitoringApp(
 
                         if (settingsSection == "web") {
                             Text("Локальный веб-интерфейс", fontWeight = FontWeight.Bold)
+                            Text(
+                                "ℹ️ Это приложение работает ЧЕРЕЗ веб-интерфейс: все " +
+                                    "данные, отчёты и настройки оно получает у него. " +
+                                    "Если выключить веб-интерфейс, приложение перестанет работать.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             OutlinedTextField(
                                 value = state.webInterfaceUrlInput,
                                 onValueChange = onWebInterfaceUrlChanged,

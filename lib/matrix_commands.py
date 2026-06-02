@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.94
+Server Monitoring System v8.62.95
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.94
+Версия: 8.62.95
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -1938,7 +1938,9 @@ class MatrixCommandBot:
         return (
             "🌐 Веб-интерфейс управления:\n"
             f"• http://{link_host}:{port}\n"
-            "Открой адрес в браузере из доверенной сети."
+            "Открой адрес в браузере из доверенной сети.\n"
+            "📱 Через веб-интерфейс работает Android-приложение — "
+            "если выключить веб-интерфейс, приложение перестанет работать."
         )
 
     async def _handle_ext_tls_cert(self) -> str:
