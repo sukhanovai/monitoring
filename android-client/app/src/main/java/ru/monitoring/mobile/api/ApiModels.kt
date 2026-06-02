@@ -406,7 +406,8 @@ data class ReportExtensionOption(
     val label: String = "",
     val description: String = "",
     @Json(name = "extension_enabled") val extensionEnabled: Boolean = true,
-    val included: Boolean = false
+    val included: Boolean = false,
+    val heavy: Boolean = false
 )
 
 data class SettingsReportData(

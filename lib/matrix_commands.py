@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.89
+Server Monitoring System v8.62.90
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.89
+Версия: 8.62.90
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -1238,6 +1238,7 @@ class MatrixCommandBot:
             REPORT_CAPABLE_EXTENSIONS,
             get_report_extension_label,
             get_report_extensions,
+            is_heavy_report_extension,
             set_report_extensions,
             toggle_report_extension,
         )
@@ -1262,10 +1263,12 @@ class MatrixCommandBot:
         lines = ["🗒️ Состав утреннего/ручного отчёта:", ""]
         for ext_id in REPORT_CAPABLE_EXTENSIONS:
             mark = "✅" if ext_id in selected else "⬜"
-            lines.append(f"{mark} {ext_id} — {get_report_extension_label(ext_id)}")
+            heavy = " 🐢" if is_heavy_report_extension(ext_id) else ""
+            lines.append(f"{mark} {ext_id} — {get_report_extension_label(ext_id)}{heavy}")
         lines += [
             "",
             "Базовые данные мониторинга доступности включены всегда.",
+            "🐢 — live-сбор (SSH/опрос), может замедлить отчёт.",
             "Переключить: !report config <ext_id>",
             "Включить все: !report config all",
             "Очистить: !report config none",

@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.62.89
+Server Monitoring System v8.62.90
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.62.89
+Версия: 8.62.90
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -78,38 +78,147 @@ class MorningReport:
         down_count = len(status["failed"])
 
         # Определяем тип отчета
-        report_type = "Ручной отчёт мониторинга" if is_manual else "Утренний отчёт мониторинга"
+        report_type = "Ручной отчёт" if is_manual else "Утренний отчёт"
         try:
             from config.settings import APP_VERSION
         except Exception:
             APP_VERSION = None
 
-        message = f"📊 *{report_type}*\n\n"
-        if APP_VERSION:
-            message += f"🔖 *Версия:* {APP_VERSION}\n"
-        message += f"🗓 *Дата:* {collection_time.strftime('%d.%m.%Y')}\n"
+        from extensions.extension_manager import extension_manager
+        from telegram.utils.helpers import escape_markdown
 
-        # Состав отчёта (выбранные расширения) — помогает понять, какие
-        # дополнительные разделы должны присутствовать ниже.
-        try:
-            from lib.report_settings import (
-                REPORT_CAPABLE_EXTENSIONS,
-                get_report_extension_label,
+        def _selected(ext_id):
+            return ext_id in report_extensions and extension_manager.is_extension_enabled(
+                ext_id
             )
 
-            included_labels = [
-                get_report_extension_label(ext_id)
-                for ext_id in REPORT_CAPABLE_EXTENSIONS
-                if ext_id in report_extensions
-            ]
-            if included_labels:
-                message += "🧩 *Состав отчёта:* " + ", ".join(included_labels) + "\n"
-            else:
-                message += "🧩 *Состав отчёта:* только данные мониторинга\n"
-        except Exception:
-            pass
+        period_label = "за 24ч" if is_manual else "за 16ч"
+        period_hours = 24 if is_manual else 16
 
-        message += "\n🖥 *Доступность серверов*\n"
+        # --- Сбор секций расширений ---
+        # Каждая секция: {"title", "body", "has_issues"}.
+        sections = []
+
+        def add_section(title, result):
+            body, has_issues = result
+            sections.append({"title": title, "body": body, "has_issues": bool(has_issues)})
+
+        # Бэкапы (Proxmox/БД/почта) — объединённая секция.
+        show_proxmox = _selected("backup_monitor")
+        show_databases = _selected("database_backup_monitor")
+        show_mail = _selected("mail_backup_monitor")
+        if show_proxmox or show_databases or show_mail:
+            try:
+                unavailable_hosts = set()
+                for server in status.get("failed", []):
+                    if server.get("name"):
+                        unavailable_hosts.add(server.get("name"))
+                    if server.get("ip"):
+                        unavailable_hosts.add(server.get("ip"))
+                add_section(
+                    f"💾 Бэкапы ({period_label})",
+                    self.get_backup_summary_for_report(
+                        period_hours,
+                        include_proxmox=show_proxmox,
+                        include_databases=show_databases,
+                        include_mail=show_mail,
+                        unavailable_hosts=unavailable_hosts,
+                    ),
+                )
+            except Exception as e:
+                debug_log(f"⚠️ Ошибка получения данных о бэкапах: {e}")
+                add_section("💾 Бэкапы", ("данные недоступны", True))
+
+        if _selected("config_console_backup_monitor"):
+            add_section(
+                "🗂️ Бэкап конфигов и историй",
+                self.get_config_console_summary_for_report(),
+            )
+
+        if _selected("nas_transfer_monitor"):
+            add_section(
+                f"📤 Передача бэкапов на NAS ({period_label})",
+                self.get_nas_transfer_summary_for_report(period_hours),
+            )
+
+        if _selected("stock_load_monitor"):
+            try:
+                from extensions.backup_monitor.backup_utils import get_stock_load_summary
+
+                add_section(
+                    "📦 Загрузка остатков 1С",
+                    (get_stock_load_summary(period_hours), False),
+                )
+            except Exception as e:
+                debug_log(f"⚠️ Ошибка получения данных о загрузке остатков: {e}")
+                add_section("📦 Загрузка остатков 1С", ("данные недоступны", True))
+
+        if _selected("supplier_stock_files"):
+            add_section(
+                "🏷️ Остатки поставщиков",
+                self.get_supplier_stock_summary_for_report(),
+            )
+
+        # ZFS: пулы; место и снэпшоты — встроенными строками, если их
+        # расширения тоже выбраны. Если zfs_monitor не выбран, но выбраны
+        # место/снэпшоты — показываем их отдельными секциями.
+        show_zfs = _selected("zfs_monitor")
+        show_free = _selected("zfs_pool_free_space_monitor")
+        show_snap = _selected("snapshot_transfer_monitor")
+        if show_zfs:
+            try:
+                add_section(
+                    "🧊 Статусы ZFS",
+                    self.get_zfs_summary_for_report(
+                        include_free_space=show_free, include_snapshots=show_snap
+                    ),
+                )
+            except Exception as e:
+                debug_log(f"⚠️ Ошибка получения данных о ZFS: {e}")
+                add_section("🧊 Статусы ZFS", ("данные недоступны", True))
+        else:
+            if show_free:
+                add_section("💽 Свободное место ZFS", self.get_zfs_free_space_for_report())
+            if show_snap:
+                add_section("📸 Передачи снэпшотов", self.get_snapshot_transfer_for_report())
+
+        if _selected("tls_cert_monitor"):
+            add_section("🔐 TLS-сертификаты", self.get_tls_cert_summary_for_report())
+
+        if _selected("resource_monitor"):
+            add_section("💻 Ресурсы серверов", self.get_resources_summary_for_report())
+
+        # --- Сборка сообщения ---
+        divider = "━━━━━━━━━━━━━━━━━━"
+        availability_has_issues = down_count > 0
+
+        # Список проблемных областей для блока «Требует внимания».
+        problem_areas = []
+        if availability_has_issues:
+            problem_areas.append(f"🖥 Недоступно серверов: {down_count}")
+        problem_areas.extend(s["title"] for s in sections if s["has_issues"])
+
+        report_icon = "🔴" if problem_areas else "🟢"
+        message = f"{report_icon} *{report_type} мониторинга*\n"
+        meta_parts = []
+        if APP_VERSION:
+            meta_parts.append(f"v{APP_VERSION}")
+        meta_parts.append(collection_time.strftime("%d.%m.%Y"))
+        meta_parts.append(collection_time.strftime("%H:%M"))
+        message += "_" + " • ".join(meta_parts) + "_\n"
+        message += divider + "\n"
+
+        # Блок-итог состояния.
+        if problem_areas:
+            message += f"⚠️ *Требует внимания ({len(problem_areas)}):*\n"
+            for area in problem_areas:
+                message += f"• {area}\n"
+        else:
+            message += "✅ *Всё в норме* — критичных проблем не обнаружено\n"
+
+        # Доступность серверов.
+        avail_icon = "🔴" if availability_has_issues else "🟢"
+        message += f"\n{avail_icon} *Доступность серверов*\n"
         availability_rows = [
             ("Всего", str(total_servers)),
             ("🟢 Доступно", str(up_count)),
@@ -117,11 +226,8 @@ class MorningReport:
         ]
         message += self._render_key_value_table(availability_rows)
 
-        from telegram.utils.helpers import escape_markdown
-
         if down_count > 0:
             message += f"\n🔴 *Проблемные серверы ({down_count})*\n"
-            # Группируем по типу
             by_type = {}
             for server in status["failed"]:
                 if server["type"] not in by_type:
@@ -139,81 +245,30 @@ class MorningReport:
                 rows=problem_rows,
             )
 
-        # Добавляем информацию о бэкапах
+        # Секции расширений с цветовым маркером состояния.
+        for section in sections:
+            icon = "🔴" if section["has_issues"] else "🟢"
+            message += f"\n{icon} *{section['title']}*\n"
+            message += self._render_plain_block(section["body"])
+
+        # Подвал: состав отчёта + время формирования.
+        message += divider + "\n"
         try:
-            from extensions.extension_manager import extension_manager
-
-            show_proxmox = (
-                "backup_monitor" in report_extensions
-                and extension_manager.is_extension_enabled("backup_monitor")
+            from lib.report_settings import (
+                REPORT_CAPABLE_EXTENSIONS,
+                get_report_extension_label,
             )
-            show_databases = (
-                "database_backup_monitor" in report_extensions
-                and extension_manager.is_extension_enabled("database_backup_monitor")
-            )
-            show_mail = (
-                "mail_backup_monitor" in report_extensions
-                and extension_manager.is_extension_enabled("mail_backup_monitor")
-            )
-            show_backups = show_proxmox or show_databases or show_mail
-            if show_backups:
-                unavailable_hosts = set()
-                for server in status.get("failed", []):
-                    if server.get("name"):
-                        unavailable_hosts.add(server.get("name"))
-                    if server.get("ip"):
-                        unavailable_hosts.add(server.get("ip"))
-                backup_summary, backup_has_issues = self.get_backup_summary_for_report(
-                    24 if is_manual else 16,
-                    include_proxmox=show_proxmox,
-                    include_databases=show_databases,
-                    include_mail=show_mail,
-                    unavailable_hosts=unavailable_hosts,
-                )
-                backup_header_icon = "🔴" if backup_has_issues else "🟢"
-                message += (
-                    f"\n{backup_header_icon} *Статус бэкапов "
-                    f"({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
-                )
-                message += self._render_plain_block(backup_summary)
-        except Exception as e:
-            debug_log(f"⚠️ Ошибка получения данных о бэкапах: {e}")
-            message += "\n💾 *Статус бэкапов:* данные недоступны\n"
 
-        # Добавляем информацию о загрузке остатков 1С
-        try:
-            from extensions.extension_manager import extension_manager
-
-            if (
-                "stock_load_monitor" in report_extensions
-                and extension_manager.is_extension_enabled("stock_load_monitor")
-            ):
-                from extensions.backup_monitor.backup_utils import get_stock_load_summary
-
-                stock_summary = get_stock_load_summary(24 if is_manual else 16)
-                message += "\n📦 *Загрузка остатков 1С*\n"
-                message += self._render_plain_block(stock_summary)
-        except Exception as e:
-            debug_log(f"⚠️ Ошибка получения данных о загрузке остатков: {e}")
-            message += "\n📦 *Загрузка остатков 1С:* данные недоступны\n"
-
-        # Добавляем информацию о ZFS
-        try:
-            from extensions.extension_manager import extension_manager
-
-            if (
-                "zfs_monitor" in report_extensions
-                and extension_manager.is_extension_enabled("zfs_monitor")
-            ):
-                zfs_summary, zfs_has_issues = self.get_zfs_summary_for_report()
-                zfs_header_icon = "🔴" if zfs_has_issues else "🟢"
-                message += f"\n{zfs_header_icon} *Статусы ZFS (последние)*\n"
-                message += self._render_plain_block(zfs_summary)
-        except Exception as e:
-            debug_log(f"⚠️ Ошибка получения данных о ZFS: {e}")
-            message += "\n🧊 *Статусы ZFS:* данные недоступны\n"
-
-        message += f"\n⏰ *Отчёт сформирован:* {collection_time.strftime('%H:%M:%S')}"
+            included_labels = [
+                get_report_extension_label(ext_id)
+                for ext_id in REPORT_CAPABLE_EXTENSIONS
+                if ext_id in report_extensions
+            ]
+            composition = ", ".join(included_labels) if included_labels else "только мониторинг"
+            message += f"🧩 _Состав: {composition}_\n"
+        except Exception:
+            pass
+        message += f"⏰ _Сформирован: {collection_time.strftime('%H:%M:%S')}_"
         return message
 
     def _render_table(self, headers, rows):
@@ -292,8 +347,8 @@ class MorningReport:
             debug_log(f"❌ Ошибка получения сводки по бэкапам: {e}")
             return "❌ Данные о бэкапах недоступны", True
 
-    def get_zfs_summary_for_report(self):
-        """Получает сводку по ZFS"""
+    def get_zfs_summary_for_report(self, include_free_space=True, include_snapshots=True):
+        """Получает сводку по ZFS (пулы; опционально место и снэпшоты)."""
         try:
             from config.db_settings import BACKUP_DATABASE_CONFIG
             from core.config_manager import config_manager as settings_manager
@@ -460,27 +515,26 @@ class MorningReport:
             )
             servers_ok = servers_count - servers_problem
 
-            free_space_summary, free_space_has_issues = self._get_zfs_free_space_summary(
-                db_path, allowed_servers
-            )
-            snapshot_summary, snapshot_has_issues = self._get_snapshot_transfer_summary(
-                db_path, allowed_servers
-            )
-
             summary = (
                 f"• Серверов: {servers_count} (🟢 {servers_ok} / 🔴 {servers_problem})\n"
                 f"• Пулов: {total_pools} (🟢 {ok_pools} / 🔴 {bad_pools})\n"
-                f"• Свободное место ZFS пулов: {free_space_summary}\n"
-                f"• Передачи снэпшотов: {snapshot_summary}\n"
             )
+            has_issues = servers_problem > 0 or bad_pools > 0 or bool(stale_servers)
 
-            has_issues = (
-                servers_problem > 0
-                or bad_pools > 0
-                or bool(stale_servers)
-                or free_space_has_issues
-                or snapshot_has_issues
-            )
+            if include_free_space:
+                free_space_summary, free_space_has_issues = self._get_zfs_free_space_summary(
+                    db_path, allowed_servers
+                )
+                summary += f"• Свободное место ZFS пулов: {free_space_summary}\n"
+                has_issues = has_issues or free_space_has_issues
+
+            if include_snapshots:
+                snapshot_summary, snapshot_has_issues = self._get_snapshot_transfer_summary(
+                    db_path, allowed_servers
+                )
+                summary += f"• Передачи снэпшотов: {snapshot_summary}\n"
+                has_issues = has_issues or snapshot_has_issues
+
             return summary, has_issues
         except Exception as e:
             debug_log(f"❌ Ошибка получения сводки ZFS: {e}")
@@ -561,6 +615,220 @@ class MorningReport:
         ok_count = sum(1 for _, status in rows if str(status).upper() in ok_statuses)
         bad_count = total - ok_count
         return f"за 24ч: {total} (🟢 {ok_count} / 🔴 {bad_count})", bad_count > 0
+
+    def _zfs_db_and_allowed(self):
+        """Возвращает (db_path, allowed_servers) для ZFS-сводок."""
+        from config.db_settings import BACKUP_DATABASE_CONFIG
+        from core.config_manager import config_manager as settings_manager
+
+        db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+        zfs_servers = settings_manager.get_setting("ZFS_SERVERS", {})
+        if not isinstance(zfs_servers, dict):
+            zfs_servers = {}
+        allowed_servers = {
+            name
+            for name, server_value in zfs_servers.items()
+            if not isinstance(server_value, dict) or server_value.get("enabled", True)
+        }
+        return db_path, allowed_servers
+
+    def get_zfs_free_space_for_report(self):
+        """Отдельная сводка по свободному месту ZFS-пулов."""
+        db_path, allowed_servers = self._zfs_db_and_allowed()
+        if not db_path:
+            return "❌ База бэкапов не настроена", True
+        summary, has_issues = self._get_zfs_free_space_summary(db_path, allowed_servers)
+        return f"• Пулов: {summary}", has_issues
+
+    def get_snapshot_transfer_for_report(self):
+        """Отдельная сводка по передачам ZFS-снэпшотов."""
+        db_path, allowed_servers = self._zfs_db_and_allowed()
+        if not db_path:
+            return "❌ База бэкапов не настроена", True
+        summary, has_issues = self._get_snapshot_transfer_summary(db_path, allowed_servers)
+        return f"• Передачи: {summary}", has_issues
+
+    def get_nas_transfer_summary_for_report(self, period_hours=24):
+        """Сводка по передачам бэкапов на NAS за период."""
+        try:
+            from config.db_settings import BACKUP_DATABASE_CONFIG
+            from extensions.backup_monitor.backup_utils import filter_nas_transfer_row
+
+            db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+            if not db_path:
+                return "❌ База бэкапов не настроена", True
+
+            since = (datetime.now() - timedelta(hours=period_hours)).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    """
+                    SELECT host_name, status, nas_mounted, started_at_text,
+                           completed_at_text, bases_processed, error_count,
+                           problem_bases, received_at
+                    FROM nas_transfers
+                    WHERE received_at >= ?
+                    ORDER BY received_at DESC
+                    """,
+                    (since,),
+                )
+                rows = [filter_nas_transfer_row(tuple(r)) for r in cursor.fetchall()]
+            except Exception as exc:
+                if "no such table: nas_transfers" in str(exc):
+                    return "• Данных нет", False
+                raise
+            finally:
+                conn.close()
+
+            if not rows:
+                return "• За период передач не было", False
+
+            total = len(rows)
+            ok_count = sum(1 for r in rows if str(r[1]).upper() == "OK")
+            bad_count = total - ok_count
+            return f"• Передач: {total} (🟢 {ok_count} / 🔴 {bad_count})", bad_count > 0
+        except Exception as exc:
+            debug_log(f"❌ Ошибка сводки NAS: {exc}")
+            return "❌ Данные о передачах на NAS недоступны", True
+
+    def get_config_console_summary_for_report(self, period_hours=168):
+        """Сводка по бэкапам конфигов/историй консолей."""
+        try:
+            from config.db_settings import BACKUP_DATABASE_CONFIG
+            from extensions.backup_monitor.backup_utils import (
+                get_config_console_servers,
+                group_config_console_rows,
+            )
+
+            db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+            if not db_path:
+                return "❌ База бэкапов не настроена", True
+
+            since = (datetime.now() - timedelta(hours=period_hours)).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    """
+                    SELECT host_name, status, delivery_method, receiver,
+                           started_at_text, completed_at_text, vm_config_count,
+                           lxc_config_count, history_container_count,
+                           history_file_count, error_count, problem_items, received_at
+                    FROM config_console_backups
+                    WHERE received_at >= ?
+                    ORDER BY received_at DESC
+                    """,
+                    (since,),
+                )
+                rows = cursor.fetchall()
+            except Exception as exc:
+                if "no such table: config_console_backups" in str(exc):
+                    return "• Данных нет", False
+                raise
+            finally:
+                conn.close()
+
+            expected = get_config_console_servers()
+            grouped = group_config_console_rows(rows, expected_servers=expected)
+            servers = grouped.get("servers", [])
+            if not servers:
+                return "• Данных нет", False
+
+            total = len(servers)
+            missing = len(grouped.get("missing", []))
+            problem = 0
+            for srv in servers:
+                latest = srv.get("latest")
+                if srv.get("missing") or latest is None:
+                    continue
+                if str(latest[1]).upper() != "OK":
+                    problem += 1
+            bad = problem + missing
+            ok_count = total - bad
+            final_mark = "🟢" if grouped.get("final") else "⚪"
+            return (
+                f"• Серверов: {total} (🟢 {ok_count} / 🔴 {bad})\n"
+                f"• Финальная передача на NAS: {final_mark}",
+                bad > 0,
+            )
+        except Exception as exc:
+            debug_log(f"❌ Ошибка сводки конфигов: {exc}")
+            return "❌ Данные о бэкапах конфигов недоступны", True
+
+    def get_supplier_stock_summary_for_report(self, period_days=7):
+        """Сводка по получению остатков поставщиков."""
+        try:
+            from extensions.supplier_stock_files import summarize_supplier_stock_reports
+
+            grouped = summarize_supplier_stock_reports(period_days=period_days)
+            total = 0
+            ok_count = 0
+            bad_count = 0
+            for kind in ("download", "mail"):
+                for src in grouped.get(kind, []) or []:
+                    total += 1
+                    status = (src.get("receive") or {}).get("status", "unknown")
+                    if status == "success":
+                        ok_count += 1
+                    else:
+                        bad_count += 1
+            if total == 0:
+                return "• Источников нет", False
+            return f"• Источников: {total} (🟢 {ok_count} / 🔴 {bad_count})", bad_count > 0
+        except Exception as exc:
+            debug_log(f"❌ Ошибка сводки остатков поставщиков: {exc}")
+            return "❌ Данные об остатках поставщиков недоступны", True
+
+    def get_tls_cert_summary_for_report(self):
+        """Сводка по TLS-сертификатам (live-проверка)."""
+        try:
+            from extensions.tls_cert_monitor import collect_certificates
+
+            results, errors = collect_certificates()
+            total = len(results)
+            if total == 0 and not errors:
+                return "• Сертификаты не настроены", False
+            alert_count = sum(
+                1 for r in results if r.get("is_alert") or not r.get("ok", True)
+            )
+            ok_count = total - alert_count
+            min_days = None
+            for r in results:
+                days = r.get("days_left")
+                if isinstance(days, int) and (min_days is None or days < min_days):
+                    min_days = days
+            summary = f"• Сертификатов: {total} (🟢 {ok_count} / 🔴 {alert_count})"
+            if min_days is not None:
+                summary += f"\n• Ближайшее истечение: {min_days} дн."
+            has_issues = bool(errors) or alert_count > 0
+            return summary, has_issues
+        except Exception as exc:
+            debug_log(f"❌ Ошибка сводки TLS: {exc}")
+            return "❌ Данные о TLS-сертификатах недоступны", True
+
+    def get_resources_summary_for_report(self):
+        """Сводка по ресурсам серверов (live-проверка CPU/RAM/Disk)."""
+        try:
+            from core.task_router import run_resources_task
+
+            ok, payload = run_resources_task(force_reload=True)
+            if not ok or not isinstance(payload, dict):
+                return "❌ Данные о ресурсах недоступны", True
+            stats = payload.get("stats", {}) or {}
+            total = int(stats.get("total", 0) or 0)
+            success = int(stats.get("success", 0) or 0)
+            failed = int(stats.get("failed", 0) or 0)
+            if total == 0:
+                return "• Серверов с проверкой ресурсов нет", False
+            return f"• Серверов: {total} (🟢 {success} / 🔴 {failed})", failed > 0
+        except Exception as exc:
+            debug_log(f"❌ Ошибка сводки ресурсов: {exc}")
+            return "❌ Данные о ресурсах недоступны", True
 
     def _parse_collection_times(self, raw_value):
         """Парсит одно или несколько значений времени в список time."""
