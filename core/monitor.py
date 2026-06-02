@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.62.93
+Server Monitoring System v8.62.94
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.62.93
+Версия: 8.62.94
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -529,11 +529,14 @@ class Monitor:
             from extensions.extension_manager import extension_manager
 
             if extension_manager.is_extension_enabled("web_interface"):
-                from config import settings as _settings
-                from core.monitor_core import get_web_interface_url
+                from core.monitor_core import get_config, get_web_interface_url
 
+                # Берём конфиг из БД (config.db_settings), а не сырые дефолты
+                # config.settings — иначе адрес ссылки («Адрес для ссылки» /
+                # MONITOR_SERVER_IP, напр. "help") подменяется значением по
+                # умолчанию из settings.py и в сообщении светится не тот хост.
                 lines.append("")
-                lines.append(f"🌐 *Веб-интерфейс:* {get_web_interface_url(_settings)}")
+                lines.append(f"🌐 *Веб-интерфейс:* {get_web_interface_url(get_config())}")
                 lines.append("_доступен только в локальной сети_")
             else:
                 lines.append("")

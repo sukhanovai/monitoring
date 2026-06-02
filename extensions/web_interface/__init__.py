@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.93
+Server Monitoring System v8.62.94
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.93
+Версия: 8.62.94
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -8990,11 +8990,38 @@ def api_manage_servers():
 
 def start_web_server():
     """Запускает веб-сервер"""
-    print(f"🌐 Запуск веб-интерфейса на http://{WEB_HOST}:{WEB_PORT}")
+    # Читаем bind-хост/порт из БД на момент старта, а не из импортированных
+    # на уровне модуля констант (они могли устареть после правки настроек).
     try:
-        if extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
+        from config.db_settings import WEB_HOST as _web_host, WEB_PORT as _web_port
+    except Exception:
+        _web_host, _web_port = WEB_HOST, WEB_PORT
+
+    bind_host = _web_host or WEB_HOST
+    bind_port = _web_port or WEB_PORT
+
+    if extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
+        try:
             start_supplier_stock_scheduler()
-        app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False)
+        except Exception as e:
+            print(f"⚠️ Не удалось запустить планировщик остатков поставщиков: {e}")
+
+    print(f"🌐 Запуск веб-интерфейса на http://{bind_host}:{bind_port}")
+    try:
+        app.run(host=bind_host, port=bind_port, debug=False, use_reloader=False)
+    except OSError as e:
+        # Невозможно привязаться к указанному хосту (неверный/недоступный IP в
+        # «Хост (bind)») — сервер-поток молча умрёт, BFF станет недоступен и
+        # мобильный клиент получит HTTP 502. Падаем на 0.0.0.0, чтобы интерфейс
+        # остался доступен в локальной сети.
+        print(
+            f"❌ Не удалось привязать веб-сервер к {bind_host}:{bind_port} ({e}). "
+            "Повтор на 0.0.0.0"
+        )
+        try:
+            app.run(host="0.0.0.0", port=bind_port, debug=False, use_reloader=False)
+        except Exception as e2:
+            print(f"❌ Ошибка запуска веб-сервера на 0.0.0.0: {e2}")
     except Exception as e:
         print(f"❌ Ошибка запуска веб-сервера: {e}")
 

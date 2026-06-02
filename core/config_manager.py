@@ -1,16 +1,17 @@
 """
 /core/config_manager.py
-Server Monitoring System v8.62.93
+Server Monitoring System v8.62.94
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 8.62.93
+Версия: 8.62.94
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
 """
 
+import ast
 import json
 import sqlite3
 import threading
@@ -27,6 +28,24 @@ except Exception:
 
 # Логгер для этого модуля
 _logger = setup_logging("config")
+
+
+def _parse_json_collection(value_str: str):
+    """Разбирает list/dict-настройку, восстанавливая «битые» значения.
+
+    Каноническое хранение — JSON, но в БД могли просочиться Python-repr
+    значения с одинарными кавычками (например, исторический REPORT_EXTENSIONS,
+    сохранённый через str(list)). Для них json.loads падает «Expecting value»,
+    поэтому пробуем ast.literal_eval как запасной разбор. Значение
+    самовосстановится при следующем сохранении (set_setting пишет JSON).
+    """
+    try:
+        return json.loads(value_str)
+    except (json.JSONDecodeError, ValueError):
+        parsed = ast.literal_eval(value_str)
+        if isinstance(parsed, (list, dict, tuple, set)):
+            return list(parsed) if isinstance(parsed, (tuple, set)) else parsed
+        raise
 
 
 class ConfigManager:
@@ -190,12 +209,25 @@ class ConfigManager:
             row = cursor.fetchone()
             if not row or not row[0]:
                 return
+            raw = row[0]
             try:
-                stored = json.loads(row[0])
-            except (ValueError, TypeError):
+                stored = _parse_json_collection(raw)
+            except (ValueError, SyntaxError, TypeError):
                 return
             if not isinstance(stored, list):
                 return
+            # Самовосстановление «битого» значения: если в БД лежал Python-repr
+            # (одинарные кавычки из str(list)), json.loads на чтении падал и
+            # выбор пользователя терялся. Переписываем как валидный JSON.
+            if raw != json.dumps(stored, ensure_ascii=False):
+                cursor.execute(
+                    "UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP "
+                    "WHERE key = 'REPORT_EXTENSIONS'",
+                    (json.dumps(stored, ensure_ascii=False),),
+                )
+                conn.commit()
+                self._cache.pop("REPORT_EXTENSIONS", None)
+                debug_log("REPORT_EXTENSIONS перезаписан в валидный JSON")
             if set(stored) == set(LEGACY_DEFAULT_REPORT_EXTENSIONS):
                 cursor.execute(
                     "UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP "
@@ -433,14 +465,14 @@ class ConfigManager:
             elif data_type == "bool":
                 value = value_str.lower() == "true" if value_str else default
             elif data_type == "list":
-                value = json.loads(value_str) if value_str else default
+                value = _parse_json_collection(value_str) if value_str else default
             elif data_type == "dict":
-                value = json.loads(value_str) if value_str else default
+                value = _parse_json_collection(value_str) if value_str else default
             elif data_type == "time":
                 value = value_str if value_str else default
             else:  # string
                 value = value_str if value_str else default
-        except (json.JSONDecodeError, ValueError) as e:
+        except (json.JSONDecodeError, ValueError, SyntaxError) as e:
             error_log(f"Ошибка преобразования настройки {key}: {e}, значение: {value_str}")
             value = default
 
@@ -490,7 +522,16 @@ class ConfigManager:
                 data_type = "string"
                 value_str = str(value)
         else:
-            value_str = str(value)
+            # Тип задан явно — сериализуем сообразно типу. Для list/dict это
+            # ОБЯЗАТЕЛЬНО JSON: str(list) даёт Python-repr с одинарными
+            # кавычками, который потом не парсится json.loads в get_setting
+            # (ошибка «Expecting value» при чтении, например, REPORT_EXTENSIONS).
+            if data_type in ("list", "dict"):
+                value_str = json.dumps(value, ensure_ascii=False)
+            elif data_type == "bool":
+                value_str = str(value).lower()
+            else:
+                value_str = str(value)
 
         conn = self.get_connection()
         cursor = conn.cursor()

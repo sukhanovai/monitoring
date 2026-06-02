@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v8.62.93
+Server Monitoring System v8.62.94
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 8.62.93
+Версия: 8.62.94
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -22,9 +22,9 @@ from lib.utils import is_proxmox_server
 DEBUG_MODE = False
 
 # Версия приложения
-APP_VERSION = "8.62.93"
+APP_VERSION = "8.62.94"
 ANDROID_MIN_SUPPORTED_VERSION = "8.59.10"
-ANDROID_LATEST_VERSION = "8.62.93"
+ANDROID_LATEST_VERSION = "8.62.94"
 
 
 # Matrix-уведомления (доп. канал к Telegram)
