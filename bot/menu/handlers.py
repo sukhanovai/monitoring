@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v8.62.92
+Server Monitoring System v8.62.93
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu handlers
 Система мониторинга серверов
-Версия: 8.62.92
+Версия: 8.62.93
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота
@@ -1230,6 +1230,8 @@ def get_callback_handlers():
         CallbackQueryHandler(settings_callback_handler, pattern="^backup_times$"),
         CallbackQueryHandler(settings_callback_handler, pattern="^backup_patterns$"),
         CallbackQueryHandler(settings_callback_handler, pattern="^manage_"),
+        # Обработчики настройки состава отчёта (мультивыбор расширений)
+        CallbackQueryHandler(settings_callback_handler, pattern="^report_ext_"),
         # Обработчики аутентификации
         CallbackQueryHandler(settings_callback_handler, pattern="^settings_auth$"),
         CallbackQueryHandler(settings_callback_handler, pattern="^ssh_auth_settings$"),

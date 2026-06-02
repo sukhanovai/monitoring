@@ -2747,6 +2747,11 @@ private fun MonitoringApp(
                 {
                     openServerResourcesSingleCheckDetails()
                 }
+            } else if (extension.id == "web") {
+                {
+                    settingsSection = "web"
+                    showSettingsSectionOverlay = true
+                }
             } else if (
                 extension.id == "zfs_pool_free_space_monitor" ||
                 extension.id == "zfs_pool_free_space" ||
@@ -2849,6 +2854,12 @@ private fun MonitoringApp(
                     {
                         showSnapshotSettingsDialog = true
                         onExtensionsSettingsAction("settings_ext_snapshot")
+                    }
+                }
+                "web" -> {
+                    {
+                        settingsSection = "web"
+                        showSettingsSectionOverlay = true
                     }
                 }
                 else -> null
@@ -3404,6 +3415,7 @@ private fun MonitoringApp(
                                             "auth" -> "🔐 Аутентификация"
                                             "extensions" -> "🧩 Расширения"
                                             "report" -> "🗒️ Состав отчёта"
+                                            "web" -> "🌐 Веб-интерфейс"
                                             else -> "⚙️ Настройки"
                                         }
                                     )
@@ -3486,6 +3498,34 @@ private fun MonitoringApp(
                                 testOk = state.bffConnectionTestOk
                             )
                         }
+                        }
+
+                        if (settingsSection == "web") {
+                            Text("Локальный веб-интерфейс", fontWeight = FontWeight.Bold)
+                            OutlinedTextField(
+                                value = state.webInterfaceUrlInput,
+                                onValueChange = onWebInterfaceUrlChanged,
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Адрес веб-интерфейса") },
+                                supportingText = {
+                                    Text(
+                                        "Локальный веб-интерфейс мониторинга, " +
+                                            "например http://192.168.20.2:5000"
+                                    )
+                                }
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SettingsActionButton(
+                                    label = "Сохранить адрес",
+                                    onClick = onSaveWebInterfaceUrl
+                                )
+                            }
+                            if (state.webInterfaceUrlInput.isNotBlank()) {
+                                SettingsActionButton(
+                                    label = "🌐 Открыть веб-интерфейс",
+                                    onClick = { onOpenUpdateUrl(state.webInterfaceUrlInput) }
+                                )
+                            }
                         }
 
                         if (settingsSection == "monitoring") {
