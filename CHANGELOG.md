@@ -1,3 +1,17 @@
+## [8.62.95] - 2026-06-02
+
+### Fixed
+- RU: Состав отчёта (Telegram-бот) — кнопки расширений в меню «🗒️ Состав отчёта» по-прежнему не переключались по нажатию. Заявленное в 8.62.93 исправление зарегистрировало паттерн `^report_ext_` в неиспользуемом списке обработчиков (`bot/menu/handlers.py`), тогда как реальная единая точка маршрутизации — `callback_router` (`bot/handlers/callbacks.py`) — пропускала `report_ext_*` мимо `settings_callback_handler`, и нажатия молча игнорировались. Добавил префикс `report_ext_` в маршрутизацию `callback_router`; теперь отметки расширений в отчёте переключаются и меню перерисовывается.
+- EN: Report composition (Telegram bot) — the extension buttons in the "🗒️ Состав отчёта" menu still did not toggle when pressed. The fix claimed in 8.62.93 registered the `^report_ext_` pattern in an unused handler list (`bot/menu/handlers.py`), while the actual single routing point — `callback_router` (`bot/handlers/callbacks.py`) — passed `report_ext_*` callbacks by without reaching `settings_callback_handler`, so taps were silently ignored. Added the `report_ext_` prefix to `callback_router` routing; the report extension marks now toggle and the menu redraws.
+
+### Changed
+- RU: Android — плашка «web» оперативного центра теперь работает как переключатель: короткий тап включает/выключает веб-интерфейс, долгий тап открывает раздел его настроек. При выключении показывается яркое предупреждение (красный диалог) о том, что Android-приложение работает через веб-интерфейс и без него перестанет работать; повторно включить веб-интерфейс можно из Telegram-бота. В разделе настроек веб-интерфейса добавлено пояснение об этой зависимости.
+- EN: Android — the operations-center "web" tile now works as a toggle: a short tap enables/disables the web interface, a long tap opens its settings section. Disabling shows a bright warning (red dialog) that the Android app works through the web interface and will stop working without it; the web interface can be re-enabled from the Telegram bot. A note about this dependency was added to the web-interface settings section.
+
+### Added
+- RU: В ботах (Telegram и Matrix) и в управлении расширениями добавлено явное указание, что через веб-интерфейс работает Android-приложение: в настройках веб-интерфейса, в подсказке `/help`, в стартовом сообщении, в описании расширения «🌐 Веб-интерфейс», в ярком алерте при его выключении и в ответе Matrix-команды `!web`.
+- EN: Across the bots (Telegram and Matrix) and in extension management, added an explicit note that the Android app works through the web interface: in the web-interface settings, the `/help` hint, the start-up message, the "🌐 Веб-интерфейс" extension description, the bright alert shown when disabling it, and the Matrix `!web` command response.
+
 ## [8.62.94] - 2026-06-02
 
 ### Fixed

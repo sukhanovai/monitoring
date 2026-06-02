@@ -52,6 +52,7 @@ class MonitoringAppState {
     var showTileSettingsDialog by mutableStateOf(false)
     var settingsSection by mutableStateOf("bff")
     var showSettingsSectionOverlay by mutableStateOf(false)
+    var showWebDisableConfirmDialog by mutableStateOf(false)
     var showProxmoxPatternAddDialog by mutableStateOf(false)
     var showProxmoxPatternEditDialog by mutableStateOf(false)
     var proxmoxPatternCategoryInput by mutableStateOf("proxmox")

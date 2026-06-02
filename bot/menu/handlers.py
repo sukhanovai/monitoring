@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v8.62.94
+Server Monitoring System v8.62.95
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu handlers
 Система мониторинга серверов
-Версия: 8.62.94
+Версия: 8.62.95
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота
@@ -249,8 +249,10 @@ def start_command(update, context):
 
         welcome_text += f"🌐 *Веб-интерфейс:* {get_web_interface_url(config)}\n"
         welcome_text += "_*доступен только в локальной сети_\n"
+        welcome_text += "_📱 через него работает Android-приложение_\n"
     else:
         welcome_text += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
+        welcome_text += "_📱 без него не работает Android-приложение_\n"
 
     # Отправка сообщения в зависимости от типа обновления
     if update.message:
@@ -329,9 +331,11 @@ def help_command(update, context):
         from core.monitor_core import get_web_interface_url
 
         help_text += f"🌐 {get_web_interface_url(get_config())}\n"
-        help_text += "_*доступен только в локальной сети_\n\n"
+        help_text += "_*доступен только в локальной сети_\n"
+        help_text += "📱 _через веб-интерфейс работает Android-приложение_\n\n"
     else:
-        help_text += "🔴 В настоящее время отключен\n\n"
+        help_text += "🔴 В настоящее время отключен\n"
+        help_text += "📱 _без него не работает Android-приложение_\n\n"
 
     help_text += "*Используйте кнопки меню для удобного управления*"
 

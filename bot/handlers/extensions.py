@@ -1,11 +1,11 @@
 """
 /bot/handlers/extensions.py
-Server Monitoring System v8.62.94
+Server Monitoring System v8.62.95
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 UI handlers for managing extensions
 Система мониторинга серверов
-Версия: 8.62.94
+Версия: 8.62.95
 Автор: Александр Суханов (c)
 Лицензия: MIT
 UI-обработчики управления расширениями
@@ -86,7 +86,19 @@ def extensions_callback_handler(update, context):
         extension_id = data.replace("ext_toggle_", "")
         success, message = extension_manager.toggle_extension(extension_id)
         if success:
-            query.answer(message)
+            # При выключении веб-интерфейса предупреждаем ярким алертом: через
+            # него работает Android-приложение, без него оно перестанет работать.
+            if extension_id == "web_interface" and not extension_manager.is_extension_enabled(
+                "web_interface"
+            ):
+                query.answer(
+                    "⚠️ Веб-интерфейс выключен!\n\n"
+                    "Через него работает Android-приложение — теперь оно "
+                    "перестанет работать.",
+                    show_alert=True,
+                )
+            else:
+                query.answer(message)
             show_extensions_menu(update, context)
         else:
             query.answer(message, show_alert=True)

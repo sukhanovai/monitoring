@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.62.94
+Server Monitoring System v8.62.95
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.62.94
+Версия: 8.62.95
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -696,6 +696,9 @@ def show_web_settings(update, context):
         f"• Хост (bind): {web_host}\n"
         f"• Адрес для ссылки: {monitor_ip or '— (авто)'}\n\n"
         f"🔗 Текущая ссылка: {link}\n\n"
+        "📱 *Через веб-интерфейс работает Android-приложение* — оно берёт "
+        "все данные у него. Если выключить веб-интерфейс, приложение "
+        "перестанет работать.\n\n"
         "Выберите параметр для изменения:"
     )
 
