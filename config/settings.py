@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v8.62.96
+Server Monitoring System v8.62.97
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 8.62.96
+Версия: 8.62.97
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -22,9 +22,9 @@ from lib.utils import is_proxmox_server
 DEBUG_MODE = False
 
 # Версия приложения
-APP_VERSION = "8.62.96"
+APP_VERSION = "8.62.97"
 ANDROID_MIN_SUPPORTED_VERSION = "8.59.10"
-ANDROID_LATEST_VERSION = "8.62.96"
+ANDROID_LATEST_VERSION = "8.62.97"
 
 
 # Matrix-уведомления (доп. канал к Telegram)
@@ -155,6 +155,10 @@ SERVER_TIMEOUTS = {
 WEB_PORT = 5000
 WEB_HOST = "0.0.0.0"
 MONITOR_SERVER_IP = "192.0.2.1"
+# Логин/пароль для входа в веб-интерфейс. Пустые значения => вход без проверки
+# (обратная совместимость). Если заданы — веб-интерфейс требует эти учётные данные.
+WEB_LOGIN = ""
+WEB_PASSWORD = ""
 
 # === ФАЙЛЫ ДАННЫХ ===
 STATS_FILE = DATA_DIR / "monitoring_stats.json"

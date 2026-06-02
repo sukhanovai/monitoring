@@ -289,6 +289,26 @@ data class BotChatRequest(
     @Json(name = "chat_id") val chatId: String
 )
 
+data class SettingsWebAuthRequest(
+    val login: String? = null,
+    val password: String? = null
+)
+
+data class SettingsWebAuthData(
+    val login: String? = null,
+    @Json(name = "password_set") val passwordSet: Boolean? = null,
+    @Json(name = "auth_required") val authRequired: Boolean? = null
+)
+
+data class SettingsWebAuthResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsWebAuthData? = null,
+    val login: String? = null,
+    @Json(name = "password_set") val passwordSet: Boolean? = null,
+    @Json(name = "auth_required") val authRequired: Boolean? = null,
+    val message: String? = null
+)
+
 data class WindowsCredential(
     val id: Int? = null,
     val username: String? = null,

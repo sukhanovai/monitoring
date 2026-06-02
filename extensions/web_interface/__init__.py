@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.96
+Server Monitoring System v8.62.97
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.96
+Версия: 8.62.97
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1378,6 +1378,36 @@ def _extract_credentials(payload):
     username = payload.get("username") or payload.get("login") or payload.get("email")
     password = payload.get("password")
     return username, password
+
+
+def _get_web_auth_credentials():
+    """Возвращает (login, password) веб-интерфейса из настроек.
+
+    Читается из БД на момент запроса (свежие значения после правки из
+    ботов/Android/веб-интерфейса). Пустые строки означают «не задано».
+    """
+    try:
+        from core.config_manager import config_manager
+
+        login = str(config_manager.get_setting("WEB_LOGIN", "", use_cache=False) or "").strip()
+        password = str(config_manager.get_setting("WEB_PASSWORD", "", use_cache=False) or "")
+    except Exception:
+        login, password = "", ""
+    return login, password
+
+
+def _set_web_auth_credentials(login=None, password=None):
+    """Сохраняет логин/пароль веб-интерфейса в настройки (категория ``web``)."""
+    from core.config_manager import config_manager
+
+    if login is not None:
+        config_manager.set_setting(
+            "WEB_LOGIN", str(login), category="web", data_type="string"
+        )
+    if password is not None:
+        config_manager.set_setting(
+            "WEB_PASSWORD", str(password), category="web", data_type="string"
+        )
 
 
 def _issue_mobile_token(subject):
@@ -2884,6 +2914,25 @@ def mobile_auth_token():
             ),
             400,
         )
+
+    # Если в настройках задан логин/пароль веб-интерфейса — проверяем их.
+    # Если не задан ни логин, ни пароль — сохраняем прежнее поведение (вход
+    # без проверки), чтобы не заблокировать доступ при первичной настройке.
+    web_login, web_password = _get_web_auth_credentials()
+    if web_login or web_password:
+        valid = hmac.compare_digest(str(username), web_login) and hmac.compare_digest(
+            str(password), web_password
+        )
+        if not valid:
+            return (
+                jsonify(
+                    {
+                        "error": "invalid_credentials",
+                        "message": "Неверный логин или пароль веб-интерфейса",
+                    }
+                ),
+                401,
+            )
 
     token, expires_at = _issue_mobile_token(username)
     return jsonify(
@@ -7516,6 +7565,123 @@ def v1_get_settings_time():
     }
     app.logger.info("GET /v1/settings/time request_id=%s", request_id)
     return jsonify(response), 200
+
+
+@app.route("/v1/settings/web-auth", methods=["GET"])
+def v1_get_settings_web_auth():
+    """Текущие учётные данные веб-интерфейса (логин + признак заданного пароля)."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+    is_ok, _token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
+
+    login, password = _get_web_auth_credentials()
+    payload = {
+        "request_id": request_id,
+        "settings": {
+            "login": login,
+            "password_set": bool(password),
+            "auth_required": bool(login or password),
+        },
+        "login": login,
+        "password_set": bool(password),
+        "auth_required": bool(login or password),
+    }
+    app.logger.info("GET /v1/settings/web-auth request_id=%s", request_id)
+    return jsonify(payload), 200
+
+
+@app.route("/v1/settings/web-auth", methods=["PATCH"])
+def v1_settings_web_auth():
+    """Изменение логина/пароля веб-интерфейса.
+
+    Пустая строка очищает значение (полная очистка обоих полей отключает
+    проверку — вход в веб-интерфейс снова без пароля).
+    """
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+    is_ok, _token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
+
+    payload = request.get_json(silent=True) or {}
+    login = payload.get("login")
+    password = payload.get("password")
+    if login is None and password is None:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "INVALID_REQUEST",
+                        "message": "Нужно поле login и/или password",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
+
+    try:
+        _set_web_auth_credentials(
+            login=None if login is None else str(login).strip(),
+            password=None if password is None else str(password),
+        )
+    except Exception as exc:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "SAVE_FAILED",
+                        "message": str(exc),
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            500,
+        )
+
+    cur_login, cur_password = _get_web_auth_credentials()
+    app.logger.info("PATCH /v1/settings/web-auth request_id=%s", request_id)
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "settings": {
+                    "login": cur_login,
+                    "password_set": bool(cur_password),
+                    "auth_required": bool(cur_login or cur_password),
+                },
+                "login": cur_login,
+                "password_set": bool(cur_password),
+                "auth_required": bool(cur_login or cur_password),
+                "message": "Учётные данные веб-интерфейса обновлены",
+            }
+        ),
+        200,
+    )
 
 
 @app.route("/v1/settings/auth", methods=["GET"])

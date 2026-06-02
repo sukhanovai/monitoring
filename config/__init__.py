@@ -1,11 +1,11 @@
 """
 /config/__init__.py
-Server Monitoring System v8.62.96
+Server Monitoring System v8.62.97
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration package
 Система мониторинга серверов
-Версия: 8.62.96
+Версия: 8.62.97
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет конфигурации
@@ -78,6 +78,8 @@ from .settings import (
     STATS_FILE,
     TELEGRAM_TOKEN as SETTINGS_TOKEN,
     WEB_HOST,
+    WEB_LOGIN,
+    WEB_PASSWORD,
     WEB_PORT,
     WINDOWS_CREDENTIALS,
     WINDOWS_SERVER_CREDENTIALS,
@@ -148,6 +150,8 @@ __all__ = [
     "WEB_PORT",
     "WEB_HOST",
     "MONITOR_SERVER_IP",
+    "WEB_LOGIN",
+    "WEB_PASSWORD",
     # Файлы
     "STATS_FILE",
     "BACKUP_DB_FILE",
