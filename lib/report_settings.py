@@ -1,11 +1,11 @@
 """
 /lib/report_settings.py
-Server Monitoring System v8.62.91
+Server Monitoring System v8.62.92
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Report composition settings helper
 Система мониторинга серверов
-Версия: 8.62.91
+Версия: 8.62.92
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Хелпер настройки состава утреннего/ручного отчёта.
@@ -69,7 +69,13 @@ REPORT_EXTENSION_LABELS = {
 # Расширения, которые собирают данные «вживую» (SSH/опрос) и потому могут
 # заметно замедлить отчёт. По умолчанию выключены — пользователь включает
 # их осознанно.
-REPORT_HEAVY_EXTENSIONS = {"tls_cert_monitor", "resource_monitor"}
+REPORT_HEAVY_EXTENSIONS = {
+    "tls_cert_monitor",
+    "resource_monitor",
+    # Свободное место ZFS собирается «вживую» по SSH в момент отчёта —
+    # данные нигде не персистятся, поэтому это тоже тяжёлое расширение.
+    "zfs_pool_free_space_monitor",
+}
 
 # По умолчанию в отчёт включены все «лёгкие» расширения (читают данные из
 # БД/файловых сводок); «тяжёлые» (live-сбор) — по желанию.

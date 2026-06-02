@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/settings_value.py
-Server Monitoring System v8.62.91
+Server Monitoring System v8.62.92
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчик текстового ввода значений настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.91
+Версия: 8.62.92
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
@@ -283,6 +283,7 @@ def handle_setting_value(update, context):
             "ssh_key_path": "auth",
             "web_port": "web",
             "web_host": "web",
+            "monitor_server_ip": "web",
             "backup_alert_hours": "backup",
             "backup_stale_hours": "backup",
             "windows_2025_timeout": "timeouts",

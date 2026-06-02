@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.62.91
+Server Monitoring System v8.62.92
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.62.91
+Версия: 8.62.92
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -546,6 +546,7 @@ _SETTING_KEY_TO_DB_KEY = {
     "ssh_key_path": "SSH_KEY_PATH",
     "web_port": "WEB_PORT",
     "web_host": "WEB_HOST",
+    "monitor_server_ip": "MONITOR_SERVER_IP",
     "backup_alert_hours": "BACKUP_ALERT_HOURS",
     "backup_stale_hours": "BACKUP_STALE_HOURS",
     "windows_2025_timeout": "WINDOWS_2025_TIMEOUT",
@@ -611,6 +612,10 @@ def handle_setting_input(update, context, setting_key):
         "ssh_key_path": "Введите путь к SSH ключу:",
         "web_port": "Введите порт веб-интерфейса:",
         "web_host": "Введите хост веб-интерфейса:",
+        "monitor_server_ip": (
+            "Введите адрес сервера для ссылки на веб-интерфейс "
+            "(IP или имя хоста, например 192.168.20.2):"
+        ),
         "backup_alert_hours": "Введите количество часов для алертов о бэкапах:",
         "backup_stale_hours": "Введите количество часов для устаревших бэкапов:",
         # Новые таймауты серверов
@@ -647,6 +652,8 @@ def handle_setting_input(update, context, setting_key):
         "ping_timeout",
     }:
         cancel_callback = "server_timeouts"
+    elif setting_key in {"web_port", "web_host", "monitor_server_ip"}:
+        cancel_callback = "settings_web"
     elif setting_key in {"check_interval", "max_fail_time"}:
         cancel_callback = "settings_monitoring"
     elif setting_key in {"silent_start", "silent_end", "data_collection"}:
@@ -677,17 +684,25 @@ def show_web_settings(update, context):
 
     web_port = settings_manager.get_setting("WEB_PORT", 5000)
     web_host = settings_manager.get_setting("WEB_HOST", "0.0.0.0")
+    monitor_ip = settings_manager.get_setting("MONITOR_SERVER_IP", "") or ""
+
+    # Адрес ссылки, которую видят пользователи в меню/отчётах.
+    link_host = monitor_ip or (web_host if web_host not in ("0.0.0.0", "") else "localhost")
+    link = f"http://{link_host}:{web_port}"
 
     message = (
         "🌐 *Настройки веб-интерфейса*\n\n"
         f"• Порт: {web_port}\n"
-        f"• Хост: {web_host}\n\n"
+        f"• Хост (bind): {web_host}\n"
+        f"• Адрес для ссылки: {monitor_ip or '— (авто)'}\n\n"
+        f"🔗 Текущая ссылка: {link}\n\n"
         "Выберите параметр для изменения:"
     )
 
     keyboard = [
         [InlineKeyboardButton("🔌 Порт веб-интерфейса", callback_data="set_web_port")],
-        [InlineKeyboardButton("🌐 Хост веб-интерфейса", callback_data="set_web_host")],
+        [InlineKeyboardButton("🌐 Хост (bind)", callback_data="set_web_host")],
+        [InlineKeyboardButton("📍 Адрес для ссылки", callback_data="set_monitor_server_ip")],
         [
             InlineKeyboardButton("↩️ Назад", callback_data="settings_main"),
             InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
