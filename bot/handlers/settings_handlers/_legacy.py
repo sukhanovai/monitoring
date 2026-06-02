@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.62.96
+Server Monitoring System v8.62.97
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.62.96
+Версия: 8.62.97
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -547,6 +547,8 @@ _SETTING_KEY_TO_DB_KEY = {
     "web_port": "WEB_PORT",
     "web_host": "WEB_HOST",
     "monitor_server_ip": "MONITOR_SERVER_IP",
+    "web_login": "WEB_LOGIN",
+    "web_password": "WEB_PASSWORD",
     "backup_alert_hours": "BACKUP_ALERT_HOURS",
     "backup_stale_hours": "BACKUP_STALE_HOURS",
     "windows_2025_timeout": "WINDOWS_2025_TIMEOUT",
@@ -575,6 +577,9 @@ def _format_current_setting_value(setting_key: str) -> str:
         return ""
     if value is None or value == "" or value == {} or value == []:
         return ""
+    # Секреты не раскрываем в подсказке — показываем только факт наличия.
+    if any(token in db_key.upper() for token in ("PASSWORD", "TOKEN", "SECRET")):
+        return "📍 Текущее значение: •••• (задано)"
     return f"📍 Текущее значение: {value}"
 
 
@@ -616,6 +621,14 @@ def handle_setting_input(update, context, setting_key):
             "Введите адрес сервера для ссылки на веб-интерфейс "
             "(IP или имя хоста, например 192.168.20.2):"
         ),
+        "web_login": (
+            "Введите логин для входа в веб-интерфейс "
+            "(пустое значение — отключить проверку логина):"
+        ),
+        "web_password": (
+            "Введите пароль для входа в веб-интерфейс "
+            "(пустое значение — отключить проверку пароля):"
+        ),
         "backup_alert_hours": "Введите количество часов для алертов о бэкапах:",
         "backup_stale_hours": "Введите количество часов для устаревших бэкапов:",
         # Новые таймауты серверов
@@ -652,7 +665,13 @@ def handle_setting_input(update, context, setting_key):
         "ping_timeout",
     }:
         cancel_callback = "server_timeouts"
-    elif setting_key in {"web_port", "web_host", "monitor_server_ip"}:
+    elif setting_key in {
+        "web_port",
+        "web_host",
+        "monitor_server_ip",
+        "web_login",
+        "web_password",
+    }:
         cancel_callback = "settings_web"
     elif setting_key in {"check_interval", "max_fail_time"}:
         cancel_callback = "settings_monitoring"
@@ -685,16 +704,27 @@ def show_web_settings(update, context):
     web_port = settings_manager.get_setting("WEB_PORT", 5000)
     web_host = settings_manager.get_setting("WEB_HOST", "0.0.0.0")
     monitor_ip = settings_manager.get_setting("MONITOR_SERVER_IP", "") or ""
+    web_login = settings_manager.get_setting("WEB_LOGIN", "") or ""
+    web_password = settings_manager.get_setting("WEB_PASSWORD", "") or ""
 
     # Адрес ссылки, которую видят пользователи в меню/отчётах.
     link_host = monitor_ip or (web_host if web_host not in ("0.0.0.0", "") else "localhost")
     link = f"http://{link_host}:{web_port}"
 
+    if web_login or web_password:
+        auth_line = (
+            f"🔐 Вход: логин `{web_login or '— (не задан)'}`, "
+            f"пароль {'задан' if web_password else 'не задан'}"
+        )
+    else:
+        auth_line = "🔓 Вход: без пароля (логин/пароль не заданы)"
+
     message = (
         "🌐 *Настройки веб-интерфейса*\n\n"
         f"• Порт: {web_port}\n"
         f"• Хост (bind): {web_host}\n"
-        f"• Адрес для ссылки: {monitor_ip or '— (авто)'}\n\n"
+        f"• Адрес для ссылки: {monitor_ip or '— (авто)'}\n"
+        f"{auth_line}\n\n"
         f"🔗 Текущая ссылка: {link}\n\n"
         "📱 *Через веб-интерфейс работает Android-приложение* — оно берёт "
         "все данные у него. Если выключить веб-интерфейс, приложение "
@@ -706,6 +736,8 @@ def show_web_settings(update, context):
         [InlineKeyboardButton("🔌 Порт веб-интерфейса", callback_data="set_web_port")],
         [InlineKeyboardButton("🌐 Хост (bind)", callback_data="set_web_host")],
         [InlineKeyboardButton("📍 Адрес для ссылки", callback_data="set_monitor_server_ip")],
+        [InlineKeyboardButton("👤 Логин веб-интерфейса", callback_data="set_web_login")],
+        [InlineKeyboardButton("🔑 Пароль веб-интерфейса", callback_data="set_web_password")],
         [
             InlineKeyboardButton("↩️ Назад", callback_data="settings_main"),
             InlineKeyboardButton("✖️ Закрыть", callback_data="close"),

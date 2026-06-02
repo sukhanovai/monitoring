@@ -1,3 +1,9 @@
+## [8.62.97] - 2026-06-02
+
+### Added
+- RU: Логин и пароль для входа в веб-интерфейс. Появилась настраиваемая пара учётных данных (`WEB_LOGIN` / `WEB_PASSWORD`), которую можно задать из Telegram-бота (⚙️ Настройки → 🌐 Веб-интерфейс → «👤 Логин веб-интерфейса» / «🔑 Пароль веб-интерфейса»), из Matrix-бота (`!web_login <логин>`, `!web_password <пароль>`, статус — в `!web`) и из Android-приложения (раздел «🌐 Веб-интерфейс» → поля «Логин» и «Пароль» → «Сохранить логин и пароль»). Веб-интерфейс при входе через `/v1/auth/token` теперь проверяет эти учётные данные; если оба поля пустые — вход остаётся без проверки (обратная совместимость, как раньше). Добавлены BFF-эндпоинты `GET/PATCH /v1/settings/web-auth`. Пароль маскируется в подсказках ботов и не раскрывается в ответах.
+- EN: Login and password for the web interface. Added a configurable credentials pair (`WEB_LOGIN` / `WEB_PASSWORD`) that can be set from the Telegram bot (⚙️ Settings → 🌐 Web interface → "👤 Web login" / "🔑 Web password"), from the Matrix bot (`!web_login <login>`, `!web_password <password>`, status shown in `!web`), and from the Android app (the "🌐 Web interface" section → "Login" and "Password" fields → "Save login and password"). The web interface now validates these credentials on `/v1/auth/token`; if both fields are empty, login stays unchecked (backward compatible, as before). New BFF endpoints `GET/PATCH /v1/settings/web-auth` were added. The password is masked in bot hints and never revealed in responses.
+
 ## [8.62.96] - 2026-06-02
 
 ### Changed

@@ -1866,6 +1866,10 @@ class MainActivity : ComponentActivity() {
                         onTokenChanged = vm::setTokenInput,
                         onBaseUrlChanged = vm::setBaseUrlInput,
                         onWebInterfaceUrlChanged = vm::setWebInterfaceUrlInput,
+                        onWebAuthLoginChanged = vm::setWebAuthLoginInput,
+                        onWebAuthPasswordChanged = vm::setWebAuthPasswordInput,
+                        onToggleWebAuthPasswordVisibility = vm::toggleWebAuthPasswordVisibility,
+                        onSaveWebAuth = vm::updateWebAuthSettings,
                         onSaveToken = vm::saveToken,
                         onSaveBaseUrl = vm::saveBaseUrl,
                         onSaveWebInterfaceUrl = vm::saveWebInterfaceUrl,
@@ -2095,6 +2099,10 @@ private fun MonitoringApp(
     val onTokenChanged = callbacks.onTokenChanged
     val onBaseUrlChanged = callbacks.onBaseUrlChanged
     val onWebInterfaceUrlChanged = callbacks.onWebInterfaceUrlChanged
+    val onWebAuthLoginChanged = callbacks.onWebAuthLoginChanged
+    val onWebAuthPasswordChanged = callbacks.onWebAuthPasswordChanged
+    val onToggleWebAuthPasswordVisibility = callbacks.onToggleWebAuthPasswordVisibility
+    val onSaveWebAuth = callbacks.onSaveWebAuth
     val onSaveToken = callbacks.onSaveToken
     val onSaveBaseUrl = callbacks.onSaveBaseUrl
     val onSaveWebInterfaceUrl = callbacks.onSaveWebInterfaceUrl
@@ -3601,6 +3609,54 @@ private fun MonitoringApp(
                                 SettingsActionButton(
                                     label = "🌐 Открыть веб-интерфейс",
                                     onClick = { onOpenUpdateUrl(state.webInterfaceUrlInput) }
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Логин и пароль веб-интерфейса", fontWeight = FontWeight.Bold)
+                            Text(
+                                if (state.webAuthPasswordSet) {
+                                    "🔐 Сейчас вход в веб-интерфейс защищён логином и паролем."
+                                } else {
+                                    "🔓 Сейчас вход в веб-интерфейс без пароля. Задайте логин и " +
+                                        "пароль, чтобы его защитить. Пустые поля отключают проверку."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            OutlinedTextField(
+                                value = state.webAuthLoginInput,
+                                onValueChange = onWebAuthLoginChanged,
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                label = { Text("Логин") }
+                            )
+                            OutlinedTextField(
+                                value = state.webAuthPasswordInput,
+                                onValueChange = onWebAuthPasswordChanged,
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                label = { Text("Пароль") },
+                                placeholder = {
+                                    Text(if (state.webAuthPasswordSet) "•••• (задан, не менять)" else "")
+                                },
+                                visualTransformation = if (state.isWebAuthPasswordVisible) VisualTransformation.None else hiddenTransformation,
+                                trailingIcon = {
+                                    TextButton(onClick = onToggleWebAuthPasswordVisibility) {
+                                        Text(if (state.isWebAuthPasswordVisible) "Скрыть" else "Показать")
+                                    }
+                                }
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SettingsActionButton(
+                                    label = "Сохранить логин и пароль",
+                                    onClick = onSaveWebAuth
+                                )
+                            }
+                            if (state.message.isNotBlank() && state.messageSource == "web_auth") {
+                                BotSettingsMessageCard(
+                                    message = state.message,
+                                    isTesting = false,
+                                    testOk = null
                                 )
                             }
                         }

@@ -80,6 +80,14 @@ interface MonitoringApi {
         @Body request: SettingsTimeRequest
     ): SettingsTimeResponse
 
+    @GET("v1/settings/web-auth")
+    suspend fun getWebAuthSettings(): SettingsWebAuthResponse
+
+    @PATCH("v1/settings/web-auth")
+    suspend fun updateWebAuthSettings(
+        @Body request: SettingsWebAuthRequest
+    ): SettingsWebAuthResponse
+
     @GET("v1/settings/auth")
     suspend fun getAuthSettings(): SettingsAuthResponse
 

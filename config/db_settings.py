@@ -1,11 +1,11 @@
 """
 /config/db_settings.py
-Server Monitoring System v8.62.96
+Server Monitoring System v8.62.97
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
 Система мониторинга серверов
-Версия: 8.62.96
+Версия: 8.62.97
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Загрузчик настроек из базы данных
@@ -199,6 +199,7 @@ def load_all_settings() -> None:
     global SSH_KEY_PATH, SSH_USERNAME, SERVER_CONFIG
     global WINDOWS_SERVER_CONFIGS, WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS
     global SERVER_TIMEOUTS, WEB_PORT, WEB_HOST, MONITOR_SERVER_IP
+    global WEB_LOGIN, WEB_PASSWORD
     global RDP_SERVERS, SSH_SERVERS, PING_SERVERS
     global PROXMOX_HOSTS, DUPLICATE_IP_HOSTS, HOSTNAME_ALIASES
     global BACKUP_PATTERNS, BACKUP_STATUS_MAP, DATABASE_CONFIG, ZFS_SERVERS
@@ -318,6 +319,8 @@ def load_all_settings() -> None:
             "MONITOR_SERVER_IP",
             defaults.MONITOR_SERVER_IP,
         )
+        WEB_LOGIN = get_setting("WEB_LOGIN", defaults.WEB_LOGIN)
+        WEB_PASSWORD = get_setting("WEB_PASSWORD", defaults.WEB_PASSWORD)
 
         # === MATRIX-УВЕДОМЛЕНИЯ ===
         matrix_homeserver = get_setting("MATRIX_HOMESERVER", defaults.MATRIX_HOMESERVER)

@@ -57,6 +57,7 @@ import ru.monitoring.mobile.api.SettingsBotRequest
 import ru.monitoring.mobile.api.SettingsMatrixBotRequest
 import ru.monitoring.mobile.api.SettingsMonitoringRequest
 import ru.monitoring.mobile.api.SettingsTimeRequest
+import ru.monitoring.mobile.api.SettingsWebAuthRequest
 import ru.monitoring.mobile.api.TlsDiagnosticsRequest
 import ru.monitoring.mobile.api.ToggleServerEnabledRequest
 import ru.monitoring.mobile.api.UpdateServerRequest
@@ -977,6 +978,11 @@ class MainViewModel(
     fun setTokenInput(value: String) { state = state.copy(token = value) }
     fun setBaseUrlInput(value: String) { state = state.copy(baseUrlInput = value) }
     fun setWebInterfaceUrlInput(value: String) { state = state.copy(webInterfaceUrlInput = value) }
+    fun setWebAuthLoginInput(value: String) { state = state.copy(webAuthLoginInput = value) }
+    fun setWebAuthPasswordInput(value: String) { state = state.copy(webAuthPasswordInput = value) }
+    fun toggleWebAuthPasswordVisibility() {
+        state = state.copy(isWebAuthPasswordVisible = !state.isWebAuthPasswordVisible)
+    }
     fun setCheckIntervalInput(value: String) { state = state.copy(checkIntervalInput = value) }
     fun setTimeoutInput(value: String) { state = state.copy(timeoutInput = value) }
     fun setMaxDowntimeInput(value: String) { state = state.copy(maxDowntimeInput = value) }
@@ -1182,6 +1188,9 @@ class MainViewModel(
             Log.i(TAG_SYNC, "refreshSettingsFromServer started: showErrors=$showErrors, sessionId=$syncSessionId")
             Log.i(TAG_SYNC, "sync step settings started, sessionId=$syncSessionId")
             state = state.copy(isLoading = true)
+            // Логин/пароль веб-интерфейса грузим отдельной задачей, чтобы не
+            // трогать индексированный список результатов основного запроса.
+            loadWebAuthSettings()
 
             val result = withContext(Dispatchers.IO) {
                 suspend fun <T> fetchOrLog(name: String, block: suspend () -> T): T? = try {
@@ -3313,6 +3322,59 @@ class MainViewModel(
         }
     }
 
+    /** Подтягивает текущий логин веб-интерфейса и признак заданного пароля. */
+    fun loadWebAuthSettings() {
+        val effectiveToken = normalizeToken(state.token.ifBlank { preferences.apiToken })
+        if (effectiveToken.isBlank()) return
+        viewModelScope.launch {
+            val response = withContext(Dispatchers.IO) {
+                runCatching { currentApi().getWebAuthSettings() }.getOrNull()
+            } ?: return@launch
+            val login = response.settings?.login ?: response.login ?: ""
+            val passwordSet = response.settings?.passwordSet ?: response.passwordSet ?: false
+            state = state.copy(
+                // Не затираем то, что админ уже печатает в поле.
+                webAuthLoginInput = if (state.webAuthLoginInput.isBlank()) login else state.webAuthLoginInput,
+                webAuthPasswordSet = passwordSet
+            )
+        }
+    }
+
+    fun updateWebAuthSettings() {
+        val login = state.webAuthLoginInput.trim()
+        val password = state.webAuthPasswordInput
+        // Пустой пароль при уже заданном — оставляем прежний (null = не менять).
+        // Пустой пароль при незаданном — отправляем "" (проверка отключена).
+        val passwordPayload: String? = when {
+            password.isNotBlank() -> password
+            state.webAuthPasswordSet -> null
+            else -> ""
+        }
+        val request = SettingsWebAuthRequest(login = login, password = passwordPayload)
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true, messageSource = "web_auth")
+            runCatching { currentApi().updateWebAuthSettings(request) }
+                .onSuccess { response ->
+                    val passwordSet = response.settings?.passwordSet ?: response.passwordSet ?: false
+                    state = state.copy(
+                        isLoading = false,
+                        webAuthPasswordInput = "",
+                        webAuthPasswordSet = passwordSet,
+                        message = "Логин и пароль веб-интерфейса сохранены",
+                        messageSource = "web_auth"
+                    )
+                }
+                .onFailure { error ->
+                    state = state.copy(
+                        isLoading = false,
+                        message = formatNetworkError(error),
+                        messageSource = "web_auth"
+                    )
+                }
+        }
+    }
+
     private fun rescheduleBackgroundWorkers() {
         val notificationsEnabled = state.morningReportNotificationsEnabled && state.token.isNotBlank()
         val scheduleTime = state.metricsTimeInput.ifBlank { "08:30" }
@@ -3350,6 +3412,10 @@ data class MainUiState(
     val token: String = "",
     val baseUrlInput: String = "https://api.202020.ru:8443/",
     val webInterfaceUrlInput: String = "http://192.168.20.2:5000",
+    val webAuthLoginInput: String = "",
+    val webAuthPasswordInput: String = "",
+    val webAuthPasswordSet: Boolean = false,
+    val isWebAuthPasswordVisible: Boolean = false,
     val isApiTokenVisible: Boolean = false,
     val isTelegramTokenVisible: Boolean = false,
     val isSshPasswordVisible: Boolean = false,

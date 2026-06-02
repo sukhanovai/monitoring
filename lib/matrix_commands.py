@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.96
+Server Monitoring System v8.62.97
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.96
+Версия: 8.62.97
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -412,7 +412,7 @@ _EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict(
             "web_interface",
             {
                 "label": "🌐 веб-интерфейс",
-                "keys": ["WEB_PORT", "WEB_HOST", "MONITOR_SERVER_IP"],
+                "keys": ["WEB_PORT", "WEB_HOST", "MONITOR_SERVER_IP", "WEB_LOGIN", "WEB_PASSWORD"],
                 "categories": ["web"],
             },
         ),
@@ -1934,14 +1934,56 @@ class MatrixCommandBot:
         host = config_manager.get_setting("WEB_HOST", "127.0.0.1") or "127.0.0.1"
         port = config_manager.get_setting("WEB_PORT", 5000) or 5000
         monitor_ip = config_manager.get_setting("MONITOR_SERVER_IP", "") or ""
+        web_login = config_manager.get_setting("WEB_LOGIN", "") or ""
+        web_password = config_manager.get_setting("WEB_PASSWORD", "") or ""
         link_host = monitor_ip or (host if host not in ("0.0.0.0", "") else "localhost")
+        if web_login or web_password:
+            auth_line = (
+                f"🔐 Вход: логин «{web_login or '— не задан'}», "
+                f"пароль {'задан' if web_password else 'не задан'}\n"
+            )
+        else:
+            auth_line = "🔓 Вход: без пароля (логин/пароль не заданы)\n"
         return (
             "🌐 Веб-интерфейс управления:\n"
             f"• http://{link_host}:{port}\n"
+            f"{auth_line}"
             "Открой адрес в браузере из доверенной сети.\n"
+            "Логин/пароль: !web_login <логин>, !web_password <пароль> "
+            "(пусто — очистить и отключить проверку).\n"
             "📱 Через веб-интерфейс работает Android-приложение — "
             "если выключить веб-интерфейс, приложение перестанет работать."
         )
+
+    async def _handle_web_login(self, raw_value: str) -> str:
+        from core.config_manager import config_manager
+
+        login = (raw_value or "").strip()
+        try:
+            config_manager.set_setting(
+                "WEB_LOGIN", login, category="web", data_type="string"
+            )
+        except Exception as exc:  # noqa: BLE001
+            return f"❌ Не удалось сохранить логин: {str(exc)[:160]}"
+        self._audit("settings", "settings", "set WEB_LOGIN", "applied")
+        if login:
+            return f"✅ Логин веб-интерфейса обновлён: «{login}»."
+        return "✅ Логин веб-интерфейса очищен (проверка логина отключена)."
+
+    async def _handle_web_password(self, raw_value: str) -> str:
+        from core.config_manager import config_manager
+
+        password = raw_value or ""
+        try:
+            config_manager.set_setting(
+                "WEB_PASSWORD", password, category="web", data_type="string"
+            )
+        except Exception as exc:  # noqa: BLE001
+            return f"❌ Не удалось сохранить пароль: {str(exc)[:160]}"
+        self._audit("settings", "settings", "set WEB_PASSWORD", "applied")
+        if password:
+            return "✅ Пароль веб-интерфейса обновлён."
+        return "✅ Пароль веб-интерфейса очищен (проверка пароля отключена)."
 
     async def _handle_ext_tls_cert(self) -> str:
         from extensions.tls_cert_monitor import (
@@ -2532,6 +2574,9 @@ class MatrixCommandBot:
             "• !extensions (!ext) — меню расширений (бэкапы, ресурсы, ZFS)\n"
             "• !res <имя|ip> — точечная проверка ресурсов сервера\n"
             "• !about — версия и сведения о боте\n"
+            "• !web — адрес и учётные данные веб-интерфейса\n"
+            "• !web_login <логин> — логин входа в веб-интерфейс (пусто — очистить)\n"
+            "• !web_password <пароль> — пароль входа в веб-интерфейс (пусто — очистить)\n"
             "• !settings — управление настройками (help/list/get/set)\n"
             "• !diag / !ping — диагностика command-bot\n\n"
             "Подсказка: открой !menu и жми кнопки-реакции под сообщением.\n"
@@ -2597,6 +2642,14 @@ class MatrixCommandBot:
             parts = normalized.split(maxsplit=1)
             arg = parts[1].strip() if len(parts) > 1 else ""
             return command, await self._handle_ext_config_console(arg)
+        if command == "!web_login":
+            parts = normalized.split(maxsplit=1)
+            arg = parts[1].strip() if len(parts) > 1 else ""
+            return command, await self._handle_web_login(arg)
+        if command == "!web_password":
+            parts = normalized.split(maxsplit=1)
+            arg = parts[1] if len(parts) > 1 else ""
+            return command, await self._handle_web_password(arg)
         ext_item = _EXT_ITEM_BY_COMMAND.get(command)
         if ext_item is not None:
             return command, await self._run_extension_command(ext_item)
