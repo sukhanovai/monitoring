@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/telegram_handlers.py
-Server Monitoring System v8.62.90
+Server Monitoring System v8.62.91
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram callback / command handlers extracted from core/monitor_core.py
 (PR5b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.90
+Версия: 8.62.91
 Автор: Александр Суханов (c)
 Лицензия: MIT
 ~30 handler-функций UI Telegram-бота, выделенных из монолитного
@@ -17,6 +17,8 @@ core/monitor_core.py. perform_linux/windows/other/full_check оставлены
 
 from __future__ import annotations
 
+import importlib
+import threading
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -25,6 +27,48 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from core.monitor_state import state
 from lib.logging import debug_log
 from lib.utils import format_duration, progress_bar
+
+
+def _lazy(module_name: str, attribute: str | None = None):
+    """Ленивая привязка к функции/модулю из другого модуля.
+
+    Эти handler-функции исторически жили в core/monitor_core.py и
+    обращаются к его глобальным именам (а также к lib.alerts,
+    extensions.server_checks, core.monitor_parts.resource_checks)
+    напрямую. После выноса в отдельный модуль (PR5b) этих имён в
+    локальном namespace не оказалось — отсюда `NameError` при вызове
+    handler'ов.
+
+    Импорт выполняется при первом вызове, что разрывает циклическую
+    зависимость core.monitor_core <-> telegram_handlers: некоторые
+    символы (`get_current_server_status`, `_resource_monitor_enabled`)
+    определяются в monitor_core уже после импорта этого модуля, поэтому
+    обычный top-level import невозможен.
+    """
+
+    def _caller(*args, **kwargs):
+        module = importlib.import_module(module_name)
+        if attribute is None:
+            return module
+        return getattr(module, attribute)(*args, **kwargs)
+
+    return _caller
+
+
+# Ленивая привязка имён, на которые опираются handler-функции ниже.
+get_config = _lazy("config.db_settings")
+send_alert = _lazy("core.monitor_core", "send_alert")
+is_silent_time = _lazy("core.monitor_core", "is_silent_time")
+get_web_interface_url = _lazy("core.monitor_core", "get_web_interface_url")
+get_current_server_status = _lazy("core.monitor_core", "get_current_server_status")
+_resource_monitor_enabled = _lazy("core.monitor_core", "_resource_monitor_enabled")
+perform_manual_check = _lazy("core.monitor_core", "perform_manual_check")
+get_silent_override = _lazy("lib.alerts", "get_silent_override")
+set_silent_override = _lazy("lib.alerts", "set_silent_override")
+check_server_availability = _lazy("extensions.server_checks", "check_server_availability")
+perform_cpu_check = _lazy("core.monitor_parts.resource_checks", "perform_cpu_check")
+perform_ram_check = _lazy("core.monitor_parts.resource_checks", "perform_ram_check")
+perform_disk_check = _lazy("core.monitor_parts.resource_checks", "perform_disk_check")
 
 
 def manual_check_handler(update, context):
