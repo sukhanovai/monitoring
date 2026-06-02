@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/telegram_handlers.py
-Server Monitoring System v8.62.89
+Server Monitoring System v8.62.91
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram callback / command handlers extracted from core/monitor_core.py
 (PR5b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.89
+Версия: 8.62.91
 Автор: Александр Суханов (c)
 Лицензия: MIT
 ~30 handler-функций UI Telegram-бота, выделенных из монолитного
@@ -17,14 +17,89 @@ core/monitor_core.py. perform_linux/windows/other/full_check оставлены
 
 from __future__ import annotations
 
+import threading
 from datetime import datetime, timedelta
 from typing import Any
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from core.monitor_state import state
+from lib.alerts import get_silent_override, set_silent_override
 from lib.logging import debug_log
 from lib.utils import format_duration, progress_bar
+
+
+# Эти handler-функции выделены из монолитного core/monitor_core.py, но
+# опираются на ряд helper'ов, которые остались в monitor_core и соседних
+# модулях. Прямой импорт на уровне модуля невозможен — monitor_core сам
+# импортирует этот модуль (циклическая зависимость). Поэтому связываем их
+# тонкими ленивыми обёртышками: реальные функции резолвятся при вызове,
+# когда все модули уже загружены.
+def get_config():
+    """Ленивый доступ к конфигу (config.db_settings) с атрибутами CHAT_IDS и т.п."""
+    from config import db_settings
+
+    return db_settings
+
+
+def get_current_server_status(*args, **kwargs):
+    from core.monitor_core import get_current_server_status as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def _resource_monitor_enabled(*args, **kwargs):
+    from core.monitor_core import _resource_monitor_enabled as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def send_alert(*args, **kwargs):
+    from core.monitor_core import send_alert as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def is_silent_time(*args, **kwargs):
+    from core.monitor_core import is_silent_time as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def perform_manual_check(*args, **kwargs):
+    from core.monitor_core import perform_manual_check as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def get_web_interface_url(*args, **kwargs):
+    from core.monitor_core import get_web_interface_url as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def check_server_availability(*args, **kwargs):
+    from extensions.server_checks import check_server_availability as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def perform_cpu_check(*args, **kwargs):
+    from core.monitor_parts.resource_checks import perform_cpu_check as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def perform_ram_check(*args, **kwargs):
+    from core.monitor_parts.resource_checks import perform_ram_check as _impl
+
+    return _impl(*args, **kwargs)
+
+
+def perform_disk_check(*args, **kwargs):
+    from core.monitor_parts.resource_checks import perform_disk_check as _impl
+
+    return _impl(*args, **kwargs)
 
 
 def manual_check_handler(update, context):

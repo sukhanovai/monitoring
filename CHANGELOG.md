@@ -1,3 +1,9 @@
+## [8.62.91] - 2026-06-02
+
+### Fixed
+- RU: Telegram-бот — кнопка «Утренний отчёт» (и ряд других обработчиков) падали с `NameError: name 'get_config' is not defined`. При выделении обработчиков из монолитного `core/monitor_core.py` в `core/monitor_parts/telegram_handlers.py` не были перенесены вспомогательные имена (`get_config`, `get_current_server_status`, `send_alert`, `is_silent_time`, `set/get_silent_override`, `perform_manual_check`, `perform_cpu/ram/disk_check`, `check_server_availability`, `get_web_interface_url`, `_resource_monitor_enabled`, `threading`). Добавлены недостающие импорты и тонкие ленивые обёртки (реальные функции резолвятся при вызове, без циклического импорта с `monitor_core`). Покрыто проверкой ruff F821.
+- EN: Telegram bot — the "Morning report" button (and several other handlers) crashed with `NameError: name 'get_config' is not defined`. When the handlers were extracted from the monolithic `core/monitor_core.py` into `core/monitor_parts/telegram_handlers.py`, the helper names they rely on (`get_config`, `get_current_server_status`, `send_alert`, `is_silent_time`, `set/get_silent_override`, `perform_manual_check`, `perform_cpu/ram/disk_check`, `check_server_availability`, `get_web_interface_url`, `_resource_monitor_enabled`, `threading`) were never carried over. Added the missing imports and thin lazy wrappers (the real functions resolve at call time, avoiding a circular import with `monitor_core`). Covered by a ruff F821 check.
+
 ## [8.62.89] - 2026-06-02
 
 ### Added
