@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.95
+Server Monitoring System v8.62.96
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.95
+Версия: 8.62.96
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -28,7 +28,7 @@ import uuid
 from datetime import datetime
 from urllib.parse import quote, unquote
 
-from flask import Flask, jsonify, render_template_string, request
+from flask import Flask, jsonify, request
 
 from config.db_settings import WEB_HOST, WEB_PORT
 from config.settings import STATS_FILE
@@ -49,1031 +49,971 @@ from extensions.supplier_stock_files import (
 
 app = Flask(__name__)
 
-# HTML шаблон с вкладками и темной темой (без вкладки Ресурсы)
-HTML_TEMPLATE = """
-<!DOCTYPE html>
+# Современный SPA веб-интерфейс (использует тот же v1 BFF API, что и Android-клиент)
+WEB_APP_HTML = r"""<!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌐 Мониторинг серверов</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            min-height: 100vh;
-            color: #e0e0e0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        .header {
-            background: rgba(30, 30, 40, 0.95);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            margin-bottom: 20px;
-            text-align: center;
-            border: 1px solid #444;
-        }
-        .header h1 {
-            color: #fff;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        .header .status {
-            font-size: 1.2em;
-            color: #aaa;
-        }
-        
-        /* Вкладки */
-        .tabs {
-            display: flex;
-            background: rgba(30, 30, 40, 0.95);
-            border-radius: 15px 15px 0 0;
-            border: 1px solid #444;
-            border-bottom: none;
-            overflow: hidden;
-        }
-        .tab {
-            padding: 15px 25px;
-            cursor: pointer;
-            background: rgba(40, 40, 50, 0.8);
-            border-right: 1px solid #444;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-        .tab:hover {
-            background: rgba(60, 60, 80, 0.8);
-        }
-        .tab.active {
-            background: rgba(80, 80, 120, 0.95);
-            color: #fff;
-        }
-        .tab-content {
-            display: none;
-            background: rgba(30, 30, 40, 0.95);
-            padding: 25px;
-            border-radius: 0 0 15px 15px;
-            border: 1px solid #444;
-            border-top: none;
-            min-height: 500px;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        
-        /* Общие стили карточек */
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        .card {
-            background: rgba(40, 40, 50, 0.8);
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            border: 1px solid #555;
-        }
-        .card h2 {
-            color: #fff;
-            margin-bottom: 15px;
-            font-size: 1.4em;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
-        }
-        .stat-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #555;
-        }
-        .stat-item:last-child {
-            border-bottom: none;
-        }
-        .stat-value {
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-        .status-up { color: #4CAF50; }
-        .status-down { color: #f44336; }
-        .status-warning { color: #FFC107; }
-        .status-info { color: #2196F3; }
-        .status-critical { color: #ff4444; }
-        
-        /* Стили для списка серверов */
-        .server-list {
-            max-height: 600px;
-            overflow-y: auto;
-        }
-        .server-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding: 15px;
-            margin-bottom: 10px;
-            background: rgba(50, 50, 60, 0.8);
-            border-radius: 8px;
-            border-left: 4px solid #4CAF50;
-            transition: transform 0.2s ease;
-        }
-        .server-item:hover {
-            transform: translateX(5px);
-            background: rgba(60, 60, 70, 0.9);
-        }
-        .server-item.down {
-            border-left-color: #f44336;
-            background: rgba(80, 40, 40, 0.8);
-        }
-        .server-item.warning {
-            border-left-color: #FFC107;
-            background: rgba(80, 70, 40, 0.8);
-        }
-        .supplier-report-tabs {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 15px;
-        }
-        .supplier-report-tabs .btn.active {
-            background: #667eea;
-            color: #fff;
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.4);
-        }
-        .supplier-report-group {
-            display: none;
-        }
-        .supplier-report-group.active {
-            display: block;
-        }
-        .status-flags {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-top: 8px;
-            font-size: 0.9em;
-            color: #ccc;
-        }
-        .status-flag {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(20, 20, 30, 0.4);
-            padding: 4px 8px;
-            border-radius: 6px;
-        }
-        .supplier-details {
-            font-size: 0.85em;
-            color: #9fa6b2;
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        .modal-overlay.active {
-            display: flex;
-        }
-        .modal {
-            background: rgba(30, 30, 40, 0.95);
-            padding: 20px;
-            border-radius: 12px;
-            width: min(720px, 90vw);
-            max-height: 80vh;
-            overflow-y: auto;
-            border: 1px solid #555;
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .modal-list {
-            margin-top: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .modal-item {
-            padding: 10px;
-            border-radius: 8px;
-            background: rgba(50, 50, 60, 0.7);
-            border-left: 3px solid #667eea;
-        }
-        .server-info {
-            flex: 1;
-        }
-        .server-name {
-            font-weight: bold;
-            color: #fff;
-            font-size: 1.1em;
-            margin-bottom: 5px;
-        }
-        .server-details {
-            font-size: 0.85em;
-            color: #aaa;
-            margin-bottom: 8px;
-        }
-        .server-resources {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            margin-top: 8px;
-        }
-        .resource-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 0.85em;
-            padding: 4px 8px;
-            border-radius: 6px;
-            background: rgba(60, 60, 70, 0.8);
-        }
-        .resource-cpu.critical { color: #ff4444; font-weight: bold; }
-        .resource-cpu.warning { color: #FFC107; }
-        .resource-cpu.normal { color: #4CAF50; }
-        
-        .resource-ram.critical { color: #ff4444; font-weight: bold; }
-        .resource-ram.warning { color: #FFC107; }
-        .resource-ram.normal { color: #4CAF50; }
-        
-        .resource-disk.critical { color: #ff4444; font-weight: bold; }
-        .resource-disk.warning { color: #FFC107; }
-        .resource-disk.normal { color: #4CAF50; }
-        
-        .server-status {
-            font-size: 0.9em;
-            padding: 6px 12px;
-            border-radius: 15px;
-            background: #4CAF50;
-            color: white;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        .server-status.down {
-            background: #f44336;
-        }
-        .server-status.warning {
-            background: #FFC107;
-            color: #333;
-        }
-        
-        /* Кнопки */
-        .controls {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin: 20px 0;
-        }
-        .btn {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.95em;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-        .btn:active {
-            transform: translateY(0);
-        }
-        .btn-success { background: linear-gradient(135deg, #4CAF50, #45a049); }
-        .btn-warning { background: linear-gradient(135deg, #FF9800, #F57C00); }
-        .btn-danger { background: linear-gradient(135deg, #f44336, #d32f2f); }
-        .btn-info { background: linear-gradient(135deg, #2196F3, #1976D2); }
-        
-        .refresh-btn {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.1em;
-            margin: 20px auto;
-            display: block;
-            transition: all 0.3s ease;
-        }
-        .refresh-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-        }
-        
-        .last-update {
-            text-align: center;
-            color: rgba(255, 255, 255, 0.6);
-            margin-top: 20px;
-            font-size: 0.9em;
-        }
-        
-        /* Анимации */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in {
-            animation: fadeIn 0.5s ease;
-        }
-        
-        @media (max-width: 768px) {
-            .dashboard {
-                grid-template-columns: 1fr;
-            }
-            .header h1 {
-                font-size: 2em;
-            }
-            .tabs {
-                flex-direction: column;
-            }
-            .tab {
-                border-right: none;
-                border-bottom: 1px solid #444;
-            }
-            .controls {
-                flex-direction: column;
-            }
-            .btn {
-                width: 100%;
-            }
-            .server-resources {
-                flex-direction: column;
-                gap: 5px;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌐 Мониторинг серверов</title>
+<style>
+:root{
+  --bg:#0e1525; --bg2:#131c30; --panel:#172139; --panel2:#1d2a47;
+  --border:#26334f; --border2:#33456a;
+  --text:#e7edf7; --muted:#93a2bd; --faint:#64748b;
+  --accent:#4f8cff; --accent2:#3b6fe0;
+  --ok:#34d399; --warn:#fbbf24; --crit:#f87171; --info:#60a5fa;
+  --radius:14px; --shadow:0 10px 30px rgba(0,0,0,.35);
+  --font:'Segoe UI',Roboto,Tahoma,system-ui,sans-serif;
+}
+[data-theme="light"]{
+  --bg:#eef2f8; --bg2:#e6ecf5; --panel:#ffffff; --panel2:#f3f6fb;
+  --border:#d8e0ee; --border2:#c3cfe4;
+  --text:#11203a; --muted:#5a6b88; --faint:#8493ad;
+  --shadow:0 10px 28px rgba(20,40,80,.12);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:var(--font);background:
+  radial-gradient(1200px 600px at 80% -10%,rgba(79,140,255,.10),transparent 60%),
+  radial-gradient(1000px 500px at -10% 110%,rgba(52,211,153,.08),transparent 55%),
+  var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+button{font-family:inherit}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:8px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* App shell */
+.app{display:flex;min-height:100vh}
+.sidebar{width:248px;flex:0 0 248px;background:linear-gradient(180deg,var(--bg2),var(--bg));
+  border-right:1px solid var(--border);padding:18px 14px;position:sticky;top:0;height:100vh;
+  display:flex;flex-direction:column;gap:6px;z-index:30}
+.brand{display:flex;align-items:center;gap:10px;padding:8px 10px 16px;font-weight:700;font-size:1.12em}
+.brand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#7b5cff);
+  display:grid;place-items:center;font-size:18px;box-shadow:0 6px 16px rgba(79,140,255,.4)}
+.brand small{display:block;font-weight:500;color:var(--muted);font-size:.62em;letter-spacing:.5px}
+.nav{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.nav button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  background:transparent;border:1px solid transparent;color:var(--muted);
+  padding:11px 13px;border-radius:11px;font-size:.96em;cursor:pointer;transition:.15s}
+.nav button .ico{font-size:1.15em;width:22px;text-align:center}
+.nav button:hover{background:var(--panel);color:var(--text)}
+.nav button.active{background:linear-gradient(135deg,rgba(79,140,255,.18),rgba(79,140,255,.05));
+  color:var(--text);border-color:var(--border2);font-weight:600}
+.nav button.active .ico{filter:drop-shadow(0 0 6px rgba(79,140,255,.6))}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--border)}
+.side-foot .row{display:flex;gap:8px}
+.icobtn{flex:1;background:var(--panel);border:1px solid var(--border);color:var(--muted);
+  padding:9px;border-radius:10px;cursor:pointer;font-size:.85em;transition:.15s}
+.icobtn:hover{color:var(--text);border-color:var(--border2)}
+.ver{font-size:.72em;color:var(--faint);text-align:center}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;
+  padding:14px 26px;background:color-mix(in srgb,var(--bg) 82%,transparent);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.topbar h1{font-size:1.28em;font-weight:700;margin-right:auto}
+.topbar .sub{color:var(--muted);font-weight:400;font-size:.62em;display:block}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;
+  font-size:.82em;font-weight:600;border:1px solid var(--border);background:var(--panel)}
+.pill .dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.pill.ok .dot{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.pill.crit .dot{background:var(--crit);box-shadow:0 0 8px var(--crit)}
+.pill.warn .dot{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+.pill.clk{cursor:pointer;transition:.15s}.pill.clk:hover{border-color:var(--border2)}
+
+.content{padding:24px 26px 80px;max-width:1320px;width:100%;margin:0 auto}
+.view{display:none;animation:fade .25s ease}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* Cards & grid */
+.grid{display:grid;gap:16px}
+.cards{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);
+  border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.card.section{padding:0;overflow:hidden}
+.card .head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border);
+  font-weight:700;font-size:1.02em}
+.card .head .ico{font-size:1.2em}
+.card .head .sp{margin-left:auto;display:flex;gap:8px}
+.card .body{padding:18px}
+.stat{display:flex;flex-direction:column;gap:6px}
+.stat .lbl{color:var(--muted);font-size:.82em;display:flex;align-items:center;gap:7px}
+.stat .val{font-size:2.1em;font-weight:800;line-height:1}
+.stat .val.sm{font-size:1.3em}
+.tone-ok{color:var(--ok)}.tone-crit{color:var(--crit)}.tone-warn{color:var(--warn)}.tone-info{color:var(--info)}
+.section-title{display:flex;align-items:center;gap:10px;margin:26px 0 14px;font-size:1.05em;font-weight:700;color:var(--text)}
+.section-title:first-child{margin-top:4px}
+.section-title .ln{flex:1;height:1px;background:var(--border)}
+
+/* Server list */
+.srv{display:flex;align-items:center;gap:14px;padding:13px 16px;border:1px solid var(--border);
+  border-radius:12px;background:var(--panel);margin-bottom:10px;transition:.15s;flex-wrap:wrap}
+.srv:hover{border-color:var(--border2)}
+.srv .st{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+.st.up{background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.st.down{background:var(--crit);box-shadow:0 0 10px var(--crit)}
+.st.unknown{background:var(--muted)}
+.srv .nm{font-weight:600}
+.srv .ip{color:var(--muted);font-size:.86em}
+.srv .meta{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tag{font-size:.74em;padding:3px 9px;border-radius:999px;background:var(--panel2);
+  border:1px solid var(--border);color:var(--muted)}
+.tag.t-up{color:var(--ok);border-color:rgba(52,211,153,.4)}
+.tag.t-down{color:var(--crit);border-color:rgba(248,113,113,.4)}
+.tag.t-off{color:var(--faint)}
+.res{display:flex;gap:14px;flex-wrap:wrap;width:100%;margin-top:6px}
+.res .m{flex:1;min-width:120px}
+.res .m .top{display:flex;justify-content:space-between;font-size:.78em;color:var(--muted);margin-bottom:4px}
+.bar{height:7px;border-radius:6px;background:var(--bg2);overflow:hidden}
+.bar > i{display:block;height:100%;border-radius:6px;background:var(--ok);transition:width .4s}
+.bar > i.warn{background:var(--warn)}.bar > i.crit{background:var(--crit)}
+
+/* Forms */
+.field{margin-bottom:15px}
+.field label{display:block;font-size:.85em;color:var(--muted);margin-bottom:6px;font-weight:500}
+.field .hint{font-size:.76em;color:var(--faint);margin-top:5px}
+input,select,textarea{width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);
+  padding:11px 13px;border-radius:10px;font-size:.94em;font-family:inherit;transition:.15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(79,140,255,.18)}
+input::placeholder{color:var(--faint)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 18px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;
+  padding:11px 18px;border-radius:10px;font-size:.92em;font-weight:600;cursor:pointer;transition:.15s}
+.btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn:active{transform:none}
+.btn.ghost{background:var(--panel);color:var(--text);border:1px solid var(--border)}
+.btn.ghost:hover{border-color:var(--border2);filter:none}
+.btn.ok{background:linear-gradient(135deg,#34d399,#10b981)}
+.btn.warn{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#3a2a00}
+.btn.crit{background:linear-gradient(135deg,#fb7185,#ef4444)}
+.btn.sm{padding:7px 12px;font-size:.82em}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none;filter:none}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+
+/* Toggle */
+.switch{position:relative;display:inline-block;width:46px;height:26px;flex:0 0 auto}
+.switch input{opacity:0;width:0;height:0}
+.switch .sl{position:absolute;inset:0;background:var(--border2);border-radius:999px;cursor:pointer;transition:.2s}
+.switch .sl:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;
+  border-radius:50%;transition:.2s}
+.switch input:checked + .sl{background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.switch input:checked + .sl:before{transform:translateX(20px)}
+.toggle-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-row .tx{flex:1}.toggle-row .tx b{font-weight:600}
+.toggle-row .tx small{display:block;color:var(--muted);font-size:.82em;margin-top:2px}
+
+/* Action grid */
+.ops{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:13px}
+.op{display:flex;align-items:center;gap:13px;padding:16px;border:1px solid var(--border);border-radius:13px;
+  background:linear-gradient(180deg,var(--panel),var(--panel2));cursor:pointer;transition:.15s;text-align:left}
+.op:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow)}
+.op .e{font-size:1.7em}.op .t b{display:block;font-weight:600}.op .t small{color:var(--muted);font-size:.8em}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;
+  background:var(--panel2);border:1px solid var(--border);font-size:.86em;cursor:pointer;transition:.15s}
+.chip:hover{border-color:var(--border2)}
+.chip.on{background:linear-gradient(135deg,rgba(79,140,255,.22),rgba(79,140,255,.08));
+  border-color:var(--accent);color:var(--text);font-weight:600}
+.chip .x{color:var(--crit);font-weight:700}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(5,10,20,.66);backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border2);
+  border-radius:16px;width:100%;max-width:560px;max-height:88vh;overflow:auto;box-shadow:var(--shadow)}
+.modal h3{padding:18px 20px;border-bottom:1px solid var(--border);font-size:1.1em;display:flex;align-items:center;gap:10px}
+.modal h3 .cl{margin-left:auto;cursor:pointer;color:var(--muted);font-size:1.2em;background:none;border:none}
+.modal .mb{padding:20px}
+.modal pre{white-space:pre-wrap;word-break:break-word;font-family:'SF Mono',Consolas,monospace;
+  font-size:.86em;line-height:1.5;color:var(--text);background:var(--bg2);padding:14px;border-radius:10px;
+  border:1px solid var(--border);max-height:50vh;overflow:auto}
+
+/* Toast */
+.toasts{position:fixed;right:20px;bottom:20px;z-index:200;display:flex;flex-direction:column;gap:10px;max-width:380px}
+.toast{background:var(--panel);border:1px solid var(--border2);border-left:4px solid var(--accent);
+  padding:13px 16px;border-radius:11px;box-shadow:var(--shadow);font-size:.9em;animation:slidein .25s}
+.toast.ok{border-left-color:var(--ok)}.toast.err{border-left-color:var(--crit)}.toast.warn{border-left-color:var(--warn)}
+@keyframes slidein{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+
+/* Login */
+.login{position:fixed;inset:0;display:grid;place-items:center;padding:20px;z-index:300;
+  background:radial-gradient(900px 500px at 50% -10%,rgba(79,140,255,.16),transparent 60%),var(--bg)}
+.login .box{width:100%;max-width:400px;background:linear-gradient(180deg,var(--panel),var(--panel2));
+  border:1px solid var(--border2);border-radius:18px;padding:32px;box-shadow:var(--shadow)}
+.login .logo-lg{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,var(--accent),#7b5cff);
+  display:grid;place-items:center;font-size:30px;margin:0 auto 18px;box-shadow:0 10px 28px rgba(79,140,255,.45)}
+.login h2{text-align:center;margin-bottom:4px}
+.login p.s{text-align:center;color:var(--muted);font-size:.88em;margin-bottom:24px}
+
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty .e{font-size:2.6em;display:block;margin-bottom:10px;opacity:.6}
+.spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;animation:spin 1s linear infinite;margin:24px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.skel{background:linear-gradient(90deg,var(--panel) 25%,var(--panel2) 50%,var(--panel) 75%);
+  background-size:200% 100%;animation:sk 1.3s infinite;border-radius:10px;height:64px;margin-bottom:10px}
+@keyframes sk{to{background-position:-200% 0}}
+
+.hamb{display:none;background:var(--panel);border:1px solid var(--border);color:var(--text);
+  width:40px;height:40px;border-radius:10px;font-size:1.2em;cursor:pointer}
+.mask{display:none}
+
+@media(max-width:860px){
+  .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .25s;box-shadow:var(--shadow)}
+  .sidebar.open{transform:none}
+  .mask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25}
+  .mask.show{display:block}
+  .hamb{display:grid;place-items:center}
+  .content{padding:18px 16px 80px}
+  .topbar{padding:12px 16px}
+  .topbar h1{font-size:1.1em}
+  .pill.hide-sm{display:none}
+}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🌐 Мониторинг серверов</h1>
-            <div class="status">Система работает • Последнее обновление: <span id="lastUpdate">{{ last_update }}</span></div>
-        </div>
-        
-        <!-- Вкладки -->
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('overview')">📊 Обзор</div>
-            <div class="tab" onclick="switchTab('servers')">🖥️ Сервера</div>
-            <div class="tab" onclick="switchTab('server-management')">⚙️ Управление серверами</div>
-            <div class="tab" onclick="switchTab('controls')">🎛️ Управление</div>
-            {% if supplier_stock_enabled %}
-            <div class="tab" onclick="switchTab('supplier-stock')">📦 Остатки поставщиков</div>
-            {% endif %}
-        </div>
-        
-        <!-- Содержимое вкладки Обзор -->
-        <div id="overview" class="tab-content active">
-            <div class="dashboard">
-                <div class="card">
-                    <h2>📊 Общая статистика</h2>
-                    <div class="stat-item">
-                        <span>Всего серверов:</span>
-                        <span class="stat-value">{{ stats.total_servers }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Доступно:</span>
-                        <span class="stat-value status-up">{{ stats.servers_up }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Недоступно:</span>
-                        <span class="stat-value status-down">{{ stats.servers_down }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Доступность:</span>
-                        <span class="stat-value">{{ stats.availability_percentage }}%</span>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2>🔄 Мониторинг</h2>
-                    <div class="stat-item">
-                        <span>Статус:</span>
-                        <span class="stat-value status-info">{{ stats.monitoring_mode }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Тихий режим:</span>
-                        <span class="stat-value">{{ stats.silent_mode }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Последняя проверка:</span>
-                        <span class="stat-value">{{ stats.last_check_time }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Интервал:</span>
-                        <span class="stat-value">{{ stats.check_interval }} сек</span>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2>📈 Ресурсы</h2>
-                    <div class="stat-item">
-                        <span>Проверка ресурсов:</span>
-                        <span class="stat-value">{{ stats.resource_check_status }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Интервал проверки:</span>
-                        <span class="stat-value">{{ stats.resource_check_interval }} мин</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Проблем с ресурсами:</span>
-                        <span class="stat-value status-warning">{{ stats.resource_alerts }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Время работы:</span>
-                        <span class="stat-value">{{ stats.uptime }}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="controls">
-                <button class="btn btn-success" onclick="runCheck('quick')">🔍 Быстрая проверка</button>
-                <button class="btn btn-info" onclick="runCheck('resources')">📈 Проверить ресурсы</button>
-                <button class="btn btn-warning" onclick="runCheck('report')">📊 Сформировать отчет</button>
-            </div>
-        </div>
-        
-        <!-- Содержимое вкладки Сервера -->
-        <div id="servers" class="tab-content">
-            <h2 style="margin-bottom: 20px;">🖥️ Статус серверов</h2>
-            <div class="server-list">
-                {% for server in servers %}
-                <div class="server-item {% if server.status == 'down' %}down{% elif server.status == 'warning' %}warning{% endif %} fade-in">
-                    <div class="server-info">
-                        <div class="server-name">{{ server.name }}</div>
-                        <div class="server-details">{{ server.ip }} • {{ server.type.upper() }} • {{ server.os }}</div>
-                        {% if server.resources %}
-                        <div class="server-resources">
-                            <div class="resource-item">
-                                <span>💻 CPU:</span>
-                                <span class="resource-cpu {{ server.resources.cpu_class }}">{{ server.resources.cpu }}%</span>
-                            </div>
-                            <div class="resource-item">
-                                <span>🧠 RAM:</span>
-                                <span class="resource-ram {{ server.resources.ram_class }}">{{ server.resources.ram }}%</span>
-                            </div>
-                            <div class="resource-item">
-                                <span>💾 Disk:</span>
-                                <span class="resource-disk {{ server.resources.disk_class }}">{{ server.resources.disk }}%</span>
-                            </div>
-                            {% if server.resources.load_avg and server.resources.load_avg != 'N/A' %}
-                            <div class="resource-item">
-                                <span>📊 Load:</span>
-                                <span>{{ server.resources.load_avg }}</span>
-                            </div>
-                            {% endif %}
-                            {% if server.resources.uptime and server.resources.uptime != 'N/A' %}
-                            <div class="resource-item">
-                                <span>⏱️ Uptime:</span>
-                                <span>{{ server.resources.uptime }}</span>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
-                    <div class="server-status {% if server.status == 'down' %}down{% elif server.status == 'warning' %}warning{% endif %}">
-                        {{ server.status_display }}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        
-        <!-- Содержимое вкладки Управление серверами -->
-        <div id="server-management" class="tab-content">
-            <h2 style="margin-bottom: 20px;">⚙️ Управление списком серверов</h2>
-            
-            <div class="card">
-                <h2>📋 Список серверов</h2>
-                <div id="serverListContainer">
-                    <!-- Список серверов будет загружен здесь -->
-                </div>
-                <button class="btn btn-success" onclick="loadServerList()">🔄 Обновить список</button>
-            </div>
-            
-            <div class="card">
-                <h2>➕ Добавить новый сервер</h2>
-                <form id="addServerForm" style="display: grid; gap: 15px; margin-top: 15px;">
-                    <input type="text" name="name" placeholder="Название сервера" required style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
-                    <input type="text" name="ip" placeholder="IP адрес" required style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
-                    <select name="type" style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
-                        <option value="linux">Linux</option>
-                        <option value="windows">Windows</option>
-                    </select>
-                    <button type="submit" class="btn btn-success">✅ Добавить сервер</button>
-                </form>
-            </div>
-        </div>     
-                
-        <!-- Содержимое вкладки Управление -->
-        <div id="controls" class="tab-content">
-            <h2 style="margin-bottom: 20px;">🎛️ Управление мониторингом</h2>
-            
-            <div class="dashboard">
-                <div class="card">
-                    <h2>🔧 Действия</h2>
-                    <div class="controls" style="flex-direction: column; gap: 15px;">
-                        <button class="btn btn-success" onclick="runAction('check_all')">🔍 Проверить все серверы</button>
-                        <button class="btn btn-info" onclick="runAction('check_resources')">📈 Проверить ресурсы</button>
-                        <button class="btn btn-warning" onclick="runAction('morning_report')">📊 Утренний отчет</button>
-                        <button class="btn btn-danger" onclick="runAction('restart_service')">🔄 Перезапуск сервиса</button>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2>⚙️ Настройки</h2>
-                    <div class="stat-item">
-                        <span>Текущий режим:</span>
-                        <span class="stat-value">{{ stats.monitoring_mode }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Тихий режим:</span>
-                        <span class="stat-value">{{ stats.silent_mode }}</span>
-                    </div>
-                    <div class="controls" style="margin-top: 20px;">
-                        <button class="btn {% if stats.monitoring_mode == '🟢 Активен' %}btn-warning{% else %}btn-success{% endif %}" 
-                                onclick="toggleMonitoring()">
-                            {% if stats.monitoring_mode == '🟢 Активен' %}⏸️ Приостановить{% else %}▶️ Возобновить{% endif %}
-                        </button>
-                        <button class="btn {% if stats.silent_mode == '🔇 Включен' %}btn-info{% else %}btn-warning{% endif %}" 
-                                onclick="toggleSilentMode()">
-                            {% if stats.silent_mode == '🔇 Включен' %}🔊 Выключить тихий{% else %}🔇 Включить тихий{% endif %}
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="card" style="margin-top: 20px;">
-                <h2>📋 Логи действий</h2>
-                <div id="actionLogs" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9em;">
-                    <!-- Логи будут добавляться сюда -->
-                </div>
-            </div>
-        </div>
 
-        {% if supplier_stock_enabled %}
-        <!-- Содержимое вкладки Остатки поставщиков -->
-        <div id="supplier-stock" class="tab-content">
-            <h2 style="margin-bottom: 20px;">📦 Остатки поставщиков</h2>
+<!-- LOGIN -->
+<div class="login" id="login">
+  <div class="box">
+    <div class="logo-lg">🛡️</div>
+    <h2>Мониторинг серверов</h2>
+    <p class="s">Войдите для доступа к панели управления</p>
+    <form id="loginForm">
+      <div class="field"><label>Логин</label><input id="lgUser" autocomplete="username" placeholder="admin" required></div>
+      <div class="field"><label>Пароль</label><input id="lgPass" type="password" autocomplete="current-password" placeholder="••••••••" required></div>
+      <div id="lgErr" style="color:var(--crit);font-size:.85em;margin-bottom:12px;display:none"></div>
+      <button class="btn" style="width:100%" type="submit" id="lgBtn">Войти</button>
+    </form>
+  </div>
+</div>
 
-            <div class="dashboard">
-                <div class="card">
-                    <h2>⏰ Расписание</h2>
-                    <div class="stat-item">
-                        <span>Статус:</span>
-                        <span class="stat-value">{{ supplier_stock.schedule_status }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Время:</span>
-                        <span class="stat-value">{{ supplier_stock.schedule_time }}</span>
-                    </div>
-                    <div class="controls" style="margin-top: 15px; gap: 10px; flex-wrap: wrap;">
-                        <input type="text" id="supplierScheduleTime" value="{{ supplier_stock.schedule_time_value }}"
-                               placeholder="06:00, 12:30"
-                               title="HH:MM, можно несколько через пробел/запятую/;"
-                               style="padding: 8px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white; min-width: 180px;">
-                        <label style="display: flex; align-items: center; gap: 6px;">
-                            Период (дней):
-                            <input type="number" id="supplierReportPeriod" min="1" value="{{ supplier_stock.report_period_days }}"
-                                   style="padding: 8px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white; width: 110px;"
-                                   title="Период отчетов (дней)" placeholder="Дней">
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px;">
-                            <input type="checkbox" id="supplierScheduleEnabled" {% if supplier_stock.schedule_enabled %}checked{% endif %}>
-                            Включено
-                        </label>
-                        <button class="btn btn-success" onclick="saveSupplierSchedule()">💾 Сохранить</button>
-                        <button class="btn btn-info" onclick="runSupplierFetch()">📥 Запустить сейчас</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <h2>📦 Источники</h2>
-                    {% if supplier_stock.sources %}
-                    <div class="server-list">
-                        {% for source in supplier_stock.sources %}
-                        <div class="server-item">
-                            <div class="server-info">
-                                <div class="server-name">
-                                    {% if source.enabled %}🟢{% else %}🔴{% endif %}
-                                    {{ source.name or source.id }}
-                                </div>
-                                <div class="server-details">{{ source.url or 'URL не задан' }}</div>
-                                <div class="server-details">Файл: {{ source.output_name or 'не задан' }}</div>
-                                <div class="server-details">Метод: {{ source.method }}</div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="stat-item">Источники не настроены.</div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="card" style="margin-top: 20px;">
-                <h2>📋 Результаты остатков поставщиков</h2>
-                <div class="supplier-details" style="margin-bottom: 10px;">
-                    Период: {{ supplier_stock.report_period_days }} дн.
-                </div>
-                <div class="supplier-report-tabs">
-                    <button class="btn btn-info active" onclick="switchSupplierReports('download')">⬇️ Полученные скачиванием</button>
-                    <button class="btn btn-info" onclick="switchSupplierReports('mail')">✉️ Полученные по почте</button>
-                </div>
-                <div id="supplier-report-download" class="supplier-report-group active">
-                    {% if supplier_stock.report_groups.download %}
-                    <div class="server-list">
-                        {% for report in supplier_stock.report_groups.download %}
-                        <div class="server-item">
-                            <div class="server-info">
-                                <div class="server-name">{{ report.source_name }}</div>
-                                <div class="supplier-details">Последнее обновление: {{ report.timestamp or 'нет данных' }}</div>
-                                {% if report.method %}
-                                <div class="supplier-details">Метод: {{ report.method }}</div>
-                                {% endif %}
-                                <div class="status-flags">
-                                    <div class="status-flag">{{ report.receive.icon }} Получение</div>
-                                    <div class="status-flag">{{ report.processing.icon }} Обработка</div>
-                                    <div class="status-flag">{{ report.transfer.icon }} Выгрузка</div>
-                                </div>
-                            </div>
-                            <button class="btn btn-info" onclick="showSupplierSourceStats('{{ report.source_id }}', '{{ report.source_kind }}')">📊 Детали</button>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="stat-item">Нет данных за период по скачиванию.</div>
-                    {% endif %}
-                </div>
-                <div id="supplier-report-mail" class="supplier-report-group">
-                    {% if supplier_stock.report_groups.mail %}
-                    <div class="server-list">
-                        {% for report in supplier_stock.report_groups.mail %}
-                        <div class="server-item">
-                            <div class="server-info">
-                                <div class="server-name">{{ report.source_name }}</div>
-                                <div class="supplier-details">Последнее обновление: {{ report.timestamp or 'нет данных' }}</div>
-                                <div class="status-flags">
-                                    <div class="status-flag">{{ report.receive.icon }} Получение</div>
-                                    <div class="status-flag">{{ report.processing.icon }} Обработка</div>
-                                    <div class="status-flag">{{ report.transfer.icon }} Выгрузка</div>
-                                </div>
-                            </div>
-                            <button class="btn btn-info" onclick="showSupplierSourceStats('{{ report.source_id }}', '{{ report.source_kind }}')">📊 Детали</button>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="stat-item">Нет данных за период по почте.</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        {% endif %}
-        
-        <div id="supplierStatsModal" class="modal-overlay" onclick="closeSupplierSourceStats(event)">
-            <div class="modal" onclick="event.stopPropagation()">
-                <div class="modal-header">
-                    <h3 id="supplierStatsTitle">Статистика источника</h3>
-                    <button class="btn btn-danger" onclick="closeSupplierSourceStats()">✖</button>
-                </div>
-                <div id="supplierStatsSummary" class="supplier-details"></div>
-                <div id="supplierStatsEntries" class="modal-list"></div>
-            </div>
-        </div>
-
-        <button class="refresh-btn" onclick="location.reload()">🔄 Обновить данные</button>
-        
-        <div class="last-update">
-            Система мониторинга серверов • Версия 2.0 • Темная тема
-        </div>
+<!-- APP -->
+<div class="app" id="app" style="display:none">
+  <div class="mask" id="mask" onclick="toggleSidebar(false)"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><span class="logo">🛡️</span><div>Мониторинг<small>SERVER CONTROL</small></div></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <div class="row">
+        <button class="icobtn" onclick="toggleTheme()" id="themeBtn">🌙 Тема</button>
+        <button class="icobtn" onclick="logout()">🚪 Выход</button>
+      </div>
+      <div class="ver" id="verLabel">v—</div>
     </div>
+  </aside>
 
-    <script>
-        // Переключение основных вкладок
-        function switchTab(tabName) {
-            // Скрыть все вкладки
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Показать выбранную вкладку
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
-        }
-        
-        // Запуск проверок
-        function runCheck(type) {
-            addLog(`Запуск ${getCheckName(type)}...`);
-            fetch(`/api/run_check?type=${type}`)
-                .then(response => response.json())
-                .then(data => {
-                    addLog(data.message);
-                    if (data.success && data.reload !== false) {
-                        setTimeout(() => location.reload(), 2000);
-                    }
-                })
-                .catch(error => {
-                    addLog(`Ошибка: ${error}`);
-                });
-        }
-        
-        // Запуск действий
-        function runAction(action) {
-            addLog(`Выполнение: ${getActionName(action)}...`);
-            fetch(`/api/run_action?action=${action}`)
-                .then(response => response.json())
-                .then(data => {
-                    addLog(data.message);
-                    if (data.success && data.reload) {
-                        setTimeout(() => location.reload(), 2000);
-                    }
-                })
-                .catch(error => {
-                    addLog(`Ошибка: ${error}`);
-                });
-        }
-        
-        // Переключение мониторинга
-        function toggleMonitoring() {
-            runAction('toggle_monitoring');
-        }
-        
-        // Переключение тихого режима
-        function toggleSilentMode() {
-            runAction('toggle_silent');
-        }
+  <div class="main">
+    <header class="topbar">
+      <button class="hamb" onclick="toggleSidebar()">☰</button>
+      <h1 id="viewTitle">Дашборд<span class="sub" id="viewSub">Состояние инфраструктуры</span></h1>
+      <span class="pill clk hide-sm" id="pillMon" onclick="go('dashboard')"><span class="dot"></span><span>—</span></span>
+      <span class="pill clk hide-sm" id="pillSilent" onclick="go('dashboard')"><span class="dot"></span><span>—</span></span>
+    </header>
+    <div class="content">
+      <section class="view active" id="view-dashboard"></section>
+      <section class="view" id="view-servers"></section>
+      <section class="view" id="view-settings"></section>
+      <section class="view" id="view-operations"></section>
+      <section class="view" id="view-about"></section>
+    </div>
+  </div>
+</div>
 
-        // Запуск загрузки остатков поставщиков
-        function runSupplierFetch() {
-            addLog('📦 Запуск загрузки остатков поставщиков...');
-            fetch('/api/supplier_stock/run', { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    addLog(data.message);
-                    if (data.success) {
-                        setTimeout(() => location.reload(), 1500);
-                    }
-                })
-                .catch(error => {
-                    addLog(`Ошибка: ${error}`);
-                });
-        }
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
 
-        // Сохранение расписания загрузки остатков
-        function saveSupplierSchedule() {
-            const timeInput = document.getElementById('supplierScheduleTime');
-            const enabledInput = document.getElementById('supplierScheduleEnabled');
-            const periodInput = document.getElementById('supplierReportPeriod');
-            if (!timeInput || !enabledInput) {
-                addLog('⚠️ Элементы расписания не найдены');
-                return;
-            }
+<script>
+//==================== Core helpers ====================
+var TOKEN = localStorage.getItem('mon_token') || '';
+var APP_VERSION = '__APP_VERSION__';
+var state = { availability:null, control:null, resources:{}, view:'dashboard' };
 
-            const payload = {
-                time: timeInput.value,
-                enabled: enabledInput.checked
-            };
-            if (periodInput) {
-                payload.report_period_days = parseInt(periodInput.value, 10);
-            }
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 
-            fetch('/api/supplier_stock/schedule', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
-                .then(response => response.json())
-                .then(data => {
-                    addLog(data.message);
-                    if (data.success) {
-                        setTimeout(() => location.reload(), 1500);
-                    }
-                })
-                .catch(error => {
-                    addLog(`Ошибка: ${error}`);
-                });
-        }
+function toast(msg,kind){
+  var t=document.createElement('div');t.className='toast '+(kind||'');
+  t.innerHTML=esc(msg);$('toasts').appendChild(t);
+  setTimeout(function(){t.style.opacity='0';t.style.transform='translateX(30px)';
+    setTimeout(function(){t.remove();},250);},kind==='err'?5200:3200);
+}
 
-        function switchSupplierReports(kind) {
-            document.querySelectorAll('.supplier-report-group').forEach(group => {
-                group.classList.remove('active');
-            });
-            document.querySelectorAll('.supplier-report-tabs .btn').forEach(button => {
-                button.classList.remove('active');
-            });
-            const target = document.getElementById(`supplier-report-${kind}`);
-            if (target) {
-                target.classList.add('active');
-            }
-            const button = document.querySelector(`.supplier-report-tabs .btn[onclick*="${kind}"]`);
-            if (button) {
-                button.classList.add('active');
-            }
-        }
+async function api(path,opts){
+  opts=opts||{};
+  var headers=Object.assign({'Content-Type':'application/json'},opts.headers||{});
+  if(TOKEN) headers['Authorization']='Bearer '+TOKEN;
+  var res;
+  try{
+    res=await fetch(path,{method:opts.method||'GET',headers:headers,
+      body:opts.body?JSON.stringify(opts.body):undefined});
+  }catch(e){ throw new Error('Сеть недоступна: '+e.message); }
+  var data=null; try{ data=await res.json(); }catch(e){}
+  if(res.status===401){ doLogout(true); throw new Error('Сессия истекла'); }
+  if(!res.ok){
+    var m=(data&&(data.message||(data.error&&(data.error.message||data.error))))||('HTTP '+res.status);
+    throw new Error(typeof m==='string'?m:JSON.stringify(m));
+  }
+  return data||{};
+}
 
-        function showSupplierSourceStats(sourceId, sourceKind) {
-            const modal = document.getElementById('supplierStatsModal');
-            const title = document.getElementById('supplierStatsTitle');
-            const summary = document.getElementById('supplierStatsSummary');
-            const entriesContainer = document.getElementById('supplierStatsEntries');
-            if (!modal || !title || !summary || !entriesContainer) {
-                addLog('⚠️ Окно статистики недоступно');
-                return;
-            }
-            title.textContent = `Статистика: ${sourceId}`;
-            summary.textContent = 'Загрузка...';
-            entriesContainer.innerHTML = '';
-            modal.classList.add('active');
+//==================== Auth ====================
+async function login(u,p){
+  var res=await fetch('/v1/auth/token',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username:u,password:p})});
+  var data=await res.json().catch(function(){return {};});
+  if(!res.ok||!data.access_token) throw new Error(data.message||'Неверные учётные данные');
+  TOKEN=data.access_token; localStorage.setItem('mon_token',TOKEN);
+}
+function doLogout(silent){
+  TOKEN='';localStorage.removeItem('mon_token');
+  $('app').style.display='none';$('login').style.display='grid';
+  if(!silent) toast('Вы вышли из системы');
+}
+function logout(){ doLogout(false); }
 
-            const params = new URLSearchParams({
-                source_id: sourceId,
-                source_kind: sourceKind
-            });
-            fetch(`/api/supplier_stock/source_stats?${params.toString()}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        summary.textContent = data.message || 'Ошибка загрузки статистики';
-                        return;
-                    }
-                    const stats = data.stats || {};
-                    summary.innerHTML = `
-                        Период: ${data.period_days} дн. • Всего: ${stats.total || 0}
-                        • Получено ✅ ${stats.receive_success || 0} / ❌ ${stats.receive_error || 0}
-                        • Обработка ✅ ${stats.processing_success || 0} / ❌ ${stats.processing_error || 0}
-                        • Выгрузка ✅ ${stats.transfer_success || 0} / ❌ ${stats.transfer_error || 0}
-                    `;
-                    const entries = data.entries || [];
-                    if (!entries.length) {
-                        entriesContainer.innerHTML = '<div class="stat-item">Нет записей за период.</div>';
-                        return;
-                    }
-                    entriesContainer.innerHTML = entries.map(entry => `
-                        <div class="modal-item">
-                            <div class="server-details">${entry.timestamp || '—'}</div>
-                            <div class="status-flags">
-                                <div class="status-flag">${entry.receive.icon} Получение</div>
-                                <div class="status-flag">${entry.processing.icon} Обработка</div>
-                                <div class="status-flag">${entry.transfer.icon} Выгрузка</div>
-                            </div>
-                            ${entry.error ? `<div class="server-details">Ошибка: ${entry.error}</div>` : ''}
-                        </div>
-                    `).join('');
-                })
-                .catch(error => {
-                    summary.textContent = `Ошибка: ${error}`;
-                });
-        }
+$('loginForm').addEventListener('submit',async function(e){
+  e.preventDefault();
+  var btn=$('lgBtn');btn.disabled=true;btn.textContent='Вход…';$('lgErr').style.display='none';
+  try{
+    await login($('lgUser').value.trim(),$('lgPass').value);
+    await boot();
+  }catch(err){
+    $('lgErr').textContent=err.message;$('lgErr').style.display='block';
+  }finally{ btn.disabled=false;btn.textContent='Войти'; }
+});
 
-        function closeSupplierSourceStats(event) {
-            if (event && event.target !== event.currentTarget) {
-                return;
-            }
-            const modal = document.getElementById('supplierStatsModal');
-            if (modal) {
-                modal.classList.remove('active');
-            }
-        }
-        
-        // Вспомогательные функции
-        function getCheckName(type) {
-            const names = {
-                'quick': 'быстрой проверки',
-                'resources': 'проверки ресурсов', 
-                'report': 'формирования отчета'
-            };
-            return names[type] || type;
-        }
-        
-        function getActionName(action) {
-            const names = {
-                'check_all': 'Проверка всех серверов',
-                'check_resources': 'Проверка ресурсов',
-                'morning_report': 'Формирование утреннего отчета',
-                'restart_service': 'Перезапуск сервиса',
-                'toggle_monitoring': 'Переключение мониторинга',
-                'toggle_silent': 'Переключение тихого режима'
-            };
-            return names[action] || action;
-        }
-        
-        function addLog(message) {
-            const logDiv = document.getElementById('actionLogs');
-            const timestamp = new Date().toLocaleTimeString('ru-RU');
-            logDiv.innerHTML = `<div>[${timestamp}] ${message}</div>` + logDiv.innerHTML;
-        }
-        
-        // Управление серверами
-        function loadServerList() {
-            fetch('/api/servers')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('serverListContainer');
-                    container.innerHTML = '<div class="server-list">' + 
-                        data.servers.map(server => `
-                            <div class="server-item">
-                                <div class="server-info">
-                                    <div class="server-name">${server.name}</div>
-                                    <div class="server-details">${server.ip} • ${server.type.toUpperCase()}</div>
-                                </div>
-                                <button class="btn btn-danger" onclick="deleteServer('${server.ip}')">🗑️ Удалить</button>
-                            </div>
-                        `).join('') + '</div>';
-                })
-                .catch(error => {
-                    console.error('Ошибка загрузки списка серверов:', error);
-                });
-        }
+//==================== Navigation ====================
+var NAV=[
+  {id:'dashboard',ico:'📊',label:'Дашборд',sub:'Состояние инфраструктуры'},
+  {id:'servers',ico:'🖥️',label:'Серверы',sub:'Управление серверами'},
+  {id:'settings',ico:'⚙️',label:'Настройки',sub:'Параметры системы'},
+  {id:'operations',ico:'🧰',label:'Операции',sub:'Бэкапы, ZFS, TLS, отчёты'},
+  {id:'about',ico:'ℹ️',label:'О программе',sub:'Информация и версия'},
+];
+function buildNav(){
+  $('nav').innerHTML=NAV.map(function(n){
+    return '<button data-id="'+n.id+'" onclick="go(\''+n.id+'\')"><span class="ico">'+n.ico+'</span>'+n.label+'</button>';
+  }).join('');
+}
+function go(id){
+  state.view=id;
+  document.querySelectorAll('.nav button').forEach(function(b){b.classList.toggle('active',b.dataset.id===id);});
+  document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});
+  $('view-'+id).classList.add('active');
+  var meta=NAV.find(function(n){return n.id===id;});
+  $('viewTitle').firstChild.textContent=meta.label;$('viewSub').textContent=meta.sub;
+  toggleSidebar(false);
+  if(id==='dashboard') renderDashboard();
+  if(id==='servers') renderServers();
+  if(id==='settings') renderSettings();
+  if(id==='operations') renderOperations();
+  if(id==='about') renderAbout();
+}
+function toggleSidebar(force){
+  var sb=$('sidebar'),mk=$('mask');
+  var open=force===undefined?!sb.classList.contains('open'):force;
+  sb.classList.toggle('open',open);mk.classList.toggle('show',open);
+}
 
-        function deleteServer(ip) {
-            if (confirm(`Удалить сервер ${ip}?`)) {
-                fetch(`/api/servers?ip=${ip}`, { method: 'DELETE' })
-                    .then(response => response.json())
-                    .then(data => {
-                        alert(data.message);
-                        loadServerList();
-                    });
-            }
-        }
+//==================== Theme ====================
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  localStorage.setItem('mon_theme',t);
+  $('themeBtn').textContent=(t==='light'?'🌙 Тёмная':'☀️ Светлая');
+}
+function toggleTheme(){
+  applyTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light');
+}
 
-        // Обработка формы добавления сервера
-        document.addEventListener('DOMContentLoaded', function() {
-            const addServerForm = document.getElementById('addServerForm');
-            if (addServerForm) {
-                addServerForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const formData = new FormData(this);
-                    const serverData = {
-                        name: formData.get('name'),
-                        ip: formData.get('ip'),
-                        type: formData.get('type')
-                    };
-                    
-                    fetch('/api/servers', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(serverData)
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        alert(data.message);
-                        this.reset();
-                        loadServerList();
-                    });
-                });
-            }
-        });
+//==================== Modal ====================
+function modal(title,html){
+  $('modal').innerHTML='<h3>'+title+'<button class="cl" onclick="closeModal()">✕</button></h3><div class="mb">'+html+'</div>';
+  $('modalBg').classList.add('show');
+}
+function closeModal(){ $('modalBg').classList.remove('show'); }
+$('modalBg').addEventListener('click',function(e){ if(e.target===$('modalBg')) closeModal(); });
 
-        // Модифицируем существующую функцию switchTab для автозагрузки списка серверов
-        const originalSwitchTab = switchTab;
-        switchTab = function(tabName) {
-            originalSwitchTab(tabName);
-            
-            // Автозагрузка списка серверов при открытии вкладки
-            if (tabName === 'server-management') {
-                setTimeout(loadServerList, 100);
-            }
-        };       
-        
-        // Авто-обновление каждые 30 секунд
-        setTimeout(() => {
-            location.reload();
-        }, 30000);
-        
-        // Обновление времени
-        function updateLastUpdate() {
-            const now = new Date();
-            document.getElementById('lastUpdate').textContent = now.toLocaleString('ru-RU');
-        }
-        
-        updateLastUpdate();
-    </script>
+//==================== Dashboard ====================
+function toneForPct(v){ if(v>=90)return'crit'; if(v>=75)return'warn'; return'ok'; }
+async function renderDashboard(){
+  var el=$('view-dashboard');
+  if(!state.availability) el.innerHTML='<div class="grid cards"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>';
+  try{
+    var av=await api('/v1/monitoring/availability?scope=all');
+    var ctrl=await api('/v1/control/status');
+    state.availability=av;state.control=ctrl;updatePills();
+    var items=av.items||[];
+    var up=av.up!=null?av.up:(av.summary&&av.summary.up)||0;
+    var down=av.down!=null?av.down:(av.summary&&av.summary.down)||0;
+    var total=av.total!=null?av.total:items.length;
+    var mon=ctrl.monitoring_active;
+    var silent=ctrl.silent_mode||(ctrl.silent_active?'force_quiet':'auto');
+    var silentLabel={auto:'Авто',force_quiet:'Тихий режим',force_loud:'Громкий режим'}[silent]||silent;
+
+    var cards=
+      statCard('🖥️','Всего серверов',total,'info')+
+      statCard('🟢','Доступно',up,'ok')+
+      statCard('🔴','Недоступно',down,down>0?'crit':'ok')+
+      statCard(mon?'▶️':'⏸️','Мониторинг',mon?'Активен':'Пауза',mon?'ok':'warn',true);
+
+    var ctrlCard=
+      '<div class="card section"><div class="head"><span class="ico">🎛️</span>Управление мониторингом</div><div class="body">'+
+      '<div class="btnrow">'+
+        (mon
+          ?'<button class="btn warn" onclick="ctrlAction(\'pause_monitoring\',\'Мониторинг приостановлен\')">⏸️ Приостановить</button>'
+          :'<button class="btn ok" onclick="ctrlAction(\'resume_monitoring\',\'Мониторинг возобновлён\')">▶️ Возобновить</button>')+
+        '<button class="btn" onclick="ctrlAction(\'send_morning_report\',null)">📋 Утренний отчёт</button>'+
+      '</div>'+
+      '<div class="section-title" style="margin:18px 0 12px;font-size:.92em"><span>Режим уведомлений</span><span class="ln"></span></div>'+
+      '<div class="chips">'+
+        silentChip('auto','🔄 Авто',silent)+
+        silentChip('force_loud','🔔 Громкий',silent)+
+        silentChip('force_quiet','🔕 Тихий',silent)+
+      '</div>'+
+      '<div class="field hint" style="margin-top:10px">Текущий режим: <b>'+esc(silentLabel)+'</b>'+(ctrl.silent_active?' · сейчас активна тишина':'')+'</div>'+
+      '</div></div>';
+
+    var listHtml=items.length?items.map(serverRow).join(''):
+      '<div class="empty"><span class="e">🗂️</span>Серверы не настроены</div>';
+
+    el.innerHTML=
+      '<div class="grid cards">'+cards+'</div>'+
+      '<div class="section-title"><span>🎛️ Управление</span><span class="ln"></span></div>'+
+      ctrlCard+
+      '<div class="section-title"><span>🖥️ Серверы ('+items.length+')</span><span class="ln"></span>'+
+        '<button class="btn ghost sm" onclick="renderDashboard()">🔄 Обновить</button></div>'+
+      '<div id="srvList">'+listHtml+'</div>';
+  }catch(e){
+    el.innerHTML='<div class="card"><div class="body empty"><span class="e">⚠️</span>'+esc(e.message)+
+      '<div style="margin-top:14px"><button class="btn" onclick="renderDashboard()">Повторить</button></div></div></div>';
+  }
+}
+function statCard(ico,lbl,val,tone,sm){
+  return '<div class="card"><div class="stat"><span class="lbl">'+ico+' '+esc(lbl)+'</span>'+
+    '<span class="val '+(sm?'sm ':'')+'tone-'+tone+'">'+esc(val)+'</span></div></div>';
+}
+function silentChip(mode,label,cur){
+  var act={auto:'auto_mode',force_loud:'force_loud',force_quiet:'force_quiet'}[mode];
+  var msg={auto:'Автоматический режим',force_loud:'Включён громкий режим',force_quiet:'Включён тихий режим'}[mode];
+  return '<span class="chip'+(cur===mode?' on':'')+'" onclick="ctrlAction(\''+act+'\',\''+msg+'\')">'+label+'</span>';
+}
+function serverRow(s){
+  var st=s.status||'unknown';
+  var ip=s.ip||s.server_id||'';
+  var nm=s.name||s.server_name||ip;
+  return '<div class="srv" id="srv-'+esc(cssId(ip))+'">'+
+    '<span class="st '+st+'"></span>'+
+    '<div><div class="nm">'+esc(nm)+'</div><div class="ip">'+esc(ip)+'</div></div>'+
+    '<div class="meta">'+
+      '<span class="tag t-'+st+'">'+(st==='up'?'🟢 Доступен':st==='down'?'🔴 Недоступен':'⚪ —')+'</span>'+
+      '<button class="btn ghost sm" onclick="checkResources(\''+esc(ip)+'\')">📈 Ресурсы</button>'+
+      '<button class="btn ghost sm" onclick="recheck(\''+esc(ip)+'\')">🔄</button>'+
+    '</div></div>';
+}
+function cssId(s){return String(s).replace(/[^a-zA-Z0-9_-]/g,'_');}
+
+async function recheck(ip){
+  toast('Проверка '+ip+'…');
+  try{ var r=await api('/v1/monitoring/availability/'+encodeURIComponent(ip));
+    var st=(r.server&&r.server.status)||(r.items&&r.items[0]&&r.items[0].status)||'unknown';
+    toast(ip+': '+(st==='up'?'🟢 доступен':'🔴 недоступен'),st==='up'?'ok':'err');
+    renderDashboard();
+  }catch(e){ toast(e.message,'err'); }
+}
+async function checkResources(ip){
+  modal('📈 Ресурсы: '+esc(ip),'<div class="spinner"></div>');
+  try{
+    var r=await api('/v1/monitoring/resources/'+encodeURIComponent(ip));
+    var res=r.resources||{};
+    var rows=['cpu','ram','disk'].map(function(k){
+      var v=res[k];
+      if(v==null) return '';
+      var tone=toneForPct(v);
+      return '<div class="m" style="min-width:100%"><div class="top"><span>'+
+        ({cpu:'⚡ CPU',ram:'🧠 RAM',disk:'💾 Диск'}[k])+'</span><span class="tone-'+tone+'">'+v+'%</span></div>'+
+        '<div class="bar"><i class="'+tone+'" style="width:'+Math.min(100,v)+'%"></i></div></div>';
+    }).join('');
+    var meta='';
+    if(res.access_method) meta+='<div class="field hint">Метод доступа: <b>'+esc(res.access_method)+'</b></div>';
+    if(res.timestamp) meta+='<div class="field hint">Обновлено: '+esc(res.timestamp)+'</div>';
+    $('modal').querySelector('.mb').innerHTML=
+      '<div class="res">'+(rows||'<div class="empty">Нет данных о ресурсах</div>')+'</div>'+meta+
+      (r.message?'<div class="field hint" style="margin-top:10px">'+esc(r.message)+'</div>':'');
+  }catch(e){
+    $('modal').querySelector('.mb').innerHTML='<div class="empty"><span class="e">⚠️</span>'+esc(e.message)+'</div>';
+  }
+}
+async function ctrlAction(action,okMsg){
+  try{
+    var r=await api('/v1/control/actions',{method:'POST',body:{action:action}});
+    if(action==='send_morning_report'){
+      modal('📋 Утренний отчёт','<pre>'+esc(r.message||r.text||'Отчёт сформирован')+'</pre>');
+    }else{
+      toast(okMsg||r.message||'Готово','ok');
+    }
+    state.availability=null;renderDashboard();
+  }catch(e){ toast(e.message,'err'); }
+}
+function updatePills(){
+  var c=state.control;if(!c)return;
+  var mon=c.monitoring_active;
+  var pm=$('pillMon');pm.className='pill clk hide-sm '+(mon?'ok':'warn');
+  pm.querySelector('span:last-child').textContent=mon?'Мониторинг активен':'Мониторинг на паузе';
+  var silent=c.silent_active;
+  var ps=$('pillSilent');ps.className='pill clk hide-sm '+(silent?'warn':'ok');
+  ps.querySelector('span:last-child').textContent=silent?'🔕 Тихий режим':'🔔 Уведомления вкл.';
+}
+
+//==================== Servers ====================
+var SRV_TYPES=[
+  {v:'linux',l:'🐧 Linux'},{v:'windows',l:'🪟 Windows'},
+  {v:'windows_domain',l:'🪟 Windows (домен)'},{v:'windows_admin',l:'🪟 Windows (админ)'},
+  {v:'windows_2025',l:'🪟 Windows 2025'},{v:'ping',l:'📡 Ping'}
+];
+async function renderServers(){
+  var el=$('view-servers');
+  el.innerHTML='<div class="spinner"></div>';
+  try{
+    var r=await api('/v1/settings/servers');
+    var items=r.items||[];var sum=r.summary||{};
+    var cards='<div class="grid cards">'+
+      statCard('🖥️','Всего',sum.total!=null?sum.total:items.length,'info')+
+      statCard('✅','Включено',sum.enabled||0,'ok')+
+      statCard('⛔','Выключено',sum.disabled||0,'warn')+'</div>';
+    var list=items.length?items.map(function(s){
+      var en=s.enabled!==false;
+      return '<div class="srv">'+
+        '<span class="st '+(en?'up':'unknown')+'"></span>'+
+        '<div><div class="nm">'+esc(s.name||s.ip)+'</div><div class="ip">'+esc(s.ip)+'</div></div>'+
+        '<div class="meta">'+
+          '<span class="tag">'+esc(typeLabel(s.type))+'</span>'+
+          '<span class="tag">⏱ '+esc(s.timeout||'—')+'s</span>'+
+          '<span class="tag '+(en?'t-up':'t-off')+'">'+(en?'включён':'выключен')+'</span>'+
+          '<label class="switch"><input type="checkbox" '+(en?'checked':'')+
+            ' onchange="toggleServer(\''+esc(s.ip)+'\',this.checked)"><span class="sl"></span></label>'+
+          '<button class="btn ghost sm" onclick=\'editServer('+JSON.stringify(s).replace(/'/g,"&#39;")+')\'>✏️</button>'+
+          '<button class="btn ghost sm" onclick="delServer(\''+esc(s.ip)+'\',\''+esc(s.name||s.ip)+'\')">🗑️</button>'+
+        '</div></div>';
+    }).join(''):'<div class="empty"><span class="e">🗂️</span>Серверы не добавлены</div>';
+    el.innerHTML=cards+
+      '<div class="section-title"><span>🖥️ Список серверов</span><span class="ln"></span>'+
+        '<button class="btn sm" onclick="editServer(null)">➕ Добавить сервер</button></div>'+list;
+  }catch(e){
+    el.innerHTML='<div class="card"><div class="body empty"><span class="e">⚠️</span>'+esc(e.message)+'</div></div>';
+  }
+}
+function typeLabel(t){var f=SRV_TYPES.find(function(x){return x.v===t;});return f?f.l:(t||'—');}
+function editServer(s){
+  var isNew=!s;
+  var opts=SRV_TYPES.map(function(t){return '<option value="'+t.v+'" '+(s&&s.type===t.v?'selected':'')+'>'+t.l+'</option>';}).join('');
+  modal((isNew?'➕ Новый сервер':'✏️ '+esc(s.name||s.ip)),
+    '<div class="field"><label>IP / адрес</label><input id="svIp" value="'+esc(s?s.ip:'')+'" '+(isNew?'':'disabled')+' placeholder="192.168.1.10"></div>'+
+    '<div class="field"><label>Имя</label><input id="svName" value="'+esc(s?s.name:'')+'" placeholder="Сервер БД"></div>'+
+    '<div class="form-grid">'+
+      '<div class="field"><label>Тип</label><select id="svType">'+opts+'</select></div>'+
+      '<div class="field"><label>Таймаут (сек)</label><input id="svTimeout" type="number" value="'+esc(s&&s.timeout!=null?s.timeout:30)+'"></div>'+
+    '</div>'+
+    '<div class="toggle-row"><div class="tx"><b>Включён</b><small>Участвует в мониторинге</small></div>'+
+      '<label class="switch"><input type="checkbox" id="svEnabled" '+(!s||s.enabled!==false?'checked':'')+'><span class="sl"></span></label></div>'+
+    '<div class="btnrow"><button class="btn" onclick="saveServer('+(isNew?'true':'false')+')">💾 Сохранить</button>'+
+      '<button class="btn ghost" onclick="closeModal()">Отмена</button></div>');
+}
+async function saveServer(isNew){
+  var ip=$('svIp').value.trim();
+  var body={name:$('svName').value.trim(),type:$('svType').value,
+    timeout:parseInt($('svTimeout').value)||30,enabled:$('svEnabled').checked};
+  if(!ip){ toast('Укажите IP/адрес','err');return; }
+  try{
+    if(isNew){ body.ip=ip; await api('/v1/settings/servers',{method:'POST',body:body}); toast('Сервер добавлен','ok'); }
+    else{ await api('/v1/settings/servers/'+encodeURIComponent(ip),{method:'PATCH',body:body}); toast('Сервер обновлён','ok'); }
+    closeModal();renderServers();
+  }catch(e){ toast(e.message,'err'); }
+}
+async function toggleServer(ip,enabled){
+  try{ await api('/v1/settings/servers/'+encodeURIComponent(ip)+'/enabled',{method:'PATCH',body:{enabled:enabled}});
+    toast('Сервер '+(enabled?'включён':'выключен'),'ok'); }
+  catch(e){ toast(e.message,'err');renderServers(); }
+}
+async function delServer(ip,name){
+  if(!confirm('Удалить сервер "'+name+'" ('+ip+')?'))return;
+  try{ await api('/v1/settings/servers/'+encodeURIComponent(ip),{method:'DELETE'});
+    toast('Сервер удалён','ok');renderServers(); }
+  catch(e){ toast(e.message,'err'); }
+}
+
+//==================== Settings ====================
+var SETTINGS_TABS=[
+  {id:'monitoring',ico:'📡',label:'Мониторинг'},
+  {id:'bot',ico:'🤖',label:'Telegram'},
+  {id:'matrix',ico:'💬',label:'Matrix'},
+  {id:'time',ico:'🕒',label:'Время'},
+  {id:'auth',ico:'🔐',label:'Доступы'},
+  {id:'report',ico:'📋',label:'Отчёт'},
+  {id:'extensions',ico:'🧩',label:'Расширения'},
+];
+var settingsTab='monitoring';
+function renderSettings(){
+  var el=$('view-settings');
+  el.innerHTML='<div class="chips" style="margin-bottom:18px" id="setTabs">'+
+    SETTINGS_TABS.map(function(t){return '<span class="chip'+(t.id===settingsTab?' on':'')+
+      '" onclick="setSettingsTab(\''+t.id+'\')">'+t.ico+' '+t.label+'</span>';}).join('')+
+    '</div><div id="setBody"><div class="spinner"></div></div>';
+  loadSettingsTab();
+}
+function setSettingsTab(id){ settingsTab=id; renderSettings(); }
+function fieldNum(id,label,val,hint){
+  return '<div class="field"><label>'+label+'</label><input id="'+id+'" type="number" value="'+esc(val!=null?val:'')+'">'+
+    (hint?'<div class="hint">'+hint+'</div>':'')+'</div>';
+}
+function fieldTxt(id,label,val,ph,type){
+  return '<div class="field"><label>'+label+'</label><input id="'+id+'" type="'+(type||'text')+'" value="'+esc(val!=null?val:'')+'" placeholder="'+esc(ph||'')+'"></div>';
+}
+async function loadSettingsTab(){
+  var b=$('setBody');
+  try{
+    if(settingsTab==='monitoring') return settingsMonitoring(b);
+    if(settingsTab==='bot') return settingsBot(b);
+    if(settingsTab==='matrix') return settingsMatrix(b);
+    if(settingsTab==='time') return settingsTime(b);
+    if(settingsTab==='auth') return settingsAuth(b);
+    if(settingsTab==='report') return settingsReport(b);
+    if(settingsTab==='extensions') return settingsExtensions(b);
+  }catch(e){ b.innerHTML='<div class="card"><div class="body empty"><span class="e">⚠️</span>'+esc(e.message)+'</div></div>'; }
+}
+function pickSettings(r){ return r.settings||r; }
+
+async function settingsMonitoring(b){
+  var r=await api('/v1/settings/monitoring');var s=pickSettings(r);
+  b.innerHTML=card('📡','Параметры мониторинга',
+    '<div class="form-grid">'+
+      fieldNum('mCheck','Интервал проверки (сек)',s.check_interval_sec)+
+      fieldNum('mTimeout','Базовый таймаут (сек)',s.timeout_sec)+
+      fieldNum('mDown','Макс. простой до алерта (сек)',s.max_downtime_sec)+
+      fieldNum('mPing','Таймаут ping (сек)',s.ping_timeout_sec)+
+      fieldNum('mLinux','Таймаут Linux (сек)',s.linux_timeout_sec)+
+      fieldNum('mWin','Таймаут Windows станд. (сек)',s.standard_windows_timeout_sec)+
+      fieldNum('mWinDom','Таймаут Windows домен (сек)',s.domain_servers_timeout_sec)+
+      fieldNum('mWinAdm','Таймаут Windows админ (сек)',s.admin_servers_timeout_sec)+
+      fieldNum('mWin25','Таймаут Windows 2025 (сек)',s.windows_2025_timeout_sec)+
+    '</div>'+
+    '<div class="btnrow"><button class="btn" onclick="saveMonitoring()">💾 Сохранить</button></div>');
+}
+async function saveMonitoring(){
+  var body={};
+  var map={mCheck:'check_interval_sec',mTimeout:'timeout_sec',mDown:'max_downtime_sec',
+    mPing:'ping_timeout_sec',mLinux:'linux_timeout_sec',mWin:'standard_windows_timeout_sec',
+    mWinDom:'domain_servers_timeout_sec',mWinAdm:'admin_servers_timeout_sec',mWin25:'windows_2025_timeout_sec'};
+  Object.keys(map).forEach(function(k){var v=$(k).value;if(v!=='')body[map[k]]=parseInt(v);});
+  try{ await api('/v1/settings/monitoring',{method:'PATCH',body:body});toast('Настройки мониторинга сохранены','ok'); }
+  catch(e){ toast(e.message,'err'); }
+}
+
+async function settingsBot(b){
+  var r=await api('/v1/settings/bot');var s=pickSettings(r);
+  var chats=s.telegram_chat_ids||(s.telegram_chat_id?[s.telegram_chat_id]:[]);
+  var chipsHtml=chats.length?chats.map(function(c){
+    return '<span class="chip">'+esc(c)+' <span class="x" onclick="removeBotChat(\''+esc(c)+'\')">✕</span></span>';
+  }).join(''):'<span class="field hint">Чаты не добавлены</span>';
+  b.innerHTML=card('🤖','Telegram-бот',
+    '<div class="field"><label>Токен бота</label><input id="btToken" placeholder="'+esc(s.masked_token||'123456:ABC…')+'">'+
+      '<div class="hint">Оставьте пустым, чтобы не менять. Текущий: '+esc(s.masked_token||'—')+'</div></div>'+
+    '<div class="field"><label>Чаты получателей</label><div class="chips" style="margin-bottom:10px">'+chipsHtml+'</div>'+
+      '<div style="display:flex;gap:8px"><input id="btNewChat" placeholder="chat_id (напр. -100123…)">'+
+      '<button class="btn ghost" onclick="addBotChat()">➕</button></div></div>'+
+    '<div class="btnrow"><button class="btn" onclick="saveBot()">💾 Сохранить</button>'+
+      '<button class="btn ghost" onclick="testBot()">📶 Проверить связь</button></div>');
+}
+async function saveBot(){
+  var body={};var tok=$('btToken').value.trim();if(tok)body.telegram_bot_token=tok;
+  try{ await api('/v1/settings/bot',{method:'PATCH',body:body});toast('Настройки Telegram сохранены','ok');settingsBot($('setBody')); }
+  catch(e){ toast(e.message,'err'); }
+}
+async function addBotChat(){
+  var c=$('btNewChat').value.trim();if(!c){toast('Укажите chat_id','err');return;}
+  try{ await api('/v1/settings/bot/chats',{method:'POST',body:{chat_id:c}});toast('Чат добавлен','ok');settingsBot($('setBody')); }
+  catch(e){ toast(e.message,'err'); }
+}
+async function removeBotChat(c){
+  try{ await api('/v1/settings/bot/chats/'+encodeURIComponent(c),{method:'DELETE'});toast('Чат удалён','ok');settingsBot($('setBody')); }
+  catch(e){ toast(e.message,'err'); }
+}
+async function testBot(){
+  toast('Проверка связи…');
+  try{ var r=await api('/v1/settings/bot/test',{method:'POST'});toast(r.message||(r.ok?'Связь есть':'Нет связи'),r.ok?'ok':'err'); }
+  catch(e){ toast(e.message,'err'); }
+}
+
+async function settingsMatrix(b){
+  var r=await api('/v1/settings/bot/matrix');var s=pickSettings(r);
+  b.innerHTML=card('💬','Matrix-бот',
+    fieldTxt('mxHome','Homeserver',s.matrix_homeserver,'https://matrix.org')+
+    '<div class="field"><label>Access token</label><input id="mxToken" placeholder="'+esc(s.masked_access_token||'syt_…')+'">'+
+      '<div class="hint">Оставьте пустым, чтобы не менять. Текущий: '+esc(s.masked_access_token||'—')+'</div></div>'+
+    fieldTxt('mxRoom','Room ID',s.matrix_room_id,'!room:matrix.org')+
+    '<div class="btnrow"><button class="btn" onclick="saveMatrix()">💾 Сохранить</button>'+
+      '<button class="btn ghost" onclick="testMatrix()">📶 Проверить связь</button></div>');
+}
+async function saveMatrix(){
+  var body={matrix_homeserver:$('mxHome').value.trim(),matrix_room_id:$('mxRoom').value.trim()};
+  var tok=$('mxToken').value.trim();if(tok)body.matrix_access_token=tok;
+  try{ await api('/v1/settings/bot/matrix',{method:'PATCH',body:body});toast('Настройки Matrix сохранены','ok');settingsMatrix($('setBody')); }
+  catch(e){ toast(e.message,'err'); }
+}
+async function testMatrix(){
+  toast('Проверка связи…');
+  try{ var r=await api('/v1/settings/bot/matrix/test',{method:'POST'});toast(r.message||(r.ok?'Связь есть':'Нет связи'),r.ok?'ok':'err'); }
+  catch(e){ toast(e.message,'err'); }
+}
+
+async function settingsTime(b){
+  var r=await api('/v1/settings/time');var s=pickSettings(r);
+  b.innerHTML=card('🕒','Время и тишина',
+    '<div class="form-grid">'+
+      fieldTxt('tQs','Начало тихого режима',s.quiet_start,'22:00','time')+
+      fieldTxt('tQe','Конец тихого режима',s.quiet_end,'08:00','time')+
+      fieldTxt('tMc','Время сбора метрик',s.metrics_collection_time,'09:00','time')+
+    '</div>'+
+    '<div class="btnrow"><button class="btn" onclick="saveTime()">💾 Сохранить</button></div>');
+}
+async function saveTime(){
+  var body={quiet_start:$('tQs').value,quiet_end:$('tQe').value,metrics_collection_time:$('tMc').value};
+  try{ await api('/v1/settings/time',{method:'PATCH',body:body});toast('Настройки времени сохранены','ok'); }
+  catch(e){ toast(e.message,'err'); }
+}
+
+async function settingsAuth(b){
+  var r=await api('/v1/settings/auth');var s=pickSettings(r);
+  var modes=['ssh_key','ssh_password','windows','mixed','auto'];
+  var modeOpts=modes.map(function(m){return '<option value="'+m+'" '+(s.auth_mode===m?'selected':'')+'>'+m+'</option>';}).join('');
+  b.innerHTML=
+    card('🔐','Доступ SSH / Windows',
+      '<div class="form-grid">'+
+        '<div class="field"><label>Режим аутентификации</label><select id="auMode">'+modeOpts+'</select></div>'+
+        fieldTxt('auSshUser','SSH пользователь',s.ssh_username,'root')+
+        fieldNum('auSshPort','SSH порт',s.ssh_port)+
+        fieldTxt('auSshKey','Путь к SSH-ключу',s.ssh_key_path,'/root/.ssh/id_rsa')+
+        fieldTxt('auWinUser','Windows пользователь',s.windows_username,'Administrator')+
+      '</div>'+
+      '<div class="form-grid">'+
+        '<div class="field"><label>SSH пароль</label><input id="auSshPass" type="password" placeholder="'+esc(s.masked_ssh_password||'не менять')+'"></div>'+
+        '<div class="field"><label>Windows пароль</label><input id="auWinPass" type="password" placeholder="'+esc(s.masked_windows_password||'не менять')+'"></div>'+
+      '</div>'+
+      '<div class="btnrow"><button class="btn" onclick="saveAuth()">💾 Сохранить</button></div>')+
+    '<div id="winCredsBox" style="margin-top:18px"></div>';
+  loadWindowsCreds();
+}
+async function saveAuth(){
+  var body={auth_mode:$('auMode').value,ssh_username:$('auSshUser').value.trim(),
+    ssh_key_path:$('auSshKey').value.trim(),windows_username:$('auWinUser').value.trim()};
+  var p=$('auSshPort').value;if(p!=='')body.ssh_port=parseInt(p);
+  var sp=$('auSshPass').value;if(sp)body.ssh_password=sp;
+  var wp=$('auWinPass').value;if(wp)body.windows_password=wp;
+  try{ await api('/v1/settings/auth',{method:'PATCH',body:body});toast('Доступы сохранены','ok'); }
+  catch(e){ toast(e.message,'err'); }
+}
+async function loadWindowsCreds(){
+  var box=$('winCredsBox');if(!box)return;
+  try{
+    var r=await api('/v1/settings/auth/windows-credentials');
+    var tr=await api('/v1/settings/auth/windows-types');
+    var items=r.items||[];var types=tr.types||[];
+    var typeOpts=(r.server_types||types.map(function(t){return t.name;})||['default']);
+    var credRows=items.length?items.map(function(c){
+      return '<div class="srv"><span class="st '+(c.enabled?'up':'unknown')+'"></span>'+
+        '<div><div class="nm">'+esc(c.username)+'</div><div class="ip">'+esc(c.server_type||'default')+' · приоритет '+esc(c.priority||0)+'</div></div>'+
+        '<div class="meta"><button class="btn ghost sm" onclick="delWinCred('+c.id+')">🗑️</button></div></div>';
+    }).join(''):'<div class="empty">Учётные записи Windows не добавлены</div>';
+    var typeRows=types.length?types.map(function(t){
+      return '<div class="srv"><span class="st up"></span><div><div class="nm">'+esc(t.name)+'</div>'+
+        '<div class="ip">всего '+t.total+' · активных '+t.active+'</div></div>'+
+        '<div class="meta"><button class="btn ghost sm" onclick="renameWinType(\''+esc(t.name)+'\')">✏️</button>'+
+        '<button class="btn ghost sm" onclick="delWinType(\''+esc(t.name)+'\')">🗑️</button></div></div>';
+    }).join(''):'<div class="empty">Типы не созданы</div>';
+    var typeSel=typeOpts.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join('');
+    box.innerHTML=
+      card('👥','Учётные записи Windows',
+        credRows+
+        '<div class="section-title" style="font-size:.92em;margin:18px 0 10px"><span>Добавить запись</span><span class="ln"></span></div>'+
+        '<div class="form-grid">'+
+          fieldTxt('wcUser','Пользователь','','DOMAIN\\user')+
+          '<div class="field"><label>Пароль</label><input id="wcPass" type="password"></div>'+
+          '<div class="field"><label>Тип сервера</label><select id="wcType">'+typeSel+'</select></div>'+
+          fieldNum('wcPrio','Приоритет',0)+
+        '</div>'+
+        '<div class="btnrow"><button class="btn" onclick="addWinCred()">➕ Добавить запись</button></div>')+
+      '<div style="margin-top:18px">'+card('📂','Типы Windows-серверов',
+        typeRows+
+        '<div class="section-title" style="font-size:.92em;margin:18px 0 10px"><span>Новый тип</span><span class="ln"></span></div>'+
+        '<div style="display:flex;gap:8px"><input id="wtName" placeholder="название типа">'+
+        '<button class="btn ghost" onclick="addWinType()">➕ Создать</button></div>')+'</div>';
+  }catch(e){ box.innerHTML='<div class="card"><div class="body empty">'+esc(e.message)+'</div></div>'; }
+}
+async function addWinCred(){
+  var body={username:$('wcUser').value.trim(),password:$('wcPass').value,
+    server_type:$('wcType').value,priority:parseInt($('wcPrio').value)||0};
+  if(!body.username||!body.password){toast('Заполните пользователя и пароль','err');return;}
+  try{ await api('/v1/settings/auth/windows-credentials',{method:'POST',body:body});toast('Запись добавлена','ok');loadWindowsCreds(); }
+  catch(e){ toast(e.message,'err'); }
+}
+async function delWinCred(id){
+  if(!confirm('Удалить учётную запись?'))return;
+  try{ await api('/v1/settings/auth/windows-credentials/'+id,{method:'DELETE'});toast('Удалено','ok');loadWindowsCreds(); }
+  catch(e){ toast(e.message,'err'); }
+}
+async function addWinType(){
+  var n=$('wtName').value.trim();if(!n){toast('Укажите название','err');return;}
+  try{ await api('/v1/settings/auth/windows-types',{method:'POST',body:{name:n}});toast('Тип создан','ok');loadWindowsCreds(); }
+  catch(e){ toast(e.message,'err'); }
+}
+async function renameWinType(name){
+  var nn=prompt('Новое имя типа "'+name+'":',name);if(!nn||nn===name)return;
+  try{ await api('/v1/settings/auth/windows-types/'+encodeURIComponent(name),{method:'PATCH',body:{new_name:nn}});toast('Переименовано','ok');loadWindowsCreds(); }
+  catch(e){ toast(e.message,'err'); }
+}
+async function delWinType(name){
+  if(!confirm('Удалить тип "'+name+'"? Записи перейдут в default.'))return;
+  try{ await api('/v1/settings/auth/windows-types/'+encodeURIComponent(name),{method:'DELETE'});toast('Тип удалён','ok');loadWindowsCreds(); }
+  catch(e){ toast(e.message,'err'); }
+}
+
+async function settingsReport(b){
+  var r=await api('/v1/settings/report');var s=pickSettings(r);
+  var avail=s.available||[];var sel=s.report_extensions||[];
+  var chips=avail.length?avail.map(function(o){
+    var on=sel.indexOf(o.id)>=0;
+    var dis=o.extension_enabled===false;
+    return '<span class="chip'+(on?' on':'')+(dis?'" style="opacity:.45;cursor:not-allowed':'')+
+      '" '+(dis?'':'onclick="toggleReportExt(this,\''+esc(o.id)+'\')"')+'>'+
+      (o.heavy?'🐘 ':'')+esc(o.label||o.name||o.id)+'</span>';
+  }).join(''):'<div class="empty">Нет доступных блоков отчёта</div>';
+  b.innerHTML=card('📋','Состав утреннего отчёта',
+    '<div class="field hint" style="margin-bottom:12px">Выберите блоки, которые включаются в утренний отчёт. 🐘 — тяжёлые блоки.</div>'+
+    '<div class="chips" id="reportChips">'+chips+'</div>'+
+    '<div class="btnrow"><button class="btn" onclick="saveReport()">💾 Сохранить</button></div>');
+}
+function toggleReportExt(elm,id){ elm.classList.toggle('on'); }
+async function saveReport(){
+  var sel=[];document.querySelectorAll('#reportChips .chip.on').forEach(function(c){
+    var m=c.getAttribute('onclick');if(m){var mm=m.match(/'([^']+)'\)$/);if(mm)sel.push(mm[1]);}
+  });
+  try{ await api('/v1/settings/report',{method:'PATCH',body:{report_extensions:sel}});toast('Состав отчёта сохранён','ok'); }
+  catch(e){ toast(e.message,'err'); }
+}
+
+async function settingsExtensions(b){
+  var r=await api('/v1/settings/extensions');var items=r.items||[];var sum=r.summary||{};
+  var rows=items.map(function(x){
+    return '<div class="toggle-row"><div class="tx"><b>'+esc(x.name)+'</b><small>'+esc(x.description||'')+'</small></div>'+
+      '<label class="switch"><input type="checkbox" '+(x.enabled?'checked':'')+
+      ' onchange="toggleExt(\''+esc(x.id)+'\',this.checked)"><span class="sl"></span></label></div>';
+  }).join('');
+  b.innerHTML=
+    '<div class="grid cards" style="margin-bottom:16px">'+
+      statCard('🧩','Всего',sum.total!=null?sum.total:items.length,'info')+
+      statCard('✅','Включено',sum.enabled||0,'ok')+
+      statCard('⛔','Выключено',sum.disabled||0,'warn')+'</div>'+
+    card('🧩','Модули расширений',rows||'<div class="empty">Нет расширений</div>');
+}
+async function toggleExt(id,enabled){
+  try{ await api('/v1/settings/extensions/'+encodeURIComponent(id),{method:'PATCH',body:{enabled:enabled}});
+    toast('Расширение '+(enabled?'включено':'выключено'),'ok'); }
+  catch(e){ toast(e.message,'err');renderSettings(); }
+}
+
+function card(ico,title,body){
+  return '<div class="card section"><div class="head"><span class="ico">'+ico+'</span>'+esc(title)+'</div><div class="body">'+body+'</div></div>';
+}
+
+//==================== Operations ====================
+var OPS=[
+  {a:'backup_hosts',e:'💾',t:'Бэкапы Proxmox',d:'Состояние бэкапов хостов'},
+  {a:'backup_databases',e:'🗃️',t:'Бэкапы БД',d:'Резервные копии баз данных'},
+  {a:'backup_mail',e:'📬',t:'Бэкапы почты',d:'Почтовый сервер'},
+  {a:'backup_stock_loads',e:'📦',t:'Остатки 1С',d:'Загрузки остатков'},
+  {a:'backup_nas_transfer',e:'📤',t:'Передача на NAS',d:'Трансфер бэкапов'},
+  {a:'backup_config_console',e:'🗂️',t:'Конфиги и истории',d:'Бэкап конфигураций'},
+  {a:'zfs_menu',e:'🧊',t:'ZFS',d:'Состояние ZFS'},
+  {a:'zfs_pool_free_space_menu',e:'💽',t:'Свободное место ZFS',d:'Пулы ZFS'},
+  {a:'snapshot_transfer_menu',e:'📸',t:'ZFS снэпшоты',d:'Передачи снэпшотов'},
+  {a:'tls_cert_monitor_status',e:'🔐',t:'TLS-сертификаты',d:'Сроки сертификатов'},
+  {a:'supplier_stock_reports',e:'📦',t:'Остатки поставщиков',d:'Отчёты по остаткам'},
+];
+function renderOperations(){
+  $('view-operations').innerHTML=
+    '<div class="card" style="margin-bottom:18px"><div class="body"><div class="field hint">'+
+      'Разделы открывают актуальные статусы напрямую из системы мониторинга. Недоступные модули можно включить в «Настройки → Расширения».'+
+    '</div></div>'+
+    '<div class="ops">'+OPS.map(function(o){
+      return '<button class="op" onclick="openOp(\''+o.a+'\',\''+esc(o.t)+'\',\''+o.e+'\')">'+
+        '<span class="e">'+o.e+'</span><div class="t"><b>'+esc(o.t)+'</b><small>'+esc(o.d)+'</small></div></button>';
+    }).join('')+'</div>';
+}
+async function openOp(action,title,emoji){
+  modal(emoji+' '+esc(title),'<div class="spinner"></div>');
+  try{
+    var r=await api('/v1/control/actions',{method:'POST',body:{action:action}});
+    var text=r.message||r.text||'Нет данных';
+    var opts=r.menu_options||r.menuOptions||[];
+    var btns=opts.filter(function(o){return o.action&&o.action!=='close';}).map(function(o){
+      return '<button class="btn ghost sm" onclick="openOp(\''+esc(o.action)+'\',\''+esc(title)+'\',\''+emoji+'\')">'+esc(o.label||o.action)+'</button>';
+    }).join('');
+    $('modal').querySelector('.mb').innerHTML='<pre>'+esc(text)+'</pre>'+
+      (btns?'<div class="btnrow" style="margin-top:14px">'+btns+'</div>':'');
+  }catch(e){
+    $('modal').querySelector('.mb').innerHTML='<div class="empty"><span class="e">⚠️</span>'+esc(e.message)+'</div>';
+  }
+}
+
+//==================== About ====================
+async function renderAbout(){
+  var el=$('view-about');
+  el.innerHTML=card('ℹ️','О системе',
+    '<p style="line-height:1.7">Система мониторинга серверов — единая панель управления инфраструктурой: '+
+    'доступность серверов, ресурсы (CPU/RAM/диск), бэкапы, ZFS, TLS-сертификаты, Telegram/Matrix-оповещения '+
+    'и утренние отчёты.</p>'+
+    '<div class="grid cards" style="margin-top:18px">'+
+      statCard('🏷️','Версия сервера',APP_VERSION,'info','sm')+
+      '<div class="card"><div class="stat"><span class="lbl">📱 Мобильный клиент</span>'+
+        '<span class="val sm tone-info" id="aboutMobile">…</span></div></div>'+
+    '</div>'+
+    '<div class="btnrow" style="margin-top:16px">'+
+      '<a class="btn ghost" href="/health" target="_blank">❤️ Health-check</a>'+
+      '<button class="btn ghost" onclick="go(\'dashboard\')">📊 К дашборду</button>'+
+    '</div>');
+  try{
+    var r=await api('/v1/mobile/version?current_version='+encodeURIComponent(APP_VERSION));
+    var m=$('aboutMobile');if(m)m.textContent=(r.latest_version||'—')+' (min '+(r.min_supported_version||'—')+')';
+  }catch(e){}
+}
+
+//==================== Boot ====================
+async function boot(){
+  $('login').style.display='none';$('app').style.display='flex';
+  $('verLabel').textContent='v'+APP_VERSION;
+  buildNav();
+  // verify token via control status; refresh pills
+  try{ state.control=await api('/v1/control/status');updatePills(); }
+  catch(e){ if(/Сессия|401/.test(e.message)){return;} }
+  go('dashboard');
+}
+
+(function init(){
+  applyTheme(localStorage.getItem('mon_theme')||'dark');
+  if(TOKEN) boot(); else { $('login').style.display='grid'; }
+})();
+</script>
 </body>
 </html>
 """
@@ -8699,35 +8639,12 @@ def v1_delete_settings_server(ip):
 
 @app.route("/")
 def index():
-    """Главная страница веб-интерфейса"""
+    """Главная страница веб-интерфейса (современный SPA поверх v1 BFF API)."""
     try:
-        stats, servers = get_monitoring_stats()
-        supplier_stock_enabled = extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID)
-        supplier_stock = {}
-        if supplier_stock_enabled:
-            config = get_supplier_stock_config()
-            download = config.get("download", {})
-            schedule = download.get("schedule", {})
-            schedule_time = schedule.get("time", "")
-            period_days = config.get("reporting", {}).get("period_days", 7)
-            supplier_stock = {
-                "schedule_status": "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено",
-                "schedule_time": schedule_time or "не задано",
-                "schedule_time_value": schedule_time or "",
-                "schedule_enabled": bool(schedule.get("enabled")),
-                "report_period_days": period_days,
-                "sources": summarize_supplier_stock_sources(download.get("sources", [])),
-                "report_groups": summarize_supplier_stock_reports(period_days),
-            }
+        from config.settings import APP_VERSION
 
-        return render_template_string(
-            HTML_TEMPLATE,
-            stats=stats,
-            servers=servers,
-            last_update=datetime.now().strftime("%H:%M:%S"),
-            supplier_stock_enabled=supplier_stock_enabled,
-            supplier_stock=supplier_stock,
-        )
+        html = WEB_APP_HTML.replace("__APP_VERSION__", str(APP_VERSION))
+        return app.response_class(html, mimetype="text/html")
     except Exception as e:
         return f"❌ Ошибка загрузки веб-интерфейса: {e}"
 
