@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/proxmox.py
-Server Monitoring System v8.62.92
+Server Monitoring System v8.62.93
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ProxmoxBackupParserMixin — часть BackupProcessor (PR6c серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.92
+Версия: 8.62.93
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Mixin ProxmoxBackupParserMixin; объединяется с другими mixin'ами в BackupProcessor.

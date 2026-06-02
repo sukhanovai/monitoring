@@ -1,3 +1,13 @@
+## [8.62.93] - 2026-06-02
+
+### Fixed
+- RU: Состав отчёта — кнопки расширений в меню «🗒️ Состав отчёта» (Telegram-бот) не переключались по нажатию: callback'и `report_ext_toggle_*`, `report_ext_all`, `report_ext_none` не были зарегистрированы в диспетчере `get_callback_handlers()`, поэтому нажатия молча игнорировались. Добавлена регистрация паттерна `^report_ext_`, теперь отметки расширений переключаются и меню перерисовывается.
+- EN: Report composition — the extension buttons in the "🗒️ Состав отчёта" menu (Telegram bot) did not toggle when pressed: the `report_ext_toggle_*`, `report_ext_all` and `report_ext_none` callbacks were not registered in the `get_callback_handlers()` dispatcher, so taps were silently ignored. Registered the `^report_ext_` pattern, so the extension marks now toggle and the menu redraws.
+
+### Added
+- RU: Android — настройка веб-интерфейса через плашку «web» оперативного центра. Нажатие на плашку (или шестерёнка на ней) открывает раздел «🌐 Веб-интерфейс» с полем адреса локального веб-интерфейса, кнопкой сохранения и кнопкой «🌐 Открыть веб-интерфейс».
+- EN: Android — web-interface configuration via the operations-center "web" tile. Tapping the tile (or its gear icon) opens a "🌐 Веб-интерфейс" section with the local web-interface address field, a save button and an "🌐 Открыть веб-интерфейс" button.
+
 ## [8.62.92] - 2026-06-02
 
 ### Fixed
