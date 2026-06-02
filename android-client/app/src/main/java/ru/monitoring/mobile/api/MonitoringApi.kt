@@ -123,6 +123,14 @@ interface MonitoringApi {
     @GET("v1/settings/servers")
     suspend fun getServersSettings(): ServersSettingsResponse
 
+    @GET("v1/settings/report")
+    suspend fun getReportSettings(): SettingsReportResponse
+
+    @PATCH("v1/settings/report")
+    suspend fun updateReportSettings(
+        @Body request: SettingsReportRequest
+    ): SettingsReportResponse
+
     @GET("v1/settings/extensions")
     suspend fun getExtensionsSettings(): ExtensionsSettingsResponse
 

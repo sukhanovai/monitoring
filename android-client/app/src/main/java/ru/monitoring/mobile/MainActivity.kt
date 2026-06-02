@@ -1742,6 +1742,7 @@ class MainActivity : ComponentActivity() {
                         onToggleExtension = vm::toggleExtension,
                         onEnableAllExtensions = vm::enableAllExtensions,
                         onDisableAllExtensions = vm::disableAllExtensions,
+                        onToggleReportExtension = vm::toggleReportExtension,
                         onOpenExtensionsSettingsMenu = vm::openExtensionsSettingsMenu,
                         onExtensionsSettingsAction = vm::runExtensionsSettingsAction,
                         onAction = vm::sendAction,
@@ -1968,6 +1969,7 @@ private fun MonitoringApp(
     val onToggleExtension = callbacks.onToggleExtension
     val onEnableAllExtensions = callbacks.onEnableAllExtensions
     val onDisableAllExtensions = callbacks.onDisableAllExtensions
+    val onToggleReportExtension = callbacks.onToggleReportExtension
     val onOpenExtensionsSettingsMenu = callbacks.onOpenExtensionsSettingsMenu
     val onExtensionsSettingsAction = callbacks.onExtensionsSettingsAction
     val onAction = callbacks.onAction
@@ -2883,7 +2885,8 @@ private fun MonitoringApp(
                                     "matrix_bot" to "🤖 Бот Matrix",
                                     "time" to "⏰ Время",
                                     "auth" to "🔐 Аутентификация",
-                                    "extensions" to "🧩 Расширения"
+                                    "extensions" to "🧩 Расширения",
+                                    "report" to "🗒️ Состав отчёта"
                                 ).forEach { (sectionId, sectionLabel) ->
                                     SettingsSectionTile(
                                         label = sectionLabel,
@@ -3245,6 +3248,7 @@ private fun MonitoringApp(
                                             "time" -> "⏰ Время"
                                             "auth" -> "🔐 Аутентификация"
                                             "extensions" -> "🧩 Расширения"
+                                            "report" -> "🗒️ Состав отчёта"
                                             else -> "⚙️ Настройки"
                                         }
                                     )
@@ -3525,6 +3529,24 @@ private fun MonitoringApp(
                             onClick = onSaveTime,
                             enabled = canSaveTime
                         )
+                        }
+
+                        if (settingsSection == "report") {
+                            Text("🗒️ Состав отчёта", fontWeight = FontWeight.Bold)
+                            Text(
+                                "Базовые данные мониторинга доступности серверов входят в " +
+                                    "утренний/ручной отчёт всегда. Отметьте расширения, " +
+                                    "сведения которых добавлять в отчёт.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (state.message.isNotBlank() && state.messageSource == "report_settings") {
+                                Text(state.message)
+                            }
+                            ReportExtensionsSection(
+                                options = state.reportExtensionOptions,
+                                onToggle = onToggleReportExtension
+                            )
                         }
 
                         if (settingsSection == "extensions") {

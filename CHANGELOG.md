@@ -1,3 +1,13 @@
+## [8.62.89] - 2026-06-02
+
+### Added
+- RU: Утренний/ручной отчёт получил настройку состава — теперь можно выбрать, сведения из каких расширений включать в отчёт помимо базовых данных мониторинга доступности (бэкапы Proxmox, бэкапы БД, бэкапы почты, загрузка остатков 1С, статусы ZFS). Новая настройка `REPORT_EXTENSIONS` (категория `report`). Реализовано во всех трёх клиентах: Telegram-бот (меню «🗒️ Состав отчёта» с переключателями + «Включить все»/«Очистить»), Matrix (`!report config` — просмотр и переключение, плюс ключ в `!settings`) и Android (раздел настроек «🗒️ Состав отчёта» с переключателями расширений). Раздел отчёта показывается только если расширение и выбрано в составе, и включено в менеджере расширений.
+- RU: Вид отчёта обновлён — в шапке добавлены строки «🗓 Дата» и «🧩 Состав отчёта» (список включённых расширений), чтобы было видно, какие дополнительные разделы должны присутствовать.
+- RU: Мобильный API: новые эндпоинты `GET/PATCH /v1/settings/report` (текущий состав отчёта и список доступных расширений с флагами `included`/`extension_enabled`).
+- EN: The morning/manual report gained a composition setting — you can now choose which extensions contribute their data to the report on top of the core availability monitoring (Proxmox backups, DB backups, mail backups, 1C stock loads, ZFS statuses). New `REPORT_EXTENSIONS` setting (category `report`). Implemented across all three clients: Telegram bot ("🗒️ Состав отчёта" menu with toggles + "enable all"/"clear"), Matrix (`!report config` to view and toggle, plus a key in `!settings`), and Android (a "🗒️ Состав отчёта" settings section with per-extension switches). A report section is shown only when the extension is both selected for the report and enabled in the extension manager.
+- EN: Refreshed the report layout — the header now shows "🗓 Дата" (date) and "🧩 Состав отчёта" (the list of included extensions) so it is clear which extra sections should be present.
+- EN: Mobile API: new `GET/PATCH /v1/settings/report` endpoints (current report composition and the list of available extensions with `included`/`extension_enabled` flags).
+
 ## [8.62.88] - 2026-06-01
 
 ### Fixed

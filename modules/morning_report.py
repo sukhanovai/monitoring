@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.62.88
+Server Monitoring System v8.62.89
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.62.88
+Версия: 8.62.89
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -61,6 +61,18 @@ class MorningReport:
         collection_time = self.morning_data.get("collection_time", datetime.now())
         is_manual = self.morning_data.get("manual_call", False)
 
+        # Состав отчёта: какие расширения пользователь выбрал для включения
+        # сведений помимо базовых данных мониторинга доступности.
+        try:
+            from lib.report_settings import get_report_extensions
+
+            report_extensions = set(get_report_extensions())
+        except Exception as exc:
+            debug_log(f"⚠️ Не удалось получить состав отчёта: {exc}")
+            from lib.report_settings import DEFAULT_REPORT_EXTENSIONS
+
+            report_extensions = set(DEFAULT_REPORT_EXTENSIONS)
+
         total_servers = len(status["ok"]) + len(status["failed"])
         up_count = len(status["ok"])
         down_count = len(status["failed"])
@@ -75,7 +87,29 @@ class MorningReport:
         message = f"📊 *{report_type}*\n\n"
         if APP_VERSION:
             message += f"🔖 *Версия:* {APP_VERSION}\n"
-        message += "🖥 *Доступность серверов*\n"
+        message += f"🗓 *Дата:* {collection_time.strftime('%d.%m.%Y')}\n"
+
+        # Состав отчёта (выбранные расширения) — помогает понять, какие
+        # дополнительные разделы должны присутствовать ниже.
+        try:
+            from lib.report_settings import (
+                REPORT_CAPABLE_EXTENSIONS,
+                get_report_extension_label,
+            )
+
+            included_labels = [
+                get_report_extension_label(ext_id)
+                for ext_id in REPORT_CAPABLE_EXTENSIONS
+                if ext_id in report_extensions
+            ]
+            if included_labels:
+                message += "🧩 *Состав отчёта:* " + ", ".join(included_labels) + "\n"
+            else:
+                message += "🧩 *Состав отчёта:* только данные мониторинга\n"
+        except Exception:
+            pass
+
+        message += "\n🖥 *Доступность серверов*\n"
         availability_rows = [
             ("Всего", str(total_servers)),
             ("🟢 Доступно", str(up_count)),
@@ -109,9 +143,18 @@ class MorningReport:
         try:
             from extensions.extension_manager import extension_manager
 
-            show_proxmox = extension_manager.is_extension_enabled("backup_monitor")
-            show_databases = extension_manager.is_extension_enabled("database_backup_monitor")
-            show_mail = extension_manager.is_extension_enabled("mail_backup_monitor")
+            show_proxmox = (
+                "backup_monitor" in report_extensions
+                and extension_manager.is_extension_enabled("backup_monitor")
+            )
+            show_databases = (
+                "database_backup_monitor" in report_extensions
+                and extension_manager.is_extension_enabled("database_backup_monitor")
+            )
+            show_mail = (
+                "mail_backup_monitor" in report_extensions
+                and extension_manager.is_extension_enabled("mail_backup_monitor")
+            )
             show_backups = show_proxmox or show_databases or show_mail
             if show_backups:
                 unavailable_hosts = set()
@@ -141,7 +184,10 @@ class MorningReport:
         try:
             from extensions.extension_manager import extension_manager
 
-            if extension_manager.is_extension_enabled("stock_load_monitor"):
+            if (
+                "stock_load_monitor" in report_extensions
+                and extension_manager.is_extension_enabled("stock_load_monitor")
+            ):
                 from extensions.backup_monitor.backup_utils import get_stock_load_summary
 
                 stock_summary = get_stock_load_summary(24 if is_manual else 16)
@@ -155,7 +201,10 @@ class MorningReport:
         try:
             from extensions.extension_manager import extension_manager
 
-            if extension_manager.is_extension_enabled("zfs_monitor"):
+            if (
+                "zfs_monitor" in report_extensions
+                and extension_manager.is_extension_enabled("zfs_monitor")
+            ):
                 zfs_summary, zfs_has_issues = self.get_zfs_summary_for_report()
                 zfs_header_icon = "🔴" if zfs_has_issues else "🟢"
                 message += f"\n{zfs_header_icon} *Статусы ZFS (последние)*\n"

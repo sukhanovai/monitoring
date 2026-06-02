@@ -400,6 +400,29 @@ data class ExtensionsSettingsResponse(
     val summary: ExtensionsSummary = ExtensionsSummary()
 )
 
+data class ReportExtensionOption(
+    val id: String,
+    val name: String = "",
+    val label: String = "",
+    val description: String = "",
+    @Json(name = "extension_enabled") val extensionEnabled: Boolean = true,
+    val included: Boolean = false
+)
+
+data class SettingsReportData(
+    @Json(name = "report_extensions") val reportExtensions: List<String> = emptyList(),
+    val available: List<ReportExtensionOption> = emptyList()
+)
+
+data class SettingsReportResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsReportData? = null
+)
+
+data class SettingsReportRequest(
+    @Json(name = "report_extensions") val reportExtensions: List<String>
+)
+
 data class ExtensionUpdateRequest(
     val enabled: Boolean
 )
