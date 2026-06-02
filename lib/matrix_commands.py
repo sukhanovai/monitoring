@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.91
+Server Monitoring System v8.62.92
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.91
+Версия: 8.62.92
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -412,7 +412,7 @@ _EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict(
             "web_interface",
             {
                 "label": "🌐 веб-интерфейс",
-                "keys": ["WEB_PORT", "WEB_HOST"],
+                "keys": ["WEB_PORT", "WEB_HOST", "MONITOR_SERVER_IP"],
                 "categories": ["web"],
             },
         ),
@@ -1933,9 +1933,11 @@ class MatrixCommandBot:
 
         host = config_manager.get_setting("WEB_HOST", "127.0.0.1") or "127.0.0.1"
         port = config_manager.get_setting("WEB_PORT", 5000) or 5000
+        monitor_ip = config_manager.get_setting("MONITOR_SERVER_IP", "") or ""
+        link_host = monitor_ip or (host if host not in ("0.0.0.0", "") else "localhost")
         return (
             "🌐 Веб-интерфейс управления:\n"
-            f"• http://{host}:{port}\n"
+            f"• http://{link_host}:{port}\n"
             "Открой адрес в браузере из доверенной сети."
         )
 

@@ -37,6 +37,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,6 +52,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -95,6 +97,9 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -1208,6 +1213,124 @@ private fun extractMailBackupVolumeFromMorningReport(report: String): String? {
     return extractFrom(nearMailSection) ?: extractFrom(normalizedReport)
 }
 
+// --- Рендеринг утреннего/ручного отчёта с акцентами ------------------------
+// Сервер присылает отчёт в Telegram-разметке: *жирный*, _курсив_, `моно`,
+// ASCII-таблицы в ```код-блоках``` и разделители из символов «━». Здесь это
+// разбирается на блоки и отображается с выделением заголовков, статусов и
+// моноширинных таблиц, чтобы отчёт читался гораздо легче, чем «простыня».
+
+private sealed interface ReportBlock
+private data class ReportText(val line: String) : ReportBlock
+private data class ReportCode(val text: String) : ReportBlock
+private object ReportDivider : ReportBlock
+private object ReportSpacer : ReportBlock
+
+private fun parseReportBlocks(text: String): List<ReportBlock> {
+    val blocks = mutableListOf<ReportBlock>()
+    val code = StringBuilder()
+    var inCode = false
+    for (raw in text.split("\n")) {
+        val trimmed = raw.trim()
+        if (trimmed.startsWith("```")) {
+            if (inCode) {
+                blocks.add(ReportCode(code.toString().trimEnd('\n')))
+                code.clear()
+            }
+            inCode = !inCode
+            continue
+        }
+        if (inCode) {
+            code.append(raw).append('\n')
+            continue
+        }
+        when {
+            trimmed.isEmpty() -> blocks.add(ReportSpacer)
+            trimmed.length >= 5 && trimmed.all { it == '━' || it == '─' || it == '—' } ->
+                blocks.add(ReportDivider)
+            else -> blocks.add(ReportText(trimmed))
+        }
+    }
+    if (inCode && code.isNotEmpty()) blocks.add(ReportCode(code.toString().trimEnd('\n')))
+    return blocks
+}
+
+private fun parseReportInline(line: String) = buildAnnotatedString {
+    var i = 0
+    while (i < line.length) {
+        when (val c = line[i]) {
+            '*', '`', '_' -> {
+                val end = line.indexOf(c, i + 1)
+                if (end > i + 1) {
+                    val style = when (c) {
+                        '*' -> SpanStyle(fontWeight = FontWeight.Bold)
+                        '`' -> SpanStyle(fontFamily = FontFamily.Monospace)
+                        else -> SpanStyle(fontStyle = FontStyle.Italic)
+                    }
+                    withStyle(style) { append(line.substring(i + 1, end)) }
+                    i = end + 1
+                } else {
+                    append(c)
+                    i++
+                }
+            }
+            else -> {
+                append(c)
+                i++
+            }
+        }
+    }
+}
+
+@Composable
+private fun MorningReportBody(text: String, modifier: Modifier = Modifier) {
+    val successColor = Color(0xFF2E7D32)
+    val warnColor = MaterialTheme.colorScheme.error
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        for (block in parseReportBlocks(text)) {
+            when (block) {
+                is ReportSpacer -> Spacer(Modifier.height(4.dp))
+                is ReportDivider -> HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 5.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+                is ReportCode -> Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = block.text,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        modifier = Modifier
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 10.dp, vertical = 8.dp)
+                    )
+                }
+                is ReportText -> {
+                    val trimmed = block.line
+                    val accent = when {
+                        trimmed.startsWith("🔴") || trimmed.startsWith("⚠️") ||
+                            trimmed.startsWith("❌") -> warnColor
+                        trimmed.startsWith("🟢") || trimmed.startsWith("✅") -> successColor
+                        else -> Color.Unspecified
+                    }
+                    val isHeader = trimmed.contains('*')
+                    val isBullet = trimmed.startsWith("•")
+                    Text(
+                        text = parseReportInline(trimmed),
+                        color = accent,
+                        fontSize = if (isHeader) 15.sp else 14.sp,
+                        lineHeight = 20.sp,
+                        modifier = Modifier.padding(start = if (isBullet) 12.dp else 0.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun OpsMetricChip(
@@ -1239,30 +1362,43 @@ private fun OpsMetricChip(
         shape = RoundedCornerShape(14.dp),
         tonalElevation = 1.dp
     ) {
+        val showSettings = !isStale && onSettingsClick != null
         Box {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 10.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(displayValue, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = valueColor)
+                    // Шестерёнка вынесена в правый верхний угол (overlay),
+                    // поэтому от значения первой строки оставляем отступ, чтобы
+                    // оно не пряталось под иконкой. Нижняя строка занимает всю
+                    // ширину плашки.
+                    Text(
+                        displayValue,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = valueColor,
+                        modifier = Modifier.padding(end = if (showSettings) 28.dp else 0.dp)
+                    )
                     Text(label, style = MaterialTheme.typography.labelSmall)
                 }
-                if (!isStale && onSettingsClick != null) {
-                    IconButton(
-                        onClick = onSettingsClick,
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = "Настройки $label",
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+            }
+            if (showSettings) {
+                IconButton(
+                    onClick = onSettingsClick!!,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(34.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Настройки $label",
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
             if (isStale) {
@@ -1728,8 +1864,10 @@ class MainActivity : ComponentActivity() {
                     MonitoringAppCallbacks(
                         onTokenChanged = vm::setTokenInput,
                         onBaseUrlChanged = vm::setBaseUrlInput,
+                        onWebInterfaceUrlChanged = vm::setWebInterfaceUrlInput,
                         onSaveToken = vm::saveToken,
                         onSaveBaseUrl = vm::saveBaseUrl,
+                        onSaveWebInterfaceUrl = vm::saveWebInterfaceUrl,
                         onRefreshData = vm::refreshData,
                         onCheckCertificateOnly = vm::checkBffCertificateOnly,
                         onLoadServersForSingleCheck = { vm.refreshSettingsFromServer(showErrors = true) },
@@ -1955,8 +2093,10 @@ private fun MonitoringApp(
 ) {
     val onTokenChanged = callbacks.onTokenChanged
     val onBaseUrlChanged = callbacks.onBaseUrlChanged
+    val onWebInterfaceUrlChanged = callbacks.onWebInterfaceUrlChanged
     val onSaveToken = callbacks.onSaveToken
     val onSaveBaseUrl = callbacks.onSaveBaseUrl
+    val onSaveWebInterfaceUrl = callbacks.onSaveWebInterfaceUrl
     val onRefreshData = callbacks.onRefreshData
     val onCheckCertificateOnly = callbacks.onCheckCertificateOnly
     val onLoadServersForSingleCheck = callbacks.onLoadServersForSingleCheck
@@ -2918,8 +3058,23 @@ private fun MonitoringApp(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 20.sp
                                 )
+                                if (state.webInterfaceUrlInput.isNotBlank()) {
+                                    TextButton(
+                                        onClick = { onOpenUpdateUrl(state.webInterfaceUrlInput) },
+                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("🌐 Открыть веб-интерфейс (${state.webInterfaceUrlInput})")
+                                    }
+                                }
                                 if (state.morningReportText.isNotBlank()) {
-                                    Text(state.morningReportText)
+                                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                        MorningReportBody(
+                                            text = state.morningReportText,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(14.dp)
+                                        )
+                                    }
                                     if (state.morningReportReceivedAt.isNotBlank()) {
                                         Text(
                                             "Получен: ${state.morningReportReceivedAt}",
@@ -3279,6 +3434,21 @@ private fun MonitoringApp(
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SettingsActionButton(label = "Сохранить URL", onClick = onSaveBaseUrl)
+                        }
+                        OutlinedTextField(
+                            value = state.webInterfaceUrlInput,
+                            onValueChange = onWebInterfaceUrlChanged,
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Адрес веб-интерфейса") },
+                            supportingText = {
+                                Text("Локальный веб-интерфейс, например http://192.168.20.2:5000")
+                            }
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SettingsActionButton(
+                                label = "Сохранить адрес",
+                                onClick = onSaveWebInterfaceUrl
+                            )
                         }
                         OutlinedTextField(
                             value = state.token,
@@ -5162,9 +5332,16 @@ private fun MonitoringApp(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (state.morningReportText.isNotBlank()) {
-                        Text(state.morningReportText)
+                        MorningReportBody(
+                            text = state.morningReportText,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         if (state.morningReportReceivedAt.isNotBlank()) {
-                            Text("Получен: ${state.morningReportReceivedAt}")
+                            Text(
+                                "Получен: ${state.morningReportReceivedAt}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     } else {
                         Text("Формируем утренний отчет…")

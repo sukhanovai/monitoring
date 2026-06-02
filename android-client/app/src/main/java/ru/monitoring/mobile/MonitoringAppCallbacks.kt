@@ -12,8 +12,10 @@ import ru.monitoring.mobile.api.ManagedServer
 class MonitoringAppCallbacks(
     val onTokenChanged: (String) -> Unit,
     val onBaseUrlChanged: (String) -> Unit,
+    val onWebInterfaceUrlChanged: (String) -> Unit,
     val onSaveToken: (String) -> Unit,
     val onSaveBaseUrl: () -> Unit,
+    val onSaveWebInterfaceUrl: () -> Unit,
     val onRefreshData: () -> Unit,
     val onCheckCertificateOnly: () -> Unit,
     val onLoadServersForSingleCheck: () -> Unit,

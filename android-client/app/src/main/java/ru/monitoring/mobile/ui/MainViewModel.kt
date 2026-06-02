@@ -542,6 +542,7 @@ class MainViewModel(
         state = state.copy(
             token = token,
             baseUrlInput = preferences.apiBaseUrl,
+            webInterfaceUrlInput = preferences.webInterfaceUrl,
             themeMode = preferences.themeMode,
             morningReportNotificationsEnabled = preferences.morningReportNotificationsEnabled,
             morningReportText = preferences.morningReportText,
@@ -964,8 +965,18 @@ class MainViewModel(
         rescheduleBackgroundWorkers()
     }
 
+    fun saveWebInterfaceUrl() {
+        val normalized = state.webInterfaceUrlInput.trim()
+        preferences.webInterfaceUrl = normalized
+        state = state.copy(
+            webInterfaceUrlInput = normalized,
+            message = "Адрес веб-интерфейса сохранён"
+        )
+    }
+
     fun setTokenInput(value: String) { state = state.copy(token = value) }
     fun setBaseUrlInput(value: String) { state = state.copy(baseUrlInput = value) }
+    fun setWebInterfaceUrlInput(value: String) { state = state.copy(webInterfaceUrlInput = value) }
     fun setCheckIntervalInput(value: String) { state = state.copy(checkIntervalInput = value) }
     fun setTimeoutInput(value: String) { state = state.copy(timeoutInput = value) }
     fun setMaxDowntimeInput(value: String) { state = state.copy(maxDowntimeInput = value) }
@@ -3338,6 +3349,7 @@ private data class SyncResults(
 data class MainUiState(
     val token: String = "",
     val baseUrlInput: String = "https://api.202020.ru:8443/",
+    val webInterfaceUrlInput: String = "http://192.168.20.2:5000",
     val isApiTokenVisible: Boolean = false,
     val isTelegramTokenVisible: Boolean = false,
     val isSshPasswordVisible: Boolean = false,

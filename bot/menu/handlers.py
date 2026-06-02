@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v8.62.91
+Server Monitoring System v8.62.92
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu handlers
 Система мониторинга серверов
-Версия: 8.62.91
+Версия: 8.62.92
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота
@@ -245,7 +245,9 @@ def start_command(update, context):
         welcome_text += "🐛 *Режим отладки:* 🔴 Недоступен\n"
 
     if extension_manager.is_extension_enabled("web_interface"):
-        welcome_text += "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
+        from core.monitor_core import get_web_interface_url
+
+        welcome_text += f"🌐 *Веб-интерфейс:* {get_web_interface_url(config)}\n"
         welcome_text += "_*доступен только в локальной сети_\n"
     else:
         welcome_text += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
@@ -324,7 +326,9 @@ def help_command(update, context):
 
     help_text += "*Веб-интерфейс:*\n"
     if extension_manager.is_extension_enabled("web_interface"):
-        help_text += "🌐 http://192.168.20.2:5000\n"
+        from core.monitor_core import get_web_interface_url
+
+        help_text += f"🌐 {get_web_interface_url(get_config())}\n"
         help_text += "_*доступен только в локальной сети_\n\n"
     else:
         help_text += "🔴 В настоящее время отключен\n\n"
@@ -959,8 +963,13 @@ def run_diagnostic(query):
         message = "🔧 *Диагностика системы*\n\n"
 
         # Проверка подключения к базовым сервисам
+        config = get_config()
+        web_port = int(getattr(config, "WEB_PORT", 5000) or 5000)
+        web_host = getattr(config, "MONITOR_SERVER_IP", "") or getattr(config, "WEB_HOST", "")
+        if web_host in ("0.0.0.0", "", None):
+            web_host = "localhost"
         checks = [
-            ("Веб-интерфейс", "192.168.20.2", 5000),
+            ("Веб-интерфейс", web_host, web_port),
             ("SSH демон", "localhost", 22),
             ("База бэкапов", "localhost", None),
         ]

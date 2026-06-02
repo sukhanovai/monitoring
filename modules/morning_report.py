@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.62.91
+Server Monitoring System v8.62.92
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.62.91
+Версия: 8.62.92
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -66,7 +66,10 @@ class MorningReport:
         try:
             from lib.report_settings import get_report_extensions
 
-            report_extensions = set(get_report_extensions())
+            # use_cache=False — иначе после переключения состава отчёта в
+            # настройках генерация читала бы устаревшее значение из кэша и
+            # включение/выключение расширений не вступало бы в силу.
+            report_extensions = set(get_report_extensions(use_cache=False))
         except Exception as exc:
             debug_log(f"⚠️ Не удалось получить состав отчёта: {exc}")
             from lib.report_settings import DEFAULT_REPORT_EXTENSIONS
@@ -541,44 +544,31 @@ class MorningReport:
             return "❌ Данные ZFS недоступны\n", True
 
     def _get_zfs_free_space_summary(self, db_path, allowed_servers):
-        """Сводка по свободному месту ZFS-пулов."""
+        """Сводка по свободному месту ZFS-пулов.
+
+        Данные по свободному месту нигде не персистятся в БД — расширение
+        `zfs_pool_free_space_monitor` собирает их «вживую» по SSH. Поэтому
+        для отчёта мы тоже опрашиваем пулы напрямую (это «тяжёлое»
+        расширение, включается осознанно).
+        """
         try:
-            conn = sqlite3.connect(str(db_path))
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT server_name, pool_name, free_percent, is_alert
-                FROM zfs_pool_free_space_status
-                ORDER BY received_at DESC
-                """
-            )
-            rows = cursor.fetchall()
+            from extensions.zfs_pool_free_space import collect_zfs_pool_free_space
+
+            results, errors = collect_zfs_pool_free_space()
         except Exception as exc:
-            if "no such table: zfs_pool_free_space_status" in str(exc):
-                return "нет данных", False
-            return "ошибка чтения", True
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
+            debug_log(f"⚠️ Ошибка сбора свободного места ZFS: {exc}")
+            return "ошибка сбора", True
 
-        latest = {}
-        for server_name, pool_name, free_percent, is_alert in rows:
-            key = (server_name, pool_name)
-            if key not in latest:
-                latest[key] = (free_percent, is_alert)
-
-        if allowed_servers:
-            latest = {key: value for key, value in latest.items() if key[0] in allowed_servers}
-
-        if not latest:
+        if not results:
+            if errors:
+                return "нет данных (ошибки опроса)", True
             return "нет данных", False
 
-        total = len(latest)
-        alert_count = sum(1 for _, (_, is_alert) in latest.items() if bool(is_alert))
+        total = len(results)
+        alert_count = sum(1 for row in results if row.get("is_alert"))
         ok_count = total - alert_count
-        return f"{total} (🟢 {ok_count} / 🔴 {alert_count})", alert_count > 0
+        has_issues = alert_count > 0 or bool(errors)
+        return f"{total} (🟢 {ok_count} / 🔴 {alert_count})", has_issues
 
     def _get_snapshot_transfer_summary(self, db_path, allowed_servers):
         """Сводка по передачам снэпшотов за 24 часа."""
@@ -633,11 +623,12 @@ class MorningReport:
         return db_path, allowed_servers
 
     def get_zfs_free_space_for_report(self):
-        """Отдельная сводка по свободному месту ZFS-пулов."""
-        db_path, allowed_servers = self._zfs_db_and_allowed()
-        if not db_path:
-            return "❌ База бэкапов не настроена", True
-        summary, has_issues = self._get_zfs_free_space_summary(db_path, allowed_servers)
+        """Отдельная сводка по свободному месту ZFS-пулов.
+
+        Свободное место собирается «вживую» по SSH (см.
+        `_get_zfs_free_space_summary`), поэтому база бэкапов здесь не нужна.
+        """
+        summary, has_issues = self._get_zfs_free_space_summary(None, None)
         return f"• Пулов: {summary}", has_issues
 
     def get_snapshot_transfer_for_report(self):

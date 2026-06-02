@@ -29,6 +29,14 @@ class AppPreferences(context: Context) {
             prefs.edit().putString(KEY_API_BASE_URL, value).apply()
         }
 
+    // Адрес локального веб-интерфейса мониторинга (например http://192.168.20.2:5000).
+    // Хранится отдельно от apiBaseUrl (BFF) — это другой сервис в локальной сети.
+    var webInterfaceUrl: String
+        get() = prefs.getString(KEY_WEB_INTERFACE_URL, DEFAULT_WEB_INTERFACE_URL) ?: DEFAULT_WEB_INTERFACE_URL
+        set(value) {
+            prefs.edit().putString(KEY_WEB_INTERFACE_URL, value).apply()
+        }
+
     var themeMode: String
         get() = prefs.getString(KEY_THEME_MODE, DEFAULT_THEME_MODE) ?: DEFAULT_THEME_MODE
         set(value) {
@@ -84,6 +92,7 @@ class AppPreferences(context: Context) {
         private const val KEY_API_TOKEN = "api_token"
         private const val KEY_BOOTSTRAP_TOKEN = "bootstrap_token"
         private const val KEY_API_BASE_URL = "api_base_url"
+        private const val KEY_WEB_INTERFACE_URL = "web_interface_url"
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_MORNING_REPORT_NOTIFICATIONS_ENABLED = "morning_report_notifications_enabled"
@@ -93,6 +102,7 @@ class AppPreferences(context: Context) {
         private const val KEY_LAST_DOWN_SERVERS_FINGERPRINT = "last_down_servers_fingerprint"
         private const val KEY_COMPACT_OPS_PINNED_TILE_IDS = "compact_ops_pinned_tile_ids"
         private const val DEFAULT_API_BASE_URL = "https://api.202020.ru:8443/"
+        private const val DEFAULT_WEB_INTERFACE_URL = "http://192.168.20.2:5000"
         private const val DEFAULT_THEME_MODE = "dark"
         private const val DEFAULT_COMPACT_OPS_PINNED_TILE_IDS = "servers,extensions,modes"
     }

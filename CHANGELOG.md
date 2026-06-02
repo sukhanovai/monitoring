@@ -1,3 +1,23 @@
+## [8.62.92] - 2026-06-02
+
+### Fixed
+- RU: Утренний/ручной отчёт — переключатели расширений в настройке состава отчёта не влияли на сам отчёт: генерация читала список `REPORT_EXTENSIONS` из кэша (`get_report_extensions()`), тогда как меню настроек обновляло его с `use_cache=False`. Теперь отчёт тоже читает состав с `use_cache=False`, и включение/выключение расширений сразу вступает в силу.
+- RU: Утренний/ручной отчёт — строка «Свободное место ZFS пулов» всегда показывала «нет данных»: код читал из таблицы `zfs_pool_free_space_status`, которая нигде не создаётся и не наполняется (данные по свободному месту собираются «вживую» по SSH и нигде не персистятся). Теперь сводка свободного места собирается напрямую через `collect_zfs_pool_free_space()`; расширение `zfs_pool_free_space_monitor` помечено как «тяжёлое» (live-сбор).
+- RU: Боты показывали жёстко зашитый адрес веб-интерфейса (`http://192.168.20.2:5000`) в `/start`, `/help` и системной диагностике. Адрес теперь формируется из настроек (`get_web_interface_url`: `MONITOR_SERVER_IP`/`WEB_HOST` + `WEB_PORT`).
+- EN: Morning/manual report — the report-composition toggles had no effect on the report: generation read `REPORT_EXTENSIONS` from cache (`get_report_extensions()`), while the settings menu updated it with `use_cache=False`. The report now also reads the composition with `use_cache=False`, so enabling/disabling extensions takes effect immediately.
+- EN: Morning/manual report — the "ZFS pools free space" line always showed "no data": the code read from a `zfs_pool_free_space_status` table that is never created or populated (free-space data is collected live over SSH and never persisted). The summary is now collected directly via `collect_zfs_pool_free_space()`; the `zfs_pool_free_space_monitor` extension is marked "heavy" (live collection).
+- EN: Bots displayed a hardcoded web-interface address (`http://192.168.20.2:5000`) in `/start`, `/help` and system diagnostics. The address is now derived from settings (`get_web_interface_url`: `MONITOR_SERVER_IP`/`WEB_HOST` + `WEB_PORT`).
+
+### Added
+- RU: Настройка адреса веб-интерфейса. В Telegram-боте (меню «🌐 Веб-интерфейс») добавлен пункт «📍 Адрес для ссылки» (`MONITOR_SERVER_IP`) и показывается итоговая ссылка; в Matrix `MONITOR_SERVER_IP` добавлен в раздел `web`. В Android (Настройки → «Подключение к BFF») добавлено поле «Адрес веб-интерфейса» (хранится локально), а на вкладке отчёта — кнопка «🌐 Открыть веб-интерфейс».
+- EN: Web-interface address setting. In the Telegram bot ("🌐 Веб-интерфейс" menu) a "📍 Адрес для ссылки" item (`MONITOR_SERVER_IP`) was added and the resulting link is shown; in Matrix `MONITOR_SERVER_IP` was added to the `web` section. In Android (Settings → "Подключение к BFF") a "Адрес веб-интерфейса" field was added (stored locally), and the report tab gained an "🌐 Открыть веб-интерфейс" button.
+
+### Changed
+- RU: Android — шестерёнка на плашках оперативного центра вынесена в правый верхний угол (выровнена по первой строке), чтобы текст нижней строки больше не обрезался иконкой настроек.
+- RU: Android — утренний/ручной отчёт стал читабельнее: разметка сервера (*жирный*, _курсив_, `моноширинный`, ASCII-таблицы в код-блоках, разделители) теперь рендерится с акцентами — выделяются заголовки и статусы (🟢/🔴), таблицы показываются моноширинным блоком, отчёт выводится в карточке.
+- EN: Android — the gear on operations-center tiles moved to the top-right corner (aligned to the first line) so the bottom text line is no longer clipped by the settings icon.
+- EN: Android — the morning/manual report is more readable: the server markup (*bold*, _italic_, `monospace`, ASCII tables in code blocks, dividers) is now rendered with accents — headers and statuses (🟢/🔴) are emphasized, tables render as a monospace block, and the report is shown inside a card.
+
 ## [8.62.91] - 2026-06-02
 
 ### Fixed
