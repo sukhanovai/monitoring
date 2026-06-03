@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.63.1
+Server Monitoring System v8.63.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.63.1
+Версия: 8.63.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -778,6 +778,117 @@ def _extract_transfer_status(processing: Dict[str, Any] | None) -> str | None:
     return str(status) if status else None
 
 
+def _sum_processing_rows(processing: Dict[str, Any] | None) -> int | None:
+    """Суммировать число строк по всем выходным файлам обработки."""
+    if not isinstance(processing, dict):
+        return None
+    total = 0
+    found = False
+    for result in processing.get("results") or []:
+        if not isinstance(result, dict):
+            continue
+        for output in result.get("outputs") or []:
+            if isinstance(output, dict) and isinstance(output.get("rows"), int):
+                total += output["rows"]
+                found = True
+    return total if found else None
+
+
+def _count_transfer_files(processing: Dict[str, Any] | None) -> int | None:
+    """Подсчитать число выгруженных файлов (включая FTP ОРК)."""
+    if not isinstance(processing, dict):
+        return None
+    transfer = processing.get("transfer")
+    if not isinstance(transfer, dict):
+        return None
+    items = transfer.get("items") or []
+    ftp_items = (transfer.get("ftp_ork") or {}).get("items") or []
+    files = [item for item in list(items) + list(ftp_items) if isinstance(item, dict)]
+    if not (items or ftp_items):
+        return None
+    return len(files)
+
+
+def _overall_supplier_stock_status(*stages: Dict[str, Any]) -> str:
+    """Свернуть статусы этапов (получение/обработка/выгрузка) в итоговый.
+
+    Ошибка на любом этапе → "error"; предупреждение/пропуск → "warning";
+    иначе → "success". Этап без статуса ("unknown") считается нейтральным
+    (например, обработка не требуется для источника).
+    """
+    statuses = [stage.get("status") for stage in stages if isinstance(stage, dict)]
+    if "error" in statuses:
+        return "error"
+    if "warning" in statuses:
+        return "warning"
+    return "success"
+
+
+def summarize_supplier_stock_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """Сводка по одной записи отчёта: статусы этапов, итог, строки/байты/файлы."""
+    processing = entry.get("processing") if isinstance(entry.get("processing"), dict) else None
+    receive = _map_stage_status(str(entry.get("status") or ""))
+    proc = _map_stage_status(_extract_processing_status(processing))
+    transfer = _map_stage_status(_extract_transfer_status(processing))
+    return {
+        "timestamp": entry.get("timestamp"),
+        "source_id": entry.get("source_id"),
+        "source_name": entry.get("source_name") or entry.get("source_id"),
+        "source_kind": entry.get("source_kind") or "download",
+        "method": entry.get("method"),
+        "receive": receive,
+        "processing": proc,
+        "transfer": transfer,
+        "overall": _overall_supplier_stock_status(receive, proc, transfer),
+        "rows": _sum_processing_rows(processing),
+        "bytes": entry.get("bytes"),
+        "files": _count_transfer_files(processing),
+        "path": entry.get("path"),
+        "error": entry.get("error"),
+    }
+
+
+def build_supplier_stock_dashboard(period_days: int | None = None) -> Dict[str, Any]:
+    """Сводка для дашборда: счётчики, время обновления и список поставщиков.
+
+    На каждого поставщика берётся последний запуск в периоде (через
+    ``summarize_supplier_stock_reports``). Список сортируется: сначала ошибки,
+    затем предупреждения, затем успешные; внутри группы — по имени.
+    """
+    grouped = summarize_supplier_stock_reports(period_days)
+    items: List[Dict[str, Any]] = []
+    for kind_items in grouped.values():
+        for item in kind_items:
+            overall = _overall_supplier_stock_status(
+                item.get("receive"), item.get("processing"), item.get("transfer")
+            )
+            enriched = dict(item)
+            enriched["overall"] = overall
+            items.append(enriched)
+
+    counts = {"success": 0, "warning": 0, "error": 0}
+    updated: str | None = None
+    for item in items:
+        counts[item["overall"]] = counts.get(item["overall"], 0) + 1
+        timestamp = item.get("timestamp")
+        if timestamp and (updated is None or str(timestamp) > str(updated)):
+            updated = str(timestamp)
+
+    order = {"error": 0, "warning": 1, "success": 2}
+    items.sort(
+        key=lambda x: (
+            order.get(x.get("overall"), 3),
+            str(x.get("source_name") or "").lower(),
+        )
+    )
+    return {
+        "updated": updated,
+        "counts": counts,
+        "items": items,
+        "total": len(items),
+    }
+
+
 def summarize_supplier_stock_reports(
     period_days: int | None = None,
 ) -> Dict[str, List[Dict[str, Any]]]:
@@ -861,6 +972,9 @@ def build_supplier_stock_source_stats(
                 "receive": receive_status,
                 "processing": processing_status,
                 "transfer": transfer_status,
+                "rows": _sum_processing_rows(processing),
+                "bytes": entry.get("bytes"),
+                "files": _count_transfer_files(processing),
                 "path": entry.get("path"),
                 "error": entry.get("error"),
             }

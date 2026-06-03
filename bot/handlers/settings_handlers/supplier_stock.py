@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/supplier_stock.py
-Server Monitoring System v8.63.1
+Server Monitoring System v8.63.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock UI handlers extracted from
 bot/handlers/settings_handlers/_legacy.py (PR7b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.1
+Версия: 8.63.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самодостаточный блок UI Telegram-бота для настроек supplier-stock
@@ -35,11 +35,13 @@ from core.config_manager import config_manager as settings_manager
 from extensions.extension_manager import extension_manager
 from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
+    build_supplier_stock_dashboard,
     build_supplier_stock_source_stats,
     get_supplier_stock_config,
     get_supplier_stock_reports,
     parse_supplier_stock_schedule_times,
     save_supplier_stock_config,
+    summarize_supplier_stock_entry,
     summarize_supplier_stock_reports,
 )
 from extensions.zfs_free_space_monitor import get_zfs_servers_config
@@ -330,69 +332,6 @@ def _supplier_stock_transfer_status(transfer: dict | None) -> str:
     return "🟡 частично"
 
 
-def _supplier_stock_stage_label(is_ok: bool) -> str:
-    return "ОК" if is_ok else "не ОК"
-
-
-def _supplier_stock_processing_ok(processing: dict | None) -> bool:
-    if not processing:
-        return False
-    if processing.get("status") == "skipped":
-        return False
-    results = processing.get("results") or []
-    statuses = [item.get("status") for item in results if isinstance(item, dict)]
-    if not statuses:
-        return False
-    return all(status == "success" for status in statuses)
-
-
-def _supplier_stock_transfer_ok(transfer: dict | None) -> bool:
-    if not transfer:
-        return False
-    status = transfer.get("status")
-    if status == "skipped":
-        return False
-    items = transfer.get("items") or []
-    ftp_items = transfer.get("ftp_ork", {}).get("items") or []
-    statuses = [
-        item.get("status") for item in list(items) + list(ftp_items) if isinstance(item, dict)
-    ]
-    if not statuses:
-        return False
-    return status == "success" and all(item_status == "success" for item_status in statuses)
-
-
-def _build_supplier_stock_daily_summary(
-    reports: list[dict],
-    source_kind: str,
-) -> list[dict]:
-    summary: list[dict] = []
-    seen_sources: set[str] = set()
-    for entry in reports:
-        source_id = str(entry.get("source_id") or entry.get("source_name") or "unknown")
-        if source_id in seen_sources:
-            continue
-        seen_sources.add(source_id)
-        processing_info = entry.get("processing") if entry.get("status") == "success" else None
-        receive_ok = entry.get("status") == "success"
-        processing_ok = _supplier_stock_processing_ok(processing_info)
-        transfer_ok = _supplier_stock_transfer_ok(
-            processing_info.get("transfer") if processing_info else None
-        )
-        summary.append(
-            {
-                "entry": entry,
-                "source_id": source_id,
-                "source_name": entry.get("source_name") or source_id,
-                "source_kind": source_kind,
-                "receive_ok": receive_ok,
-                "processing_ok": processing_ok,
-                "transfer_ok": transfer_ok,
-            }
-        )
-    return summary
-
-
 def _supplier_stock_processing_mode_label(value: str | None) -> str:
     """Сформировать читаемую метку режима обработки."""
     mode = (value or "table").strip().lower()
@@ -401,8 +340,35 @@ def _supplier_stock_processing_mode_label(value: str | None) -> str:
     return "Табличный"
 
 
-def show_supplier_stock_reports(update, context, source_kind: str = "download") -> None:
-    """Показать результаты загрузки, обработки и выгрузки остатков поставщиков."""
+# Дашборд результатов остатков поставщиков
+SUPPLIER_STOCK_DASH_PAGE_SIZE = 8
+SUPPLIER_STOCK_DASH_FILTERS = ("all", "problems", "web", "mail")
+_SUPPLIER_STOCK_OVERALL_ICON = {
+    "success": "🟢",
+    "warning": "🟡",
+    "error": "🔴",
+}
+_SUPPLIER_STOCK_FILTER_LABEL = {
+    "all": "все",
+    "problems": "только проблемы",
+    "web": "скачивание (веб)",
+    "mail": "почта",
+}
+
+
+def _supplier_stock_dashboard_apply_filter(items: list[dict], dash_filter: str) -> list[dict]:
+    """Отфильтровать список поставщиков дашборда по выбранному фильтру."""
+    if dash_filter == "problems":
+        return [item for item in items if item.get("overall") in ("error", "warning")]
+    if dash_filter == "web":
+        return [item for item in items if item.get("source_kind") == "download"]
+    if dash_filter == "mail":
+        return [item for item in items if item.get("source_kind") == "mail"]
+    return list(items)
+
+
+def show_supplier_stock_reports(update, context, dash_filter: str = "all", page: int = 0) -> None:
+    """Дашборд результатов остатков поставщиков: сводка, фильтры, пагинация."""
     query = update.callback_query
     query.answer()
 
@@ -415,112 +381,205 @@ def show_supplier_stock_reports(update, context, source_kind: str = "download") 
         )
         return
 
-    reporting_days = 1
-    reports = get_supplier_stock_reports(
-        limit=None, period_days=reporting_days, source_kind=source_kind
-    )
-    title = "полученные скачиванием" if source_kind == "download" else "полученные по почте"
+    if dash_filter not in SUPPLIER_STOCK_DASH_FILTERS:
+        dash_filter = "all"
+
+    config = get_supplier_stock_config()
+    reporting_days = config.get("reporting", {}).get("period_days", 7)
+    dashboard = build_supplier_stock_dashboard(period_days=reporting_days)
+    counts = dashboard.get("counts", {})
+    updated = dashboard.get("updated")
+    updated_label = _format_supplier_stock_timestamp(updated) if updated else "нет данных"
+
+    items = _supplier_stock_dashboard_apply_filter(dashboard.get("items", []), dash_filter)
+
+    page_size = SUPPLIER_STOCK_DASH_PAGE_SIZE
+    total_pages = max(1, (len(items) + page_size - 1) // page_size)
+    if page < 0:
+        page = 0
+    if page >= total_pages:
+        page = total_pages - 1
+    page_items = items[page * page_size : (page + 1) * page_size]
+
     message_lines = [
-        "📦 *Остатки поставщиков — результаты*",
+        "📦 *Остатки поставщиков — сводка*",
         "",
-        f"Группа: {title}",
-        "Период: последние 24 часа",
+        f"Обновлено: {_escape_pattern_text(updated_label)} · Период: {reporting_days} дн.",
+        "",
+        (
+            f"✅ {counts.get('success', 0)}   "
+            f"🟡 {counts.get('warning', 0)}   "
+            f"🔴 {counts.get('error', 0)}   "
+            f"всего {dashboard.get('total', 0)}"
+        ),
+        f"Фильтр: {_SUPPLIER_STOCK_FILTER_LABEL.get(dash_filter, dash_filter)}",
         "",
     ]
-    summary = _build_supplier_stock_daily_summary(reports, source_kind)
-    if not summary:
-        message_lines.append("⚪️ За сутки данных нет.")
+    if not items:
+        message_lines.append("⚪️ По выбранному фильтру данных нет.")
     else:
-        message_lines.append("Кликни источник, чтобы открыть историю за сутки.")
-        for entry in summary:
-            source_name = _escape_pattern_text(entry.get("source_name") or "неизвестный источник")
-            receive_label = _supplier_stock_stage_label(entry["receive_ok"])
-            processing_label = _supplier_stock_stage_label(entry["processing_ok"])
-            transfer_label = _supplier_stock_stage_label(entry["transfer_ok"])
-            message_lines.extend(
-                [
-                    "",
-                    f"• *{source_name}*",
-                    f"  📥 Загрузка: {receive_label}",
-                    f"  🧩 Обработка: {processing_label}",
-                    f"  📤 Выгрузка: {transfer_label}",
-                ]
+        for item in page_items:
+            overall_icon = _SUPPLIER_STOCK_OVERALL_ICON.get(item.get("overall"), "⚪️")
+            name = _escape_pattern_text(item.get("source_name") or "неизвестный источник")
+            time_label = _format_supplier_stock_timestamp(item.get("timestamp"))
+            kind_icon = "🌐" if item.get("source_kind") == "download" else "📧"
+            receive_icon = item.get("receive", {}).get("icon", "⚪️")
+            processing_icon = item.get("processing", {}).get("icon", "⚪️")
+            transfer_icon = item.get("transfer", {}).get("icon", "⚪️")
+            message_lines.append(
+                f"{overall_icon} {kind_icon} *{name}* — {_escape_pattern_text(time_label)}\n"
+                f"    📥{receive_icon} 🧩{processing_icon} 📤{transfer_icon}"
             )
+        message_lines.append("")
+        message_lines.append("Нажмите на поставщика, чтобы открыть историю.")
 
-    def _split_message(lines: list[str], max_length: int = 3500) -> list[str]:
-        chunks: list[str] = []
-        current: list[str] = []
-        current_len = 0
-        for line in lines:
-            candidate_len = current_len + len(line) + (1 if current else 0)
-            if current and candidate_len > max_length:
-                chunks.append("\n".join(current))
-                current = [line]
-                current_len = len(line)
-            else:
-                current.append(line)
-                current_len = candidate_len
-        if current:
-            chunks.append("\n".join(current))
-        return chunks
+    def _tab(label: str, key: str) -> InlineKeyboardButton:
+        text = f"• {label}" if key == dash_filter else label
+        return InlineKeyboardButton(text, callback_data=f"supplier_stock_dash|{key}|0")
 
-    message_chunks = _split_message(message_lines)
     keyboard = [
         [
-            InlineKeyboardButton("⬇️ Скачивание", callback_data="supplier_stock_reports_download"),
-            InlineKeyboardButton("📧 Почта", callback_data="supplier_stock_reports_mail"),
+            _tab("✅ Все", "all"),
+            _tab("⚠️ Проблемы", "problems"),
+        ],
+        [
+            _tab("🌐 Веб", "web"),
+            _tab("📧 Почта", "mail"),
         ],
     ]
-    entry_map: dict[str, dict] = {}
-    if summary:
-        for index, item in enumerate(summary, start=1):
-            entry_key = str(index)
-            entry_map[entry_key] = item
-            source_id = str(item.get("source_id") or "")
-            source_name = str(item.get("source_name") or source_id)
-            source_label = source_name[:24]
-            row = [
+
+    if total_pages > 1:
+        keyboard.append(
+            [
                 InlineKeyboardButton(
-                    f"📊 {source_label}",
-                    callback_data=f"supplier_stock_report_source_day|{source_kind}|{source_id}",
-                )
+                    "◀",
+                    callback_data=f"supplier_stock_dash|{dash_filter}|{max(0, page - 1)}",
+                ),
+                InlineKeyboardButton(
+                    f"стр. {page + 1} / {total_pages}", callback_data="supplier_stock_noop"
+                ),
+                InlineKeyboardButton(
+                    "▶",
+                    callback_data=f"supplier_stock_dash|{dash_filter}|{min(total_pages - 1, page + 1)}",
+                ),
             ]
-            if not (
-                item.get("receive_ok") and item.get("processing_ok") and item.get("transfer_ok")
-            ):
-                row.append(
-                    InlineKeyboardButton(
-                        "❗ Детали",
-                        callback_data=f"supplier_stock_report_entry|{entry_key}",
-                    )
-                )
+        )
+
+    row: list[InlineKeyboardButton] = []
+    for item in page_items:
+        source_id = str(item.get("source_id") or "")
+        if not source_id:
+            continue
+        overall_icon = _SUPPLIER_STOCK_OVERALL_ICON.get(item.get("overall"), "⚪️")
+        label = str(item.get("source_name") or source_id)[:20]
+        kind = item.get("source_kind") or "download"
+        row.append(
+            InlineKeyboardButton(
+                f"{overall_icon} {label}",
+                callback_data=f"supplier_stock_report_source|{kind}|{source_id}",
+            )
+        )
+        if len(row) == 2:
             keyboard.append(row)
-        context.user_data["supplier_stock_report_entries"] = entry_map
-        context.user_data["supplier_stock_report_entries_kind"] = source_kind
+            row = []
+    if row:
+        keyboard.append(row)
+
     keyboard.extend(
         [
             [
                 InlineKeyboardButton(
-                    "🔄 Обновить", callback_data=f"supplier_stock_reports_{source_kind}"
-                )
+                    "🔄 Обновить",
+                    callback_data=f"supplier_stock_dash|{dash_filter}|{page}",
+                ),
+                InlineKeyboardButton(
+                    "⬇️ Экспорт CSV", callback_data="supplier_stock_reports_export"
+                ),
             ],
-            [InlineKeyboardButton("🛠️ Настройки", callback_data="settings_ext_supplier_stock")],
-            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            [
+                InlineKeyboardButton("🛠️ Настройки", callback_data="settings_ext_supplier_stock"),
+                InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+            ],
             [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
         ]
     )
 
     query.edit_message_text(
-        message_chunks[0] if message_chunks else "\n".join(message_lines),
+        "\n".join(message_lines),
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
-    for chunk in message_chunks[1:]:
-        context.bot.send_message(
-            chat_id=query.message.chat_id,
-            text=chunk,
-            parse_mode="Markdown",
+
+
+def export_supplier_stock_reports(update, context) -> None:
+    """Экспортировать отчёты остатков поставщиков за период в CSV-файл."""
+    import csv
+    import io
+
+    query = update.callback_query
+    query.answer("Готовлю экспорт…")
+
+    if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
+        query.answer("📦 Остатки поставщиков отключены.", show_alert=True)
+        return
+
+    config = get_supplier_stock_config()
+    reporting_days = config.get("reporting", {}).get("period_days", 7)
+    reports = get_supplier_stock_reports(limit=None, period_days=reporting_days)
+
+    if not reports:
+        query.answer("За период нет данных для экспорта.", show_alert=True)
+        return
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, delimiter=";")
+    writer.writerow(
+        [
+            "timestamp",
+            "source_id",
+            "source_name",
+            "source_kind",
+            "method",
+            "receive",
+            "processing",
+            "transfer",
+            "overall",
+            "rows",
+            "bytes",
+            "error",
+        ]
+    )
+    for entry in reports:
+        summary = summarize_supplier_stock_entry(entry)
+        writer.writerow(
+            [
+                summary.get("timestamp") or "",
+                summary.get("source_id") or "",
+                summary.get("source_name") or "",
+                summary.get("source_kind") or "",
+                summary.get("method") or "",
+                summary.get("receive", {}).get("status") or "",
+                summary.get("processing", {}).get("status") or "",
+                summary.get("transfer", {}).get("status") or "",
+                summary.get("overall") or "",
+                summary.get("rows") if summary.get("rows") is not None else "",
+                summary.get("bytes") if summary.get("bytes") is not None else "",
+                summary.get("error") or "",
+            ]
         )
+
+    data = buffer.getvalue().encode("utf-8-sig")
+    document = io.BytesIO(data)
+    filename = f"supplier_stock_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
+    document.name = filename
+    context.bot.send_document(
+        chat_id=query.message.chat_id,
+        document=document,
+        filename=filename,
+        caption=(
+            f"📦 Остатки поставщиков — экспорт за {reporting_days} дн. " f"({len(reports)} записей)"
+        ),
+    )
 
 
 def show_supplier_stock_report_sources(update, context, source_kind: str = "download") -> None:
@@ -604,12 +663,44 @@ def show_supplier_stock_report_sources(update, context, source_kind: str = "down
     )
 
 
+def _format_supplier_stock_bytes(value) -> str | None:
+    """Сформировать читаемый размер файла (Б/КБ/МБ/ГБ)."""
+    if not isinstance(value, (int, float)):
+        return None
+    size = float(value)
+    for unit in ("Б", "КБ", "МБ", "ГБ"):
+        if size < 1024 or unit == "ГБ":
+            if unit == "Б":
+                return f"{int(size)} {unit}"
+            return f"{size:.1f} {unit}"
+        size /= 1024
+    return None
+
+
+def _supplier_stock_entry_metrics_line(entry: dict) -> str | None:
+    """Строка с метриками запуска: строки / файлы / размер."""
+    parts: list[str] = []
+    rows = entry.get("rows")
+    if isinstance(rows, int):
+        parts.append(f"{rows} строк")
+    files = entry.get("files")
+    if isinstance(files, int):
+        parts.append(f"{files} файл(ов)")
+    size_label = _format_supplier_stock_bytes(entry.get("bytes"))
+    if size_label:
+        parts.append(size_label)
+    if not parts:
+        return None
+    return "  📊 " + " · ".join(parts)
+
+
 def show_supplier_stock_report_source_stats(
     update,
     context,
     source_id: str,
     source_kind: str = "download",
     period_days: int | None = None,
+    errors_only: bool = False,
 ) -> None:
     """Показать подробную статистику по источнику остатков."""
     query = update.callback_query
@@ -619,13 +710,7 @@ def show_supplier_stock_report_source_stats(
         query.edit_message_text(
             "⚪️ Источник не выбран.",
             reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "↩️ Назад", callback_data=f"supplier_stock_reports_sources_{source_kind}"
-                        )
-                    ],
-                ]
+                [[InlineKeyboardButton("↩️ К сводке", callback_data="supplier_stock_reports")]]
             ),
         )
         return
@@ -638,47 +723,76 @@ def show_supplier_stock_report_source_stats(
     stats = build_supplier_stock_source_stats(source_id, source_kind, reporting_days)
     summary = stats.get("summary", {})
     entries = stats.get("entries", [])
+    if errors_only:
+        entries = [
+            entry
+            for entry in entries
+            if entry.get("receive", {}).get("status") == "error"
+            or entry.get("processing", {}).get("status") == "error"
+            or entry.get("transfer", {}).get("status") == "error"
+            or entry.get("error")
+        ]
 
     message_lines = [
-        "📦 *Остатки поставщиков — статистика источника*",
+        "📦 *Остатки поставщиков — история источника*",
         "",
         f"Источник: {_escape_pattern_text(source_id)}",
-        f"Группа: {'полученные скачиванием' if source_kind == 'download' else 'полученные по почте'}",
+        f"Способ: {'🌐 веб' if source_kind == 'download' else '📧 почта'}",
         f"Период: {reporting_days} дн.",
         "",
-        f"Всего запусков: {summary.get('total', 0)}",
-        f"📥 Успешно: {summary.get('receive_success', 0)} | Ошибок: {summary.get('receive_error', 0)}",
-        f"🧩 Успешно: {summary.get('processing_success', 0)} | Ошибок: {summary.get('processing_error', 0)}",
-        f"📤 Успешно: {summary.get('transfer_success', 0)} | Ошибок: {summary.get('transfer_error', 0)}",
+        f"Запусков: {summary.get('total', 0)}",
+        f"📥 Успешно: {summary.get('receive_success', 0)} · Ошибок: {summary.get('receive_error', 0)}",
+        f"🧩 Успешно: {summary.get('processing_success', 0)} · Ошибок: {summary.get('processing_error', 0)}",
+        f"📤 Успешно: {summary.get('transfer_success', 0)} · Ошибок: {summary.get('transfer_error', 0)}",
         "",
-        "*Последние события:*",
+        "*Только ошибки:*" if errors_only else "*Последние события:*",
     ]
 
     if not entries:
-        message_lines.append("⚪️ Записей пока нет.")
+        message_lines.append("✅ Ошибок за период нет." if errors_only else "⚪️ Записей пока нет.")
     else:
         for entry in entries[:10]:
             time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
-            message_lines.extend(
-                [
-                    "",
-                    f"• {_escape_pattern_text(time_label)}",
-                    f"  📥 {entry.get('receive', {}).get('icon', '⚪️')}",
-                    f"  🧩 {entry.get('processing', {}).get('icon', '⚪️')}",
-                    f"  📤 {entry.get('transfer', {}).get('icon', '⚪️')}",
-                ]
+            message_lines.append("")
+            message_lines.append(
+                f"• {_escape_pattern_text(time_label)}   "
+                f"📥{entry.get('receive', {}).get('icon', '⚪️')} "
+                f"🧩{entry.get('processing', {}).get('icon', '⚪️')} "
+                f"📤{entry.get('transfer', {}).get('icon', '⚪️')}"
             )
+            metrics_line = _supplier_stock_entry_metrics_line(entry)
+            if metrics_line:
+                message_lines.append(metrics_line)
             if entry.get("error"):
-                message_lines.append(f"  ❗ Ошибка: {_escape_pattern_text(entry.get('error'))}")
+                message_lines.append(f"  ❗ {_escape_pattern_text(entry.get('error'))}")
+
+    if errors_only:
+        toggle_button = InlineKeyboardButton(
+            "📋 Все события",
+            callback_data=f"supplier_stock_report_source|{source_kind}|{source_id}",
+        )
+    else:
+        toggle_button = InlineKeyboardButton(
+            "❗ Только ошибки",
+            callback_data=f"supplier_stock_report_source_err|{source_kind}|{source_id}",
+        )
 
     keyboard = [
         [
+            toggle_button,
             InlineKeyboardButton(
-                "↩️ Назад", callback_data=f"supplier_stock_reports_sources_{source_kind}"
-            )
+                "🔄 Обновить",
+                callback_data=f"supplier_stock_report_source|{source_kind}|{source_id}",
+            ),
         ],
-        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+        [
+            InlineKeyboardButton("⬇️ Экспорт CSV", callback_data="supplier_stock_reports_export"),
+        ],
+        [
+            InlineKeyboardButton("↩️ К сводке", callback_data="supplier_stock_reports"),
+            InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+            InlineKeyboardButton("✖️", callback_data="close"),
+        ],
     ]
 
     query.edit_message_text(
@@ -852,7 +966,11 @@ def show_supplier_stock_mail_settings(update, context):
                 "📁 Временный каталог", callback_data="supplier_stock_mail_temp_dir"
             )
         ],
-        [InlineKeyboardButton("🗄️ Каталог архива", callback_data="supplier_stock_mail_archive_dir")],
+        [
+            InlineKeyboardButton(
+                "🗄️ Каталог архива", callback_data="supplier_stock_mail_archive_dir"
+            )
+        ],
         [
             InlineKeyboardButton(
                 "🧹 Период очистки архива", callback_data="supplier_stock_archive_cleanup_mail"
@@ -5597,7 +5715,10 @@ def _parse_supplier_options(raw_value: str) -> dict | None:
 
 def show_stock_load_patterns_menu(update, context):
     """Показать паттерны для загрузки остатков."""
-    from bot.handlers.settings_handlers._legacy import view_patterns_handler  # circular-safe lazy import
+    from bot.handlers.settings_handlers._legacy import (
+        view_patterns_handler,
+    )  # circular-safe lazy import
+
     context.user_data["patterns_filter"] = "stock_load"
     context.user_data["patterns_back"] = "settings_ext_stock_load"
     context.user_data["patterns_add"] = "add_stock_pattern"
