@@ -1,3 +1,9 @@
+## [8.63.2] - 2026-06-03
+
+### Changed
+- RU: Telegram-бот — переделан экран «📦 Результаты остатков поставщиков» из главного меню в единый дашборд. Вместо раздельных списков «Скачивание»/«Почта» с криптичными «ОК/не ОК» теперь показываются: сводка-счётчики (✅ успешно / 🟡 частично / 🔴 ошибки) и время последнего обновления, одна итоговая иконка статуса на поставщика плюс мини-иконки этапов (📥 получение, 🧩 обработка, 📤 выгрузка), фильтры «Все/Проблемы/Веб/Почта» и постраничная навигация (вместо разбивки на несколько сообщений). В истории источника добавлены метрики запуска (число строк, файлов, размер), фильтр «❗ Только ошибки» и кнопка «⬇️ Экспорт CSV» выгрузки отчётов за период.
+- EN: Telegram bot — the "📦 Supplier stock results" screen from the main menu was reworked into a single dashboard. Instead of separate "Download"/"Mail" lists with cryptic "OK/not OK", it now shows: summary counters (✅ ok / 🟡 partial / 🔴 errors) and the last-update time, one overall status icon per supplier plus per-stage mini-icons (📥 receive, 🧩 processing, 📤 transfer), "All/Problems/Web/Mail" filters and pagination (instead of splitting into several messages). The per-source history gained run metrics (rows, files, size), an "❗ Errors only" filter and an "⬇️ Export CSV" button to export reports for the period.
+
 ## [8.63.1] - 2026-06-03
 
 ### Fixed

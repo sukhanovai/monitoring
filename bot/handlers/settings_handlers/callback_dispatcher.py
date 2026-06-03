@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/callback_dispatcher.py
-Server Monitoring System v8.63.1
+Server Monitoring System v8.63.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Главный диспатчер callback-кнопок настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.1
+Версия: 8.63.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
@@ -220,11 +220,21 @@ def settings_callback_handler(update, context):
         elif data == "supplier_stock_mail":
             show_supplier_stock_mail_settings(update, context)
         elif data == "supplier_stock_reports":
-            show_supplier_stock_reports(update, context, source_kind="download")
+            show_supplier_stock_reports(update, context, dash_filter="all", page=0)
         elif data == "supplier_stock_reports_download":
-            show_supplier_stock_reports(update, context, source_kind="download")
+            show_supplier_stock_reports(update, context, dash_filter="web", page=0)
         elif data == "supplier_stock_reports_mail":
-            show_supplier_stock_reports(update, context, source_kind="mail")
+            show_supplier_stock_reports(update, context, dash_filter="mail", page=0)
+        elif data == "supplier_stock_reports_export":
+            export_supplier_stock_reports(update, context)
+        elif data.startswith("supplier_stock_dash|"):
+            parts = data.split("|")
+            dash_filter = parts[1] if len(parts) > 1 else "all"
+            try:
+                page = int(parts[2]) if len(parts) > 2 else 0
+            except ValueError:
+                page = 0
+            show_supplier_stock_reports(update, context, dash_filter=dash_filter, page=page)
         elif data == "supplier_stock_reports_sources_download":
             show_supplier_stock_report_sources(update, context, source_kind="download")
         elif data == "supplier_stock_reports_sources_mail":
@@ -233,6 +243,11 @@ def settings_callback_handler(update, context):
             _, source_kind, source_id = data.split("|", 2)
             show_supplier_stock_report_source_stats(
                 update, context, source_id, source_kind, period_days=1
+            )
+        elif data.startswith("supplier_stock_report_source_err|"):
+            _, source_kind, source_id = data.split("|", 2)
+            show_supplier_stock_report_source_stats(
+                update, context, source_id, source_kind, errors_only=True
             )
         elif data.startswith("supplier_stock_report_source|"):
             _, source_kind, source_id = data.split("|", 2)
