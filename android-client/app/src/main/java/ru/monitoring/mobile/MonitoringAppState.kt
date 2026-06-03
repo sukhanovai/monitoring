@@ -158,6 +158,7 @@ class MonitoringAppState {
     var proxmoxHostDeleteConfirmTargetKey by mutableStateOf("")
     var databaseActionsTargetAction by mutableStateOf("")
     var showStockLoadsDialog by mutableStateOf(false)
+    var showSupplierStockDialog by mutableStateOf(false)
     var showSnapshotTransferDialog by mutableStateOf(false)
     var showSnapshotSettingsDialog by mutableStateOf(false)
     var snapshotHostInput by mutableStateOf("")

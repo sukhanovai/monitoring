@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.3
+Server Monitoring System v8.63.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.3
+Версия: 8.63.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -36,6 +36,7 @@ from extensions.extension_manager import extension_manager
 from extensions.server_checks import check_server_availability, initialize_servers
 from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
+    build_supplier_stock_dashboard,
     build_supplier_stock_source_stats,
     get_supplier_stock_config,
     get_supplier_stock_reports,
@@ -2523,7 +2524,66 @@ def _execute_mobile_control_action(action: str):
                 head += f"Серверов: {len(servers)} · 🟢 {ok_count}\n\nВыберите сервер:"
             return True, head, "accepted", menu_options
 
-        if action == "supplier_stock_reports" or action in {
+        if action == "supplier_stock_reports":
+            # Сводный дашборд — как в Telegram-боте: счётчики статусов,
+            # время обновления и по одной строке на поставщика с иконками
+            # этапов (приём/обработка/передача). Тот же формат отображается
+            # в веб-интерфейсе («Операции») и в плашке «📦 поставщики» Android.
+            try:
+                cfg = get_supplier_stock_config()
+                reporting_days = int((cfg.get("reporting") or {}).get("period_days", 7) or 7)
+            except Exception:
+                reporting_days = 7
+            dashboard = build_supplier_stock_dashboard(period_days=reporting_days)
+            counts = dashboard.get("counts", {}) or {}
+            items = dashboard.get("items", []) or []
+            updated = dashboard.get("updated")
+            updated_label = str(updated) if updated else "нет данных"
+            lines = [
+                "📦 Остатки поставщиков — сводка",
+                "",
+                f"Обновлено: {updated_label} · Период: {reporting_days} дн.",
+                "",
+                (
+                    f"✅ {counts.get('success', 0)}   "
+                    f"🟡 {counts.get('warning', 0)}   "
+                    f"🔴 {counts.get('error', 0)}   "
+                    f"всего {dashboard.get('total', 0)}"
+                ),
+                "",
+            ]
+            overall_icons = {"success": "🟢", "warning": "🟡", "error": "🔴"}
+            menu_options = [
+                {"label": "⬇️ Скачивание (сутки)", "action": "supplier_stock_reports_download"},
+                {"label": "📧 Почта (сутки)", "action": "supplier_stock_reports_mail"},
+            ]
+            if not items:
+                lines.append("⚪️ За период данных нет.")
+            else:
+                for item in items:
+                    overall_icon = overall_icons.get(item.get("overall"), "⚪️")
+                    name = str(item.get("source_name") or item.get("source_id") or "источник")
+                    kind = item.get("source_kind") or "download"
+                    kind_icon = "🌐" if kind == "download" else "📧"
+                    recv = (item.get("receive") or {}).get("icon", "⚪️")
+                    proc = (item.get("processing") or {}).get("icon", "⚪️")
+                    tran = (item.get("transfer") or {}).get("icon", "⚪️")
+                    timestamp = str(item.get("timestamp") or "—")
+                    lines.append(f"{overall_icon} {kind_icon} {name} — {timestamp}")
+                    lines.append(f"    📥 {recv}  🧩 {proc}  📤 {tran}")
+                    source_id = str(item.get("source_id") or "").strip()
+                    if source_id:
+                        menu_options.append(
+                            {
+                                "label": f"{overall_icon} {name[:24]}",
+                                "action": f"supplier_stock_report_source_day|{kind}|{source_id}",
+                            }
+                        )
+                lines.append("")
+                lines.append("Кликни поставщика, чтобы открыть историю.")
+            return True, "\n".join(lines), "accepted", menu_options
+
+        if action in {
             "supplier_stock_reports_download",
             "supplier_stock_reports_mail",
         }:

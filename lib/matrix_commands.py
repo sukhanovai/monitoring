@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.63.3
+Server Monitoring System v8.63.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.63.3
+Версия: 8.63.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -422,6 +422,18 @@ _EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict(
                 "label": "🔐 TLS-сертификаты",
                 "keys": ["TLS_CERT_DOMAINS", "TLS_CERT_SETTINGS"],
                 "categories": ["tls_cert"],
+            },
+        ),
+        (
+            # Конфигурация остатков поставщиков хранится в JSON расширения,
+            # а не в config_manager, поэтому редактируемых KEY=value-полей у
+            # неё нет. В !settings показывается отдельный read-only блок-сводка
+            # (см. _supplier_stock_settings_summary).
+            "supplier_stock_files",
+            {
+                "label": "🏷️ остатки поставщиков",
+                "keys": [],
+                "categories": ["supplier_stock"],
             },
         ),
     )
@@ -2182,6 +2194,50 @@ class MatrixCommandBot:
                         lines.append(f"   {row.get('description') or 'без описания'}")
         return lines
 
+    def _supplier_stock_settings_summary(self) -> List[str]:
+        """Read-only блок настроек остатков поставщиков для !settings.
+
+        Конфигурация расширения хранится в JSON (не в config_manager),
+        поэтому показываем сводку, а не редактируемые KEY=value-поля.
+        """
+        if "supplier_stock_files" not in self._enabled_extensions():
+            return []
+        header = "\n══ 🏷️ Остатки поставщиков (настройки) ══"
+        try:
+            from extensions.supplier_stock_files import get_supplier_stock_config
+
+            config = get_supplier_stock_config()
+        except Exception as exc:
+            return [header, f"❌ Не удалось загрузить настройки: {exc}"]
+
+        download = config.get("download", {}) or {}
+        mail = config.get("mail", {}) or {}
+        web_sources = download.get("sources", []) or []
+        mail_sources = mail.get("sources", []) or []
+        total = len(web_sources) + len(mail_sources)
+        enabled = sum(1 for s in web_sources if s.get("enabled", True)) + sum(
+            1 for s in mail_sources if s.get("enabled", True)
+        )
+        disabled = total - enabled
+        schedule = download.get("schedule", {}) or {}
+        schedule_state = "🟢" if schedule.get("enabled") else "🔴"
+        schedule_time = schedule.get("time") or "не задано"
+        mail_state = "🟢 вкл" if mail.get("enabled") else "🔴 выкл"
+        reporting_days = (config.get("reporting", {}) or {}).get("period_days", 7)
+        cleanup_days = config.get("archive_cleanup_days", 0) or 0
+        cleanup_label = f"{cleanup_days} дн." if cleanup_days else "выкл"
+        return [
+            header,
+            f"• Поставщиков: {total} (🌐 {len(web_sources)} · 📧 {len(mail_sources)})",
+            f"• Активны: 🟢 {enabled} · Выключены: 🔴 {disabled}",
+            f"• Расписание сбора: {schedule_state} {schedule_time}",
+            f"• Приём почты: {mail_state}",
+            f"• Период отчётов: {reporting_days} дн.",
+            f"• Очистка архива: {cleanup_label}",
+            "ℹ️ Параметры доступны только для просмотра. "
+            "Полное редактирование — в Telegram-боте или веб-интерфейсе.",
+        ]
+
     def _settings_help(self) -> str:
         try:
             sections, total = self._build_settings_view()
@@ -2190,6 +2246,7 @@ class MatrixCommandBot:
 
         lines = [self._SETTINGS_USAGE, "", f"📋 Параметры ({total}):"]
         lines.extend(self._render_settings_sections(sections, with_desc=True))
+        lines.extend(self._supplier_stock_settings_summary())
         return "\n".join(lines)
 
     def _settings_list(self, group_filter: Optional[str]) -> str:
@@ -2203,6 +2260,11 @@ class MatrixCommandBot:
 
         if group_filter:
             needle = group_filter.strip().lower()
+            supplier_summary = self._supplier_stock_settings_summary()
+            if supplier_summary and (
+                "supplier" in needle or "поставщ" in needle or "остатк" in needle
+            ):
+                return "\n".join([f"⚙️ Настройки: «{group_filter}»", *supplier_summary])
             filtered: List[Tuple[str, List[Tuple[str, list]]]] = []
             for title, groups in sections:
                 matched = [(group, members) for group, members in groups if needle in group.lower()]
@@ -2219,6 +2281,7 @@ class MatrixCommandBot:
 
         lines = [f"⚙️ Все настройки: {total}"]
         lines.extend(self._render_settings_sections(sections, with_desc=False))
+        lines.extend(self._supplier_stock_settings_summary())
         return "\n".join(lines)
 
     def _check_setting_access(self, setting_key: str, meta: dict) -> Optional[str]:
