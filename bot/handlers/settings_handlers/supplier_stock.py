@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/supplier_stock.py
-Server Monitoring System v8.63.2
+Server Monitoring System v8.63.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock UI handlers extracted from
 bot/handlers/settings_handlers/_legacy.py (PR7b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.2
+Версия: 8.63.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самодостаточный блок UI Telegram-бота для настроек supplier-stock
@@ -229,31 +229,45 @@ def show_supplier_stock_settings(update, context):
 
     config = get_supplier_stock_config()
     download = config.get("download", {})
-    sources = download.get("sources", [])
+    web_sources = download.get("sources", [])
     schedule = download.get("schedule", {})
     mail_settings = config.get("mail", {})
-    mail_status = "🟢 Включено" if mail_settings.get("enabled") else "🔴 Выключено"
-    mail_rules = len(mail_settings.get("sources", []))
+    mail_sources = mail_settings.get("sources", [])
 
-    schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
+    total = len(web_sources) + len(mail_sources)
+    enabled = sum(1 for source in web_sources if source.get("enabled", True)) + sum(
+        1 for source in mail_sources if source.get("enabled", True)
+    )
+    disabled = total - enabled
+    schedule_state = "🟢" if schedule.get("enabled") else "🔴"
     schedule_time = schedule.get("time", "не задано")
-
+    mail_state = "🟢 вкл" if mail_settings.get("enabled") else "🔴 выкл"
     reporting_days = config.get("reporting", {}).get("period_days", 7)
+
     message = (
         "📦 *Остатки поставщиков*\n\n"
-        f"Источников: {len(sources)}\n"
-        f"Расписание: {schedule_state} ({schedule_time})\n\n"
-        "📧 *Почтовые сообщения (остатки)*\n\n"
-        f"Статус: {mail_status}\n"
-        f"Правил: {mail_rules}\n\n"
-        "🗓 *Отчёты*\n"
-        f"Период: {reporting_days} дн.\n\n"
+        f"Поставщиков: {total}  (🌐 {len(web_sources)} · 📧 {len(mail_sources)})\n"
+        f"Активны: 🟢 {enabled}   Выключены: 🔴 {disabled}\n"
+        f"Расписание сбора: {schedule_state} {schedule_time}\n"
+        f"Приём почты: {mail_state}\n"
+        f"Период отчётов: {reporting_days} дн.\n\n"
         "Выберите раздел:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("🌐 Скачивание файлов", callback_data="supplier_stock_download")],
-        [InlineKeyboardButton("📧 Почтовые сообщения", callback_data="supplier_stock_mail")],
+        [
+            InlineKeyboardButton(
+                "➕ Добавить поставщика", callback_data="supplier_stock_supplier_add"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"📋 Список поставщиков ({total})", callback_data="supplier_stock_suppliers"
+            )
+        ],
+        [InlineKeyboardButton("⚙️ Общие настройки", callback_data="supplier_stock_common")],
+        [InlineKeyboardButton("🧩 Правила обработки", callback_data="supplier_stock_processing")],
+        [InlineKeyboardButton("📊 Результаты", callback_data="supplier_stock_reports")],
         [InlineKeyboardButton("🗓 Период отчётов", callback_data="supplier_stock_report_period")],
         [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
         [
@@ -262,6 +276,153 @@ def show_supplier_stock_settings(update, context):
         ],
     ]
 
+    query.edit_message_text(
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+def show_supplier_stock_suppliers_menu(update, context):
+    """Единый список поставщиков (веб + почта) — поставщик-центричный вид."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    web_sources = config.get("download", {}).get("sources", [])
+    mail_sources = config.get("mail", {}).get("sources", [])
+    total = len(web_sources) + len(mail_sources)
+
+    message_lines = ["📋 *Поставщики остатков*", ""]
+    if not total:
+        message_lines.append("❌ Поставщики не настроены.")
+        message_lines.append("Нажмите «➕ Добавить поставщика».")
+    else:
+        message_lines.append(f"Всего: {total}  (🌐 {len(web_sources)} · 📧 {len(mail_sources)})")
+        message_lines.append("Выберите поставщика для настройки.")
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "➕ Добавить поставщика", callback_data="supplier_stock_supplier_add"
+            )
+        ]
+    ]
+    for source in web_sources:
+        source_id = str(source.get("id") or "")
+        if not source_id:
+            continue
+        status = "🟢" if source.get("enabled", True) else "🔴"
+        name = str(source.get("name") or source_id)[:22]
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{status} 🌐 {name}",
+                    callback_data=f"supplier_stock_source_settings|{source_id}",
+                )
+            ]
+        )
+    for source in mail_sources:
+        source_id = str(source.get("id") or "")
+        if not source_id:
+            continue
+        status = "🟢" if source.get("enabled", True) else "🔴"
+        name = str(source.get("name") or source_id)[:22]
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{status} 📧 {name}",
+                    callback_data=f"supplier_stock_mail_source_settings|{source_id}",
+                )
+            ]
+        )
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data="main_menu")])
+    keyboard.append(
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_supplier_stock"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ]
+    )
+
+    query.edit_message_text(
+        "\n".join(message_lines),
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+def show_supplier_stock_supplier_add_menu(update, context):
+    """Выбор способа получения для нового поставщика (веб/почта)."""
+    query = update.callback_query
+    query.answer()
+
+    message = (
+        "➕ *Добавление поставщика*\n\n"
+        "Откуда забирать файлы остатков?\n\n"
+        "🌐 *Веб* — скачивание по URL или скрипту.\n"
+        "📧 *Почта* — приём вложений из писем."
+    )
+    keyboard = [
+        [InlineKeyboardButton("🌐 Скачивать из веба", callback_data="supplier_stock_source_add")],
+        [
+            InlineKeyboardButton(
+                "📧 Получать по почте", callback_data="supplier_stock_mail_source_add"
+            )
+        ],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_suppliers"),
+            InlineKeyboardButton("✖️ Отмена", callback_data="close"),
+        ],
+    ]
+    query.edit_message_text(
+        message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+def show_supplier_stock_common_menu(update, context):
+    """Общие настройки, действующие для всех поставщиков."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    schedule = config.get("download", {}).get("schedule", {})
+    schedule_state = "🟢" if schedule.get("enabled") else "🔴"
+    schedule_time = schedule.get("time", "не задано")
+    resources = config.get("resources", [])
+    ftp = config.get("ftp_ork", {})
+    ftp_state = "🟢 настроен" if ftp.get("host") else "🔴 не задан"
+    cleanup = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
+    mail_state = "🟢 вкл" if config.get("mail", {}).get("enabled") else "🔴 выкл"
+
+    message = (
+        "⚙️ *Общие настройки*\n"
+        "Действуют для всех поставщиков.\n\n"
+        f"⏰ Расписание сбора: {schedule_state} {schedule_time}\n"
+        f"🧹 Очистка архива: {cleanup}\n"
+        f"📤 Ресурсов выгрузки: {len(resources)}\n"
+        f"📡 FTP ОРК: {ftp_state}\n"
+        f"📧 Приём почты: {mail_state}"
+    )
+    keyboard = [
+        [InlineKeyboardButton("⏰ Расписание сбора", callback_data="supplier_stock_schedule")],
+        [
+            InlineKeyboardButton(
+                "🧹 Очистка архива", callback_data="supplier_stock_archive_cleanup_download"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"📤 Ресурсы выгрузки ({len(resources)})",
+                callback_data="supplier_stock_resources",
+            )
+        ],
+        [InlineKeyboardButton("📡 FTP ОРК", callback_data="supplier_stock_ftp")],
+        [InlineKeyboardButton("🌐 Каталоги веб-сбора", callback_data="supplier_stock_download")],
+        [InlineKeyboardButton("📧 Каталоги / приём почты", callback_data="supplier_stock_mail")],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data="settings_ext_supplier_stock"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
+    ]
     query.edit_message_text(
         message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
@@ -2658,7 +2819,7 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
             ],
             [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
             [
-                InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources"),
+                InlineKeyboardButton("↩️ К списку", callback_data="supplier_stock_suppliers"),
                 InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
             ],
         ]
@@ -2982,7 +3143,7 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
         ],
         [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
         [
-            InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_mail_sources"),
+            InlineKeyboardButton("↩️ К списку", callback_data="supplier_stock_suppliers"),
             InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
         ],
     ]

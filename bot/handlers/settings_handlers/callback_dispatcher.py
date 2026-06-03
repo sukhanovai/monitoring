@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/callback_dispatcher.py
-Server Monitoring System v8.63.2
+Server Monitoring System v8.63.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Главный диспатчер callback-кнопок настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.2
+Версия: 8.63.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
@@ -215,6 +215,12 @@ def settings_callback_handler(update, context):
         elif data == "settings_view_all":
             view_all_settings_handler(update, context)
 
+        elif data == "supplier_stock_suppliers":
+            show_supplier_stock_suppliers_menu(update, context)
+        elif data == "supplier_stock_supplier_add":
+            show_supplier_stock_supplier_add_menu(update, context)
+        elif data == "supplier_stock_common":
+            show_supplier_stock_common_menu(update, context)
         elif data == "supplier_stock_download":
             show_supplier_stock_download_settings(update, context)
         elif data == "supplier_stock_mail":
