@@ -1,3 +1,9 @@
+## [8.63.3] - 2026-06-03
+
+### Changed
+- RU: Telegram-бот — настройки расширения «📦 Остатки поставщиков» переведены на поставщик-центричную модель. Вместо двух параллельных веток «🌐 Скачивание файлов» и «📧 Почтовые сообщения», которые дублировали общие настройки и разносили один логический поток по разным меню, добавлен единый раздел: «➕ Добавить поставщика» (выбор способа получения веб/почта), «📋 Список поставщиков» (общий список веб- и почтовых источников с иконкой способа и статусом) и «⚙️ Общие настройки» (расписание, очистка архива, ресурсы выгрузки, FTP ОРК, каталоги, приём почты — собраны в одном месте). Кнопка «↩️ Назад» в карточках источников ведёт в единый список. Формат хранения конфигурации не изменён (веб-источники — `download.sources`, почтовые — `mail.sources`), поэтому движок сбора и веб-интерфейс работают без изменений и миграция данных не требуется.
+- EN: Telegram bot — the "📦 Supplier stock" extension settings were switched to a supplier-centric model. Instead of two parallel branches "🌐 File download" and "📧 Mail messages" that duplicated shared settings and split one logical flow across different menus, a unified section was added: "➕ Add supplier" (choose receive method web/mail), "📋 Supplier list" (combined list of web and mail sources with method icon and status) and "⚙️ Common settings" (schedule, archive cleanup, upload resources, ORK FTP, directories, mail intake — gathered in one place). The "↩️ Back" button on source cards returns to the unified list. The config storage format is unchanged (web sources in `download.sources`, mail in `mail.sources`), so the collection engine and web interface keep working and no data migration is required.
+
 ## [8.63.2] - 2026-06-03
 
 ### Changed
