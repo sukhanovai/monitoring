@@ -1,3 +1,9 @@
+## [8.63.1] - 2026-06-03
+
+### Fixed
+- RU: Веб-интерфейс — кнопка «⚙️ Настройки» теперь работает для всех расширений. Для расширений «📤 Перенос на NAS» (`nas_transfer_monitor`), «🗂️ Бэкапы конфигов консолей» (`config_console_backup_monitor`), «🔐 TLS-сертификаты» (`tls_cert_monitor`) и «💽 Свободное место ZFS» (`zfs_pool_free_space_monitor`) в списке «Настройки → Расширения» уже отображалась кнопка «⚙️ Настройки», но BFF-эндпоинт `/v1/settings/extensions/actions` не обрабатывал их действия и возвращал `INVALID_ACTION`. Добавлены обработчики этих действий с информативным статусом (число сертификатов/хостов, пороги тревог) и навигацией по подменю.
+- EN: Web interface — the "⚙️ Settings" button now works for every extension. The "📤 NAS transfer" (`nas_transfer_monitor`), "🗂️ Console config backups" (`config_console_backup_monitor`), "🔐 TLS certificates" (`tls_cert_monitor`) and "💽 ZFS free space" (`zfs_pool_free_space_monitor`) extensions already showed a "⚙️ Settings" button in "Settings → Extensions", but the `/v1/settings/extensions/actions` BFF endpoint did not handle their actions and returned `INVALID_ACTION`. Added handlers for these actions with an informative status (number of certificates/hosts, alert thresholds) and submenu navigation.
+
 ## [8.63.0] - 2026-06-03
 
 ### Fixed

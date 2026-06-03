@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.0
+Server Monitoring System v8.63.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.0
+Версия: 8.63.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -4026,7 +4026,97 @@ def v1_extensions_actions():
 
         return _normalize_proxmox_hosts(fallback_proxmox_hosts)
 
+    def _count_setting_entries(setting_key: str) -> int:
+        """Возвращает число элементов в настройке-словаре/списке (для статуса)."""
+        try:
+            raw_value = settings_manager.get_setting(setting_key, {}, use_cache=False)
+        except TypeError:
+            raw_value = settings_manager.get_setting(setting_key, {})
+        except Exception:
+            raw_value = {}
+        if isinstance(raw_value, str):
+            try:
+                raw_value = json.loads(raw_value)
+            except Exception:
+                try:
+                    raw_value = ast.literal_eval(raw_value)
+                except Exception:
+                    raw_value = {}
+        if isinstance(raw_value, dict):
+            return len(raw_value)
+        if isinstance(raw_value, (list, tuple, set)):
+            return len(raw_value)
+        return 0
+
+    def _get_int_setting(setting_key: str, default: int) -> int:
+        """Безопасно читает целочисленную настройку с дефолтом."""
+        try:
+            raw_value = settings_manager.get_setting(setting_key, default, use_cache=False)
+        except TypeError:
+            raw_value = settings_manager.get_setting(setting_key, default)
+        except Exception:
+            return default
+        try:
+            return int(raw_value)
+        except (TypeError, ValueError):
+            return default
+
+    tls_cert_count = _count_setting_entries("TLS_CERT_DOMAINS")
+    nas_alert_hours = _get_int_setting("NAS_TRANSFER_ALERT_HOURS", 24)
+    config_console_alert_hours = _get_int_setting("CONFIG_CONSOLE_ALERT_HOURS", 24)
+    zfs_pool_hosts_count = _count_setting_entries("ZFS_POOL_FREE_SPACE_HOSTS")
+
     settings_menu_action_map = {
+        "settings_ext_tls": {
+            "message": (
+                "🔐 Настройки расширения TLS-сертификатов\n\n"
+                f"Отслеживаемых сертификатов: {tls_cert_count}\n\n"
+                "Список доменов и пороги предупреждений редактируются "
+                "в Telegram-боте."
+            ),
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_ext_nas": {
+            "message": (
+                "📤 Настройки расширения переноса на NAS\n\n"
+                f"Порог тревоги: {nas_alert_hours} ч без свежей передачи.\n\n"
+                "Детальная настройка хостов и порогов доступна в Telegram-боте."
+            ),
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_ext_config_console": {
+            "message": (
+                "🗂️ Настройки расширения бэкапов конфигураций консолей\n\n"
+                f"Порог тревоги: {config_console_alert_hours} ч без свежего бэкапа.\n\n"
+                "Детальная настройка доступна в Telegram-боте."
+            ),
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "zfs_pool_free_space_menu": {
+            "message": (
+                "💽 Настройки расширения свободного места в пулах ZFS\n\n"
+                f"Хостов в списке: {zfs_pool_hosts_count}\n\n"
+                "Добавление хостов и пороги свободного места настраиваются "
+                "в Telegram-боте."
+            ),
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
         "settings_ext_backup_db": {
             "message": "🗃️ Настройки расширения бэкапов БД открыты.",
             "menu_options": [
