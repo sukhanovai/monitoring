@@ -1,3 +1,13 @@
+## [8.62.98] - 2026-06-02
+
+### Added
+- RU: Веб-интерфейс — настройки расширений. В разделе «Настройки → Расширения» теперь, помимо переключателей вкл/выкл, есть кнопки «✅ Включить все» / «⛔ Выключить все», а у каждого расширения с конфигурацией — кнопка «⚙️ Настройки», открывающая параметры расширения (паттерны, хосты, периоды, TLS-сертификаты, ресурсы и т.п.) с навигацией по подменю. Используется тот же BFF-эндпоинт `/v1/settings/extensions/actions`, что и в боте/Android. К плашкам расширений в списке добавлены иконки.
+- EN: Web interface — extension settings. The "Settings → Extensions" section now has "✅ Enable all" / "⛔ Disable all" buttons in addition to the on/off toggles, and every extension that has configuration gets a "⚙️ Settings" button that opens the extension's parameters (patterns, hosts, periods, TLS certificates, resources, etc.) with submenu navigation. It uses the same `/v1/settings/extensions/actions` BFF endpoint as the bot/Android. Icons were added next to extensions in the list.
+
+### Changed
+- RU: Android — на плашках расширений оперативного центра добавлены иконки (как у плашки TLS): 💻 ресурсы, 💾 proxmox, 🗃️ БД, 📬 почта, 🧊 zfs статусы, 💽 zfs место, 📸 снэпшоты, 📦 остатки, 📤 NAS, 🗂️ Конфиги, 📦 поставщики, 🌐 web, 📧 mail. Логика нажатий не изменилась (идентификаторы плашек сохранены).
+- EN: Android — icons were added to the operations-center extension tiles (like the TLS tile): 💻 resources, 💾 proxmox, 🗃️ DB, 📬 mail-backup, 🧊 zfs statuses, 💽 zfs free space, 📸 snapshots, 📦 stock loads, 📤 NAS, 🗂️ configs, 📦 suppliers, 🌐 web, 📧 mail. Tap behavior is unchanged (tile ids are preserved).
+
 ## [8.62.97] - 2026-06-02
 
 ### Added
