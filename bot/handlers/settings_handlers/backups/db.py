@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/db.py
-Server Monitoring System v8.62.98
+Server Monitoring System v8.62.99
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database backup UI settings extracted from _legacy.py (PR7e серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.98
+Версия: 8.62.99
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самая крупная backup-семья (после supplier_stock): UI Telegram-настроек
@@ -28,6 +28,7 @@ from telegram.error import BadRequest, TelegramError
 from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler
 from telegram.utils.helpers import escape_markdown
 
+from bot.handlers.settings_handlers._common import _escape_pattern_text  # noqa: F401
 from bot.handlers.settings_handlers.backups.proxmox import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.backups.snapshot import *  # noqa: F401, F403
 
@@ -204,6 +205,19 @@ def _get_database_fallback_patterns() -> dict[str, list[str]]:
             if isinstance(value, list)
         }
     return {}
+
+
+def _get_backup_patterns_setting() -> dict:
+    """Получить полные паттерны из настроек."""
+    raw_patterns = settings_manager.get_setting("BACKUP_PATTERNS", DEFAULT_BACKUP_PATTERNS)
+    if isinstance(raw_patterns, str):
+        try:
+            raw_patterns = json.loads(raw_patterns)
+        except json.JSONDecodeError:
+            raw_patterns = {}
+    if not isinstance(raw_patterns, dict):
+        return {}
+    return raw_patterns
 
 
 def _get_database_patterns_setting() -> dict[str, list[str]]:
@@ -599,7 +613,11 @@ def delete_database_category_handler(update, context):
         keyboard = []
         for category in db_config.keys():
             keyboard.append(
-                [InlineKeyboardButton(f"🗑️ {category}", callback_data=f"delete_category_{category}")]
+                [
+                    InlineKeyboardButton(
+                        f"🗑️ {category}", callback_data=f"delete_category_{category}"
+                    )
+                ]
             )
 
     keyboard.append(

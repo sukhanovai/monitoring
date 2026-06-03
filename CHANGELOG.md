@@ -1,3 +1,9 @@
+## [8.62.99] - 2026-06-03
+
+### Fixed
+- RU: Telegram-бот — исправлены падения хендлеров настроек с ошибкой `name '...' is not defined`. При декомпозиции `settings_handlers` приватные (`_`-префикс) помощники остались в одном модуле, а их вызовы — в других; `from ... import *` не переносит имена с ведущим подчёркиванием, поэтому ссылки рушились во время выполнения. В частности падали «📦 Остатки поставщиков → результаты» (`_escape_pattern_text`) и «Настройки → Расширения → Остатки поставщиков → скачивание файлов» (`_format_archive_cleanup_days`). Общие помощники вынесены в новый лист-модуль `bot/handlers/settings_handlers/_common.py`, помощники правил обработки остатков перенесены в `supplier_stock.py`, а остальные приватные имена импортируются явно — устранён весь класс таких ошибок (паттерны БД/почты/ZFS/остатков, меню снэпшотов и пр.).
+- EN: Telegram bot — fixed settings handlers crashing with `name '...' is not defined`. During the `settings_handlers` decomposition, private (`_`-prefixed) helpers stayed in one module while their callers moved to others; `from ... import *` does not re-export underscore-prefixed names, so the references failed at runtime. Notably "📦 Supplier stock → results" (`_escape_pattern_text`) and "Settings → Extensions → Supplier stock → file download" (`_format_archive_cleanup_days`) were broken. Shared helpers were moved to a new leaf module `bot/handlers/settings_handlers/_common.py`, the stock processing-rule helpers were moved into `supplier_stock.py`, and the remaining private names are now imported explicitly — eliminating the entire class of such errors (DB/mail/ZFS/stock pattern builders, snapshot menus, etc.).
+
 ## [8.62.98] - 2026-06-02
 
 ### Added

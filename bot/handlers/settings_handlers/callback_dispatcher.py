@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/callback_dispatcher.py
-Server Monitoring System v8.62.98
+Server Monitoring System v8.62.99
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Главный диспатчер callback-кнопок настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.98
+Версия: 8.62.99
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
@@ -26,11 +26,28 @@ from telegram.error import BadRequest, TelegramError
 from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler
 from telegram.utils.helpers import escape_markdown
 
+from bot.handlers.settings_handlers._common import (  # noqa: F401
+    _disable_all_extensions_settings,
+    _enable_all_extensions_settings,
+    _format_archive_cleanup_days,
+    _format_current_hint,
+    _safe_query_answer,
+)
 from bot.handlers.settings_handlers.auth import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.backups.db import *  # noqa: F401, F403
+
+# `import *` не переносит имена с ведущим подчёркиванием, поэтому приватные
+# помощники вынесенных модулей импортируем явно.
+from bot.handlers.settings_handlers.backups.db import (  # noqa: F401
+    _resolve_db_category_from_callback,
+    _resolve_db_entry_from_callback,
+)
 from bot.handlers.settings_handlers.backups.mail import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.backups.proxmox import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.backups.snapshot import *  # noqa: F401, F403
+from bot.handlers.settings_handlers.backups.snapshot import (  # noqa: F401
+    _clear_snapshot_host_input_state,
+)
 from bot.handlers.settings_handlers.report import (  # noqa: F401
     clear_report_extensions_handler,
     set_all_report_extensions_handler,
@@ -42,6 +59,17 @@ from bot.handlers.settings_handlers.report import (  # noqa: F401
 # реэкспортируем их сюда же, чтобы внутренние ссылки в _legacy.py
 # (например, settings_callback_handler) продолжали работать.
 from bot.handlers.settings_handlers.supplier_stock import *  # noqa: F401, F403
+from bot.handlers.settings_handlers.supplier_stock import (  # noqa: F401
+    _ensure_processing_variant,
+    _persist_processing_rule_data,
+    _remove_variant_column,
+    _save_processing_rule_data,
+    _set_supplier_stock_processing_active_rule,
+    _show_processing_rule_back_menu,
+    _supplier_stock_remember_prompt_message,
+    _sync_processing_variants_count,
+    _sync_variant_columns,
+)
 from bot.handlers.settings_handlers.windows_creds import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.zfs import *  # noqa: F401, F403
 from bot.handlers.zfs_pool_free_space_handlers import handle_text_input as handle_zfsp_text_input

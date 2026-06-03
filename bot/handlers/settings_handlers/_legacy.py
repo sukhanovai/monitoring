@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.62.98
+Server Monitoring System v8.62.99
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.62.98
+Версия: 8.62.99
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -23,9 +23,29 @@ from telegram.error import BadRequest, TelegramError
 from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler
 from telegram.utils.helpers import escape_markdown
 
+from bot.handlers.settings_handlers._common import (  # noqa: F401
+    _build_mail_pattern_from_fragments,
+    _escape_pattern_text,
+)
 from bot.handlers.settings_handlers.auth import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.backups.db import *  # noqa: F401, F403
+
+# `from ... import *` не переносит имена с ведущим подчёркиванием. Приватные
+# помощники паттернов остались в вынесенных модулях, поэтому импортируем их
+# в namespace _legacy явно — иначе хендлеры паттернов падают с NameError.
+from bot.handlers.settings_handlers.backups.db import (  # noqa: F401
+    _build_db_pattern_from_fragments,
+    _build_db_pattern_from_subject,
+    _get_database_category,
+    _get_database_fallback_patterns,
+    _get_database_names,
+    _show_db_pattern_confirm,
+)
 from bot.handlers.settings_handlers.backups.mail import *  # noqa: F401, F403
+from bot.handlers.settings_handlers.backups.mail import (  # noqa: F401
+    _build_mail_pattern_from_subject,
+    _get_mail_fallback_patterns,
+)
 from bot.handlers.settings_handlers.backups.proxmox import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.backups.snapshot import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.callback_dispatcher import *  # noqa: F401, F403
@@ -35,8 +55,19 @@ from bot.handlers.settings_handlers.settings_value import *  # noqa: F401, F403
 # реэкспортируем их сюда же, чтобы внутренние ссылки в _legacy.py
 # (например, settings_callback_handler) продолжали работать.
 from bot.handlers.settings_handlers.supplier_stock import *  # noqa: F401, F403
+from bot.handlers.settings_handlers.supplier_stock import (  # noqa: F401
+    _build_stock_pattern_from_fragments,
+    _build_stock_subject_pattern,
+    _build_stock_success_pattern,
+    _get_stock_load_fallback_patterns,
+)
 from bot.handlers.settings_handlers.windows_creds import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.zfs import *  # noqa: F401, F403
+from bot.handlers.settings_handlers.zfs import (  # noqa: F401
+    _build_zfs_pattern_from_fragments,
+    _build_zfs_pattern_from_subject,
+    _get_zfs_server_names,
+)
 from bot.handlers.zfs_pool_free_space_handlers import handle_text_input as handle_zfsp_text_input
 from config.db_settings import BACKUP_DATABASE_CONFIG, load_all_settings
 from config.settings import BACKUP_DB_FILE, BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS
@@ -83,72 +114,6 @@ BACKUP_SETTINGS_CALLBACKS = {
 
 
 debug_logger = debug_log
-
-
-def _safe_query_answer(query, text: str | None = None, **kwargs) -> None:
-    try:
-        if text is None:
-            query.answer(**kwargs)
-        else:
-            query.answer(text, **kwargs)
-    except (BadRequest, TelegramError):
-        pass
-
-
-def _escape_pattern_text(text: str) -> str:
-    """Экранирует текст для Markdown."""
-    return escape_markdown(str(text or ""), version=1)
-
-
-def _format_current_hint(value, default: str = "не задано") -> str:
-    """Сформировать подсказку для текущего значения."""
-    if value is None:
-        return default
-    if isinstance(value, str) and value.strip() == "":
-        return default
-    return str(value)
-
-
-def _format_archive_cleanup_days(value) -> str:
-    """Сформировать отображение периода очистки архива."""
-    try:
-        days = int(str(value).strip())
-    except (TypeError, ValueError):
-        days = 0
-    if days <= 0:
-        return "выключено"
-    return f"{days} дн."
-
-
-def _get_backup_patterns_setting() -> dict:
-    """Получить полные паттерны из настроек."""
-    raw_patterns = settings_manager.get_setting("BACKUP_PATTERNS", DEFAULT_BACKUP_PATTERNS)
-    if isinstance(raw_patterns, str):
-        try:
-            raw_patterns = json.loads(raw_patterns)
-        except json.JSONDecodeError:
-            raw_patterns = {}
-    if not isinstance(raw_patterns, dict):
-        return {}
-    return raw_patterns
-
-
-def _inject_server_placeholder(text: str, server_names: list[str]) -> tuple[str, bool]:
-    """Подменить имя сервера на плейсхолдер, если найдено."""
-    if not text or not server_names:
-        return text, False
-
-    matched = None
-    for server_name in sorted(server_names, key=len, reverse=True):
-        if re.search(re.escape(server_name), text, re.IGNORECASE):
-            matched = server_name
-            break
-
-    if not matched:
-        return text, False
-
-    replaced = re.sub(re.escape(matched), "__SERVER__", text, flags=re.IGNORECASE)
-    return replaced, True
 
 
 def settings_command(update, context):
@@ -956,7 +921,9 @@ def show_server_edit_menu(update, context, ip):
     )
 
     toggle_text = (
-        "⏸️ Приостановить мониторинг" if server.get("enabled", True) else "▶️ Возобновить мониторинг"
+        "⏸️ Приостановить мониторинг"
+        if server.get("enabled", True)
+        else "▶️ Возобновить мониторинг"
     )
     keyboard = [
         [InlineKeyboardButton("📝 Изменить имя", callback_data=f"settings_edit_server_name_{ip}")],
@@ -1314,319 +1281,6 @@ def show_extensions_settings_menu(update, context):
     query.edit_message_text(
         text=message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
-
-
-def _default_processing_variant() -> dict:
-    return {
-        "article_col": None,
-        "article_filter": None,
-        "extra_filter_col": None,
-        "extra_filter": None,
-        "use_article_filter": None,
-        "use_article_filter_columns": [],
-        "article_prefix": "",
-        "article_postfix": "",
-        "article_transform": {
-            "pattern": "",
-            "replacement": "",
-        },
-        "data_columns": [],
-        "data_columns_count": 0,
-        "output_names": [],
-        "output_format": None,
-        "orc": {
-            "enabled": False,
-            "prefix": "",
-            "stor": "",
-            "column": None,
-            "input_index": None,
-            "output_index": None,
-            "output_format": None,
-        },
-    }
-
-
-def _ensure_processing_variant(data: dict, index: int) -> dict:
-    variants = data.setdefault("variants", [])
-    while len(variants) <= index:
-        variants.append(_default_processing_variant())
-    return variants[index]
-
-
-def _sync_processing_variants_count(data: dict, count: int) -> None:
-    variants = data.setdefault("variants", [])
-    if count < len(variants):
-        data["variants"] = variants[:count]
-    while len(data["variants"]) < count:
-        data["variants"].append(_default_processing_variant())
-
-
-def _sync_variant_columns(variant: dict, count: int) -> None:
-    variant["data_columns_count"] = count
-    columns = list(variant.get("data_columns", []))
-    while len(columns) < count:
-        columns.append(None)
-    variant["data_columns"] = columns[:count]
-    names = list(variant.get("output_names", []))
-    while len(names) < count:
-        names.append("")
-    variant["output_names"] = names[:count]
-    filters = list(variant.get("use_article_filter_columns", []))
-    while len(filters) < count:
-        filters.append(True)
-    variant["use_article_filter_columns"] = filters[:count]
-
-
-def _remove_variant_column(variant: dict, index: int) -> bool:
-    columns_count = variant.get("data_columns_count") or max(
-        len(variant.get("data_columns", [])),
-        len(variant.get("output_names", [])),
-    )
-    if index < 0 or index >= columns_count:
-        return False
-    columns = list(variant.get("data_columns", []))
-    names = list(variant.get("output_names", []))
-    filters = list(variant.get("use_article_filter_columns", []))
-    if index < len(columns):
-        columns.pop(index)
-    if index < len(names):
-        names.pop(index)
-    if index < len(filters):
-        filters.pop(index)
-    variant["data_columns"] = columns
-    variant["output_names"] = names
-    variant["use_article_filter_columns"] = filters
-    _sync_variant_columns(variant, max(columns_count - 1, 0))
-    return True
-
-
-def _fill_processing_rule_from_source(data: dict) -> None:
-    source_id = data.get("source_id")
-    if not source_id:
-        return
-    config = get_supplier_stock_config()
-    source_kind, source = _resolve_processing_rule_source(data, config)
-    source_name = None
-    source_output = None
-    if source_kind == "download" and source:
-        source_name = source.get("name") or source_id
-        source_output = source.get("output_name")
-    elif source_kind == "mail" and source:
-        source_name = source.get("name") or source_id
-        source_output = source.get("output_template")
-    if source_name:
-        data["name"] = source_name
-    if source_output:
-        data["source_file"] = source_output
-    if source_output and not data.get("output_name"):
-        data["output_name"] = source_output
-    if source_kind and not data.get("source_kind"):
-        data["source_kind"] = source_kind
-
-
-def _resolve_processing_rule_source(data: dict, config: dict) -> tuple[str | None, dict | None]:
-    source_id = data.get("source_id")
-    if not source_id:
-        return None, None
-    download_sources = config.get("download", {}).get("sources", [])
-    mail_sources = config.get("mail", {}).get("sources", [])
-    download_source = _find_supplier_source(download_sources, source_id)
-    mail_source = _find_supplier_source(mail_sources, source_id)
-    rule_kind = data.get("source_kind")
-    if rule_kind == "download" and download_source:
-        return "download", download_source
-    if rule_kind == "mail" and mail_source:
-        return "mail", mail_source
-    if download_source and not mail_source:
-        return "download", download_source
-    if mail_source and not download_source:
-        return "mail", mail_source
-    if download_source and mail_source:
-        source_file = str(data.get("source_file") or "")
-        if source_file and source_file == str(download_source.get("output_name") or ""):
-            return "download", download_source
-        if source_file and source_file == str(mail_source.get("output_template") or ""):
-            return "mail", mail_source
-        rule_name = str(data.get("name") or "")
-        if rule_name and rule_name == str(download_source.get("name") or ""):
-            return "download", download_source
-        if rule_name and rule_name == str(mail_source.get("name") or ""):
-            return "mail", mail_source
-    return None, None
-
-
-def _processing_rule_matches_source(
-    rule: dict,
-    source_id: str | None,
-    source_kind: str | None,
-    config: dict,
-) -> bool:
-    if source_id is not None and str(rule.get("source_id")) != str(source_id):
-        return False
-    if not source_kind:
-        return True
-    resolved_kind, _ = _resolve_processing_rule_source(rule, config)
-    return resolved_kind == source_kind
-
-
-def _processing_rule_summary(data: dict) -> str:
-    requires_processing = data.get("requires_processing", True)
-    processing_text = "да" if requires_processing else "нет"
-    name = _escape_pattern_text(data.get("name") or "не задано")
-    source_file = _escape_pattern_text(data.get("source_file") or "не задано")
-    output_name = _escape_pattern_text(data.get("output_name") or "не задано")
-    lines = [
-        "🧩 *Настройка обработки*\n",
-        f"• Название: `{name}`",
-        f"• Файл источника: `{source_file}`",
-        f"• Требуется обработка: `{processing_text}`",
-    ]
-    if requires_processing:
-        data_row = data.get("data_row")
-        lines.append(f"• Первая строка с данными: `{data_row or 'не задано'}`")
-    else:
-        lines.append(f"• Имя файла на выходе: `{output_name}`")
-    return "\n".join(lines)
-
-
-def _validate_processing_rule(data: dict) -> list[str]:
-    missing = []
-    if data.get("requires_processing", True):
-        variants = data.get("variants", [])
-        variants_count = len(variants)
-        if not variants_count:
-            missing.append("файлы обработки")
-        if not data.get("data_row"):
-            missing.append("первая строка с данными")
-        for idx in range(variants_count):
-            variant = _ensure_processing_variant(data, idx)
-            if not variant.get("article_col"):
-                missing.append(f"колонка артикула (файл {idx + 1})")
-            columns_count = variant.get("data_columns_count") or max(
-                len(variant.get("data_columns", [])),
-                len(variant.get("output_names", [])),
-            )
-            if not columns_count:
-                missing.append(f"кол-во колонок (файл {idx + 1})")
-            columns = variant.get("data_columns", [])
-            if any(col is None for col in columns) or len(columns) < columns_count:
-                missing.append(f"колонки данных (файл {idx + 1})")
-            names = variant.get("output_names", [])
-            if len(names) < columns_count or any(not name for name in names):
-                missing.append(f"имена файлов (файл {idx + 1})")
-            if not variant.get("output_format"):
-                missing.append(f"формат файла (файл {idx + 1})")
-            orc = variant.get("orc", {})
-            if orc.get("enabled"):
-                if not orc.get("stor"):
-                    missing.append(f"Stor ОРК (файл {idx + 1})")
-    return missing
-
-
-def _save_processing_rule_data(update, context) -> bool:
-    query = update.callback_query
-    data = context.user_data.get("supplier_stock_processing_rule_data", {})
-    source_id = context.user_data.get("supplier_stock_processing_source_id")
-    if source_id:
-        data["source_id"] = source_id
-    _fill_processing_rule_from_source(data)
-    context.user_data["supplier_stock_processing_rule_data"] = data
-    missing = _validate_processing_rule(data)
-    if missing:
-        query.answer("Заполните: " + ", ".join(missing), show_alert=True)
-        return False
-    edit_id = context.user_data.get("supplier_stock_processing_rule_edit_id") or data.get("id")
-    _save_supplier_stock_processing_rule(context, data, edit_id=edit_id)
-    return True
-
-
-def _persist_processing_rule_data(context) -> None:
-    data = context.user_data.get("supplier_stock_processing_rule_data", {})
-    source_id = context.user_data.get("supplier_stock_processing_source_id")
-    if source_id:
-        data["source_id"] = source_id
-    _fill_processing_rule_from_source(data)
-    edit_id = context.user_data.get("supplier_stock_processing_rule_edit_id") or data.get("id")
-    _save_supplier_stock_processing_rule(context, data, edit_id=edit_id, keep_context=True)
-    if not edit_id:
-        context.user_data["supplier_stock_processing_rule_edit_id"] = data.get("id")
-        context.user_data["supplier_stock_processing_rule_add"] = False
-    elif data.get("id"):
-        context.user_data["supplier_stock_processing_rule_edit_id"] = data.get("id")
-    context.user_data["supplier_stock_processing_rule_data"] = data
-
-
-def _show_processing_rule_back_menu(update, context, back_callback: str) -> None:
-    if back_callback == "settings_ext_supplier_stock":
-        show_supplier_stock_settings(update, context)
-        return
-    if back_callback == "supplier_stock_processing":
-        show_supplier_stock_processing_menu(
-            update, context, action_prefix="supplier_stock_processing"
-        )
-        return
-    if back_callback.startswith("supplier_stock_source_settings|"):
-        source_id = back_callback.split("|", 1)[1]
-        show_supplier_stock_source_settings(update, context, source_id)
-        return
-    if back_callback.startswith("supplier_stock_mail_source_settings|"):
-        source_id = back_callback.split("|", 1)[1]
-        show_supplier_stock_mail_source_settings(update, context, source_id)
-        return
-
-    update.callback_query.edit_message_text(
-        "✅ Настройки сохранены.",
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]]
-        ),
-    )
-
-
-def _parse_yes_no(value: str) -> bool | None:
-    if not value:
-        return None
-    lowered = value.strip().lower()
-    if lowered in ("да", "yes", "y", "true", "1"):
-        return True
-    if lowered in ("нет", "no", "n", "false", "0"):
-        return False
-    return None
-
-
-def _parse_positive_int(value: str) -> int | None:
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError):
-        return None
-    return parsed if parsed > 0 else None
-
-
-def _parse_expected_attachments(raw_value: str) -> int | None:
-    if not raw_value:
-        return None
-    try:
-        value = int(raw_value)
-    except ValueError:
-        return None
-    return value if value > 0 else None
-
-
-def _enable_all_extensions_settings(query):
-    enabled = 0
-    for ext_id in extension_manager.get_extensions_status():
-        success, _ = extension_manager.enable_extension(ext_id)
-        if success:
-            enabled += 1
-    query.answer(f"✅ Включено {enabled} расширений")
-
-
-def _disable_all_extensions_settings(query):
-    disabled = 0
-    for ext_id in extension_manager.get_extensions_status():
-        success, _ = extension_manager.disable_extension(ext_id)
-        if success:
-            disabled += 1
-    query.answer(f"✅ Отключено {disabled} расширений")
 
 
 def manage_chats_handler(update, context):
@@ -2338,22 +1992,19 @@ def view_patterns_handler(update, context):
     cursor = conn.cursor()
     filter_mode = context.user_data.get("patterns_filter", "all")
     if filter_mode == "zfs":
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT id, pattern_type, pattern, category
             FROM backup_patterns
             WHERE enabled = 1 AND category = 'zfs'
             ORDER BY category, pattern_type, id
-            """
-        )
+            """)
     elif filter_mode == "db":
         # Паттерны бэкапов БД — это произвольные категории-группы БД из
         # DATABASE_CONFIG (+ 'database'/'unknown'). Категории других,
         # независимых расширений (snapshot_transfer, stock_load, mail,
         # zfs, proxmox) сюда попадать не должны — иначе паттерны разных
         # расширений сваливаются в одну кучу в меню «Паттерны бэкапов БД».
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT id, pattern_type, pattern, category
             FROM backup_patterns
             WHERE enabled = 1
@@ -2361,54 +2012,43 @@ def view_patterns_handler(update, context):
                 'mail', 'zfs', 'proxmox', 'snapshot_transfer', 'stock_load'
             )
             ORDER BY category, pattern_type, id
-            """
-        )
+            """)
     elif filter_mode == "proxmox":
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT id, pattern_type, pattern, category
             FROM backup_patterns
             WHERE enabled = 1
             AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
             ORDER BY category, pattern_type, id
-            """
-        )
+            """)
     elif filter_mode == "mail":
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT id, pattern_type, pattern, category
             FROM backup_patterns
             WHERE enabled = 1 AND category = 'mail'
             ORDER BY category, pattern_type, id
-            """
-        )
+            """)
     elif filter_mode == "stock_load":
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT id, pattern_type, pattern, category
             FROM backup_patterns
             WHERE enabled = 1 AND category = 'stock_load'
             ORDER BY category, pattern_type, id
-            """
-        )
+            """)
     elif filter_mode == "snapshot_transfer":
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT id, pattern_type, pattern, category
             FROM backup_patterns
             WHERE enabled = 1 AND category = 'snapshot_transfer'
             ORDER BY category, pattern_type, id
-            """
-        )
+            """)
     else:
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT id, pattern_type, pattern, category
             FROM backup_patterns
             WHERE enabled = 1
             ORDER BY category, pattern_type, id
-            """
-        )
+            """)
     rows = cursor.fetchall()
 
     title = context.user_data.get("patterns_title", "📋 *Паттерны*")

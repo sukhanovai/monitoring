@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/mail.py
-Server Monitoring System v8.62.98
+Server Monitoring System v8.62.99
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mail server backup UI settings (PR7f серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.98
+Версия: 8.62.99
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имена
@@ -158,15 +158,6 @@ def _build_mail_pattern_from_subject(subject: str) -> str:
         escaped = escaped.replace(re.escape(placeholder), pattern)
 
     return escaped
-
-
-def _build_mail_pattern_from_fragments(fragments: list[str]) -> str:
-    """Собрать regex паттерн из обязательных фрагментов."""
-    cleaned = [fragment.strip() for fragment in fragments if fragment.strip()]
-    if not cleaned:
-        return ""
-    escaped_parts = [re.escape(fragment) for fragment in cleaned]
-    return r".*".join(escaped_parts)
 
 
 def show_mail_backup_settings(update, context):

@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/zfs.py
-Server Monitoring System v8.62.98
+Server Monitoring System v8.62.99
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ZFS settings UI handlers extracted from
 bot/handlers/settings_handlers/_legacy.py (PR7c серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.98
+Версия: 8.62.99
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Блок UI Telegram-бота для настроек ZFS-мониторинга: меню статуса
@@ -88,6 +88,24 @@ def _get_zfs_server_names() -> list[str]:
     if isinstance(zfs_servers, dict):
         return [name for name in zfs_servers.keys() if isinstance(name, str)]
     return []
+
+
+def _inject_server_placeholder(text: str, server_names: list[str]) -> tuple[str, bool]:
+    """Подменить имя сервера на плейсхолдер, если найдено."""
+    if not text or not server_names:
+        return text, False
+
+    matched = None
+    for server_name in sorted(server_names, key=len, reverse=True):
+        if re.search(re.escape(server_name), text, re.IGNORECASE):
+            matched = server_name
+            break
+
+    if not matched:
+        return text, False
+
+    replaced = re.sub(re.escape(matched), "__SERVER__", text, flags=re.IGNORECASE)
+    return replaced, True
 
 
 def _build_zfs_pattern_from_subject(subject: str, server_names: list[str]) -> tuple[str, bool]:
@@ -274,8 +292,7 @@ def _build_zfs_current_status_lines() -> list[str]:
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
     try:
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT s.server_name, s.pool_name, s.pool_state, s.received_at
             FROM zfs_pool_status s
             JOIN (
@@ -287,8 +304,7 @@ def _build_zfs_current_status_lines() -> list[str]:
             AND s.pool_name = latest.pool_name
             AND s.received_at = latest.last_seen
             ORDER BY s.server_name, s.pool_name
-            """
-        )
+            """)
         rows = cursor.fetchall()
     except Exception as exc:
         if "no such table: zfs_pool_status" in str(exc):
@@ -745,15 +761,13 @@ def _rename_zfs_server_statuses(old_name: str, new_name: str) -> None:
 
 
 def _ensure_zfs_monitoring_state_table(cursor: sqlite3.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS zfs_monitoring_state (
             server_name TEXT PRIMARY KEY,
             enabled INTEGER NOT NULL,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-        """
-    )
+        """)
 
 
 def _get_zfs_monitoring_state_map() -> dict[str, bool]:

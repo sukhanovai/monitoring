@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/supplier_stock.py
-Server Monitoring System v8.62.98
+Server Monitoring System v8.62.99
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock UI handlers extracted from
 bot/handlers/settings_handlers/_legacy.py (PR7b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.98
+Версия: 8.62.99
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самодостаточный блок UI Telegram-бота для настроек supplier-stock
@@ -28,6 +28,15 @@ from telegram.error import BadRequest, TelegramError
 from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler
 from telegram.utils.helpers import escape_markdown
 
+from bot.handlers.settings_handlers._common import (  # noqa: F401
+    _build_mail_pattern_from_fragments,
+    _escape_pattern_text,
+    _format_archive_cleanup_days,
+    _format_current_hint,
+    _parse_expected_attachments,
+    _parse_positive_int,
+    _parse_yes_no,
+)
 from bot.handlers.zfs_pool_free_space_handlers import handle_text_input as handle_zfsp_text_input
 from config.db_settings import BACKUP_DATABASE_CONFIG, load_all_settings
 from config.settings import BACKUP_DB_FILE, BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS
@@ -622,7 +631,8 @@ def show_supplier_stock_report_source_stats(
                 [
                     [
                         InlineKeyboardButton(
-                            "↩️ Назад", callback_data=f"supplier_stock_reports_sources_{source_kind}"
+                            "↩️ Назад",
+                            callback_data=f"supplier_stock_reports_sources_{source_kind}",
                         )
                     ],
                 ]
@@ -852,7 +862,11 @@ def show_supplier_stock_mail_settings(update, context):
                 "📁 Временный каталог", callback_data="supplier_stock_mail_temp_dir"
             )
         ],
-        [InlineKeyboardButton("🗄️ Каталог архива", callback_data="supplier_stock_mail_archive_dir")],
+        [
+            InlineKeyboardButton(
+                "🗄️ Каталог архива", callback_data="supplier_stock_mail_archive_dir"
+            )
+        ],
         [
             InlineKeyboardButton(
                 "🧹 Период очистки архива", callback_data="supplier_stock_archive_cleanup_mail"
@@ -5803,3 +5817,275 @@ def stock_pattern_confirm_handler(update, context):
         context.user_data.pop("backup_pattern_source", None)
         context.user_data.pop("backup_pattern_stock_type", None)
         context.user_data.pop("backup_pattern_stock_label", None)
+
+
+# --- Помощники правил обработки остатков поставщиков ---------------------
+# Перенесены из _legacy.py: эти функции вызываются как из самого
+# supplier_stock.py, так и из callback_dispatcher.py. Так как они и их
+# зависимости (`_find_supplier_source`, `_save_supplier_stock_processing_rule`,
+# `show_supplier_stock_*`) живут в этом модуле, их место — здесь, а не в
+# _legacy.py (откуда `from ... import *` не переносил `_`-имена).
+def _default_processing_variant() -> dict:
+    return {
+        "article_col": None,
+        "article_filter": None,
+        "extra_filter_col": None,
+        "extra_filter": None,
+        "use_article_filter": None,
+        "use_article_filter_columns": [],
+        "article_prefix": "",
+        "article_postfix": "",
+        "article_transform": {
+            "pattern": "",
+            "replacement": "",
+        },
+        "data_columns": [],
+        "data_columns_count": 0,
+        "output_names": [],
+        "output_format": None,
+        "orc": {
+            "enabled": False,
+            "prefix": "",
+            "stor": "",
+            "column": None,
+            "input_index": None,
+            "output_index": None,
+            "output_format": None,
+        },
+    }
+
+
+def _ensure_processing_variant(data: dict, index: int) -> dict:
+    variants = data.setdefault("variants", [])
+    while len(variants) <= index:
+        variants.append(_default_processing_variant())
+    return variants[index]
+
+
+def _sync_processing_variants_count(data: dict, count: int) -> None:
+    variants = data.setdefault("variants", [])
+    if count < len(variants):
+        data["variants"] = variants[:count]
+    while len(data["variants"]) < count:
+        data["variants"].append(_default_processing_variant())
+
+
+def _sync_variant_columns(variant: dict, count: int) -> None:
+    variant["data_columns_count"] = count
+    columns = list(variant.get("data_columns", []))
+    while len(columns) < count:
+        columns.append(None)
+    variant["data_columns"] = columns[:count]
+    names = list(variant.get("output_names", []))
+    while len(names) < count:
+        names.append("")
+    variant["output_names"] = names[:count]
+    filters = list(variant.get("use_article_filter_columns", []))
+    while len(filters) < count:
+        filters.append(True)
+    variant["use_article_filter_columns"] = filters[:count]
+
+
+def _remove_variant_column(variant: dict, index: int) -> bool:
+    columns_count = variant.get("data_columns_count") or max(
+        len(variant.get("data_columns", [])),
+        len(variant.get("output_names", [])),
+    )
+    if index < 0 or index >= columns_count:
+        return False
+    columns = list(variant.get("data_columns", []))
+    names = list(variant.get("output_names", []))
+    filters = list(variant.get("use_article_filter_columns", []))
+    if index < len(columns):
+        columns.pop(index)
+    if index < len(names):
+        names.pop(index)
+    if index < len(filters):
+        filters.pop(index)
+    variant["data_columns"] = columns
+    variant["output_names"] = names
+    variant["use_article_filter_columns"] = filters
+    _sync_variant_columns(variant, max(columns_count - 1, 0))
+    return True
+
+
+def _fill_processing_rule_from_source(data: dict) -> None:
+    source_id = data.get("source_id")
+    if not source_id:
+        return
+    config = get_supplier_stock_config()
+    source_kind, source = _resolve_processing_rule_source(data, config)
+    source_name = None
+    source_output = None
+    if source_kind == "download" and source:
+        source_name = source.get("name") or source_id
+        source_output = source.get("output_name")
+    elif source_kind == "mail" and source:
+        source_name = source.get("name") or source_id
+        source_output = source.get("output_template")
+    if source_name:
+        data["name"] = source_name
+    if source_output:
+        data["source_file"] = source_output
+    if source_output and not data.get("output_name"):
+        data["output_name"] = source_output
+    if source_kind and not data.get("source_kind"):
+        data["source_kind"] = source_kind
+
+
+def _resolve_processing_rule_source(data: dict, config: dict) -> tuple[str | None, dict | None]:
+    source_id = data.get("source_id")
+    if not source_id:
+        return None, None
+    download_sources = config.get("download", {}).get("sources", [])
+    mail_sources = config.get("mail", {}).get("sources", [])
+    download_source = _find_supplier_source(download_sources, source_id)
+    mail_source = _find_supplier_source(mail_sources, source_id)
+    rule_kind = data.get("source_kind")
+    if rule_kind == "download" and download_source:
+        return "download", download_source
+    if rule_kind == "mail" and mail_source:
+        return "mail", mail_source
+    if download_source and not mail_source:
+        return "download", download_source
+    if mail_source and not download_source:
+        return "mail", mail_source
+    if download_source and mail_source:
+        source_file = str(data.get("source_file") or "")
+        if source_file and source_file == str(download_source.get("output_name") or ""):
+            return "download", download_source
+        if source_file and source_file == str(mail_source.get("output_template") or ""):
+            return "mail", mail_source
+        rule_name = str(data.get("name") or "")
+        if rule_name and rule_name == str(download_source.get("name") or ""):
+            return "download", download_source
+        if rule_name and rule_name == str(mail_source.get("name") or ""):
+            return "mail", mail_source
+    return None, None
+
+
+def _processing_rule_matches_source(
+    rule: dict,
+    source_id: str | None,
+    source_kind: str | None,
+    config: dict,
+) -> bool:
+    if source_id is not None and str(rule.get("source_id")) != str(source_id):
+        return False
+    if not source_kind:
+        return True
+    resolved_kind, _ = _resolve_processing_rule_source(rule, config)
+    return resolved_kind == source_kind
+
+
+def _processing_rule_summary(data: dict) -> str:
+    requires_processing = data.get("requires_processing", True)
+    processing_text = "да" if requires_processing else "нет"
+    name = _escape_pattern_text(data.get("name") or "не задано")
+    source_file = _escape_pattern_text(data.get("source_file") or "не задано")
+    output_name = _escape_pattern_text(data.get("output_name") or "не задано")
+    lines = [
+        "🧩 *Настройка обработки*\n",
+        f"• Название: `{name}`",
+        f"• Файл источника: `{source_file}`",
+        f"• Требуется обработка: `{processing_text}`",
+    ]
+    if requires_processing:
+        data_row = data.get("data_row")
+        lines.append(f"• Первая строка с данными: `{data_row or 'не задано'}`")
+    else:
+        lines.append(f"• Имя файла на выходе: `{output_name}`")
+    return "\n".join(lines)
+
+
+def _validate_processing_rule(data: dict) -> list[str]:
+    missing = []
+    if data.get("requires_processing", True):
+        variants = data.get("variants", [])
+        variants_count = len(variants)
+        if not variants_count:
+            missing.append("файлы обработки")
+        if not data.get("data_row"):
+            missing.append("первая строка с данными")
+        for idx in range(variants_count):
+            variant = _ensure_processing_variant(data, idx)
+            if not variant.get("article_col"):
+                missing.append(f"колонка артикула (файл {idx + 1})")
+            columns_count = variant.get("data_columns_count") or max(
+                len(variant.get("data_columns", [])),
+                len(variant.get("output_names", [])),
+            )
+            if not columns_count:
+                missing.append(f"кол-во колонок (файл {idx + 1})")
+            columns = variant.get("data_columns", [])
+            if any(col is None for col in columns) or len(columns) < columns_count:
+                missing.append(f"колонки данных (файл {idx + 1})")
+            names = variant.get("output_names", [])
+            if len(names) < columns_count or any(not name for name in names):
+                missing.append(f"имена файлов (файл {idx + 1})")
+            if not variant.get("output_format"):
+                missing.append(f"формат файла (файл {idx + 1})")
+            orc = variant.get("orc", {})
+            if orc.get("enabled"):
+                if not orc.get("stor"):
+                    missing.append(f"Stor ОРК (файл {idx + 1})")
+    return missing
+
+
+def _save_processing_rule_data(update, context) -> bool:
+    query = update.callback_query
+    data = context.user_data.get("supplier_stock_processing_rule_data", {})
+    source_id = context.user_data.get("supplier_stock_processing_source_id")
+    if source_id:
+        data["source_id"] = source_id
+    _fill_processing_rule_from_source(data)
+    context.user_data["supplier_stock_processing_rule_data"] = data
+    missing = _validate_processing_rule(data)
+    if missing:
+        query.answer("Заполните: " + ", ".join(missing), show_alert=True)
+        return False
+    edit_id = context.user_data.get("supplier_stock_processing_rule_edit_id") or data.get("id")
+    _save_supplier_stock_processing_rule(context, data, edit_id=edit_id)
+    return True
+
+
+def _persist_processing_rule_data(context) -> None:
+    data = context.user_data.get("supplier_stock_processing_rule_data", {})
+    source_id = context.user_data.get("supplier_stock_processing_source_id")
+    if source_id:
+        data["source_id"] = source_id
+    _fill_processing_rule_from_source(data)
+    edit_id = context.user_data.get("supplier_stock_processing_rule_edit_id") or data.get("id")
+    _save_supplier_stock_processing_rule(context, data, edit_id=edit_id, keep_context=True)
+    if not edit_id:
+        context.user_data["supplier_stock_processing_rule_edit_id"] = data.get("id")
+        context.user_data["supplier_stock_processing_rule_add"] = False
+    elif data.get("id"):
+        context.user_data["supplier_stock_processing_rule_edit_id"] = data.get("id")
+    context.user_data["supplier_stock_processing_rule_data"] = data
+
+
+def _show_processing_rule_back_menu(update, context, back_callback: str) -> None:
+    if back_callback == "settings_ext_supplier_stock":
+        show_supplier_stock_settings(update, context)
+        return
+    if back_callback == "supplier_stock_processing":
+        show_supplier_stock_processing_menu(
+            update, context, action_prefix="supplier_stock_processing"
+        )
+        return
+    if back_callback.startswith("supplier_stock_source_settings|"):
+        source_id = back_callback.split("|", 1)[1]
+        show_supplier_stock_source_settings(update, context, source_id)
+        return
+    if back_callback.startswith("supplier_stock_mail_source_settings|"):
+        source_id = back_callback.split("|", 1)[1]
+        show_supplier_stock_mail_source_settings(update, context, source_id)
+        return
+
+    update.callback_query.edit_message_text(
+        "✅ Настройки сохранены.",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]]
+        ),
+    )
