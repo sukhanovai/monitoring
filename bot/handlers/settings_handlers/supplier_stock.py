@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/supplier_stock.py
-Server Monitoring System v8.62.99
+Server Monitoring System v8.63.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock UI handlers extracted from
 bot/handlers/settings_handlers/_legacy.py (PR7b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.62.99
+Версия: 8.63.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самодостаточный блок UI Telegram-бота для настроек supplier-stock
@@ -5597,6 +5597,7 @@ def _parse_supplier_options(raw_value: str) -> dict | None:
 
 def show_stock_load_patterns_menu(update, context):
     """Показать паттерны для загрузки остатков."""
+    from bot.handlers.settings_handlers._legacy import view_patterns_handler  # circular-safe lazy import
     context.user_data["patterns_filter"] = "stock_load"
     context.user_data["patterns_back"] = "settings_ext_stock_load"
     context.user_data["patterns_add"] = "add_stock_pattern"

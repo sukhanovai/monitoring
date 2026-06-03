@@ -1,3 +1,9 @@
+## [8.63.0] - 2026-06-03
+
+### Fixed
+- RU: Telegram-бот — устранён `NameError: name 'view_patterns_handler' is not defined` при открытии «Настройки → Расширения → Загрузка остатков 1С → Паттерны». Функция `view_patterns_handler` определена в `_legacy.py`, но не импортировалась в `supplier_stock.py` из-за циклической зависимости. Добавлен ленивый импорт внутри `show_stock_load_patterns_menu`.
+- EN: Telegram bot — fixed `NameError: name 'view_patterns_handler' is not defined` when opening "Settings → Extensions → 1C Stock Load → Patterns". The `view_patterns_handler` function is defined in `_legacy.py` but was not imported in `supplier_stock.py` due to a circular dependency. Added a lazy import inside `show_stock_load_patterns_menu`.
+
 ## [8.62.99] - 2026-06-03
 
 ### Fixed
