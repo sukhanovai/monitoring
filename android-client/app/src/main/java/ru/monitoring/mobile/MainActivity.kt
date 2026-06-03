@@ -2719,6 +2719,7 @@ private fun MonitoringApp(
                 }
             } else if (extension.id == "supplier_stock_files") {
                 {
+                    showSupplierStockDialog = true
                     onAction("supplier_stock_reports")
                 }
             } else if (extension.id == "stock_load_monitor") {
@@ -5877,6 +5878,91 @@ private fun MonitoringApp(
                         }
                     } else {
                         Text("Пока нет данных о передачах ZFS-снэпшотов. Нажми «Обновить» сверху или потяни список вниз в оперативном центре.")
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showSupplierStockDialog) {
+        val supplierStockIsCurrent = state.extensionMenuAction == "supplier_stock_reports" ||
+            state.extensionMenuAction.startsWith("supplier_stock_reports_") ||
+            state.extensionMenuAction.startsWith("supplier_stock_report_source_day|")
+        AlertDialog(
+            onDismissRequest = { showSupplierStockDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "📦 Остатки поставщиков",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { onAction("supplier_stock_reports") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Обновить сводку остатков поставщиков"
+                        )
+                    }
+                    IconButton(onClick = { showSupplierStockDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть сведения об остатках поставщиков"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.isLoading && !supplierStockIsCurrent) {
+                        Text("Загружаем данные об остатках поставщиков…")
+                    } else if (supplierStockIsCurrent && state.message.isNotBlank() && state.messageSource == "global") {
+                        Text(state.message)
+                        val supplierOptions = state.extensionMenuOptions
+                            .mapNotNull { option ->
+                                val action = resolveMenuOptionAction(option)
+                                val label = option.label?.trim().orEmpty()
+                                if (label.isBlank() || action.isBlank()) return@mapNotNull null
+                                if (!action.startsWith("supplier_stock_report_source_day|") &&
+                                    !action.startsWith("supplier_stock_reports_")
+                                ) {
+                                    return@mapNotNull null
+                                }
+                                label to action
+                            }
+                            .distinctBy { (_, action) -> action }
+                        if (supplierOptions.isNotEmpty()) {
+                            Text(
+                                "Кликни поставщика, чтобы открыть историю:",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            supplierOptions.forEach { (label, action) ->
+                                Button(
+                                    onClick = { onAction(action) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                ) {
+                                    Text(label)
+                                }
+                            }
+                        }
+                    } else {
+                        Text("Пока нет данных об остатках поставщиков. Нажми «Обновить» сверху или потяни список вниз в оперативном центре.")
                     }
                 }
             },

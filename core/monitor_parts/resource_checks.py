@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/resource_checks.py
-Server Monitoring System v8.63.3
+Server Monitoring System v8.63.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified CPU/RAM/disk resource check renderers, extracted from
 core/monitor_core.py (PR5 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.3
+Версия: 8.63.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Параметризованная проверка ресурсов с детальным прогрессом, заменяет

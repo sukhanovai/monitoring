@@ -1,3 +1,17 @@
+## [8.63.4] - 2026-06-03
+
+### Changed
+- RU: Telegram-бот — из меню «⚙️ Настройки» убран пункт «🧩 Расширения». Управление расширениями осталось доступным как раньше — командой `/extensions` и пунктом «🛠️ Управление расширениями» в главном меню; меню настроек стало короче и не дублирует этот раздел.
+- EN: Telegram bot — the "🧩 Extensions" item was removed from the "⚙️ Settings" menu. Extension management stays available as before — via the `/extensions` command and the "🛠️ Manage extensions" item in the main menu; the settings menu is now shorter and no longer duplicates that section.
+- RU: Веб-интерфейс — экран «📦 Остатки поставщиков» в разделе «Операции» переведён на единый дашборд как в Telegram: счётчики статусов (✅ успешно / 🟡 частично / 🔴 ошибки), время обновления и период, по строке на поставщика с итоговой иконкой, иконкой способа (🌐 веб / 📧 почта) и мини-иконками этапов (📥 приём, 🧩 обработка, 📤 передача). Клик по поставщику открывает историю за сутки. Период берётся из настроек расширения (`reporting.period_days`).
+- EN: Web interface — the "📦 Supplier stock" screen in "Operations" was switched to a single dashboard like in Telegram: status counters (✅ ok / 🟡 partial / 🔴 errors), the last-update time and period, one line per supplier with an overall icon, a method icon (🌐 web / 📧 mail) and per-stage mini-icons (📥 receive, 🧩 processing, 📤 transfer). Clicking a supplier opens its 24h history. The period comes from the extension settings (`reporting.period_days`).
+
+### Added
+- RU: Matrix-бот — в `!settings` добавлен read-only блок «🏷️ Остатки поставщиков (настройки)»: число поставщиков (веб/почта), сколько активно/выключено, расписание сбора, приём почты, период отчётов и очистка архива. Доступно также через `!settings list поставщики`. Поскольку конфигурация расширения хранится в JSON (а не в config_manager), параметры показываются для просмотра; полное редактирование — в Telegram-боте или веб-интерфейсе.
+- EN: Matrix bot — `!settings` now includes a read-only "🏷️ Supplier stock (settings)" block: number of suppliers (web/mail), how many are active/disabled, the collection schedule, mail intake, the report period and archive cleanup. Also available via `!settings list поставщики`. Since the extension config is stored in JSON (not config_manager), the parameters are shown read-only; full editing is in the Telegram bot or web interface.
+- RU: Android — плашка «📦 поставщики» в оперативном центре теперь открывает отдельный диалог детализации остатков поставщиков (как у «📸 снэпшотов» и «📦 остатков 1С») вместо общего меню: сводка-дашборд как в Telegram, кнопки поставщиков для перехода в историю, кнопки «🔄 Обновить» и «✖️ Закрыть».
+- EN: Android — the "📦 suppliers" tile in the operations center now opens a dedicated supplier-stock detail dialog (like "📸 snapshots" and "📦 1C stock loads") instead of the generic menu: a Telegram-style dashboard summary, per-supplier buttons to drill into history, and "🔄 Refresh" / "✖️ Close" buttons.
+
 ## [8.63.3] - 2026-06-03
 
 ### Changed
