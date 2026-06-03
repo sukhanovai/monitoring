@@ -1157,9 +1157,9 @@ private fun buildExtensionDataTile(
     )
 }
 
-private fun buildToggleDataTile(label: String, enabled: Boolean): ExtensionDataTile {
+private fun buildToggleDataTile(label: String, enabled: Boolean, id: String = label.lowercase()): ExtensionDataTile {
     return ExtensionDataTile(
-        id = label.lowercase(),
+        id = id,
         label = label,
         value = if (enabled) "вкл" else "выкл",
         hasProblem = false
@@ -2559,7 +2559,7 @@ private fun MonitoringApp(
             add(
                 ExtensionDataTile(
                     id = extension.id,
-                    label = "ресурсы",
+                    label = "💻 ресурсы",
                     value = if (hasProblem) "!" else "ОК",
                     hasProblem = hasProblem
                 )
@@ -2568,7 +2568,7 @@ private fun MonitoringApp(
         extensionsById["backup_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(name = "proxmox"),
+                    extension = extension.copy(name = "💾 proxmox"),
                     summaryOverride = state.backupProxmoxSummary,
                     hasProblemOverride = state.backupProxmoxHasProblemItems
                 )
@@ -2577,7 +2577,7 @@ private fun MonitoringApp(
         extensionsById["database_backup_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(name = "БД"),
+                    extension = extension.copy(name = "🗃️ БД"),
                     summaryOverride = state.backupDatabasesSummary,
                     hasProblemOverride = state.backupDatabasesHasProblemItems
                 )
@@ -2598,7 +2598,7 @@ private fun MonitoringApp(
             }
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(name = "почта"),
+                    extension = extension.copy(name = "📬 почта"),
                     summaryOverride = summary,
                     hasProblemOverride = hasProblem
                 )
@@ -2607,7 +2607,7 @@ private fun MonitoringApp(
         findExtensionByIds(extensionsById, "zfs_monitor", "zfs")?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(id = "zfs_monitor", name = "zfs статусы"),
+                    extension = extension.copy(id = "zfs_monitor", name = "🧊 zfs статусы"),
                     summaryOverride = state.zfsSummary,
                     hasProblemOverride = state.zfsHasProblemItems
                 )
@@ -2623,7 +2623,7 @@ private fun MonitoringApp(
             val hasProblem = state.zfsPoolFreeSpaceHasProblemItems
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(id = "zfs_pool_free_space_monitor", name = "zfs место"),
+                    extension = extension.copy(id = "zfs_pool_free_space_monitor", name = "💽 zfs место"),
                     summaryOverride = state.zfsPoolFreeSpaceSummary,
                     hasProblemOverride = hasProblem
                 )
@@ -2632,7 +2632,7 @@ private fun MonitoringApp(
         extensionsById["snapshot_transfer_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(name = "снэпшоты"),
+                    extension = extension.copy(name = "📸 снэпшоты"),
                     summaryOverride = state.snapshotTransferSummary,
                     hasProblemOverride = state.snapshotTransferHasProblemItems
                 )
@@ -2641,7 +2641,7 @@ private fun MonitoringApp(
         extensionsById["stock_load_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(name = "остатки"),
+                    extension = extension.copy(name = "📦 остатки"),
                     summaryOverride = state.backupStockLoadsSummary,
                     hasProblemOverride = state.backupStockLoadsHasProblemItems
                 )
@@ -2650,7 +2650,7 @@ private fun MonitoringApp(
         extensionsById["nas_transfer_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(name = "NAS"),
+                    extension = extension.copy(name = "📤 NAS"),
                     summaryOverride = state.backupNasTransferSummary,
                     hasProblemOverride = state.backupNasTransferHasProblemItems
                 )
@@ -2659,7 +2659,7 @@ private fun MonitoringApp(
         extensionsById["config_console_backup_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(name = "Конфиги"),
+                    extension = extension.copy(name = "🗂️ Конфиги"),
                     summaryOverride = state.backupConfigConsoleSummary,
                     hasProblemOverride = state.backupConfigConsoleHasProblemItems
                 )
@@ -2670,7 +2670,7 @@ private fun MonitoringApp(
             ?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(id = "supplier_stock_files", name = "поставщики"),
+                    extension = extension.copy(id = "supplier_stock_files", name = "📦 поставщики"),
                     summaryOverride = state.supplierStockSummary,
                     hasProblemOverride = state.supplierStockHasProblemItems
                 )
@@ -2686,10 +2686,10 @@ private fun MonitoringApp(
             )
         }
         extensionsById["web_interface"]?.takeIf { it.enabled }?.let { extension ->
-            add(buildToggleDataTile(label = "web", enabled = extension.enabled))
+            add(buildToggleDataTile(label = "🌐 web", enabled = extension.enabled, id = "web"))
         }
         extensionsById["email_processor"]?.takeIf { it.enabled }?.let { extension ->
-            add(buildToggleDataTile(label = "mail", enabled = extension.enabled))
+            add(buildToggleDataTile(label = "📧 mail", enabled = extension.enabled, id = "mail"))
         }
     }
     val extensionOpsTiles = extensionInfoTiles.map { extension ->

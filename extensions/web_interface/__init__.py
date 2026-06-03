@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.97
+Server Monitoring System v8.62.98
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.97
+Версия: 8.62.98
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -915,7 +915,12 @@ async function saveReport(){
 async function settingsExtensions(b){
   var r=await api('/v1/settings/extensions');var items=r.items||[];var sum=r.summary||{};
   var rows=items.map(function(x){
-    return '<div class="toggle-row"><div class="tx"><b>'+esc(x.name)+'</b><small>'+esc(x.description||'')+'</small></div>'+
+    var setAction=EXT_SETTINGS[x.id];
+    var setBtn=setAction
+      ?'<button class="btn ghost sm" style="margin-right:10px" onclick="openExtSettings(\''+esc(setAction)+'\',\''+esc(x.name)+'\')">⚙️ Настройки</button>'
+      :'';
+    return '<div class="toggle-row"><div class="tx"><b>'+esc(extIcon(x.id)+x.name)+'</b><small>'+esc(x.description||'')+'</small></div>'+
+      setBtn+
       '<label class="switch"><input type="checkbox" '+(x.enabled?'checked':'')+
       ' onchange="toggleExt(\''+esc(x.id)+'\',this.checked)"><span class="sl"></span></label></div>';
   }).join('');
@@ -924,7 +929,65 @@ async function settingsExtensions(b){
       statCard('🧩','Всего',sum.total!=null?sum.total:items.length,'info')+
       statCard('✅','Включено',sum.enabled||0,'ok')+
       statCard('⛔','Выключено',sum.disabled||0,'warn')+'</div>'+
-    card('🧩','Модули расширений',rows||'<div class="empty">Нет расширений</div>');
+    '<div class="btnrow" style="margin-bottom:14px">'+
+      '<button class="btn ok sm" onclick="extAction(\'enable_all\')">✅ Включить все</button>'+
+      '<button class="btn warn sm" onclick="extAction(\'disable_all\')">⛔ Выключить все</button>'+
+      '<button class="btn ghost sm" onclick="renderSettings()">🔄 Обновить</button>'+
+    '</div>'+
+    card('🧩','Модули расширений',
+      '<div class="field hint" style="margin-bottom:12px">Кнопка «⚙️ Настройки» открывает параметры расширения '+
+      '(паттерны, хосты, периоды и т.п.) напрямую из системы мониторинга.</div>'+
+      (rows||'<div class="empty">Нет расширений</div>'));
+}
+// Соответствие id расширения → корневое действие его настроек (то же, что в боте/Android).
+var EXT_SETTINGS={
+  zfs_monitor:'settings_zfs',
+  backup_monitor:'settings_ext_backup_proxmox',
+  database_backup_monitor:'settings_ext_backup_db',
+  mail_backup_monitor:'settings_ext_backup_mail',
+  zfs_pool_free_space_monitor:'zfs_pool_free_space_menu',
+  stock_load_monitor:'settings_ext_stock_load',
+  nas_transfer_monitor:'settings_ext_nas',
+  config_console_backup_monitor:'settings_ext_config_console',
+  supplier_stock_files:'settings_ext_supplier_stock',
+  resource_monitor:'settings_resources',
+  tls_cert_monitor:'settings_ext_tls'
+};
+var EXT_ICONS={
+  resource_monitor:'💻 ',backup_monitor:'💾 ',database_backup_monitor:'🗃️ ',
+  mail_backup_monitor:'📬 ',zfs_monitor:'🧊 ',zfs_pool_free_space_monitor:'💽 ',
+  snapshot_transfer_monitor:'📸 ',stock_load_monitor:'📦 ',nas_transfer_monitor:'📤 ',
+  config_console_backup_monitor:'🗂️ ',supplier_stock_files:'📦 ',tls_cert_monitor:'🔐 ',
+  web_interface:'🌐 ',email_processor:'📧 '
+};
+function extIcon(id){ return EXT_ICONS[id]||'🧩 '; }
+async function extAction(action){
+  try{ var r=await api('/v1/settings/extensions/actions',{method:'POST',body:{action:action}});
+    toast(r.message||'Готово','ok');renderSettings();
+  }catch(e){ toast(e.message,'err'); }
+}
+function openExtSettings(action,title){
+  modal('⚙️ '+esc(title),'<div class="spinner"></div>');
+  runExtSettings(action,title);
+}
+async function runExtSettings(action,title){
+  if(action==='close'||action==='main_menu'){ closeModal(); return; }
+  if(action==='settings_extensions'){ closeModal(); renderSettings(); return; }
+  var mb=$('modal').querySelector('.mb');
+  if(mb) mb.innerHTML='<div class="spinner"></div>';
+  try{
+    var r=await api('/v1/settings/extensions/actions',{method:'POST',body:{action:action}});
+    var text=r.message||'Готово';
+    var opts=(r.menu_options||r.menuOptions||[]).filter(function(o){return o.action;});
+    var btns=opts.map(function(o){
+      return '<button class="btn ghost sm" onclick="runExtSettings(\''+esc(o.action)+'\',\''+esc(title)+'\')">'+esc(o.label||o.action)+'</button>';
+    }).join('');
+    if(!btns) btns='<button class="btn ghost sm" onclick="closeModal()">Закрыть</button>';
+    if(mb) mb.innerHTML='<pre>'+esc(text)+'</pre><div class="btnrow" style="margin-top:14px">'+btns+'</div>';
+  }catch(e){
+    if(mb) mb.innerHTML='<div class="empty"><span class="e">⚠️</span>'+esc(e.message)+'</div>'+
+      '<div class="btnrow"><button class="btn ghost sm" onclick="closeModal()">Закрыть</button></div>';
+  }
 }
 async function toggleExt(id,enabled){
   try{ await api('/v1/settings/extensions/'+encodeURIComponent(id),{method:'PATCH',body:{enabled:enabled}});
