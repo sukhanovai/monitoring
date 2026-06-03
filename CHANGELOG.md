@@ -1,3 +1,9 @@
+## [8.62.99] - 2026-06-03
+
+### Fixed
+- RU: Telegram-бот — устранён `NameError` в меню расширения «Остатки поставщиков». При выборе «Результаты остатков поставщиков» падало с `name '_escape_pattern_text' is not defined`, а в «Настройки → Расширения → Остатки поставщиков → Скачивание файлов» — с `name '_format_archive_cleanup_days' is not defined`. Причина — при декомпозиции монолита `settings_handlers` приватные (`_`-префиксные) хелперы разъехались по модулям пакета, а `from ... import *` их не реэкспортирует, поэтому ссылки между модулями обрывались. Добавлено централизованное восстановление общего пространства приватных хелперов в `bot/handlers/settings_handlers/__init__.py`, что разом чинит этот и все аналогичные скрытые обрывы ссылок в пакете.
+- EN: Telegram bot — fixed a `NameError` in the "Supplier stock" extension menus. Selecting "Supplier stock results" crashed with `name '_escape_pattern_text' is not defined`, and "Settings → Extensions → Supplier stock → File download" crashed with `name '_format_archive_cleanup_days' is not defined`. Root cause: during the `settings_handlers` monolith decomposition the private (`_`-prefixed) helpers were scattered across package modules, and `from ... import *` does not re-export them, so cross-module references broke. Added a centralized restoration of the shared private-helper namespace in `bot/handlers/settings_handlers/__init__.py`, which fixes this and all similar latent broken references in the package at once.
+
 ## [8.62.98] - 2026-06-02
 
 ### Added
