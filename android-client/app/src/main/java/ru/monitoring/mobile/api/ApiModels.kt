@@ -97,6 +97,22 @@ data class MobileVersionResponse(
     @Json(name = "apk_download_url") val apkDownloadUrl: String? = null,
     @Json(name = "current_version") val currentVersion: String? = null,
     @Json(name = "update_required") val updateRequired: Boolean? = null,
+    val branch: String? = null,
+)
+
+data class MobileBranch(
+    val name: String? = null,
+    val title: String? = null,
+    @Json(name = "latest_version") val latestVersion: String? = null,
+    @Json(name = "apk_download_url") val apkDownloadUrl: String? = null,
+    @Json(name = "is_default") val isDefault: Boolean? = null,
+)
+
+data class MobileBranchesResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val platform: String? = null,
+    @Json(name = "default_branch") val defaultBranch: String? = null,
+    val branches: List<MobileBranch>? = null,
 )
 
 data class TlsDiagnosticsRequest(

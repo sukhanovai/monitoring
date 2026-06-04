@@ -536,6 +536,37 @@ class MainViewModel(
         )
     }
 
+    // Дашборд «📦 Остатки поставщиков» имеет собственный формат сводки —
+    // строку-счётчик `✅ N   🟡 N   🔴 N   всего N`. Универсальный
+    // buildBackupTileSummary парсил её неверно (брал первое число из строки
+    // «всего …» как итог), из-за чего на плашке появлялось, например, «5/17»
+    // вместо корректного «успешных/всего». Здесь разбираем строку явно:
+    // числитель — поставщики без проблем (✅), знаменатель — всего поставщиков.
+    private val supplierStockCountsRegex = Regex(
+        """✅\s*(\d+).*?🟡\s*(\d+).*?🔴\s*(\d+).*?всего\s*(\d+)""",
+        RegexOption.IGNORE_CASE
+    )
+
+    private fun buildSupplierStockTileSummary(response: ControlActionResult?): BackupTileSummary? {
+        if (response == null) return null
+        val message = resolveControlActionMessage(response)
+        val match = supplierStockCountsRegex.find(message.replace("\n", " "))
+            ?: return buildBackupTileSummary(response)
+        val success = match.groupValues.getOrNull(1)?.toIntOrNull()
+            ?: return buildBackupTileSummary(response)
+        val warning = match.groupValues.getOrNull(2)?.toIntOrNull() ?: 0
+        val error = match.groupValues.getOrNull(3)?.toIntOrNull() ?: 0
+        val total = match.groupValues.getOrNull(4)?.toIntOrNull()
+            ?: return buildBackupTileSummary(response)
+        if (total <= 0) {
+            return BackupTileSummary(ratioText = "0/0", hasProblem = false)
+        }
+        return BackupTileSummary(
+            ratioText = "$success/$total",
+            hasProblem = (warning + error) > 0 || success < total
+        )
+    }
+
     fun loadInitialState() {
         val token = normalizeToken(preferences.apiToken)
         if (token != preferences.apiToken) preferences.apiToken = token
@@ -549,7 +580,8 @@ class MainViewModel(
             morningReportText = preferences.morningReportText,
             morningReportReceivedAt = preferences.morningReportReceivedAt,
             morningReportUnread = preferences.morningReportUnread,
-            projectVersion = projectVersion
+            projectVersion = projectVersion,
+            updateBranch = preferences.updateBranch
         )
 
         if (token.isNotBlank()) {
@@ -737,7 +769,7 @@ class MainViewModel(
                     val response = withContext(Dispatchers.IO) {
                         runCatching { currentApi().runControlAction(ControlActionRequest("supplier_stock_reports")) }.getOrNull()
                     }
-                    val summary = buildBackupTileSummary(response)
+                    val summary = buildSupplierStockTileSummary(response)
                     state = state.copy(
                         supplierStockSummary = summary?.ratioText ?: state.supplierStockSummary,
                         supplierStockHasProblemItems = summary?.hasProblem ?: state.supplierStockHasProblemItems
@@ -788,6 +820,106 @@ class MainViewModel(
                     } else {
                         ""
                     }
+                )
+            }
+        }
+    }
+
+    // Подтягивает список веток обновления (develop/main/...), из которых можно
+    // получать APK. Вызывается лениво при открытии раздела «Обновление».
+    fun loadUpdateBranches() {
+        val token = normalizeToken(state.token.ifBlank { preferences.apiToken })
+        if (token.isBlank()) return
+
+        viewModelScope.launch {
+            runCatching {
+                currentApi().getMobileBranches()
+            }.onSuccess { response ->
+                val options = response.branches.orEmpty().mapNotNull { branch ->
+                    val name = branch.name?.trim().orEmpty()
+                    if (name.isBlank()) return@mapNotNull null
+                    UpdateBranchOption(
+                        name = name,
+                        title = branch.title?.trim().takeIf { !it.isNullOrBlank() } ?: name,
+                        latestVersion = branch.latestVersion?.trim().orEmpty(),
+                        apkDownloadUrl = branch.apkDownloadUrl?.trim().orEmpty()
+                    )
+                }
+                if (options.isEmpty()) return@onSuccess
+                val serverDefault = response.defaultBranch?.trim().orEmpty()
+                val savedBranch = state.updateBranch.ifBlank { preferences.updateBranch }
+                val selected = when {
+                    options.any { it.name == savedBranch } -> savedBranch
+                    options.any { it.name == serverDefault } -> serverDefault
+                    else -> options.first().name
+                }
+                if (preferences.updateBranch != selected) preferences.updateBranch = selected
+                state = state.copy(
+                    availableUpdateBranches = options,
+                    updateBranch = selected
+                )
+            }
+        }
+    }
+
+    fun setUpdateBranch(branch: String) {
+        val normalized = branch.trim()
+        if (normalized.isBlank() || normalized == state.updateBranch) return
+        preferences.updateBranch = normalized
+        // Смена ветки сбрасывает результат предыдущей проверки — он мог быть для
+        // другой ветки и вводить в заблуждение.
+        state = state.copy(
+            updateBranch = normalized,
+            updateAvailable = false,
+            updateCheckMessage = "",
+            apkDownloadUrl = ""
+        )
+    }
+
+    // Явная проверка обновлений по выбранной ветке (кнопка «Проверить
+    // обновления»). В отличие от checkMobileVersion (который только определяет
+    // обязательность апдейта), здесь сравниваем установленную версию с
+    // актуальной версией ветки и готовим прямую ссылку на APK.
+    fun checkForUpdates() {
+        val token = normalizeToken(state.token.ifBlank { preferences.apiToken })
+        if (token.isBlank()) {
+            state = state.copy(updateCheckMessage = "Сначала сохрани Base URL и токен в Настройках")
+            return
+        }
+
+        val branch = state.updateBranch.ifBlank { preferences.updateBranch }
+        viewModelScope.launch {
+            state = state.copy(isCheckingForUpdate = true, updateCheckMessage = "")
+            runCatching {
+                currentApi().getMobileVersionInfo(projectVersion, branch.ifBlank { null })
+            }.onSuccess { response ->
+                val latestVersion = response.latestVersion?.trim().orEmpty()
+                val updateUrl = resolveUpdateUrl(response.apkDownloadUrl.orEmpty())
+                val newer = isVersionOlder(projectVersion, latestVersion)
+                val branchLabel = state.availableUpdateBranches
+                    .firstOrNull { it.name == branch }?.title ?: branch
+                val message = when {
+                    latestVersion.isBlank() -> "Не удалось определить актуальную версию"
+                    newer -> "Доступно обновление до $latestVersion" +
+                        (if (branchLabel.isNotBlank()) " (ветка $branchLabel)" else "")
+                    else -> "Установлена актуальная версия ($projectVersion)"
+                }
+                state = state.copy(
+                    isCheckingForUpdate = false,
+                    latestVersion = latestVersion.ifBlank { state.latestVersion },
+                    apkDownloadUrl = updateUrl,
+                    updateAvailable = newer,
+                    updateCheckMessage = message
+                )
+            }.onFailure { error ->
+                val userMessage = when ((error as? HttpException)?.code()) {
+                    401 -> "HTTP 401: нет доступа. Проверь Base URL и токен в Настройках"
+                    403 -> "HTTP 403: нет прав на проверку обновлений"
+                    else -> formatNetworkError(error)
+                }
+                state = state.copy(
+                    isCheckingForUpdate = false,
+                    updateCheckMessage = userMessage
                 )
             }
         }
@@ -1263,7 +1395,7 @@ class MainViewModel(
             val proxmoxBackupSummary = buildProxmoxBackupTileSummary(result[9] as? ControlActionResult)
             val dbBackupSummary = buildDatabaseBackupTileSummary(result[10] as? ControlActionResult)
             val stockLoadSummary = buildBackupTileSummary(result[11] as? ControlActionResult)
-            val supplierStockSummary = buildBackupTileSummary(result[12] as? ControlActionResult)
+            val supplierStockSummary = buildSupplierStockTileSummary(result[12] as? ControlActionResult)
             val mailBackupResponse = result[13] as? ControlActionResult
             val mailBackupSummary = buildBackupTileSummary(mailBackupResponse)
             val mailBackupVolume = parseMailBackupHistory(mailBackupResponse?.message.orEmpty())
@@ -2464,6 +2596,11 @@ class MainViewModel(
                             } else {
                                 null
                             }
+                            val supplierStockSummary = if (normalizedAction == "supplier_stock_reports") {
+                                buildSupplierStockTileSummary(response)
+                            } else {
+                                null
+                            }
                             state = state.copy(
                                 isLoading = false,
                                 message = resolveControlActionMessage(zfsPrimaryResponse).ifBlank { "Команда отправлена" },
@@ -2500,6 +2637,9 @@ class MainViewModel(
                                 tlsCertSummary = tlsCertSummary?.ratioText ?: state.tlsCertSummary,
                                 tlsCertHasProblemItems = tlsCertSummary?.hasProblem
                                     ?: state.tlsCertHasProblemItems,
+                                supplierStockSummary = supplierStockSummary?.ratioText ?: state.supplierStockSummary,
+                                supplierStockHasProblemItems = supplierStockSummary?.hasProblem
+                                    ?: state.supplierStockHasProblemItems,
                                 mailBackupLastVolume = mailHistory?.items?.firstOrNull()?.size
                                     ?: extractMailBackupVolume(resolveControlActionMessage(zfsPrimaryResponse))
                                     ?: state.mailBackupLastVolume
@@ -3531,6 +3671,11 @@ data class MainUiState(
     val latestVersion: String = "",
     val apkDownloadUrl: String = "",
     val updateMessage: String = "",
+    val updateBranch: String = "",
+    val availableUpdateBranches: List<UpdateBranchOption> = emptyList(),
+    val isCheckingForUpdate: Boolean = false,
+    val updateCheckMessage: String = "",
+    val updateAvailable: Boolean = false,
     val monitoringStatusText: String = "Неизвестно",
     val silentStatusText: String = "Неизвестно",
     val bffCertificateStatusText: String = "⚪ TLS: не проверен",
@@ -3541,6 +3686,13 @@ data class MainUiState(
     val proxmoxHostBackupsHost: String = "",
     val proxmoxHostBackupsText: String = "",
     val isProxmoxHostBackupsLoading: Boolean = false
+)
+
+data class UpdateBranchOption(
+    val name: String,
+    val title: String,
+    val latestVersion: String,
+    val apkDownloadUrl: String
 )
 
 data class MailBackupHistoryItem(

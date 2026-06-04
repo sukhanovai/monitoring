@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v8.63.4
+Server Monitoring System v8.63.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 8.63.4
+Версия: 8.63.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -22,9 +22,9 @@ from lib.utils import is_proxmox_server
 DEBUG_MODE = False
 
 # Версия приложения
-APP_VERSION = "8.63.4"
+APP_VERSION = "8.63.5"
 ANDROID_MIN_SUPPORTED_VERSION = "8.59.10"
-ANDROID_LATEST_VERSION = "8.63.4"
+ANDROID_LATEST_VERSION = "8.63.5"
 
 
 # Matrix-уведомления (доп. канал к Telegram)
@@ -42,6 +42,33 @@ ANDROID_APK_DOWNLOAD_URL = os.environ.get(
     "ANDROID_APK_DOWNLOAD_URL",
     "https://github.com/sukhanovai/monitoring/releases/latest",
 )
+
+# === ОБНОВЛЕНИЕ ANDROID-КЛИЕНТА ИЗ ПРИЛОЖЕНИЯ (выбор ветки) ===
+# Репозиторий, из релизов которого берутся APK-сборки.
+ANDROID_RELEASE_REPO = os.environ.get("ANDROID_RELEASE_REPO", "sukhanovai/monitoring")
+# Ветка обновления по умолчанию (предлагается в приложении первой).
+ANDROID_DEFAULT_UPDATE_BRANCH = os.environ.get("ANDROID_DEFAULT_UPDATE_BRANCH", "develop")
+# Доступные ветки обновления Android-клиента. Каждая ветка описывает, по какому
+# шаблону собрать ссылку на APK. В шаблоне поддерживаются плейсхолдеры
+# {repo} (ANDROID_RELEASE_REPO), {version} (ANDROID_LATEST_VERSION) и {branch}
+# (имя ветки). Пустой/некорректный шаблон => используется ANDROID_APK_DOWNLOAD_URL.
+# Список отдаётся мобильному клиенту через GET /v1/mobile/branches, а конкретная
+# ветка — через GET /v1/mobile/version?branch=<name>.
+ANDROID_UPDATE_BRANCHES: List[Dict[str, str]] = [
+    {
+        "name": "develop",
+        "title": "Develop (prerelease)",
+        "apk_url_template": (
+            "https://github.com/{repo}/releases/download/"
+            "v{version}-develop/monitoring-android-{version}-{branch}-debug.apk"
+        ),
+    },
+    {
+        "name": "main",
+        "title": "Main (stable)",
+        "apk_url_template": "https://github.com/{repo}/releases/latest",
+    },
+]
 
 # === БАЗОВЫЕ ПУТИ ===
 _DEFAULT_BASE = Path(__file__).resolve().parents[1]
