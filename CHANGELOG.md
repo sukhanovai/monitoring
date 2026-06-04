@@ -1,3 +1,13 @@
+## [8.63.6] - 2026-06-04
+
+### Changed
+- RU: Android — плашка «📦 поставщики» переведена с «телеграм-стайла» на нативный Android-вид. При открытии остатков поставщиков убрана текстовая сводка-дашборд сервера (счётчики/период) и устранена задвоенная подпись «Кликни поставщика, чтобы открыть историю» (она шла одновременно из текста сервера и из подписи приложения). Список поставщиков теперь рендерится нативными карточками-строками (статус + имя + шеврон), а фильтры «Скачивание/Почта» — чипами. На вложенных экранах (история по источнику, отчёты за сутки) текст сервера сохранён, так как это и есть полезные данные.
+- EN: Android — the "📦 suppliers" tile moved from "Telegram style" to a native Android look. Opening supplier stock no longer shows the server's dashboard text summary (counters/period), and the duplicated "Tap a supplier to open the history" caption is gone (it used to come from both the server text and the app label). The supplier list is now rendered as native card rows (status + name + chevron), and the "Download/Mail" filters as chips. On drill-down screens (per-source history, daily reports) the server text is kept since it is the actual data.
+
+### Added
+- RU: Android — доступ к настройкам прямо из плашек «📦 поставщики» и «📦 остатки». В шапке диалогов добавлена шестерёнка «⚙️», открывающая нативный диалог настроек: для поставщиков рендерится меню `settings_ext_supplier_stock` (скачивание/почта/период), для загрузки остатков 1С — `settings_ext_stock_load` (паттерны). В плашку «остатки» также добавлена кнопка обновления. Глубокая настройка отдельных разделов (источники/расписание/ресурсы/FTP/обработка) пока открывается как серверное меню — полный нативный рерайт форм запланирован отдельными PR.
+- EN: Android — settings access straight from the "📦 suppliers" and "📦 stock" tiles. A "⚙️" gear was added to the dialog headers, opening a native settings dialog: for suppliers it renders the `settings_ext_supplier_stock` menu (download/mail/period), for 1C stock loading the `settings_ext_stock_load` menu (patterns). The "stock" tile also got a refresh button. Deep configuration of individual sections (sources/schedule/resources/FTP/processing) is still surfaced as the server menu for now — a full native rewrite of the forms is planned in follow-up PRs.
+
 ## [8.63.5] - 2026-06-04
 
 ### Fixed
