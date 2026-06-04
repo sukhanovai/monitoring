@@ -1,3 +1,9 @@
+## [8.63.11] - 2026-06-04
+
+### Added
+- RU: Android/сервер — нативное управление «📨 Источники почты» (правила вложений) для остатков поставщиков (раньше раздел отдавал заглушку «Детальная настройка пока доступна в Telegram-боте»). В подменю «📧 Почтовые сообщения» → «📨 Источники почты» теперь показывается список правил со статусом (🟢 вкл / 🔴 выкл), паттернами отправителя/темы/имени файла, числом ожидаемых вложений и флагом распаковки; на каждое правило — кнопки «Включить/Выключить», «Распаковка вкл/выкл» и «Удалить» (двухшагово, с подтверждением). Сервер (BFF `/v1/settings/extensions/actions`) реализует действия `supplier_stock_mail_source_toggle|<id>`, `supplier_stock_mail_source_unpack|<id>`, `supplier_stock_mail_source_delete|<id>` (запрос подтверждения) и `supplier_stock_mail_source_delete_confirm|<id>` (удаление) с сохранением в `mail.sources`. Добавление и детальное редактирование правила пока остаются в Telegram-боте.
+- EN: Android/server — native management of "📨 Mail sources" (attachment rules) for supplier stock (the section previously returned a "detailed configuration is only available in the Telegram bot" stub). In the "📧 Mail messages" → "📨 Mail sources" submenu it now shows the list of rules with their status (🟢 on / 🔴 off), sender/subject/filename patterns, the expected attachment count and unpack flag; per rule there are "Enable/Disable", "Unpack on/off" and "Delete" buttons (two-step, with confirmation). The server (BFF `/v1/settings/extensions/actions`) implements the `supplier_stock_mail_source_toggle|<id>`, `supplier_stock_mail_source_unpack|<id>`, `supplier_stock_mail_source_delete|<id>` (asks for confirmation) and `supplier_stock_mail_source_delete_confirm|<id>` (deletion) actions, persisting to `mail.sources`. Adding and detailed editing of a rule still remain in the Telegram bot.
+
 ## [8.63.10] - 2026-06-04
 
 ### Added

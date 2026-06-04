@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/callback_dispatcher.py
-Server Monitoring System v8.63.10
+Server Monitoring System v8.63.11
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Главный диспатчер callback-кнопок настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.10
+Версия: 8.63.11
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
