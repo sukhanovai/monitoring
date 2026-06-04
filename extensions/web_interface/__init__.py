@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.7
+Server Monitoring System v8.63.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.7
+Версия: 8.63.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -6471,9 +6471,75 @@ def v1_extensions_actions():
             200,
         )
 
+    if (
+        action == "supplier_stock_ftp"
+        or action == "supplier_stock_ftp_clear_password"
+        or action.startswith("supplier_stock_ftp_set_host|")
+        or action.startswith("supplier_stock_ftp_set_login|")
+        or action.startswith("supplier_stock_ftp_set_password|")
+    ):
+        config = get_supplier_stock_config()
+        ftp_settings = config.get("ftp_ork", {}) or {}
+        notice = ""
+        if action.startswith("supplier_stock_ftp_set_host|"):
+            value = unquote(raw_action.split("|", 1)[1]).strip()
+            ftp_settings["host"] = value
+            config["ftp_ork"] = ftp_settings
+            save_supplier_stock_config(config)
+            notice = (
+                f"✅ HOST FTP: {value}\n\n" if value else "🗑 HOST FTP очищен\n\n"
+            )
+        elif action.startswith("supplier_stock_ftp_set_login|"):
+            value = unquote(raw_action.split("|", 1)[1]).strip()
+            ftp_settings["login"] = value
+            config["ftp_ork"] = ftp_settings
+            save_supplier_stock_config(config)
+            notice = (
+                f"✅ Логин FTP: {value}\n\n" if value else "🗑 Логин FTP очищен\n\n"
+            )
+        elif action.startswith("supplier_stock_ftp_set_password|"):
+            # Пароль не нормализуем strip'ом по краям — он может содержать
+            # значимые пробелы; но ведущие/замыкающие пробелы из ввода убираем.
+            value = unquote(raw_action.split("|", 1)[1])
+            ftp_settings["password"] = value
+            config["ftp_ork"] = ftp_settings
+            save_supplier_stock_config(config)
+            notice = "✅ Пароль FTP сохранён\n\n" if value else "🗑 Пароль FTP очищен\n\n"
+        elif action == "supplier_stock_ftp_clear_password":
+            ftp_settings["password"] = ""
+            config["ftp_ork"] = ftp_settings
+            save_supplier_stock_config(config)
+            notice = "🗑 Пароль FTP очищен\n\n"
+        host_text = ftp_settings.get("host") or "не задано"
+        login_text = ftp_settings.get("login") or "не задано"
+        password_text = "задано" if ftp_settings.get("password") else "не задано"
+        message = (
+            f"{notice}🗄 FTP ОРК — настройки\n\n"
+            f"HOST FTP: {host_text}\n"
+            f"Логин FTP: {login_text}\n"
+            f"Пароль FTP: {password_text}\n\n"
+            "Введите новые значения в полях ниже. Пароль не отображается."
+        )
+        menu_options = [
+            {"label": "🗑 Очистить пароль", "action": "supplier_stock_ftp_clear_password"},
+            {"label": "↩️ Назад", "action": "supplier_stock_download"},
+            {"label": "✖️ Закрыть", "action": "close"},
+        ]
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": message,
+                    "menu_options": menu_options,
+                }
+            ),
+            200,
+        )
+
     if action in {
         "supplier_stock_resources",
-        "supplier_stock_ftp",
         "supplier_stock_processing",
         "supplier_stock_mail_sources",
         "supplier_stock_reports_download",
@@ -6481,7 +6547,6 @@ def v1_extensions_actions():
     }:
         title_map = {
             "supplier_stock_resources": "🖥 Ресурсы",
-            "supplier_stock_ftp": "🗄 FTP",
             "supplier_stock_processing": "⚙️ Обработка",
             "supplier_stock_mail_sources": "📨 Источники почты",
             "supplier_stock_reports_download": "🗓 Отчёты (download)",

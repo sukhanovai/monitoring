@@ -1,3 +1,9 @@
+## [8.63.8] - 2026-06-04
+
+### Added
+- RU: Android/сервер — нативные настройки «🗄 FTP ОРК» для остатков поставщиков (раньше раздел отдавал заглушку «Детальная настройка пока доступна в Telegram-боте»). В диалоге «⚙️ Настройки: остатки поставщиков» (раздел «🌐 Скачивание файлов» → «🗄 FTP») появились поля ввода HOST, логина и пароля FTP с кнопками сохранения, а также кнопка «🗑 Очистить пароль». Пароль вводится скрытым (точки) и нигде не отображается обратно — статус показывается как «задано/не задано». Сервер (BFF `/v1/settings/extensions/actions`) реализует действия `supplier_stock_ftp_set_host|<v>`, `supplier_stock_ftp_set_login|<v>`, `supplier_stock_ftp_set_password|<v>`, `supplier_stock_ftp_clear_password` с сохранением в `ftp_ork.host/login/password`.
+- EN: Android/server — native "🗄 ORK FTP" settings for supplier stock (the section previously returned a "detailed configuration is only available in the Telegram bot" stub). In the "⚙️ Supplier stock settings" dialog (section "🌐 File download" → "🗄 FTP") there are now input fields for the FTP HOST, login and password with save buttons, plus a "🗑 Clear password" button. The password is entered masked (dots) and is never echoed back — its status is shown as "set/not set". The server (BFF `/v1/settings/extensions/actions`) implements the `supplier_stock_ftp_set_host|<v>`, `supplier_stock_ftp_set_login|<v>`, `supplier_stock_ftp_set_password|<v>`, `supplier_stock_ftp_clear_password` actions, persisting to `ftp_ork.host/login/password`.
+
 ## [8.63.7] - 2026-06-04
 
 ### Added
