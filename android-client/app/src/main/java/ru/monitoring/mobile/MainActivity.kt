@@ -90,6 +90,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.Composable
@@ -5999,6 +6000,21 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
+                    IconButton(onClick = {
+                        showStockLoadsSettingsDialog = true
+                        onExtensionsSettingsAction("settings_ext_stock_load")
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Настройки загрузки остатков"
+                        )
+                    }
+                    IconButton(onClick = { onAction("backup_stock_loads") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Обновить данные о загрузке остатков"
+                        )
+                    }
                     IconButton(onClick = { showStockLoadsDialog = false }) {
                         Icon(
                             imageVector = Icons.Filled.Close,
@@ -6132,6 +6148,15 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
+                    IconButton(onClick = {
+                        showSupplierStockSettingsDialog = true
+                        onExtensionsSettingsAction("settings_ext_supplier_stock")
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Настройки остатков поставщиков"
+                        )
+                    }
                     IconButton(onClick = { onAction("supplier_stock_reports") }) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
@@ -6154,45 +6179,252 @@ private fun MonitoringApp(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Верхний дашборд — действие supplier_stock_reports. На нём
+                    // показываем только нативный список поставщиков (без текстовой
+                    // сводки сервера и без задвоенной подписи). На вложенных
+                    // экранах (история по источнику, отчёты за сутки) сводка — это
+                    // и есть полезные данные, поэтому её оставляем.
+                    val isSupplierDashboard = state.extensionMenuAction == "supplier_stock_reports"
                     if (state.isLoading && !supplierStockIsCurrent) {
                         Text("Загружаем данные об остатках поставщиков…")
                     } else if (supplierStockIsCurrent && state.message.isNotBlank() && state.messageSource == "global") {
-                        Text(state.message)
+                        // Фильтры-группы (скачивание/почта) — как Android-чипы.
+                        val groupOptions = state.extensionMenuOptions
+                            .mapNotNull { option ->
+                                val action = resolveMenuOptionAction(option)
+                                val label = option.label?.trim().orEmpty()
+                                if (label.isBlank() || action.isBlank()) return@mapNotNull null
+                                if (!action.startsWith("supplier_stock_reports_")) return@mapNotNull null
+                                label to action
+                            }
+                            .distinctBy { (_, action) -> action }
+                        // История по конкретному поставщику — как карточки-строки.
                         val supplierOptions = state.extensionMenuOptions
                             .mapNotNull { option ->
                                 val action = resolveMenuOptionAction(option)
                                 val label = option.label?.trim().orEmpty()
                                 if (label.isBlank() || action.isBlank()) return@mapNotNull null
-                                if (!action.startsWith("supplier_stock_report_source_day|") &&
-                                    !action.startsWith("supplier_stock_reports_")
-                                ) {
-                                    return@mapNotNull null
-                                }
+                                if (!action.startsWith("supplier_stock_report_source_day|")) return@mapNotNull null
                                 label to action
                             }
                             .distinctBy { (_, action) -> action }
-                        if (supplierOptions.isNotEmpty()) {
-                            Text(
-                                "Кликни поставщика, чтобы открыть историю:",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            supplierOptions.forEach { (label, action) ->
-                                Button(
-                                    onClick = { onAction(action) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+                        if (!isSupplierDashboard) {
+                            // Вложенный экран: текст — это полезные данные (история/итоги).
+                            Text(state.message)
+                        }
+
+                        if (groupOptions.isNotEmpty()) {
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                groupOptions.forEach { (label, action) ->
+                                    FilterChip(
+                                        selected = state.extensionMenuAction == action,
+                                        onClick = { onAction(action) },
+                                        label = { Text(label) }
                                     )
-                                ) {
-                                    Text(label)
                                 }
                             }
                         }
+
+                        if (supplierOptions.isNotEmpty()) {
+                            if (isSupplierDashboard) {
+                                // На вложенных экранах подсказку даёт текст сервера —
+                                // здесь дублировать её не нужно.
+                                Text(
+                                    "Кликни поставщика, чтобы открыть историю:",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            supplierOptions.forEach { (label, action) ->
+                                ElevatedCard(
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onAction(action) }
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            modifier = Modifier.weight(1f),
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Icon(
+                                            imageVector = Icons.Filled.KeyboardArrowRight,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        } else if (isSupplierDashboard) {
+                            Text(
+                                "⚪️ За период данных нет.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     } else {
                         Text("Пока нет данных об остатках поставщиков. Нажми «Обновить» сверху или потяни список вниз в оперативном центре.")
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showSupplierStockSettingsDialog) {
+        val supplierSettingsCurrent = state.messageSource == "extensions_settings" &&
+            (state.extensionSettingsMenuAction == "settings_ext_supplier_stock" ||
+                state.extensionSettingsMenuAction.startsWith("supplier_stock"))
+        val supplierSettingsOptions = if (supplierSettingsCurrent) {
+            state.extensionSettingsMenuOptions.mapNotNull { option ->
+                val action = resolveMenuOptionAction(option)
+                val label = option.label?.trim().orEmpty()
+                if (label.isBlank() || action.isBlank()) return@mapNotNull null
+                if (action == "close" || action == "main_menu" || action == "settings_extensions") {
+                    return@mapNotNull null
+                }
+                label to action
+            }.distinctBy { (_, action) -> action }
+        } else {
+            emptyList()
+        }
+        AlertDialog(
+            onDismissRequest = { showSupplierStockSettingsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⚙️ Настройки: остатки поставщиков",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { onExtensionsSettingsAction("settings_ext_supplier_stock") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Обновить настройки остатков поставщиков"
+                        )
+                    }
+                    IconButton(onClick = { showSupplierStockSettingsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть настройки остатков поставщиков"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (supplierSettingsCurrent && state.message.isNotBlank()) {
+                        Text(state.message)
+                    } else {
+                        Text("Загружаем настройки остатков поставщиков…")
+                    }
+                    supplierSettingsOptions.forEach { (label, action) ->
+                        Button(
+                            onClick = { onExtensionsSettingsAction(action) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showStockLoadsSettingsDialog) {
+        val stockSettingsCurrent = state.messageSource == "extensions_settings" &&
+            (state.extensionSettingsMenuAction == "settings_ext_stock_load" ||
+                state.extensionSettingsMenuAction == "settings_patterns_stock")
+        val stockSettingsOptions = if (stockSettingsCurrent) {
+            state.extensionSettingsMenuOptions.mapNotNull { option ->
+                val action = resolveMenuOptionAction(option)
+                val label = option.label?.trim().orEmpty()
+                if (label.isBlank() || action.isBlank()) return@mapNotNull null
+                if (action == "close" || action == "main_menu" || action == "settings_extensions") {
+                    return@mapNotNull null
+                }
+                label to action
+            }.distinctBy { (_, action) -> action }
+        } else {
+            emptyList()
+        }
+        AlertDialog(
+            onDismissRequest = { showStockLoadsSettingsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⚙️ Настройки: загрузка остатков 1С",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { onExtensionsSettingsAction("settings_ext_stock_load") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Обновить настройки загрузки остатков"
+                        )
+                    }
+                    IconButton(onClick = { showStockLoadsSettingsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть настройки загрузки остатков"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (stockSettingsCurrent && state.message.isNotBlank()) {
+                        Text(state.message)
+                    } else {
+                        Text("Загружаем настройки загрузки остатков…")
+                    }
+                    stockSettingsOptions.forEach { (label, action) ->
+                        Button(
+                            onClick = { onExtensionsSettingsAction(action) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text(label)
+                        }
                     }
                 }
             },
