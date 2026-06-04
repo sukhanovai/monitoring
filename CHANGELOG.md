@@ -1,3 +1,9 @@
+## [8.63.14] - 2026-06-04
+
+### Added
+- RU: Android/сервер — нативное добавление правила вложений почты для остатков поставщиков (раньше мастер был доступен только в Telegram-боте). В диалоге «⚙️ Настройки: остатки поставщиков» → «📧 Почтовые сообщения» → «📨 Источники почты» появилась раскрывающаяся форма «➕ Добавить правило» с полями: название, отправитель (regex/адрес, необязательно), тема (regex, необязательно), имя вложения (regex, необязательно), число ожидаемых вложений и шаблон имени выходного файла, а также переключатель «Распаковывать архив». Незаполненные паттерны означают «принимать любые». Сервер (BFF `/v1/settings/extensions/actions`) реализует действие `supplier_stock_mail_source_add|name=…&sender=…&subject=…&filename=…&expected=…&output=…&unpack=0|1` с валидацией (название и шаблон обязательны, число вложений ≥1) и сохранением в `mail.sources` с уникальным id. MIME-фильтр и детальное редактирование пока в Telegram-боте.
+- EN: Android/server — native creation of a mail attachment rule for supplier stock (the wizard was previously only available in the Telegram bot). In the "⚙️ Supplier stock settings" → "📧 Mail messages" → "📨 Mail sources" dialog there is now an expandable "➕ Add rule" form with fields: name, sender (regex/address, optional), subject (regex, optional), attachment name (regex, optional), expected attachment count and the output file name template, plus an "Unpack archive" toggle. Empty patterns mean "accept any". The server (BFF `/v1/settings/extensions/actions`) implements the `supplier_stock_mail_source_add|name=…&sender=…&subject=…&filename=…&expected=…&output=…&unpack=0|1` action with validation (name and template required, attachment count ≥1), persisting to `mail.sources` with a unique id. The MIME filter and detailed editing are still in the Telegram bot.
+
 ## [8.63.13] - 2026-06-04
 
 ### Added
