@@ -25,7 +25,13 @@ interface MonitoringApi {
     suspend fun getServerResources(@Path("serverId") serverId: String): ServerResourcesResponse
 
     @GET("v1/mobile/version")
-    suspend fun getMobileVersionInfo(@Query("current_version") currentVersion: String): MobileVersionResponse
+    suspend fun getMobileVersionInfo(
+        @Query("current_version") currentVersion: String,
+        @Query("branch") branch: String? = null,
+    ): MobileVersionResponse
+
+    @GET("v1/mobile/branches")
+    suspend fun getMobileBranches(): MobileBranchesResponse
 
     @POST("v1/mobile/diagnostics/tls")
     suspend fun postTlsDiagnostics(@Body request: TlsDiagnosticsRequest): TlsDiagnosticsResponse

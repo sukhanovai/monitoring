@@ -110,5 +110,9 @@ class MonitoringAppCallbacks(
     val onMarkMorningReportRead: () -> Unit,
     val onFetchProxmoxHostBackups: (String) -> Unit,
     val onCloseProxmoxHostBackups: () -> Unit,
-    val onOpenUpdateUrl: (String) -> Unit
+    val onOpenUpdateUrl: (String) -> Unit,
+    val onLoadUpdateBranches: () -> Unit,
+    val onSelectUpdateBranch: (String) -> Unit,
+    val onCheckForUpdates: () -> Unit,
+    val onDownloadAndInstallUpdate: (String) -> Unit
 )

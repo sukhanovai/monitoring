@@ -1,12 +1,21 @@
 package ru.monitoring.mobile
 
 import android.Manifest
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
+import android.widget.Toast
+import androidx.core.content.FileProvider
+import java.io.File
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -1804,6 +1813,103 @@ private fun SettingsSectionTile(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun AppUpdateCard(
+    state: MainUiState,
+    onSelectBranch: (String) -> Unit,
+    onCheckForUpdates: () -> Unit,
+    onDownloadAndInstall: (String) -> Unit,
+    onOpenUpdateUrl: (String) -> Unit
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("⬆️ Обновление приложения", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(
+                "Установленная версия: ${state.installedVersion.ifBlank { state.projectVersion }}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (state.availableUpdateBranches.isNotEmpty()) {
+                Text(
+                    "Ветка обновления:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    state.availableUpdateBranches.forEach { branch ->
+                        FilterChip(
+                            selected = branch.name == state.updateBranch,
+                            onClick = { onSelectBranch(branch.name) },
+                            label = { Text(branch.title) }
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    "Список веток пока не загружен. Проверь Base URL и токен в Настройках.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Button(
+                onClick = onCheckForUpdates,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !state.isCheckingForUpdate
+            ) {
+                if (state.isCheckingForUpdate) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Проверяем…")
+                } else {
+                    Text("🔎 Проверить обновления")
+                }
+            }
+
+            if (state.updateCheckMessage.isNotBlank()) {
+                Text(
+                    state.updateCheckMessage,
+                    color = if (state.updateAvailable) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    }
+                )
+            }
+
+            if (state.updateAvailable && state.apkDownloadUrl.isNotBlank()) {
+                Button(
+                    onClick = { onDownloadAndInstall(state.apkDownloadUrl) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("⬇️ Скачать и установить")
+                }
+                TextButton(
+                    onClick = { onOpenUpdateUrl(state.apkDownloadUrl) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Открыть страницу загрузки в браузере")
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun CompactHeaderIconButton(
     onClick: () -> Unit,
@@ -1969,7 +2075,11 @@ class MainActivity : ComponentActivity() {
                                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                                 }
                             }
-                        }
+                        },
+                        onLoadUpdateBranches = vm::loadUpdateBranches,
+                        onSelectUpdateBranch = vm::setUpdateBranch,
+                        onCheckForUpdates = vm::checkForUpdates,
+                        onDownloadAndInstallUpdate = { url -> downloadAndInstallUpdate(url) }
                     )
                 }
                 MonitoringApp(
@@ -2003,6 +2113,117 @@ class MainActivity : ComponentActivity() {
         if (!granted) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
         }
+    }
+
+    // Скачивание APK выбранной ветки и запуск системного установщика.
+    // Прямой .apk качаем через DownloadManager в приватный каталог приложения и
+    // по завершении открываем установщик (FileProvider). Если ссылка ведёт на
+    // страницу релизов (например main → releases/latest), а не на .apk —
+    // открываем её в браузере: там пользователь скачает нужный артефакт сам.
+    private var updateDownloadId: Long = -1L
+    private var updateDownloadReceiver: BroadcastReceiver? = null
+
+    private fun downloadAndInstallUpdate(rawUrl: String) {
+        val url = rawUrl.trim()
+        if (url.isBlank()) {
+            Toast.makeText(this, "Ссылка на обновление недоступна", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val looksLikeApk = url.substringBefore('?').endsWith(".apk", ignoreCase = true)
+        if (!looksLikeApk) {
+            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            return
+        }
+
+        // Android O+: установка из стороннего источника требует отдельного
+        // разрешения «Устанавливать неизвестные приложения» для нашего пакета.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+            Toast.makeText(
+                this,
+                "Разреши установку из этого приложения и повтори обновление",
+                Toast.LENGTH_LONG
+            ).show()
+            runCatching {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:$packageName")
+                    )
+                )
+            }
+            return
+        }
+
+        val fileName = url.substringAfterLast('/').substringBefore('?')
+            .ifBlank { "monitoring-update.apk" }
+        runCatching {
+            // Чистим прежнюю загрузку с тем же именем, чтобы не плодить копии.
+            File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName).takeIf { it.exists() }?.delete()
+
+            val request = DownloadManager.Request(Uri.parse(url))
+                .setTitle("Обновление ComDone")
+                .setDescription(fileName)
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, fileName)
+                .setMimeType("application/vnd.android.package-archive")
+
+            val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            registerUpdateDownloadReceiver(fileName)
+            updateDownloadId = downloadManager.enqueue(request)
+            Toast.makeText(this, "Загрузка обновления началась…", Toast.LENGTH_SHORT).show()
+        }.onFailure {
+            Toast.makeText(this, "Не удалось начать загрузку обновления", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun registerUpdateDownloadReceiver(fileName: String) {
+        unregisterUpdateDownloadReceiver()
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) ?: -1L
+                if (id != updateDownloadId) return
+                unregisterUpdateDownloadReceiver()
+                launchApkInstaller(fileName)
+            }
+        }
+        updateDownloadReceiver = receiver
+        val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(receiver, filter)
+        }
+    }
+
+    private fun unregisterUpdateDownloadReceiver() {
+        updateDownloadReceiver?.let { runCatching { unregisterReceiver(it) } }
+        updateDownloadReceiver = null
+    }
+
+    private fun launchApkInstaller(fileName: String) {
+        val apkFile = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
+        if (!apkFile.exists()) {
+            Toast.makeText(this, "Файл обновления не найден после загрузки", Toast.LENGTH_LONG).show()
+            return
+        }
+        runCatching {
+            val apkUri = FileProvider.getUriForFile(this, "$packageName.fileprovider", apkFile)
+            val installIntent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(installIntent)
+        }.onFailure {
+            Toast.makeText(this, "Не удалось открыть установщик обновления", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onDestroy() {
+        unregisterUpdateDownloadReceiver()
+        super.onDestroy()
     }
 
     private fun shareCrashReport(report: String) {
@@ -3072,6 +3293,15 @@ private fun MonitoringApp(
                                     )
                                 }
                             }
+
+                            LaunchedEffect(Unit) { callbacks.onLoadUpdateBranches() }
+                            AppUpdateCard(
+                                state = state,
+                                onSelectBranch = callbacks.onSelectUpdateBranch,
+                                onCheckForUpdates = callbacks.onCheckForUpdates,
+                                onDownloadAndInstall = callbacks.onDownloadAndInstallUpdate,
+                                onOpenUpdateUrl = callbacks.onOpenUpdateUrl
+                            )
                         }
                     }
                     0 -> {

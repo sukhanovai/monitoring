@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.4
+Server Monitoring System v8.63.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.4
+Версия: 8.63.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1659,6 +1659,8 @@ def _execute_mobile_control_action(action: str):
         or action.startswith("db_detail_")
         or action.startswith("settings_db_toggle_monitor_")
         or action.startswith("snapshot_transfer_host_")
+        or action.startswith("supplier_stock_reports_")
+        or action.startswith("supplier_stock_report_source_day|")
     ):
         from extensions.extension_manager import extension_manager
 
@@ -1713,6 +1715,14 @@ def _execute_mobile_control_action(action: str):
             extension_requirement = (
                 "config_console_backup_monitor",
                 "🗂️ Мониторинг бэкапа конфигов и историй отключён",
+            )
+        if extension_requirement is None and (
+            action.startswith("supplier_stock_reports_")
+            or action.startswith("supplier_stock_report_source_day|")
+        ):
+            extension_requirement = (
+                "supplier_stock_files",
+                "📦 Остатки поставщиков отключены",
             )
         if extension_requirement is not None:
             extension_id, disabled_message = extension_requirement
@@ -3435,6 +3445,103 @@ def _parse_semver(raw_value):
         return None
 
 
+def _resolve_branch_apk_url(branch_cfg, repo, version, fallback_url):
+    """Собирает ссылку на APK для ветки из шаблона `apk_url_template`.
+
+    Плейсхолдеры: {repo}, {version}, {branch}. Любой сбой шаблона
+    (пустой/битый) → возвращается fallback_url (ANDROID_APK_DOWNLOAD_URL).
+    """
+    template = str((branch_cfg or {}).get("apk_url_template") or "").strip()
+    name = str((branch_cfg or {}).get("name") or "").strip()
+    if not template:
+        return fallback_url
+    try:
+        url = template.format(repo=repo, version=version, branch=name)
+    except (KeyError, IndexError, ValueError):
+        return fallback_url
+    return url or fallback_url
+
+
+def _build_android_update_branches():
+    """Список веток обновления Android-клиента с готовыми ссылками на APK.
+
+    Возвращает (branches: list[dict], default_branch: str). Каждый элемент:
+    {name, title, latest_version, apk_download_url, is_default}.
+    """
+    from config.settings import (
+        ANDROID_APK_DOWNLOAD_URL,
+        ANDROID_DEFAULT_UPDATE_BRANCH,
+        ANDROID_LATEST_VERSION,
+        ANDROID_RELEASE_REPO,
+        ANDROID_UPDATE_BRANCHES,
+    )
+
+    version = str(ANDROID_LATEST_VERSION)
+    repo = str(ANDROID_RELEASE_REPO)
+    default_branch = str(ANDROID_DEFAULT_UPDATE_BRANCH or "").strip()
+    configured = list(ANDROID_UPDATE_BRANCHES or [])
+
+    if default_branch and not any(
+        str(b.get("name") or "").strip() == default_branch for b in configured
+    ):
+        default_branch = ""
+    if not default_branch and configured:
+        default_branch = str(configured[0].get("name") or "").strip()
+
+    branches = []
+    for branch_cfg in configured:
+        name = str(branch_cfg.get("name") or "").strip()
+        if not name:
+            continue
+        branches.append(
+            {
+                "name": name,
+                "title": str(branch_cfg.get("title") or name),
+                "latest_version": version,
+                "apk_download_url": _resolve_branch_apk_url(
+                    branch_cfg, repo, version, str(ANDROID_APK_DOWNLOAD_URL)
+                ),
+                "is_default": name == default_branch,
+            }
+        )
+    return branches, default_branch
+
+
+@app.route("/v1/mobile/branches", methods=["GET"])
+@app.route("/api/v1/mobile/branches", methods=["GET"])
+def v1_mobile_branches():
+    """Список доступных веток обновления Android-клиента с ссылками на APK."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
+
+    branches, default_branch = _build_android_update_branches()
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "platform": "android",
+                "default_branch": default_branch,
+                "branches": branches,
+            }
+        ),
+        200,
+    )
+
+
 @app.route("/v1/mobile/version", methods=["GET"])
 @app.route("/api/v1/mobile/version", methods=["GET"])
 def v1_mobile_version():
@@ -3472,6 +3579,19 @@ def v1_mobile_version():
     elif current_version:
         update_required = True
 
+    # Если клиент просит APK конкретной ветки (`?branch=develop`) — отдаём
+    # ссылку из настроенного списка веток, иначе общий ANDROID_APK_DOWNLOAD_URL.
+    requested_branch = (request.args.get("branch") or "").strip()
+    apk_download_url = str(ANDROID_APK_DOWNLOAD_URL)
+    resolved_branch = ""
+    if requested_branch:
+        branches, _default_branch = _build_android_update_branches()
+        for branch in branches:
+            if branch.get("name") == requested_branch:
+                apk_download_url = str(branch.get("apk_download_url") or apk_download_url)
+                resolved_branch = requested_branch
+                break
+
     return (
         jsonify(
             {
@@ -3479,9 +3599,10 @@ def v1_mobile_version():
                 "platform": "android",
                 "min_supported_version": str(ANDROID_MIN_SUPPORTED_VERSION),
                 "latest_version": str(ANDROID_LATEST_VERSION),
-                "apk_download_url": str(ANDROID_APK_DOWNLOAD_URL),
+                "apk_download_url": apk_download_url,
                 "current_version": current_version,
                 "update_required": update_required,
+                "branch": resolved_branch,
             }
         ),
         200,
