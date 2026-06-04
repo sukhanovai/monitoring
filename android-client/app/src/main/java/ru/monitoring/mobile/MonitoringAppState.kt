@@ -161,6 +161,8 @@ class MonitoringAppState {
     var showStockLoadsSettingsDialog by mutableStateOf(false)
     var showSupplierStockDialog by mutableStateOf(false)
     var showSupplierStockSettingsDialog by mutableStateOf(false)
+    var supplierStockPeriodInput by mutableStateOf("")
+    var supplierStockScheduleTimeInput by mutableStateOf("")
     var showSnapshotTransferDialog by mutableStateOf(false)
     var showSnapshotSettingsDialog by mutableStateOf(false)
     var snapshotHostInput by mutableStateOf("")

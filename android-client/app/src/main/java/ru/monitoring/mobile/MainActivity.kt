@@ -6337,6 +6337,70 @@ private fun MonitoringApp(
                     } else {
                         Text("Загружаем настройки остатков поставщиков…")
                     }
+
+                    val supplierSubAction = state.extensionSettingsMenuAction
+                    // 🗓 Период отчётов — нативное поле ввода произвольного числа дней.
+                    if (supplierSettingsCurrent &&
+                        (supplierSubAction == "supplier_stock_report_period" ||
+                            supplierSubAction.startsWith("supplier_stock_set_period"))
+                    ) {
+                        OutlinedTextField(
+                            value = supplierStockPeriodInput,
+                            onValueChange = { input ->
+                                supplierStockPeriodInput = input.filter { it.isDigit() }.take(3)
+                            },
+                            label = { Text("Своё число дней (1–365)") },
+                            placeholder = { Text("например 10") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Button(
+                            onClick = {
+                                val value = supplierStockPeriodInput.trim()
+                                if (value.isNotEmpty()) {
+                                    onExtensionsSettingsAction("supplier_stock_set_period|$value")
+                                    supplierStockPeriodInput = ""
+                                }
+                            },
+                            enabled = supplierStockPeriodInput.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("💾 Сохранить период")
+                        }
+                    }
+                    // ⏱ Расписание скачивания — нативное поле ввода времени запуска.
+                    if (supplierSettingsCurrent &&
+                        (supplierSubAction == "supplier_stock_schedule" ||
+                            supplierSubAction == "supplier_stock_sched_toggle" ||
+                            supplierSubAction.startsWith("supplier_stock_sched_time"))
+                    ) {
+                        OutlinedTextField(
+                            value = supplierStockScheduleTimeInput,
+                            onValueChange = { supplierStockScheduleTimeInput = it },
+                            label = { Text("Время запуска (HH:MM)") },
+                            placeholder = { Text("например 06:00, 18:00") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Button(
+                            onClick = {
+                                val value = supplierStockScheduleTimeInput.trim()
+                                if (value.isNotEmpty()) {
+                                    onExtensionsSettingsAction(
+                                        "supplier_stock_sched_time|" + Uri.encode(value)
+                                    )
+                                    supplierStockScheduleTimeInput = ""
+                                }
+                            },
+                            enabled = supplierStockScheduleTimeInput.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("💾 Сохранить время")
+                        }
+                    }
+
                     supplierSettingsOptions.forEach { (label, action) ->
                         Button(
                             onClick = { onExtensionsSettingsAction(action) },

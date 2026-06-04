@@ -1,3 +1,9 @@
+## [8.63.7] - 2026-06-04
+
+### Added
+- RU: Android/сервер — нативные настройки «🗓 Период отчётов» и «⏱ Расписание скачивания» для остатков поставщиков (раньше эти разделы отдавали заглушку «Детальная настройка пока доступна в Telegram-боте»). В диалоге «⚙️ Настройки: остатки поставщиков» период отчётов теперь задаётся пресетами (1/3/7/14/30 дн., текущий помечен ✅) или своим числом дней в поле ввода (1–365), а расписание — кнопкой включения/выключения планового скачивания и полем ввода времени запуска (одно или несколько `HH:MM` через запятую). Сервер (BFF `/v1/settings/extensions/actions`) реализует действия `supplier_stock_set_period|<N>`, `supplier_stock_sched_toggle`, `supplier_stock_sched_time|<HH:MM,…>` с валидацией и сохранением в конфиг расширения (`reporting.period_days`, `download.schedule.enabled/time`).
+- EN: Android/server — native "🗓 Report period" and "⏱ Download schedule" settings for supplier stock (these sections previously returned a "detailed configuration is only available in the Telegram bot" stub). In the "⚙️ Supplier stock settings" dialog the report period is now set via presets (1/3/7/14/30 days, the current one marked ✅) or a custom number of days in an input field (1–365), and the schedule via an enable/disable button for scheduled downloads plus a launch-time input field (one or more `HH:MM` separated by commas). The server (BFF `/v1/settings/extensions/actions`) implements the `supplier_stock_set_period|<N>`, `supplier_stock_sched_toggle`, `supplier_stock_sched_time|<HH:MM,…>` actions with validation and persistence to the extension config (`reporting.period_days`, `download.schedule.enabled/time`).
+
 ## [8.63.6] - 2026-06-04
 
 ### Changed
