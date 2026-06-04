@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.11
+Server Monitoring System v8.63.12
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.11
+Версия: 8.63.12
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -6883,13 +6883,137 @@ def v1_extensions_actions():
             200,
         )
 
+    if (
+        action == "supplier_stock_processing"
+        or action.startswith("supplier_stock_proc_toggle|")
+        or action.startswith("supplier_stock_proc_activate|")
+        or action.startswith("supplier_stock_proc_delete_confirm|")
+        or action.startswith("supplier_stock_proc_delete|")
+    ):
+        config = get_supplier_stock_config()
+        rules = (config.get("processing", {}) or {}).get("rules", []) or []
+        notice = ""
+        pending_delete_id = ""
+        if action.startswith("supplier_stock_proc_toggle|"):
+            target = raw_action.split("|", 1)[1].strip()
+            for rule in rules:
+                if str(rule.get("id")) == target:
+                    rule["enabled"] = not rule.get("enabled", True)
+                    if not rule["enabled"]:
+                        rule["active"] = False
+                    notice = (
+                        f"{'✅ Включено' if rule['enabled'] else '⛔️ Выключено'} "
+                        f"правило «{rule.get('name') or target}»\n\n"
+                    )
+                    break
+            config.setdefault("processing", {})["rules"] = rules
+            save_supplier_stock_config(config)
+        elif action.startswith("supplier_stock_proc_activate|"):
+            target = raw_action.split("|", 1)[1].strip()
+            for rule in rules:
+                if str(rule.get("id")) == target:
+                    rule["active"] = not rule.get("active", False)
+                    if rule["active"]:
+                        rule["enabled"] = True
+                    notice = (
+                        f"{'⭐ Активировано' if rule['active'] else '☆ Деактивировано'} "
+                        f"правило «{rule.get('name') or target}»\n\n"
+                    )
+                    break
+            config.setdefault("processing", {})["rules"] = rules
+            save_supplier_stock_config(config)
+        elif action.startswith("supplier_stock_proc_delete_confirm|"):
+            target = raw_action.split("|", 1)[1].strip()
+            before = len(rules)
+            rules = [r for r in rules if str(r.get("id")) != target]
+            config.setdefault("processing", {})["rules"] = rules
+            save_supplier_stock_config(config)
+            notice = (
+                "🗑 Правило удалено\n\n" if len(rules) < before else "ℹ️ Правило не найдено\n\n"
+            )
+        elif action.startswith("supplier_stock_proc_delete|"):
+            pending_delete_id = raw_action.split("|", 1)[1].strip()
+
+        if pending_delete_id:
+            target_rule = next(
+                (r for r in rules if str(r.get("id")) == pending_delete_id), None
+            )
+            name = str((target_rule or {}).get("name") or pending_delete_id)
+            message = (
+                f"🗑 Удалить правило обработки «{name}»?\n\n"
+                "Действие необратимо — настройки правила будут потеряны."
+            )
+            menu_options = [
+                {
+                    "label": f"⚠️ Да, удалить «{name[:24]}»",
+                    "action": f"supplier_stock_proc_delete_confirm|{pending_delete_id}",
+                },
+                {"label": "↩️ Отмена", "action": "supplier_stock_processing"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
+        else:
+            lines = [f"{notice}⚙️ Правила обработки файлов остатков", ""]
+            if not rules:
+                lines.append("⚪️ Правила обработки не настроены.")
+            else:
+                for idx, rule in enumerate(rules, start=1):
+                    name = rule.get("name") or rule.get("id") or f"Правило {idx}"
+                    source_file = rule.get("source_file") or "не задано"
+                    enabled = rule.get("enabled", True)
+                    active = rule.get("active", False)
+                    status = "🟢 вкл" if enabled else "🔴 выкл"
+                    mode = (
+                        "обработка" if rule.get("requires_processing", True) else "без обработки"
+                    )
+                    lines.append(f"{idx}. {status}{' ⭐' if active else ''} {name}")
+                    lines.append(f"    Файл источника: {source_file}")
+                    lines.append(f"    Режим: {mode} · Активно: {'да' if active else 'нет'}")
+            lines.append("")
+            lines.append("Добавление и детальное редактирование правила пока в Telegram-боте.")
+            message = "\n".join(lines)
+            menu_options = []
+            for rule in rules:
+                rid = str(rule.get("id") or "").strip()
+                if not rid:
+                    continue
+                name = str(rule.get("name") or rid)
+                enabled = rule.get("enabled", True)
+                active = rule.get("active", False)
+                toggle_label = (
+                    f"{'⛔️ Выключить' if enabled else '✅ Включить'} {name[:18]}"
+                )
+                activate_label = (
+                    f"{'☆ Деактивировать' if active else '⭐ Активировать'} {name[:14]}"
+                )
+                menu_options.append(
+                    {"label": toggle_label, "action": f"supplier_stock_proc_toggle|{rid}"}
+                )
+                menu_options.append(
+                    {"label": activate_label, "action": f"supplier_stock_proc_activate|{rid}"}
+                )
+                menu_options.append(
+                    {"label": f"🗑 Удалить {name[:18]}", "action": f"supplier_stock_proc_delete|{rid}"}
+                )
+            menu_options.append({"label": "↩️ Назад", "action": "supplier_stock_download"})
+            menu_options.append({"label": "✖️ Закрыть", "action": "close"})
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": message,
+                    "menu_options": menu_options,
+                }
+            ),
+            200,
+        )
+
     if action in {
-        "supplier_stock_processing",
         "supplier_stock_reports_download",
         "supplier_stock_reports_mail",
     }:
         title_map = {
-            "supplier_stock_processing": "⚙️ Обработка",
             "supplier_stock_reports_download": "🗓 Отчёты (download)",
             "supplier_stock_reports_mail": "🗓 Отчёты (mail)",
         }

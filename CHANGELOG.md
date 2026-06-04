@@ -1,3 +1,9 @@
+## [8.63.12] - 2026-06-04
+
+### Added
+- RU: Android/сервер — нативное управление «⚙️ Правила обработки» файлов остатков поставщиков (раньше раздел отдавал заглушку «Детальная настройка пока доступна в Telegram-боте»). В подменю «🌐 Скачивание файлов» → «⚙️ Обработка» теперь показывается список правил со статусом (🟢 вкл / 🔴 выкл, ⭐ — активное), файлом источника и режимом (обработка/без обработки); на каждое правило — кнопки «Включить/Выключить», «Активировать/Деактивировать» и «Удалить» (двухшагово, с подтверждением). Сервер (BFF `/v1/settings/extensions/actions`) реализует действия `supplier_stock_proc_toggle|<id>` (enabled, при выключении снимает active), `supplier_stock_proc_activate|<id>` (active, при активации включает enabled), `supplier_stock_proc_delete|<id>` (запрос подтверждения) и `supplier_stock_proc_delete_confirm|<id>` (удаление) с сохранением в `processing.rules`. Добавление и детальное редактирование правила пока остаются в Telegram-боте.
+- EN: Android/server — native management of the "⚙️ Processing rules" for supplier stock files (the section previously returned a "detailed configuration is only available in the Telegram bot" stub). In the "🌐 File download" → "⚙️ Processing" submenu it now shows the list of rules with their status (🟢 on / 🔴 off, ⭐ — active), source file and mode (processing/no processing); per rule there are "Enable/Disable", "Activate/Deactivate" and "Delete" buttons (two-step, with confirmation). The server (BFF `/v1/settings/extensions/actions`) implements the `supplier_stock_proc_toggle|<id>` (enabled, clears active when disabling), `supplier_stock_proc_activate|<id>` (active, enables when activating), `supplier_stock_proc_delete|<id>` (asks for confirmation) and `supplier_stock_proc_delete_confirm|<id>` (deletion) actions, persisting to `processing.rules`. Adding and detailed editing of a rule still remain in the Telegram bot.
+
 ## [8.63.11] - 2026-06-04
 
 ### Added
