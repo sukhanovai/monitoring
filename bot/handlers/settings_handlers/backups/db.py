@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/db.py
-Server Monitoring System v8.63.11
+Server Monitoring System v8.63.12
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database backup UI settings extracted from _legacy.py (PR7e серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.11
+Версия: 8.63.12
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самая крупная backup-семья (после supplier_stock): UI Telegram-настроек
