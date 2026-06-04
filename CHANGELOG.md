@@ -1,3 +1,9 @@
+## [8.63.10] - 2026-06-04
+
+### Added
+- RU: Android/сервер — нативное управление «📦 Источники файлов остатков» (скачивание) для поставщиков (раньше раздел был доступен только в Telegram-боте). В подменю «🌐 Скачивание файлов» добавлена кнопка «📦 Источники файлов», открывающая список источников со статусом (🟢 вкл / 🔴 выкл), URL, именем выходного файла, методом и флагом распаковки; на каждый источник — кнопки «Включить/Выключить», «Распаковка вкл/выкл» и «Удалить». Удаление двухшаговое (подтверждение). Сервер (BFF `/v1/settings/extensions/actions`) реализует действия `supplier_stock_source_toggle|<id>`, `supplier_stock_source_unpack|<id>`, `supplier_stock_source_delete|<id>` (запрос подтверждения) и `supplier_stock_source_delete_confirm|<id>` (удаление) с сохранением в `download.sources`. Добавление и детальное редактирование источника пока остаются в Telegram-боте.
+- EN: Android/server — native management of "📦 Stock file sources" (download) for suppliers (the section was previously only available in the Telegram bot). The "🌐 File download" submenu got a "📦 File sources" button that opens the list of sources with their status (🟢 on / 🔴 off), URL, output file name, method and unpack flag; per source there are "Enable/Disable", "Unpack on/off" and "Delete" buttons. Deletion is two-step (confirmation). The server (BFF `/v1/settings/extensions/actions`) implements the `supplier_stock_source_toggle|<id>`, `supplier_stock_source_unpack|<id>`, `supplier_stock_source_delete|<id>` (asks for confirmation) and `supplier_stock_source_delete_confirm|<id>` (deletion) actions, persisting to `download.sources`. Adding and detailed editing of a source still remain in the Telegram bot.
+
 ## [8.63.9] - 2026-06-04
 
 ### Added

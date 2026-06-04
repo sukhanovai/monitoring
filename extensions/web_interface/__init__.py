@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.9
+Server Monitoring System v8.63.10
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.9
+Версия: 8.63.10
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -6318,6 +6318,7 @@ def v1_extensions_actions():
                         "Выберите раздел:"
                     ),
                     "menu_options": [
+                        {"label": "📦 Источники файлов", "action": "supplier_stock_sources"},
                         {"label": "⏱ Расписание", "action": "supplier_stock_schedule"},
                         {"label": "🖥 Ресурсы", "action": "supplier_stock_resources"},
                         {"label": "🗄 FTP", "action": "supplier_stock_ftp"},
@@ -6330,7 +6331,127 @@ def v1_extensions_actions():
             200,
         )
 
-    if action == "supplier_stock_mail":
+    if (
+        action == "supplier_stock_sources"
+        or action.startswith("supplier_stock_source_toggle|")
+        or action.startswith("supplier_stock_source_unpack|")
+        or action.startswith("supplier_stock_source_delete_confirm|")
+        or action.startswith("supplier_stock_source_delete|")
+    ):
+        config = get_supplier_stock_config()
+        sources = (config.get("download", {}) or {}).get("sources", []) or []
+        notice = ""
+        pending_delete_id = ""
+        if action.startswith("supplier_stock_source_toggle|"):
+            target = raw_action.split("|", 1)[1].strip()
+            for source in sources:
+                if str(source.get("id")) == target:
+                    source["enabled"] = not source.get("enabled", True)
+                    notice = (
+                        f"{'✅ Включён' if source['enabled'] else '⛔️ Выключен'} "
+                        f"источник «{source.get('name') or target}»\n\n"
+                    )
+                    break
+            config.setdefault("download", {})["sources"] = sources
+            save_supplier_stock_config(config)
+        elif action.startswith("supplier_stock_source_unpack|"):
+            target = raw_action.split("|", 1)[1].strip()
+            for source in sources:
+                if str(source.get("id")) == target:
+                    source["unpack_archive"] = not source.get("unpack_archive", False)
+                    notice = (
+                        f"📦 Распаковка архива для «{source.get('name') or target}»: "
+                        f"{'вкл' if source['unpack_archive'] else 'выкл'}\n\n"
+                    )
+                    break
+            config.setdefault("download", {})["sources"] = sources
+            save_supplier_stock_config(config)
+        elif action.startswith("supplier_stock_source_delete_confirm|"):
+            target = raw_action.split("|", 1)[1].strip()
+            before = len(sources)
+            sources = [s for s in sources if str(s.get("id")) != target]
+            config.setdefault("download", {})["sources"] = sources
+            save_supplier_stock_config(config)
+            notice = (
+                "🗑 Источник удалён\n\n" if len(sources) < before else "ℹ️ Источник не найден\n\n"
+            )
+        elif action.startswith("supplier_stock_source_delete|"):
+            pending_delete_id = raw_action.split("|", 1)[1].strip()
+
+        if pending_delete_id:
+            target_source = next(
+                (s for s in sources if str(s.get("id")) == pending_delete_id), None
+            )
+            name = str((target_source or {}).get("name") or pending_delete_id)
+            message = (
+                f"🗑 Удалить источник «{name}»?\n\n"
+                "Действие необратимо — настройки источника будут потеряны."
+            )
+            menu_options = [
+                {
+                    "label": f"⚠️ Да, удалить «{name[:24]}»",
+                    "action": f"supplier_stock_source_delete_confirm|{pending_delete_id}",
+                },
+                {"label": "↩️ Отмена", "action": "supplier_stock_sources"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
+        else:
+            lines = [f"{notice}📦 Источники файлов остатков", ""]
+            if not sources:
+                lines.append("⚪️ Источники не настроены.")
+            else:
+                for idx, source in enumerate(sources, start=1):
+                    name = source.get("name") or source.get("id") or f"Источник {idx}"
+                    url = source.get("url") or "URL не задан"
+                    output_name = source.get("output_name") or "не задано"
+                    method = source.get("method") or "http"
+                    status = "🟢 вкл" if source.get("enabled", True) else "🔴 выкл"
+                    unpack = "да" if source.get("unpack_archive", False) else "нет"
+                    lines.append(f"{idx}. {status} {name}")
+                    lines.append(f"    URL: {url}")
+                    lines.append(f"    Файл: {output_name}")
+                    lines.append(f"    Метод: {method} · Распаковка: {unpack}")
+            lines.append("")
+            lines.append("Добавление и детальное редактирование источника пока в Telegram-боте.")
+            message = "\n".join(lines)
+            menu_options = []
+            for source in sources:
+                sid = str(source.get("id") or "").strip()
+                if not sid:
+                    continue
+                name = str(source.get("name") or sid)
+                enabled = source.get("enabled", True)
+                unpack = source.get("unpack_archive", False)
+                toggle_label = (
+                    f"{'⛔️ Выключить' if enabled else '✅ Включить'} {name[:18]}"
+                )
+                unpack_label = (
+                    f"📦 Распаковка {'выкл' if unpack else 'вкл'}: {name[:14]}"
+                )
+                menu_options.append(
+                    {"label": toggle_label, "action": f"supplier_stock_source_toggle|{sid}"}
+                )
+                menu_options.append(
+                    {"label": unpack_label, "action": f"supplier_stock_source_unpack|{sid}"}
+                )
+                menu_options.append(
+                    {"label": f"🗑 Удалить {name[:18]}", "action": f"supplier_stock_source_delete|{sid}"}
+                )
+            menu_options.append({"label": "↩️ Назад", "action": "supplier_stock_download"})
+            menu_options.append({"label": "✖️ Закрыть", "action": "close"})
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": message,
+                    "menu_options": menu_options,
+                }
+            ),
+            200,
+        )
+
         supplier_config = extension_manager.load_extension_config("supplier_stock_files")
         mail_settings = supplier_config.get("mail", {}) if isinstance(supplier_config, dict) else {}
         sources = mail_settings.get("sources", []) if isinstance(mail_settings, dict) else []
