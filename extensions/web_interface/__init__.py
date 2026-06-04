@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.8
+Server Monitoring System v8.63.9
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.8
+Версия: 8.63.9
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -6538,15 +6538,111 @@ def v1_extensions_actions():
             200,
         )
 
+    if (
+        action == "supplier_stock_resources"
+        or action.startswith("supplier_stock_resource_toggle|")
+        or action.startswith("supplier_stock_resource_delete_confirm|")
+        or action.startswith("supplier_stock_resource_delete|")
+    ):
+        config = get_supplier_stock_config()
+        resources = config.get("resources", []) or []
+        notice = ""
+        pending_delete_id = ""
+        if action.startswith("supplier_stock_resource_toggle|"):
+            target = raw_action.split("|", 1)[1].strip()
+            for resource in resources:
+                if str(resource.get("id")) == target:
+                    resource["enabled"] = not resource.get("enabled", True)
+                    notice = (
+                        f"{'✅ Включён' if resource['enabled'] else '⛔️ Выключен'} "
+                        f"ресурс «{resource.get('name') or target}»\n\n"
+                    )
+                    break
+            config["resources"] = resources
+            save_supplier_stock_config(config)
+        elif action.startswith("supplier_stock_resource_delete_confirm|"):
+            target = raw_action.split("|", 1)[1].strip()
+            before = len(resources)
+            resources = [r for r in resources if str(r.get("id")) != target]
+            config["resources"] = resources
+            save_supplier_stock_config(config)
+            notice = (
+                "🗑 Ресурс удалён\n\n" if len(resources) < before else "ℹ️ Ресурс не найден\n\n"
+            )
+        elif action.startswith("supplier_stock_resource_delete|"):
+            pending_delete_id = raw_action.split("|", 1)[1].strip()
+
+        if pending_delete_id:
+            target_resource = next(
+                (r for r in resources if str(r.get("id")) == pending_delete_id), None
+            )
+            name = str((target_resource or {}).get("name") or pending_delete_id)
+            message = (
+                f"🗑 Удалить ресурс «{name}»?\n\n"
+                "Действие необратимо — настройки ресурса будут потеряны."
+            )
+            menu_options = [
+                {
+                    "label": f"⚠️ Да, удалить «{name[:24]}»",
+                    "action": f"supplier_stock_resource_delete_confirm|{pending_delete_id}",
+                },
+                {"label": "↩️ Отмена", "action": "supplier_stock_resources"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
+        else:
+            lines = [f"{notice}🖥 Ресурсы выгрузки остатков", ""]
+            if not resources:
+                lines.append("⚪️ Ресурсы не настроены.")
+            else:
+                for idx, resource in enumerate(resources, start=1):
+                    name = resource.get("name") or resource.get("id") or f"Ресурс {idx}"
+                    unc = resource.get("unc_path") or "—"
+                    login = resource.get("login") or "—"
+                    status = "🟢 вкл" if resource.get("enabled", True) else "🔴 выкл"
+                    lines.append(f"{idx}. {status} {name}")
+                    lines.append(f"    UNC: {unc}")
+                    lines.append(f"    Логин: {login}")
+            lines.append("")
+            lines.append("Добавление и детальное редактирование ресурса пока в Telegram-боте.")
+            message = "\n".join(lines)
+            menu_options = []
+            for resource in resources:
+                rid = str(resource.get("id") or "").strip()
+                if not rid:
+                    continue
+                name = str(resource.get("name") or rid)
+                enabled = resource.get("enabled", True)
+                toggle_label = (
+                    f"{'⛔️ Выключить' if enabled else '✅ Включить'} {name[:20]}"
+                )
+                menu_options.append(
+                    {"label": toggle_label, "action": f"supplier_stock_resource_toggle|{rid}"}
+                )
+                menu_options.append(
+                    {"label": f"🗑 Удалить {name[:20]}", "action": f"supplier_stock_resource_delete|{rid}"}
+                )
+            menu_options.append({"label": "↩️ Назад", "action": "supplier_stock_download"})
+            menu_options.append({"label": "✖️ Закрыть", "action": "close"})
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": message,
+                    "menu_options": menu_options,
+                }
+            ),
+            200,
+        )
+
     if action in {
-        "supplier_stock_resources",
         "supplier_stock_processing",
         "supplier_stock_mail_sources",
         "supplier_stock_reports_download",
         "supplier_stock_reports_mail",
     }:
         title_map = {
-            "supplier_stock_resources": "🖥 Ресурсы",
             "supplier_stock_processing": "⚙️ Обработка",
             "supplier_stock_mail_sources": "📨 Источники почты",
             "supplier_stock_reports_download": "🗓 Отчёты (download)",
