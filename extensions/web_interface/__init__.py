@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.6
+Server Monitoring System v8.63.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.6
+Версия: 8.63.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -6361,9 +6361,117 @@ def v1_extensions_actions():
             200,
         )
 
+    if action == "supplier_stock_report_period" or action.startswith(
+        "supplier_stock_set_period|"
+    ):
+        config = get_supplier_stock_config()
+        notice = ""
+        if action.startswith("supplier_stock_set_period|"):
+            raw_value = raw_action.split("|", 1)[1].strip()
+            try:
+                days = int(raw_value)
+                if not (1 <= days <= 365):
+                    raise ValueError
+                config.setdefault("reporting", {})["period_days"] = days
+                save_supplier_stock_config(config)
+                notice = f"✅ Период отчётов: {days} дн.\n\n"
+            except (TypeError, ValueError):
+                notice = "❌ Введите целое число дней от 1 до 365\n\n"
+        try:
+            current_days = int((config.get("reporting", {}) or {}).get("period_days", 7) or 7)
+        except (TypeError, ValueError):
+            current_days = 7
+        message = (
+            f"{notice}🗓 Период отчётов остатков поставщиков\n\n"
+            f"Текущий период: {current_days} дн.\n\n"
+            "Период задаёт, за сколько последних дней дашборд берёт последний "
+            "запуск по каждому поставщику. Выберите пресет или введите своё "
+            "число дней в поле ниже."
+        )
+        menu_options = []
+        for preset in (1, 3, 7, 14, 30):
+            mark = "✅ " if preset == current_days else ""
+            menu_options.append(
+                {"label": f"{mark}{preset} дн.", "action": f"supplier_stock_set_period|{preset}"}
+            )
+        menu_options.append({"label": "↩️ Назад", "action": "settings_ext_supplier_stock"})
+        menu_options.append({"label": "✖️ Закрыть", "action": "close"})
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": message,
+                    "menu_options": menu_options,
+                }
+            ),
+            200,
+        )
+
+    if (
+        action == "supplier_stock_schedule"
+        or action == "supplier_stock_sched_toggle"
+        or action.startswith("supplier_stock_sched_time|")
+    ):
+        config = get_supplier_stock_config()
+        schedule = (config.get("download", {}) or {}).get("schedule", {}) or {}
+        notice = ""
+        if action == "supplier_stock_sched_toggle":
+            schedule["enabled"] = not bool(schedule.get("enabled", False))
+            config.setdefault("download", {})["schedule"] = schedule
+            save_supplier_stock_config(config)
+            notice = (
+                "✅ Плановое скачивание включено\n\n"
+                if schedule["enabled"]
+                else "⏸ Плановое скачивание выключено\n\n"
+            )
+        elif action.startswith("supplier_stock_sched_time|"):
+            raw_value = unquote(raw_action.split("|", 1)[1]).strip()
+            times = parse_supplier_stock_schedule_times(raw_value)
+            if not times:
+                notice = (
+                    "❌ Неверный формат времени. Используйте HH:MM, "
+                    "разделители: пробел, запятая или ;\n\n"
+                )
+            else:
+                schedule["time"] = ", ".join(times)
+                config.setdefault("download", {})["schedule"] = schedule
+                save_supplier_stock_config(config)
+                notice = f"✅ Время скачивания: {', '.join(times)}\n\n"
+        enabled = bool(schedule.get("enabled", False))
+        time_text = str(schedule.get("time") or "—")
+        status = "🟢 включено" if enabled else "⚪️ выключено"
+        message = (
+            f"{notice}⏱ Расписание скачивания остатков\n\n"
+            f"Плановое скачивание: {status}\n"
+            f"Время запуска: {time_text}\n\n"
+            "Можно указать несколько точек через запятую (например 06:00, 18:00). "
+            "Введите новое время в поле ниже."
+        )
+        toggle_label = (
+            "⏸ Выключить плановое скачивание"
+            if enabled
+            else "▶️ Включить плановое скачивание"
+        )
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": message,
+                    "menu_options": [
+                        {"label": toggle_label, "action": "supplier_stock_sched_toggle"},
+                        {"label": "↩️ Назад", "action": "supplier_stock_download"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }
+            ),
+            200,
+        )
+
     if action in {
-        "supplier_stock_report_period",
-        "supplier_stock_schedule",
         "supplier_stock_resources",
         "supplier_stock_ftp",
         "supplier_stock_processing",
@@ -6372,8 +6480,6 @@ def v1_extensions_actions():
         "supplier_stock_reports_mail",
     }:
         title_map = {
-            "supplier_stock_report_period": "🗓 Период отчётов",
-            "supplier_stock_schedule": "⏱ Расписание",
             "supplier_stock_resources": "🖥 Ресурсы",
             "supplier_stock_ftp": "🗄 FTP",
             "supplier_stock_processing": "⚙️ Обработка",
@@ -6387,8 +6493,6 @@ def v1_extensions_actions():
             or action.startswith("supplier_stock_reports_")
             else "supplier_stock_download"
         )
-        if action == "supplier_stock_report_period":
-            back_action = "settings_ext_supplier_stock"
         return (
             jsonify(
                 {
