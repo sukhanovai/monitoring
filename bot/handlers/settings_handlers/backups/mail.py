@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/mail.py
-Server Monitoring System v8.63.12
+Server Monitoring System v8.63.13
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mail server backup UI settings (PR7f серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.12
+Версия: 8.63.13
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имена

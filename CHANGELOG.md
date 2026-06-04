@@ -1,3 +1,9 @@
+## [8.63.13] - 2026-06-04
+
+### Added
+- RU: Android/сервер — нативное добавление источника скачивания остатков (раньше мастер был доступен только в Telegram-боте). В диалоге «⚙️ Настройки: остатки поставщиков» → «🌐 Скачивание файлов» → «📦 Источники файлов» появилась раскрывающаяся форма «➕ Добавить источник» с полями: название, URL, имя файла назначения и переключатель «Распаковывать архив». Метод по умолчанию — http; ID источника генерируется из названия с защитой от дублей. Сервер (BFF `/v1/settings/extensions/actions`) реализует действие `supplier_stock_source_add|name=…&url=…&output=…&method=…&unpack=0|1` с валидацией (название/URL/имя файла обязательны) и сохранением в `download.sources`. Расширенные параметры источника (поиск ссылки, переменные подстановки, авторизация, предзапрос, режим обработки) пока настраиваются в Telegram-боте.
+- EN: Android/server — native creation of a stock download source (the wizard was previously only available in the Telegram bot). In the "⚙️ Supplier stock settings" → "🌐 File download" → "📦 File sources" dialog there is now an expandable "➕ Add source" form with fields: name, URL, output file name and an "Unpack archive" toggle. The default method is http; the source ID is generated from the name with de-duplication. The server (BFF `/v1/settings/extensions/actions`) implements the `supplier_stock_source_add|name=…&url=…&output=…&method=…&unpack=0|1` action with validation (name/URL/file name required), persisting to `download.sources`. Advanced source parameters (link discovery, substitution variables, auth, pre-request, processing mode) are still configured in the Telegram bot.
+
 ## [8.63.12] - 2026-06-04
 
 ### Added
