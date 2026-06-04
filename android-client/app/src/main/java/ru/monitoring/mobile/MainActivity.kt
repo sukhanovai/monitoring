@@ -6556,6 +6556,114 @@ private fun MonitoringApp(
                             }
                         }
                     }
+                    // 📨 Источники почты — нативная форма добавления правила вложений.
+                    // Показывается на экране списка правил, но не на экране подтверждения удаления.
+                    if (supplierSettingsCurrent &&
+                        supplierSubAction.startsWith("supplier_stock_mail_source") &&
+                        !supplierSubAction.startsWith("supplier_stock_mail_source_delete|")
+                    ) {
+                        Button(
+                            onClick = { showSupplierStockAddMailForm = !showSupplierStockAddMailForm },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                if (showSupplierStockAddMailForm) "✖️ Скрыть форму добавления"
+                                else "➕ Добавить правило"
+                            )
+                        }
+                        if (showSupplierStockAddMailForm) {
+                            OutlinedTextField(
+                                value = supplierStockMailNameInput,
+                                onValueChange = { supplierStockMailNameInput = it },
+                                label = { Text("Название правила") },
+                                placeholder = { Text("например DKC почта") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = supplierStockMailSenderInput,
+                                onValueChange = { supplierStockMailSenderInput = it },
+                                label = { Text("Отправитель (regex/адрес, необязательно)") },
+                                placeholder = { Text("sender@example.com — пусто = любой") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = supplierStockMailSubjectInput,
+                                onValueChange = { supplierStockMailSubjectInput = it },
+                                label = { Text("Тема (regex, необязательно)") },
+                                placeholder = { Text("пусто = любая тема") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = supplierStockMailFilenameInput,
+                                onValueChange = { supplierStockMailFilenameInput = it },
+                                label = { Text("Имя вложения (regex, необязательно)") },
+                                placeholder = { Text("пусто = любой файл") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = supplierStockMailExpectedInput,
+                                onValueChange = { input ->
+                                    supplierStockMailExpectedInput = input.filter { it.isDigit() }.take(2)
+                                },
+                                label = { Text("Ожидается вложений") },
+                                placeholder = { Text("1") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = supplierStockMailOutputInput,
+                                onValueChange = { supplierStockMailOutputInput = it },
+                                label = { Text("Шаблон имени выходного файла") },
+                                placeholder = { Text("supplier_{index}_orig.xls") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            FilterChip(
+                                selected = supplierStockMailUnpack,
+                                onClick = { supplierStockMailUnpack = !supplierStockMailUnpack },
+                                label = { Text("📦 Распаковывать архив") }
+                            )
+                            Text(
+                                "Доступны подстановки {index}, {name}. MIME-фильтр и " +
+                                    "детальное редактирование пока в Telegram-боте.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            val canAddMailRule = supplierStockMailNameInput.isNotBlank() &&
+                                supplierStockMailOutputInput.isNotBlank()
+                            Button(
+                                onClick = {
+                                    val expected = supplierStockMailExpectedInput.trim().ifBlank { "1" }
+                                    val payload = "name=" + Uri.encode(supplierStockMailNameInput.trim()) +
+                                        "&sender=" + Uri.encode(supplierStockMailSenderInput.trim()) +
+                                        "&subject=" + Uri.encode(supplierStockMailSubjectInput.trim()) +
+                                        "&filename=" + Uri.encode(supplierStockMailFilenameInput.trim()) +
+                                        "&expected=" + Uri.encode(expected) +
+                                        "&output=" + Uri.encode(supplierStockMailOutputInput.trim()) +
+                                        "&unpack=" + (if (supplierStockMailUnpack) "1" else "0")
+                                    onExtensionsSettingsAction("supplier_stock_mail_source_add|$payload")
+                                    supplierStockMailNameInput = ""
+                                    supplierStockMailSenderInput = ""
+                                    supplierStockMailSubjectInput = ""
+                                    supplierStockMailFilenameInput = ""
+                                    supplierStockMailExpectedInput = "1"
+                                    supplierStockMailOutputInput = ""
+                                    supplierStockMailUnpack = false
+                                    showSupplierStockAddMailForm = false
+                                },
+                                enabled = canAddMailRule,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("💾 Создать правило")
+                            }
+                        }
+                    }
 
                     supplierSettingsOptions.forEach { (label, action) ->
                         Button(
