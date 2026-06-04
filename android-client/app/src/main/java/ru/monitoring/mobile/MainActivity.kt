@@ -6400,6 +6400,84 @@ private fun MonitoringApp(
                             Text("💾 Сохранить время")
                         }
                     }
+                    // 🗄 FTP ОРК — нативные поля host / login / password.
+                    if (supplierSettingsCurrent &&
+                        supplierSubAction.startsWith("supplier_stock_ftp")
+                    ) {
+                        OutlinedTextField(
+                            value = supplierStockFtpHostInput,
+                            onValueChange = { supplierStockFtpHostInput = it },
+                            label = { Text("HOST FTP") },
+                            placeholder = { Text("например ftp.example.com") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Button(
+                            onClick = {
+                                val value = supplierStockFtpHostInput.trim()
+                                if (value.isNotEmpty()) {
+                                    onExtensionsSettingsAction(
+                                        "supplier_stock_ftp_set_host|" + Uri.encode(value)
+                                    )
+                                    supplierStockFtpHostInput = ""
+                                }
+                            },
+                            enabled = supplierStockFtpHostInput.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("💾 Сохранить HOST")
+                        }
+
+                        OutlinedTextField(
+                            value = supplierStockFtpLoginInput,
+                            onValueChange = { supplierStockFtpLoginInput = it },
+                            label = { Text("Логин FTP") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Button(
+                            onClick = {
+                                val value = supplierStockFtpLoginInput.trim()
+                                if (value.isNotEmpty()) {
+                                    onExtensionsSettingsAction(
+                                        "supplier_stock_ftp_set_login|" + Uri.encode(value)
+                                    )
+                                    supplierStockFtpLoginInput = ""
+                                }
+                            },
+                            enabled = supplierStockFtpLoginInput.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("💾 Сохранить логин")
+                        }
+
+                        OutlinedTextField(
+                            value = supplierStockFtpPasswordInput,
+                            onValueChange = { supplierStockFtpPasswordInput = it },
+                            label = { Text("Пароль FTP") },
+                            singleLine = true,
+                            visualTransformation = hiddenTransformation,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Button(
+                            onClick = {
+                                val value = supplierStockFtpPasswordInput
+                                if (value.isNotEmpty()) {
+                                    onExtensionsSettingsAction(
+                                        "supplier_stock_ftp_set_password|" + Uri.encode(value)
+                                    )
+                                    supplierStockFtpPasswordInput = ""
+                                }
+                            },
+                            enabled = supplierStockFtpPasswordInput.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("💾 Сохранить пароль")
+                        }
+                    }
 
                     supplierSettingsOptions.forEach { (label, action) ->
                         Button(
