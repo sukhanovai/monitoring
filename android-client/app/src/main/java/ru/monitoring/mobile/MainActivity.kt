@@ -6478,6 +6478,84 @@ private fun MonitoringApp(
                             Text("💾 Сохранить пароль")
                         }
                     }
+                    // 📦 Источники скачивания — нативная форма добавления нового источника.
+                    // Показывается на экране списка источников, но не на экране подтверждения удаления.
+                    if (supplierSettingsCurrent &&
+                        supplierSubAction.startsWith("supplier_stock_source") &&
+                        !supplierSubAction.startsWith("supplier_stock_source_delete|")
+                    ) {
+                        Button(
+                            onClick = { showSupplierStockAddSourceForm = !showSupplierStockAddSourceForm },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                if (showSupplierStockAddSourceForm) "✖️ Скрыть форму добавления"
+                                else "➕ Добавить источник"
+                            )
+                        }
+                        if (showSupplierStockAddSourceForm) {
+                            OutlinedTextField(
+                                value = supplierStockSourceNameInput,
+                                onValueChange = { supplierStockSourceNameInput = it },
+                                label = { Text("Название источника") },
+                                placeholder = { Text("например DKC Мага") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = supplierStockSourceUrlInput,
+                                onValueChange = { supplierStockSourceUrlInput = it },
+                                label = { Text("URL для скачивания") },
+                                placeholder = { Text("http://site/file.zip") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = supplierStockSourceOutputInput,
+                                onValueChange = { supplierStockSourceOutputInput = it },
+                                label = { Text("Имя файла назначения") },
+                                placeholder = { Text("dkc_orig.zip") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            FilterChip(
+                                selected = supplierStockSourceUnpack,
+                                onClick = { supplierStockSourceUnpack = !supplierStockSourceUnpack },
+                                label = { Text("📦 Распаковывать архив") }
+                            )
+                            Text(
+                                "Метод по умолчанию — http. Расширенные параметры " +
+                                    "(поиск ссылки, переменные, авторизация, обработка) " +
+                                    "пока настраиваются в Telegram-боте.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            val canAddSource = supplierStockSourceNameInput.isNotBlank() &&
+                                supplierStockSourceUrlInput.isNotBlank() &&
+                                supplierStockSourceOutputInput.isNotBlank()
+                            Button(
+                                onClick = {
+                                    val payload = "name=" + Uri.encode(supplierStockSourceNameInput.trim()) +
+                                        "&url=" + Uri.encode(supplierStockSourceUrlInput.trim()) +
+                                        "&output=" + Uri.encode(supplierStockSourceOutputInput.trim()) +
+                                        "&method=http" +
+                                        "&unpack=" + (if (supplierStockSourceUnpack) "1" else "0")
+                                    onExtensionsSettingsAction("supplier_stock_source_add|$payload")
+                                    supplierStockSourceNameInput = ""
+                                    supplierStockSourceUrlInput = ""
+                                    supplierStockSourceOutputInput = ""
+                                    supplierStockSourceUnpack = false
+                                    showSupplierStockAddSourceForm = false
+                                },
+                                enabled = canAddSource,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("💾 Создать источник")
+                            }
+                        }
+                    }
 
                     supplierSettingsOptions.forEach { (label, action) ->
                         Button(

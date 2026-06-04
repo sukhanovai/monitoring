@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.12
+Server Monitoring System v8.63.13
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.12
+Версия: 8.63.13
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -6333,6 +6333,7 @@ def v1_extensions_actions():
 
     if (
         action == "supplier_stock_sources"
+        or action.startswith("supplier_stock_source_add|")
         or action.startswith("supplier_stock_source_toggle|")
         or action.startswith("supplier_stock_source_unpack|")
         or action.startswith("supplier_stock_source_delete_confirm|")
@@ -6342,7 +6343,42 @@ def v1_extensions_actions():
         sources = (config.get("download", {}) or {}).get("sources", []) or []
         notice = ""
         pending_delete_id = ""
-        if action.startswith("supplier_stock_source_toggle|"):
+        if action.startswith("supplier_stock_source_add|"):
+            fields = {}
+            for pair in raw_action.split("|", 1)[1].split("&"):
+                if "=" in pair:
+                    key, value = pair.split("=", 1)
+                    fields[key.strip().lower()] = unquote(value)
+            name = (fields.get("name") or "").strip()
+            url = (fields.get("url") or "").strip()
+            output_name = (fields.get("output") or "").strip()
+            method = (fields.get("method") or "http").strip() or "http"
+            unpack = (fields.get("unpack") or "").strip().lower() in ("1", "true", "yes", "on")
+            if not name or not url or not output_name:
+                notice = "❌ Заполните название, URL и имя файла назначения\n\n"
+            else:
+                base_id = re.sub(r"[^a-zA-Z0-9]+", "_", name.lower()).strip("_") or "source"
+                existing = {str(s.get("id")) for s in sources if s.get("id")}
+                new_id = base_id
+                suffix = 2
+                while new_id in existing:
+                    new_id = f"{base_id}_{suffix}"
+                    suffix += 1
+                sources.append(
+                    {
+                        "id": new_id,
+                        "name": name,
+                        "url": url,
+                        "output_name": output_name,
+                        "method": method,
+                        "enabled": True,
+                        "unpack_archive": unpack,
+                    }
+                )
+                config.setdefault("download", {})["sources"] = sources
+                save_supplier_stock_config(config)
+                notice = f"✅ Источник «{name}» добавлен\n\n"
+        elif action.startswith("supplier_stock_source_toggle|"):
             target = raw_action.split("|", 1)[1].strip()
             for source in sources:
                 if str(source.get("id")) == target:
