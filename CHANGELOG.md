@@ -1,3 +1,9 @@
+## [8.63.9] - 2026-06-04
+
+### Added
+- RU: Android/сервер — нативное управление «🖥 Ресурсы выгрузки» остатков поставщиков (раньше раздел отдавал заглушку «Детальная настройка пока доступна в Telegram-боте»). В диалоге «⚙️ Настройки: остатки поставщиков» (раздел «🌐 Скачивание файлов» → «🖥 Ресурсы») теперь показывается список ресурсов со статусом (🟢 вкл / 🔴 выкл), UNC и логином, а на каждый ресурс — кнопки «Включить/Выключить» и «Удалить». Удаление двухшаговое: сначала подтверждение, затем `supplier_stock_resource_delete_confirm|<id>`. Сервер (BFF `/v1/settings/extensions/actions`) реализует действия `supplier_stock_resource_toggle|<id>`, `supplier_stock_resource_delete|<id>` (запрос подтверждения) и `supplier_stock_resource_delete_confirm|<id>` (фактическое удаление) с сохранением в `resources`. Добавление и детальное редактирование ресурса пока остаются в Telegram-боте.
+- EN: Android/server — native management of the "🖥 Upload resources" for supplier stock (the section previously returned a "detailed configuration is only available in the Telegram bot" stub). In the "⚙️ Supplier stock settings" dialog (section "🌐 File download" → "🖥 Resources") it now shows the list of resources with their status (🟢 on / 🔴 off), UNC and login, and per-resource "Enable/Disable" and "Delete" buttons. Deletion is two-step: first a confirmation, then `supplier_stock_resource_delete_confirm|<id>`. The server (BFF `/v1/settings/extensions/actions`) implements the `supplier_stock_resource_toggle|<id>`, `supplier_stock_resource_delete|<id>` (asks for confirmation) and `supplier_stock_resource_delete_confirm|<id>` (actual deletion) actions, persisting to `resources`. Adding and detailed editing of a resource still remain in the Telegram bot.
+
 ## [8.63.8] - 2026-06-04
 
 ### Added
