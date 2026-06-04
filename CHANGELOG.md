@@ -1,3 +1,9 @@
+## [8.63.15] - 2026-06-04
+
+### Added
+- RU: Android/сервер — нативное добавление ресурса выгрузки остатков (раньше мастер был доступен только в Telegram-боте). В диалоге «⚙️ Настройки: остатки поставщиков» → «🌐 Скачивание файлов» → «🖥 Ресурсы» появилась раскрывающаяся форма «➕ Добавить ресурс» с полями: название, UNC-путь корневого каталога, логин (необязательно) и пароль (необязательно, вводится скрытым и не отображается обратно). Сервер (BFF `/v1/settings/extensions/actions`) реализует действие `supplier_stock_resource_add|name=…&unc=…&login=…&password=…` с валидацией (название и UNC обязательны), генерацией уникального id и сохранением в `resources`. Детальное редактирование полей ресурса пока в Telegram-боте.
+- EN: Android/server — native creation of a stock upload resource (the wizard was previously only available in the Telegram bot). In the "⚙️ Supplier stock settings" → "🌐 File download" → "🖥 Resources" dialog there is now an expandable "➕ Add resource" form with fields: name, root directory UNC path, login (optional) and password (optional, entered masked and never echoed back). The server (BFF `/v1/settings/extensions/actions`) implements the `supplier_stock_resource_add|name=…&unc=…&login=…&password=…` action with validation (name and UNC required), unique id generation and persistence to `resources`. Detailed editing of resource fields is still in the Telegram bot.
+
 ## [8.63.14] - 2026-06-04
 
 ### Added

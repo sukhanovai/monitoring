@@ -6664,6 +6664,83 @@ private fun MonitoringApp(
                             }
                         }
                     }
+                    // 🖥 Ресурсы выгрузки — нативная форма добавления нового ресурса.
+                    // Показывается на экране списка ресурсов, но не на экране подтверждения удаления.
+                    if (supplierSettingsCurrent &&
+                        supplierSubAction.startsWith("supplier_stock_resource") &&
+                        !supplierSubAction.startsWith("supplier_stock_resource_delete|")
+                    ) {
+                        Button(
+                            onClick = { showSupplierStockAddResourceForm = !showSupplierStockAddResourceForm },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                if (showSupplierStockAddResourceForm) "✖️ Скрыть форму добавления"
+                                else "➕ Добавить ресурс"
+                            )
+                        }
+                        if (showSupplierStockAddResourceForm) {
+                            OutlinedTextField(
+                                value = supplierStockResourceNameInput,
+                                onValueChange = { supplierStockResourceNameInput = it },
+                                label = { Text("Название ресурса") },
+                                placeholder = { Text("например Склад МСК") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = supplierStockResourceUncInput,
+                                onValueChange = { supplierStockResourceUncInput = it },
+                                label = { Text("UNC-путь корневого каталога") },
+                                placeholder = { Text("\\\\server\\share\\folder") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = supplierStockResourceLoginInput,
+                                onValueChange = { supplierStockResourceLoginInput = it },
+                                label = { Text("Логин (необязательно)") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = supplierStockResourcePasswordInput,
+                                onValueChange = { supplierStockResourcePasswordInput = it },
+                                label = { Text("Пароль (необязательно)") },
+                                singleLine = true,
+                                visualTransformation = hiddenTransformation,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                "Пароль вводится скрытым и не отображается обратно. " +
+                                    "Детальное редактирование пока в Telegram-боте.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            val canAddResource = supplierStockResourceNameInput.isNotBlank() &&
+                                supplierStockResourceUncInput.isNotBlank()
+                            Button(
+                                onClick = {
+                                    val payload = "name=" + Uri.encode(supplierStockResourceNameInput.trim()) +
+                                        "&unc=" + Uri.encode(supplierStockResourceUncInput.trim()) +
+                                        "&login=" + Uri.encode(supplierStockResourceLoginInput.trim()) +
+                                        "&password=" + Uri.encode(supplierStockResourcePasswordInput)
+                                    onExtensionsSettingsAction("supplier_stock_resource_add|$payload")
+                                    supplierStockResourceNameInput = ""
+                                    supplierStockResourceUncInput = ""
+                                    supplierStockResourceLoginInput = ""
+                                    supplierStockResourcePasswordInput = ""
+                                    showSupplierStockAddResourceForm = false
+                                },
+                                enabled = canAddResource,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("💾 Создать ресурс")
+                            }
+                        }
+                    }
 
                     supplierSettingsOptions.forEach { (label, action) ->
                         Button(

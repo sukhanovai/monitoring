@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.14
+Server Monitoring System v8.63.15
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.14
+Версия: 8.63.15
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -6697,6 +6697,7 @@ def v1_extensions_actions():
 
     if (
         action == "supplier_stock_resources"
+        or action.startswith("supplier_stock_resource_add|")
         or action.startswith("supplier_stock_resource_toggle|")
         or action.startswith("supplier_stock_resource_delete_confirm|")
         or action.startswith("supplier_stock_resource_delete|")
@@ -6705,7 +6706,41 @@ def v1_extensions_actions():
         resources = config.get("resources", []) or []
         notice = ""
         pending_delete_id = ""
-        if action.startswith("supplier_stock_resource_toggle|"):
+        if action.startswith("supplier_stock_resource_add|"):
+            fields = {}
+            for pair in raw_action.split("|", 1)[1].split("&"):
+                if "=" in pair:
+                    key, value = pair.split("=", 1)
+                    fields[key.strip().lower()] = unquote(value)
+            name = (fields.get("name") or "").strip()
+            unc_path = (fields.get("unc") or "").strip()
+            login = (fields.get("login") or "").strip()
+            password = fields.get("password") or ""
+            if not name or not unc_path:
+                notice = "❌ Заполните название и UNC-путь\n\n"
+            else:
+                base_id = re.sub(r"[^a-zA-Z0-9]+", "_", name.lower()).strip("_") or "resource"
+                existing = {str(r.get("id")) for r in resources if r.get("id")}
+                new_id = base_id
+                suffix = 2
+                while new_id in existing:
+                    new_id = f"{base_id}_{suffix}"
+                    suffix += 1
+                new_resource = {
+                    "id": new_id,
+                    "name": name,
+                    "unc_path": unc_path,
+                    "enabled": True,
+                }
+                if login:
+                    new_resource["login"] = login
+                if password:
+                    new_resource["password"] = password
+                resources.append(new_resource)
+                config["resources"] = resources
+                save_supplier_stock_config(config)
+                notice = f"✅ Ресурс «{name}» добавлен\n\n"
+        elif action.startswith("supplier_stock_resource_toggle|"):
             target = raw_action.split("|", 1)[1].strip()
             for resource in resources:
                 if str(resource.get("id")) == target:
