@@ -6479,10 +6479,12 @@ private fun MonitoringApp(
                         }
                     }
                     // 📦 Источники скачивания — нативная форма добавления нового источника.
-                    // Показывается на экране списка источников, но не на экране подтверждения удаления.
+                    // Показывается на экране списка источников, но не на экранах
+                    // подтверждения удаления и редактирования.
                     if (supplierSettingsCurrent &&
                         supplierSubAction.startsWith("supplier_stock_source") &&
-                        !supplierSubAction.startsWith("supplier_stock_source_delete|")
+                        !supplierSubAction.startsWith("supplier_stock_source_delete|") &&
+                        !supplierSubAction.startsWith("supplier_stock_source_edit|")
                     ) {
                         Button(
                             onClick = { showSupplierStockAddSourceForm = !showSupplierStockAddSourceForm },
@@ -6554,6 +6556,64 @@ private fun MonitoringApp(
                             ) {
                                 Text("💾 Создать источник")
                             }
+                        }
+                    }
+                    // ✏️ Редактирование источника скачивания — поля меняются точечно
+                    // (пустое поле = без изменений). id берётся из текущего действия.
+                    if (supplierSettingsCurrent &&
+                        supplierSubAction.startsWith("supplier_stock_source_edit|")
+                    ) {
+                        val editSourceId = supplierSubAction.removePrefix("supplier_stock_source_edit|")
+                        OutlinedTextField(
+                            value = supplierStockEditSourceNameInput,
+                            onValueChange = { supplierStockEditSourceNameInput = it },
+                            label = { Text("Новое название (пусто = без изменений)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditSourceUrlInput,
+                            onValueChange = { supplierStockEditSourceUrlInput = it },
+                            label = { Text("Новый URL (пусто = без изменений)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditSourceOutputInput,
+                            onValueChange = { supplierStockEditSourceOutputInput = it },
+                            label = { Text("Новое имя файла (пусто = без изменений)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditSourceMethodInput,
+                            onValueChange = { supplierStockEditSourceMethodInput = it },
+                            label = { Text("Новый метод (пусто = без изменений)") },
+                            placeholder = { Text("http") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        val canSaveEdit = supplierStockEditSourceNameInput.isNotBlank() ||
+                            supplierStockEditSourceUrlInput.isNotBlank() ||
+                            supplierStockEditSourceOutputInput.isNotBlank() ||
+                            supplierStockEditSourceMethodInput.isNotBlank()
+                        Button(
+                            onClick = {
+                                val payload = "name=" + Uri.encode(supplierStockEditSourceNameInput.trim()) +
+                                    "&url=" + Uri.encode(supplierStockEditSourceUrlInput.trim()) +
+                                    "&output=" + Uri.encode(supplierStockEditSourceOutputInput.trim()) +
+                                    "&method=" + Uri.encode(supplierStockEditSourceMethodInput.trim())
+                                onExtensionsSettingsAction("supplier_stock_source_update|$editSourceId|$payload")
+                                supplierStockEditSourceNameInput = ""
+                                supplierStockEditSourceUrlInput = ""
+                                supplierStockEditSourceOutputInput = ""
+                                supplierStockEditSourceMethodInput = ""
+                            },
+                            enabled = canSaveEdit,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("💾 Сохранить изменения")
                         }
                     }
                     // 📨 Источники почты — нативная форма добавления правила вложений.
