@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.15
+Server Monitoring System v8.63.16
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.15
+Версия: 8.63.16
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -6334,6 +6334,8 @@ def v1_extensions_actions():
     if (
         action == "supplier_stock_sources"
         or action.startswith("supplier_stock_source_add|")
+        or action.startswith("supplier_stock_source_update|")
+        or action.startswith("supplier_stock_source_edit|")
         or action.startswith("supplier_stock_source_toggle|")
         or action.startswith("supplier_stock_source_unpack|")
         or action.startswith("supplier_stock_source_delete_confirm|")
@@ -6343,6 +6345,7 @@ def v1_extensions_actions():
         sources = (config.get("download", {}) or {}).get("sources", []) or []
         notice = ""
         pending_delete_id = ""
+        editing_id = ""
         if action.startswith("supplier_stock_source_add|"):
             fields = {}
             for pair in raw_action.split("|", 1)[1].split("&"):
@@ -6402,6 +6405,42 @@ def v1_extensions_actions():
                     break
             config.setdefault("download", {})["sources"] = sources
             save_supplier_stock_config(config)
+        elif action.startswith("supplier_stock_source_update|"):
+            parts = raw_action.split("|", 2)
+            target = parts[1].strip() if len(parts) > 1 else ""
+            fields = {}
+            if len(parts) > 2:
+                for pair in parts[2].split("&"):
+                    if "=" in pair:
+                        key, value = pair.split("=", 1)
+                        fields[key.strip().lower()] = unquote(value)
+            updated = None
+            for source in sources:
+                if str(source.get("id")) == target:
+                    updated = source
+                    for field_key, src_key in (
+                        ("name", "name"),
+                        ("url", "url"),
+                        ("output", "output_name"),
+                        ("method", "method"),
+                    ):
+                        value = (fields.get(field_key) or "").strip()
+                        if value:
+                            source[src_key] = value
+                    break
+            config.setdefault("download", {})["sources"] = sources
+            save_supplier_stock_config(config)
+            notice = (
+                f"✅ Источник «{updated.get('name') or target}» обновлён\n\n"
+                if updated
+                else "ℹ️ Источник не найден\n\n"
+            )
+        elif action.startswith("supplier_stock_source_edit|"):
+            candidate = raw_action.split("|", 1)[1].strip()
+            if any(str(s.get("id")) == candidate for s in sources):
+                editing_id = candidate
+            else:
+                notice = "ℹ️ Источник не найден\n\n"
         elif action.startswith("supplier_stock_source_delete_confirm|"):
             target = raw_action.split("|", 1)[1].strip()
             before = len(sources)
@@ -6431,6 +6470,22 @@ def v1_extensions_actions():
                 {"label": "↩️ Отмена", "action": "supplier_stock_sources"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ]
+        elif editing_id:
+            src = next(s for s in sources if str(s.get("id")) == editing_id)
+            message = (
+                f"{notice}✏️ Редактирование источника «{src.get('name') or editing_id}»\n\n"
+                "Текущие значения:\n"
+                f"• Название: {src.get('name') or '—'}\n"
+                f"• URL: {src.get('url') or 'не задан'}\n"
+                f"• Файл: {src.get('output_name') or 'не задано'}\n"
+                f"• Метод: {src.get('method') or 'http'}\n\n"
+                "Заполните только те поля, которые нужно изменить "
+                "(пустые поля останутся без изменений)."
+            )
+            menu_options = [
+                {"label": "↩️ К списку источников", "action": "supplier_stock_sources"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
         else:
             lines = [f"{notice}📦 Источники файлов остатков", ""]
             if not sources:
@@ -6448,7 +6503,10 @@ def v1_extensions_actions():
                     lines.append(f"    Файл: {output_name}")
                     lines.append(f"    Метод: {method} · Распаковка: {unpack}")
             lines.append("")
-            lines.append("Добавление и детальное редактирование источника пока в Telegram-боте.")
+            lines.append(
+                "Базовые поля (название, URL, файл, метод) редактируются здесь; "
+                "поиск ссылки, переменные, авторизация и обработка — пока в Telegram-боте."
+            )
             message = "\n".join(lines)
             menu_options = []
             for source in sources:
@@ -6463,6 +6521,9 @@ def v1_extensions_actions():
                 )
                 unpack_label = (
                     f"📦 Распаковка {'выкл' if unpack else 'вкл'}: {name[:14]}"
+                )
+                menu_options.append(
+                    {"label": f"✏️ Изменить {name[:18]}", "action": f"supplier_stock_source_edit|{sid}"}
                 )
                 menu_options.append(
                     {"label": toggle_label, "action": f"supplier_stock_source_toggle|{sid}"}

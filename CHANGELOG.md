@@ -1,3 +1,9 @@
+## [8.63.16] - 2026-06-04
+
+### Added
+- RU: Android/сервер — нативное редактирование базовых полей источника скачивания остатков (раньше редактирование было доступно только в Telegram-боте). В списке «📦 Источники файлов» у каждого источника появилась кнопка «✏️ Изменить»: открывается экран с текущими значениями (название, URL, имя файла, метод) и полями для точечного изменения — пустое поле оставляет значение без изменений. Сервер (BFF `/v1/settings/extensions/actions`) реализует действия `supplier_stock_source_edit|<id>` (экран редактирования) и `supplier_stock_source_update|<id>|name=…&url=…&output=…&method=…` (обновляет только заполненные поля и сохраняет в `download.sources`). Расширенные параметры (поиск ссылки, переменные, авторизация, обработка) пока в Telegram-боте.
+- EN: Android/server — native editing of the basic fields of a stock download source (editing was previously only available in the Telegram bot). In the "📦 File sources" list each source now has an "✏️ Edit" button: it opens a screen with the current values (name, URL, file name, method) and fields for targeted changes — an empty field leaves the value unchanged. The server (BFF `/v1/settings/extensions/actions`) implements the `supplier_stock_source_edit|<id>` (edit screen) and `supplier_stock_source_update|<id>|name=…&url=…&output=…&method=…` (updates only the filled fields, persisting to `download.sources`) actions. Advanced parameters (link discovery, variables, auth, processing) are still in the Telegram bot.
+
 ## [8.63.15] - 2026-06-04
 
 ### Added
