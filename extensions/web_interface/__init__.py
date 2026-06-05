@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.16
+Server Monitoring System v8.63.17
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.16
+Версия: 8.63.17
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -6759,6 +6759,8 @@ def v1_extensions_actions():
     if (
         action == "supplier_stock_resources"
         or action.startswith("supplier_stock_resource_add|")
+        or action.startswith("supplier_stock_resource_update|")
+        or action.startswith("supplier_stock_resource_edit|")
         or action.startswith("supplier_stock_resource_toggle|")
         or action.startswith("supplier_stock_resource_delete_confirm|")
         or action.startswith("supplier_stock_resource_delete|")
@@ -6767,6 +6769,7 @@ def v1_extensions_actions():
         resources = config.get("resources", []) or []
         notice = ""
         pending_delete_id = ""
+        editing_id = ""
         if action.startswith("supplier_stock_resource_add|"):
             fields = {}
             for pair in raw_action.split("|", 1)[1].split("&"):
@@ -6813,6 +6816,42 @@ def v1_extensions_actions():
                     break
             config["resources"] = resources
             save_supplier_stock_config(config)
+        elif action.startswith("supplier_stock_resource_update|"):
+            parts = raw_action.split("|", 2)
+            target = parts[1].strip() if len(parts) > 1 else ""
+            fields = {}
+            if len(parts) > 2:
+                for pair in parts[2].split("&"):
+                    if "=" in pair:
+                        key, value = pair.split("=", 1)
+                        fields[key.strip().lower()] = unquote(value)
+            updated = None
+            for resource in resources:
+                if str(resource.get("id")) == target:
+                    updated = resource
+                    if (fields.get("name") or "").strip():
+                        resource["name"] = fields["name"].strip()
+                    if (fields.get("unc") or "").strip():
+                        resource["unc_path"] = fields["unc"].strip()
+                    if (fields.get("login") or "").strip():
+                        resource["login"] = fields["login"].strip()
+                    # Пароль пишем только если задан (пустой = без изменений).
+                    if fields.get("password"):
+                        resource["password"] = fields["password"]
+                    break
+            config["resources"] = resources
+            save_supplier_stock_config(config)
+            notice = (
+                f"✅ Ресурс «{updated.get('name') or target}» обновлён\n\n"
+                if updated
+                else "ℹ️ Ресурс не найден\n\n"
+            )
+        elif action.startswith("supplier_stock_resource_edit|"):
+            candidate = raw_action.split("|", 1)[1].strip()
+            if any(str(r.get("id")) == candidate for r in resources):
+                editing_id = candidate
+            else:
+                notice = "ℹ️ Ресурс не найден\n\n"
         elif action.startswith("supplier_stock_resource_delete_confirm|"):
             target = raw_action.split("|", 1)[1].strip()
             before = len(resources)
@@ -6842,6 +6881,22 @@ def v1_extensions_actions():
                 {"label": "↩️ Отмена", "action": "supplier_stock_resources"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ]
+        elif editing_id:
+            res = next(r for r in resources if str(r.get("id")) == editing_id)
+            message = (
+                f"{notice}✏️ Редактирование ресурса «{res.get('name') or editing_id}»\n\n"
+                "Текущие значения:\n"
+                f"• Название: {res.get('name') or '—'}\n"
+                f"• UNC: {res.get('unc_path') or 'не задан'}\n"
+                f"• Логин: {res.get('login') or 'не задан'}\n"
+                f"• Пароль: {'задан' if res.get('password') else 'не задан'}\n\n"
+                "Заполните только те поля, которые нужно изменить "
+                "(пустые поля останутся без изменений)."
+            )
+            menu_options = [
+                {"label": "↩️ К списку ресурсов", "action": "supplier_stock_resources"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
         else:
             lines = [f"{notice}🖥 Ресурсы выгрузки остатков", ""]
             if not resources:
@@ -6856,7 +6911,7 @@ def v1_extensions_actions():
                     lines.append(f"    UNC: {unc}")
                     lines.append(f"    Логин: {login}")
             lines.append("")
-            lines.append("Добавление и детальное редактирование ресурса пока в Telegram-боте.")
+            lines.append("Базовые поля ресурса (название, UNC, логин, пароль) редактируются здесь.")
             message = "\n".join(lines)
             menu_options = []
             for resource in resources:
@@ -6867,6 +6922,9 @@ def v1_extensions_actions():
                 enabled = resource.get("enabled", True)
                 toggle_label = (
                     f"{'⛔️ Выключить' if enabled else '✅ Включить'} {name[:20]}"
+                )
+                menu_options.append(
+                    {"label": f"✏️ Изменить {name[:20]}", "action": f"supplier_stock_resource_edit|{rid}"}
                 )
                 menu_options.append(
                     {"label": toggle_label, "action": f"supplier_stock_resource_toggle|{rid}"}
@@ -6892,6 +6950,8 @@ def v1_extensions_actions():
     if (
         action == "supplier_stock_mail_sources"
         or action.startswith("supplier_stock_mail_source_add|")
+        or action.startswith("supplier_stock_mail_source_update|")
+        or action.startswith("supplier_stock_mail_source_edit|")
         or action.startswith("supplier_stock_mail_source_toggle|")
         or action.startswith("supplier_stock_mail_source_unpack|")
         or action.startswith("supplier_stock_mail_source_delete_confirm|")
@@ -6901,6 +6961,7 @@ def v1_extensions_actions():
         sources = (config.get("mail", {}) or {}).get("sources", []) or []
         notice = ""
         pending_delete_id = ""
+        editing_id = ""
         if action.startswith("supplier_stock_mail_source_add|"):
             fields = {}
             for pair in raw_action.split("|", 1)[1].split("&"):
@@ -6972,6 +7033,53 @@ def v1_extensions_actions():
                     break
             config.setdefault("mail", {})["sources"] = sources
             save_supplier_stock_config(config)
+        elif action.startswith("supplier_stock_mail_source_update|"):
+            parts = raw_action.split("|", 2)
+            target = parts[1].strip() if len(parts) > 1 else ""
+            fields = {}
+            if len(parts) > 2:
+                for pair in parts[2].split("&"):
+                    if "=" in pair:
+                        key, value = pair.split("=", 1)
+                        fields[key.strip().lower()] = unquote(value)
+            updated = None
+            for source in sources:
+                if str(source.get("id")) == target:
+                    updated = source
+                    if (fields.get("name") or "").strip():
+                        source["name"] = fields["name"].strip()
+                    if (fields.get("output") or "").strip():
+                        source["output_template"] = fields["output"].strip()
+                    expected_raw = (fields.get("expected") or "").strip()
+                    if expected_raw:
+                        try:
+                            expected_value = int(expected_raw)
+                            if expected_value > 0:
+                                source["expected_attachments"] = expected_value
+                        except (TypeError, ValueError):
+                            pass
+                    for field_key, rule_key in (
+                        ("sender", "sender_pattern"),
+                        ("subject", "subject_pattern"),
+                        ("filename", "filename_pattern"),
+                    ):
+                        value = (fields.get(field_key) or "").strip()
+                        if value:
+                            source[rule_key] = value
+                    break
+            config.setdefault("mail", {})["sources"] = sources
+            save_supplier_stock_config(config)
+            notice = (
+                f"✅ Правило «{updated.get('name') or target}» обновлено\n\n"
+                if updated
+                else "ℹ️ Правило не найдено\n\n"
+            )
+        elif action.startswith("supplier_stock_mail_source_edit|"):
+            candidate = raw_action.split("|", 1)[1].strip()
+            if any(str(s.get("id")) == candidate for s in sources):
+                editing_id = candidate
+            else:
+                notice = "ℹ️ Правило не найдено\n\n"
         elif action.startswith("supplier_stock_mail_source_delete_confirm|"):
             target = raw_action.split("|", 1)[1].strip()
             before = len(sources)
@@ -7001,6 +7109,24 @@ def v1_extensions_actions():
                 {"label": "↩️ Отмена", "action": "supplier_stock_mail_sources"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ]
+        elif editing_id:
+            src = next(s for s in sources if str(s.get("id")) == editing_id)
+            message = (
+                f"{notice}✏️ Редактирование правила «{src.get('name') or editing_id}»\n\n"
+                "Текущие значения:\n"
+                f"• Название: {src.get('name') or '—'}\n"
+                f"• Отправитель: {src.get('sender_pattern') or 'любой'}\n"
+                f"• Тема: {src.get('subject_pattern') or 'любая'}\n"
+                f"• Имя файла: {src.get('filename_pattern') or 'любой'}\n"
+                f"• Вложений: {src.get('expected_attachments', 1)}\n"
+                f"• Шаблон файла: {src.get('output_template') or 'не задано'}\n\n"
+                "Заполните только те поля, которые нужно изменить "
+                "(пустые поля останутся без изменений)."
+            )
+            menu_options = [
+                {"label": "↩️ К списку правил", "action": "supplier_stock_mail_sources"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
         else:
             lines = [f"{notice}📨 Источники почты (правила вложений)", ""]
             if not sources:
@@ -7020,7 +7146,10 @@ def v1_extensions_actions():
                     lines.append(f"    Имя файла: {filename} · вложений: {expected}")
                     lines.append(f"    Распаковка: {unpack}")
             lines.append("")
-            lines.append("Добавление и детальное редактирование правила пока в Telegram-боте.")
+            lines.append(
+                "Базовые поля (название, паттерны, вложения, шаблон) редактируются здесь; "
+                "MIME-фильтр — пока в Telegram-боте."
+            )
             message = "\n".join(lines)
             menu_options = []
             for source in sources:
@@ -7035,6 +7164,9 @@ def v1_extensions_actions():
                 )
                 unpack_label = (
                     f"📦 Распаковка {'выкл' if unpack else 'вкл'}: {name[:14]}"
+                )
+                menu_options.append(
+                    {"label": f"✏️ Изменить {name[:18]}", "action": f"supplier_stock_mail_source_edit|{sid}"}
                 )
                 menu_options.append(
                     {"label": toggle_label, "action": f"supplier_stock_mail_source_toggle|{sid}"}
@@ -7065,6 +7197,8 @@ def v1_extensions_actions():
 
     if (
         action == "supplier_stock_processing"
+        or action.startswith("supplier_stock_proc_update|")
+        or action.startswith("supplier_stock_proc_edit|")
         or action.startswith("supplier_stock_proc_toggle|")
         or action.startswith("supplier_stock_proc_activate|")
         or action.startswith("supplier_stock_proc_delete_confirm|")
@@ -7074,6 +7208,7 @@ def v1_extensions_actions():
         rules = (config.get("processing", {}) or {}).get("rules", []) or []
         notice = ""
         pending_delete_id = ""
+        editing_id = ""
         if action.startswith("supplier_stock_proc_toggle|"):
             target = raw_action.split("|", 1)[1].strip()
             for rule in rules:
@@ -7102,6 +7237,37 @@ def v1_extensions_actions():
                     break
             config.setdefault("processing", {})["rules"] = rules
             save_supplier_stock_config(config)
+        elif action.startswith("supplier_stock_proc_update|"):
+            parts = raw_action.split("|", 2)
+            target = parts[1].strip() if len(parts) > 1 else ""
+            fields = {}
+            if len(parts) > 2:
+                for pair in parts[2].split("&"):
+                    if "=" in pair:
+                        key, value = pair.split("=", 1)
+                        fields[key.strip().lower()] = unquote(value)
+            updated = None
+            for rule in rules:
+                if str(rule.get("id")) == target:
+                    updated = rule
+                    if (fields.get("name") or "").strip():
+                        rule["name"] = fields["name"].strip()
+                    if (fields.get("source_file") or "").strip():
+                        rule["source_file"] = fields["source_file"].strip()
+                    break
+            config.setdefault("processing", {})["rules"] = rules
+            save_supplier_stock_config(config)
+            notice = (
+                f"✅ Правило «{updated.get('name') or target}» обновлено\n\n"
+                if updated
+                else "ℹ️ Правило не найдено\n\n"
+            )
+        elif action.startswith("supplier_stock_proc_edit|"):
+            candidate = raw_action.split("|", 1)[1].strip()
+            if any(str(r.get("id")) == candidate for r in rules):
+                editing_id = candidate
+            else:
+                notice = "ℹ️ Правило не найдено\n\n"
         elif action.startswith("supplier_stock_proc_delete_confirm|"):
             target = raw_action.split("|", 1)[1].strip()
             before = len(rules)
@@ -7131,6 +7297,21 @@ def v1_extensions_actions():
                 {"label": "↩️ Отмена", "action": "supplier_stock_processing"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ]
+        elif editing_id:
+            rule = next(r for r in rules if str(r.get("id")) == editing_id)
+            message = (
+                f"{notice}✏️ Редактирование правила «{rule.get('name') or editing_id}»\n\n"
+                "Текущие значения:\n"
+                f"• Название: {rule.get('name') or '—'}\n"
+                f"• Файл источника: {rule.get('source_file') or 'не задано'}\n\n"
+                "Заполните только те поля, которые нужно изменить "
+                "(пустые поля останутся без изменений). Колонки, шаблоны и "
+                "варианты обработки — пока в Telegram-боте."
+            )
+            menu_options = [
+                {"label": "↩️ К списку правил", "action": "supplier_stock_processing"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
         else:
             lines = [f"{notice}⚙️ Правила обработки файлов остатков", ""]
             if not rules:
@@ -7149,7 +7330,10 @@ def v1_extensions_actions():
                     lines.append(f"    Файл источника: {source_file}")
                     lines.append(f"    Режим: {mode} · Активно: {'да' if active else 'нет'}")
             lines.append("")
-            lines.append("Добавление и детальное редактирование правила пока в Telegram-боте.")
+            lines.append(
+                "Базовые поля (название, файл источника) редактируются здесь; "
+                "колонки, шаблоны и варианты обработки — пока в Telegram-боте."
+            )
             message = "\n".join(lines)
             menu_options = []
             for rule in rules:
@@ -7164,6 +7348,9 @@ def v1_extensions_actions():
                 )
                 activate_label = (
                     f"{'☆ Деактивировать' if active else '⭐ Активировать'} {name[:14]}"
+                )
+                menu_options.append(
+                    {"label": f"✏️ Изменить {name[:18]}", "action": f"supplier_stock_proc_edit|{rid}"}
                 )
                 menu_options.append(
                     {"label": toggle_label, "action": f"supplier_stock_proc_toggle|{rid}"}

@@ -6620,7 +6620,8 @@ private fun MonitoringApp(
                     // Показывается на экране списка правил, но не на экране подтверждения удаления.
                     if (supplierSettingsCurrent &&
                         supplierSubAction.startsWith("supplier_stock_mail_source") &&
-                        !supplierSubAction.startsWith("supplier_stock_mail_source_delete|")
+                        !supplierSubAction.startsWith("supplier_stock_mail_source_delete|") &&
+                        !supplierSubAction.startsWith("supplier_stock_mail_source_edit|")
                     ) {
                         Button(
                             onClick = { showSupplierStockAddMailForm = !showSupplierStockAddMailForm },
@@ -6728,7 +6729,8 @@ private fun MonitoringApp(
                     // Показывается на экране списка ресурсов, но не на экране подтверждения удаления.
                     if (supplierSettingsCurrent &&
                         supplierSubAction.startsWith("supplier_stock_resource") &&
-                        !supplierSubAction.startsWith("supplier_stock_resource_delete|")
+                        !supplierSubAction.startsWith("supplier_stock_resource_delete|") &&
+                        !supplierSubAction.startsWith("supplier_stock_resource_edit|")
                     ) {
                         Button(
                             onClick = { showSupplierStockAddResourceForm = !showSupplierStockAddResourceForm },
@@ -6799,6 +6801,177 @@ private fun MonitoringApp(
                             ) {
                                 Text("💾 Создать ресурс")
                             }
+                        }
+                    }
+                    // ✏️ Редактирование правила вложений почты (пусто = без изменений).
+                    if (supplierSettingsCurrent &&
+                        supplierSubAction.startsWith("supplier_stock_mail_source_edit|")
+                    ) {
+                        val editMailId = supplierSubAction.removePrefix("supplier_stock_mail_source_edit|")
+                        OutlinedTextField(
+                            value = supplierStockEditMailNameInput,
+                            onValueChange = { supplierStockEditMailNameInput = it },
+                            label = { Text("Новое название (пусто = без изменений)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditMailSenderInput,
+                            onValueChange = { supplierStockEditMailSenderInput = it },
+                            label = { Text("Новый отправитель (regex)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditMailSubjectInput,
+                            onValueChange = { supplierStockEditMailSubjectInput = it },
+                            label = { Text("Новая тема (regex)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditMailFilenameInput,
+                            onValueChange = { supplierStockEditMailFilenameInput = it },
+                            label = { Text("Новое имя вложения (regex)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditMailExpectedInput,
+                            onValueChange = { input ->
+                                supplierStockEditMailExpectedInput = input.filter { it.isDigit() }.take(2)
+                            },
+                            label = { Text("Новое число вложений") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditMailOutputInput,
+                            onValueChange = { supplierStockEditMailOutputInput = it },
+                            label = { Text("Новый шаблон выходного файла") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        val canSaveMailEdit = supplierStockEditMailNameInput.isNotBlank() ||
+                            supplierStockEditMailSenderInput.isNotBlank() ||
+                            supplierStockEditMailSubjectInput.isNotBlank() ||
+                            supplierStockEditMailFilenameInput.isNotBlank() ||
+                            supplierStockEditMailExpectedInput.isNotBlank() ||
+                            supplierStockEditMailOutputInput.isNotBlank()
+                        Button(
+                            onClick = {
+                                val payload = "name=" + Uri.encode(supplierStockEditMailNameInput.trim()) +
+                                    "&sender=" + Uri.encode(supplierStockEditMailSenderInput.trim()) +
+                                    "&subject=" + Uri.encode(supplierStockEditMailSubjectInput.trim()) +
+                                    "&filename=" + Uri.encode(supplierStockEditMailFilenameInput.trim()) +
+                                    "&expected=" + Uri.encode(supplierStockEditMailExpectedInput.trim()) +
+                                    "&output=" + Uri.encode(supplierStockEditMailOutputInput.trim())
+                                onExtensionsSettingsAction("supplier_stock_mail_source_update|$editMailId|$payload")
+                                supplierStockEditMailNameInput = ""
+                                supplierStockEditMailSenderInput = ""
+                                supplierStockEditMailSubjectInput = ""
+                                supplierStockEditMailFilenameInput = ""
+                                supplierStockEditMailExpectedInput = ""
+                                supplierStockEditMailOutputInput = ""
+                            },
+                            enabled = canSaveMailEdit,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("💾 Сохранить изменения")
+                        }
+                    }
+                    // ✏️ Редактирование ресурса выгрузки (пусто = без изменений).
+                    if (supplierSettingsCurrent &&
+                        supplierSubAction.startsWith("supplier_stock_resource_edit|")
+                    ) {
+                        val editResId = supplierSubAction.removePrefix("supplier_stock_resource_edit|")
+                        OutlinedTextField(
+                            value = supplierStockEditResourceNameInput,
+                            onValueChange = { supplierStockEditResourceNameInput = it },
+                            label = { Text("Новое название (пусто = без изменений)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditResourceUncInput,
+                            onValueChange = { supplierStockEditResourceUncInput = it },
+                            label = { Text("Новый UNC-путь") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditResourceLoginInput,
+                            onValueChange = { supplierStockEditResourceLoginInput = it },
+                            label = { Text("Новый логин") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditResourcePasswordInput,
+                            onValueChange = { supplierStockEditResourcePasswordInput = it },
+                            label = { Text("Новый пароль") },
+                            singleLine = true,
+                            visualTransformation = hiddenTransformation,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        val canSaveResEdit = supplierStockEditResourceNameInput.isNotBlank() ||
+                            supplierStockEditResourceUncInput.isNotBlank() ||
+                            supplierStockEditResourceLoginInput.isNotBlank() ||
+                            supplierStockEditResourcePasswordInput.isNotEmpty()
+                        Button(
+                            onClick = {
+                                val payload = "name=" + Uri.encode(supplierStockEditResourceNameInput.trim()) +
+                                    "&unc=" + Uri.encode(supplierStockEditResourceUncInput.trim()) +
+                                    "&login=" + Uri.encode(supplierStockEditResourceLoginInput.trim()) +
+                                    "&password=" + Uri.encode(supplierStockEditResourcePasswordInput)
+                                onExtensionsSettingsAction("supplier_stock_resource_update|$editResId|$payload")
+                                supplierStockEditResourceNameInput = ""
+                                supplierStockEditResourceUncInput = ""
+                                supplierStockEditResourceLoginInput = ""
+                                supplierStockEditResourcePasswordInput = ""
+                            },
+                            enabled = canSaveResEdit,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("💾 Сохранить изменения")
+                        }
+                    }
+                    // ✏️ Редактирование правила обработки (пусто = без изменений).
+                    if (supplierSettingsCurrent &&
+                        supplierSubAction.startsWith("supplier_stock_proc_edit|")
+                    ) {
+                        val editProcId = supplierSubAction.removePrefix("supplier_stock_proc_edit|")
+                        OutlinedTextField(
+                            value = supplierStockEditProcNameInput,
+                            onValueChange = { supplierStockEditProcNameInput = it },
+                            label = { Text("Новое название (пусто = без изменений)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditProcSourceFileInput,
+                            onValueChange = { supplierStockEditProcSourceFileInput = it },
+                            label = { Text("Новый файл источника") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        val canSaveProcEdit = supplierStockEditProcNameInput.isNotBlank() ||
+                            supplierStockEditProcSourceFileInput.isNotBlank()
+                        Button(
+                            onClick = {
+                                val payload = "name=" + Uri.encode(supplierStockEditProcNameInput.trim()) +
+                                    "&source_file=" + Uri.encode(supplierStockEditProcSourceFileInput.trim())
+                                onExtensionsSettingsAction("supplier_stock_proc_update|$editProcId|$payload")
+                                supplierStockEditProcNameInput = ""
+                                supplierStockEditProcSourceFileInput = ""
+                            },
+                            enabled = canSaveProcEdit,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("💾 Сохранить изменения")
                         }
                     }
 
