@@ -3101,6 +3101,18 @@ private fun MonitoringApp(
                         onExtensionsSettingsAction("settings_ext_snapshot")
                     }
                 }
+                "supplier_stock_files" -> {
+                    {
+                        showSupplierStockSettingsDialog = true
+                        onExtensionsSettingsAction("settings_ext_supplier_stock")
+                    }
+                }
+                "stock_load_monitor" -> {
+                    {
+                        showStockLoadsSettingsDialog = true
+                        onExtensionsSettingsAction("settings_ext_stock_load")
+                    }
+                }
                 "web" -> {
                     {
                         settingsSection = "web"

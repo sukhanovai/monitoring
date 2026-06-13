@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 /scripts/bump_version.py
-Server Monitoring System v8.63.17
+Server Monitoring System v8.63.18
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Version bump helper extracted from the manual procedure in CLAUDE.md
 (PR9 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.17
+Версия: 8.63.18
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Скрипт автоматизирует ручную процедуру синхронизации версии,
@@ -79,12 +79,12 @@ EXPLICIT_SITES: tuple[VersionSite, ...] = (
     ),
     _site(
         "README.md",
-        r"releases/download/v(\d+\.\d+\.\d+)-develop/monitoring-android-\d+\.\d+\.\d+-develop-debug\.apk",
+        r"releases/download/v(\d+\.\d+\.\d+)-develop/monitoring-android-\d+\.\d+\.\d+-develop-compactOps-debug\.apk",
         "README.md:ANDROID_PRERELEASE_APK_LINK",
     ),
     _site(
         "docs/android_mobile_app.md",
-        r"releases/download/v(\d+\.\d+\.\d+)-develop/monitoring-android-\d+\.\d+\.\d+-develop-debug\.apk",
+        r"releases/download/v(\d+\.\d+\.\d+)-develop/monitoring-android-\d+\.\d+\.\d+-develop-compactOps-debug\.apk",
         "docs/android_mobile_app.md:ANDROID_PRERELEASE_APK_LINK",
     ),
 )

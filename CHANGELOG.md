@@ -1,3 +1,13 @@
+## [8.63.18] - 2026-06-13
+
+### Fixed
+- RU: Android — исправлено обновление приложения «из коробки»: при скачивании APK возникала ошибка «файл не найден», а ссылка на загрузку в браузере отдавала 404. Причина — рассинхрон имени ассета релиза: скрипт публикации выкладывает APK как `monitoring-android-<версия>-develop-compactOps-debug.apk` (с flavor `compactOps`), а сервер и документация формировали ссылку без flavor (`…-develop-debug.apk`). Шаблон ссылки в `config/settings.py` (`ANDROID_UPDATE_BRANCHES`), ссылки в `README.md` / `docs/android_mobile_app.md` и регулярки в `scripts/bump_version.py` приведены к фактическому имени ассета с `compactOps`.
+- EN: Android — fixed the in-app update flow: downloading the APK failed with "file not found" and the browser download link returned 404. The cause was a release asset name mismatch: the publish script uploads the APK as `monitoring-android-<version>-develop-compactOps-debug.apk` (with the `compactOps` flavor), while the server and docs built the link without the flavor (`…-develop-debug.apk`). The link template in `config/settings.py` (`ANDROID_UPDATE_BRANCHES`), the links in `README.md` / `docs/android_mobile_app.md` and the regexes in `scripts/bump_version.py` now match the real asset name with `compactOps`.
+
+### Changed
+- RU: Android — на плашках «📦 поставщики» и «📦 остатки» в оперативном центре теперь есть шестерёнка настроек (как у остальных расширений): по нажатию открывается соответствующий диалог настроек (`settings_ext_supplier_stock` / `settings_ext_stock_load`). Раньше настройки этих расширений открывались только из общего раздела настроек или из диалога с данными.
+- EN: Android — the "📦 suppliers" and "📦 stock" tiles in the operations center now have a settings gear (like the other extensions): tapping it opens the corresponding settings dialog (`settings_ext_supplier_stock` / `settings_ext_stock_load`). Previously these extensions' settings were only reachable from the general settings section or from the data dialog.
+
 ## [8.63.17] - 2026-06-05
 
 ### Added
