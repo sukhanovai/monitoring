@@ -5368,7 +5368,7 @@ private fun MonitoringApp(
                         val longTapHint = if (isResourceCheckMode) {
                             "Долгий тап по плашке хоста — настройки (редактировать / вкл-выкл / удалить)"
                         } else {
-                            "Тап по плашке хоста — карточка действий\n(редактировать / вкл-выкл / удалить)"
+                            "Долгий тап по плашке хоста — карточка действий\n(редактировать / вкл-выкл / удалить)"
                         }
                         Text(
                             text = longTapHint,
@@ -6115,11 +6115,6 @@ private fun MonitoringApp(
                             }
                             .distinctBy { (_, action) -> action }
                         if (hostOptions.isNotEmpty()) {
-                            Text(
-                                "Кликни хост, чтобы открыть последние 15 записей:",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                             hostOptions.forEach { (label, action) ->
                                 Button(
                                     onClick = { onAction(action) },

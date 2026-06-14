@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.18
+Server Monitoring System v8.63.19
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.18
+Версия: 8.63.19
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1787,7 +1787,6 @@ def _execute_mobile_control_action(action: str):
                 hosts_cfg = {}
 
             transfer_rows: dict[str, dict[str, str]] = {}
-            recent_rows: list[tuple[str, str, str]] = []
             try:
                 snap_conn = sqlite3.connect(str(BACKUP_DB_FILE))
                 snap_cursor = snap_conn.cursor()
@@ -1809,8 +1808,6 @@ def _execute_mobile_control_action(action: str):
                             "status": status_val,
                             "received_at": received,
                         }
-                    if len(recent_rows) < 8:
-                        recent_rows.append((host, status_val or "—", received or "—"))
             except sqlite3.OperationalError:
                 pass
             except Exception:
@@ -1869,14 +1866,6 @@ def _execute_mobile_control_action(action: str):
                 )
                 lines.append("")
                 lines.append("Выберите хост, чтобы открыть последние 15 записей.")
-
-            if recent_rows:
-                lines.append("")
-                lines.append("🧾 Последние распарсенные письма:")
-                for host_name, status_val, received_at in recent_rows:
-                    lines.append(
-                        f"{_status_icon(status_val)} {host_name} · {status_val} ({received_at})"
-                    )
 
             menu_options.extend(
                 [

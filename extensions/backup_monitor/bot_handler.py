@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.63.18
+Server Monitoring System v8.63.19
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.63.18
+Версия: 8.63.19
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -50,6 +50,10 @@ from extensions.backup_monitor.backup_handlers import (
     remove_cc_pattern,
     show_mail_backups,
     show_main_menu,
+    show_nas_patterns,
+    prompt_nas_pattern_add,
+    add_nas_pattern_value,
+    remove_nas_pattern,
     show_nas_settings,
     show_nas_transfers,
     show_proxmox_menu,
@@ -805,6 +809,24 @@ def backup_callback(update, context):
                 return
             clear_nas_ignore_bases(query)
 
+        elif data == "backup_nas_patterns":
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            show_nas_patterns(query)
+
+        elif data == "backup_nas_pat_add":
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            prompt_nas_pattern_add(query, context)
+
+        elif data.startswith("backup_nas_pat_del|"):
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            remove_nas_pattern(query, data.split("|", 1)[1])
+
         elif data == "backup_config_console":
             if not extension_manager.is_extension_enabled("config_console_backup_monitor"):
                 query.edit_message_text("🗂️ Мониторинг бэкапа конфигов и историй отключён")
@@ -1054,6 +1076,12 @@ def backup_host_settings_input_handler(update, context):
     if context.user_data.get("cc_add_pattern"):
         context.user_data.pop("cc_add_pattern", None)
         add_cc_pattern_value(update, message_text)
+        return
+
+    # Добавление паттерна темы письма передачи на NAS (prompt_nas_pattern_add)
+    if context.user_data.get("nas_add_pattern"):
+        context.user_data.pop("nas_add_pattern", None)
+        add_nas_pattern_value(update, message_text)
         return
 
     if not message_text:

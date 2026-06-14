@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.63.18
+Server Monitoring System v8.63.19
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.63.18
+Версия: 8.63.19
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -1557,6 +1557,10 @@ def show_nas_settings(query):
                 [InlineKeyboardButton("🧹 Очистить игнор-список", callback_data="backup_nas_ignore_clear")]
             )
 
+        keyboard.append(
+            [InlineKeyboardButton("✏️ Паттерны", callback_data="backup_nas_patterns")]
+        )
+
         keyboard.extend(
             [
                 [InlineKeyboardButton("↩️ Назад", callback_data="backup_nas_transfer")],
@@ -1674,6 +1678,107 @@ def set_nas_alert_hours(query, raw_value):
         logger.error(f"Ошибка сохранения NAS_TRANSFER_ALERT_HOURS: {e}")
         query.answer("❌ Ошибка сохранения", show_alert=True)
     show_nas_settings(query)
+
+
+def show_nas_patterns(query):
+    """Меню редактирования паттернов темы письма nas_transfer."""
+    try:
+        from .backup_utils import get_nas_transfer_patterns
+
+        patterns = get_nas_transfer_patterns()
+        listing = "\n".join(f"`{p}`" for p in patterns) if patterns else "— (используется дефолт)"
+        message = (
+            "✏️ *Паттерны темы письма (Передача на NAS)*\n\n"
+            f"{listing}\n\n"
+            "Паттерн — это regex для темы письма с именованными группами "
+            "`(?P<host>…)` и `(?P<status>…)`. Добавьте свой или удалите лишний:"
+        )
+        keyboard = []
+        for idx, _p in enumerate(patterns):
+            keyboard.append(
+                [InlineKeyboardButton(f"🗑 Паттерн #{idx + 1}", callback_data=f"backup_nas_pat_del|{idx}")]
+            )
+        keyboard.append(
+            [InlineKeyboardButton("➕ Добавить паттерн", callback_data="backup_nas_pat_add")]
+        )
+        keyboard.extend(
+            [
+                [InlineKeyboardButton("↩️ Назад", callback_data="backup_nas_settings")],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+            ]
+        )
+        query.edit_message_text(
+            message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except BadRequest as exc:
+        if "Message is not modified" in str(exc):
+            query.answer("Меню уже открыто", show_alert=False)
+            return
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка в show_nas_patterns: {e}")
+        query.edit_message_text("❌ Ошибка при открытии паттернов")
+
+
+def prompt_nas_pattern_add(query, context):
+    """Просит ввести новый regex-паттерн темы письма передачи на NAS."""
+    context.user_data["nas_add_pattern"] = True
+    keyboard = [[InlineKeyboardButton("↩️ Отмена", callback_data="backup_nas_patterns")]]
+    query.edit_message_text(
+        "➕ *Новый паттерн темы письма*\n\n"
+        "Отправьте regex с группами `(?P<host>…)` и `(?P<status>…)`. Пример:\n"
+        "`^NAS transfer (?P<host>[\\w.-]+) (?P<status>OK|ERROR|SKIPPED|STARTED|BUSY)$`",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+def add_nas_pattern_value(update, raw_text):
+    """Сохраняет новый паттерн темы в настройках передачи на NAS (nas_transfer)."""
+    import re as _re
+
+    from .backup_utils import get_nas_transfer_patterns, save_nas_transfer_patterns
+
+    pattern = str(raw_text or "").strip()
+    if not pattern:
+        update.message.reply_text("❌ Паттерн не может быть пустым.")
+        return
+    try:
+        _re.compile(pattern)
+    except _re.error as exc:
+        update.message.reply_text(f"❌ Некорректный regex: {exc}")
+        return
+
+    patterns = get_nas_transfer_patterns()
+    if pattern in patterns:
+        update.message.reply_text("ℹ️ Такой паттерн уже есть.")
+        return
+    patterns.append(pattern)
+    save_nas_transfer_patterns(patterns)
+    update.message.reply_text(
+        f"✅ Паттерн добавлен. Всего: {len(patterns)}",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("✏️ Паттерны", callback_data="backup_nas_patterns")]]
+        ),
+    )
+
+
+def remove_nas_pattern(query, raw_index):
+    """Удаляет паттерн передачи на NAS по индексу и возвращает в меню паттернов."""
+    from .backup_utils import get_nas_transfer_patterns, save_nas_transfer_patterns
+
+    patterns = get_nas_transfer_patterns()
+    try:
+        idx = int(str(raw_index).strip())
+        if 0 <= idx < len(patterns):
+            removed = patterns.pop(idx)
+            save_nas_transfer_patterns(patterns)
+            query.answer(f"🗑 Удалён: {removed[:30]}", show_alert=False)
+        else:
+            query.answer("❌ Нет такого паттерна", show_alert=True)
+    except (TypeError, ValueError):
+        query.answer("❌ Некорректный индекс", show_alert=True)
+    show_nas_patterns(query)
 
 
 def show_stock_loads(query, backup_bot, hours=24):
