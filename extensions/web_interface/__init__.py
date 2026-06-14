@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.19
+Server Monitoring System v8.63.20
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.19
+Версия: 8.63.20
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -7529,12 +7529,27 @@ def v1_extensions_actions():
         )
 
     if action == "settings_ext_nas" or action == "nas_ignore_clear" or action.startswith(
-        ("nas_set_hours|", "nas_unignore|", "nas_ignore_add|")
+        ("nas_set_hours|", "nas_unignore|", "nas_ignore_add|", "nas_pat_add|", "nas_pat_del|")
     ):
         from extensions.backup_monitor.backup_utils import (
             get_nas_ignore_bases,
             save_nas_ignore_bases,
         )
+
+        def _get_nas_patterns() -> list:
+            rows: list = []
+            try:
+                conn = settings_manager.get_connection()
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id, pattern FROM backup_patterns "
+                    "WHERE category = 'nas_transfer' AND pattern_type = 'subject' "
+                    "ORDER BY id"
+                )
+                rows = [(int(r[0]), str(r[1] or "")) for r in cursor.fetchall()]
+            except Exception:
+                rows = []
+            return rows
 
         notice = ""
         if action.startswith("nas_set_hours|"):
@@ -7578,20 +7593,61 @@ def v1_extensions_actions():
         elif action == "nas_ignore_clear":
             save_nas_ignore_bases([])
             notice = "🧹 Игнор-список очищен\n\n"
+        elif action.startswith("nas_pat_add|"):
+            raw_value = unquote(raw_action.split("|", 1)[1]).strip()
+            if not raw_value:
+                notice = "❌ Паттерн не может быть пустым\n\n"
+            else:
+                try:
+                    re.compile(raw_value)
+                    if raw_value in [p for _, p in _get_nas_patterns()]:
+                        notice = "ℹ️ Такой паттерн уже есть\n\n"
+                    else:
+                        conn = settings_manager.get_connection()
+                        cursor = conn.cursor()
+                        cursor.execute(
+                            "INSERT INTO backup_patterns "
+                            "(pattern_type, pattern, category, enabled) VALUES (?, ?, ?, 1)",
+                            ("subject", raw_value, "nas_transfer"),
+                        )
+                        conn.commit()
+                        notice = "✅ Паттерн добавлен\n\n"
+                except re.error as exc:
+                    notice = f"❌ Некорректный regex: {exc}\n\n"
+        elif action.startswith("nas_pat_del|"):
+            raw_id = raw_action.split("|", 1)[1].strip()
+            try:
+                pat_id = int(raw_id)
+                conn = settings_manager.get_connection()
+                cursor = conn.cursor()
+                cursor.execute(
+                    "DELETE FROM backup_patterns "
+                    "WHERE id = ? AND category = 'nas_transfer'",
+                    (pat_id,),
+                )
+                conn.commit()
+                notice = "🗑 Паттерн удалён\n\n" if cursor.rowcount else "❌ Нет такого паттерна\n\n"
+            except (TypeError, ValueError):
+                notice = "❌ Некорректный идентификатор\n\n"
 
         try:
             current_hours = int(settings_manager.get_setting("NAS_TRANSFER_ALERT_HOURS", 48) or 48)
         except (TypeError, ValueError):
             current_hours = 48
         ignore_bases = get_nas_ignore_bases()
+        patterns = _get_nas_patterns()
 
         ignore_text = ", ".join(ignore_bases) if ignore_bases else "—"
+        patterns_text = (
+            "\n".join(f"  • {p}" for _, p in patterns) if patterns else "  — (дефолт)"
+        )
         message = (
             f"{notice}⚙️ Передача бэкапов на NAS — настройки\n\n"
             f"• Период отчёта: {current_hours}ч\n"
             f"• Игнорируемые базы: {ignore_text}\n\n"
-            "Игнорируемые базы не считаются ошибкой. Добавьте новую базу в поле "
-            "ниже (можно несколько через запятую)."
+            f"• Паттерны темы письма:\n{patterns_text}\n\n"
+            "Игнорируемые базы не считаются ошибкой. Добавьте новую базу или "
+            "паттерн темы письма в поля ниже (базы — можно несколько через запятую)."
         )
 
         menu_options = []
@@ -7602,6 +7658,9 @@ def v1_extensions_actions():
             menu_options.append({"label": f"🗑 {base}", "action": f"nas_unignore|{base}"})
         if ignore_bases:
             menu_options.append({"label": "🧹 Очистить игнор-список", "action": "nas_ignore_clear"})
+        for pat_id, pat in patterns:
+            short = pat if len(pat) <= 28 else pat[:25] + "…"
+            menu_options.append({"label": f"🗑 паттерн: {short}", "action": f"nas_pat_del|{pat_id}"})
         menu_options.extend(
             [
                 {"label": "🏠 На главную", "action": "main_menu"},

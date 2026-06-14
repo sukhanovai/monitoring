@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/nas_transfer.py
-Server Monitoring System v8.63.19
+Server Monitoring System v8.63.20
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 NasTransferParserMixin — часть BackupProcessor.
 Система мониторинга серверов
-Версия: 8.63.19
+Версия: 8.63.20
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Mixin NasTransferParserMixin; объединяется с другими mixin'ами в BackupProcessor.

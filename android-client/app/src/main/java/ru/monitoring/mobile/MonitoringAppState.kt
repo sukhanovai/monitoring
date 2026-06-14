@@ -207,6 +207,7 @@ class MonitoringAppState {
     var showNasTransferDialog by mutableStateOf(false)
     var showNasSettingsDialog by mutableStateOf(false)
     var nasIgnoreInput by mutableStateOf("")
+    var nasPatternInput by mutableStateOf("")
     var showConfigConsoleDialog by mutableStateOf(false)
     var showCcSettingsDialog by mutableStateOf(false)
     var ccServerInput by mutableStateOf("")

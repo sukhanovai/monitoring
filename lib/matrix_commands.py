@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.63.19
+Server Monitoring System v8.63.20
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.63.19
+Версия: 8.63.20
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -1787,7 +1787,76 @@ class MatrixCommandBot:
 
         lines.append("")
         lines.append(f"Всего прогонов: {len(rows)} · 🟢 {ok_count} · 🔴 {err_count}")
+        lines.append("")
+        lines.append("✏️ Паттерны темы письма: !nas patterns")
         return "\n".join(lines)
+
+    def _handle_nas_patterns(self, arg: str) -> str:
+        """Паттерны темы письма «Передача бэкапов на NAS» (!nas patterns ...).
+
+        Паритет с меню паттернов Telegram-бота: список/добавление/удаление
+        regex-паттернов темы письма (категория ``nas_transfer``), которые
+        читает ``parse_nas_transfer``.
+        """
+        from extensions.backup_monitor.backup_utils import (
+            get_nas_transfer_patterns,
+            save_nas_transfer_patterns,
+        )
+
+        tokens = arg.split(maxsplit=2)
+        sub = tokens[0].strip().lower() if tokens else ""
+        if sub not in {"patterns", "pattern", "паттерны", "паттерн"}:
+            return (
+                "ℹ️ Использование команды !nas:\n"
+                "• !nas — итоги передачи бэкапов на NAS\n"
+                "• !nas patterns — список паттернов темы письма\n"
+                "• !nas patterns add <regex> — добавить паттерн\n"
+                "• !nas patterns del <номер> — удалить паттерн по номеру"
+            )
+
+        op = tokens[1].strip().lower() if len(tokens) > 1 else ""
+        value = tokens[2].strip() if len(tokens) > 2 else ""
+        patterns = get_nas_transfer_patterns()
+
+        def _render(prefix: str = "") -> str:
+            lines = [f"{prefix}✏️ Паттерны темы письма (Передача на NAS)", ""]
+            if patterns:
+                for idx, pat in enumerate(patterns, 1):
+                    lines.append(f"{idx}. {pat}")
+            else:
+                lines.append("— список пуст (используется встроенный дефолт)")
+            lines.append("")
+            lines.append("Добавить: !nas patterns add <regex>")
+            lines.append("Удалить: !nas patterns del <номер>")
+            return "\n".join(lines)
+
+        if not op:
+            return _render()
+
+        if op in {"add", "добавить", "+"}:
+            if not value:
+                return "❌ Укажите регэксп: !nas patterns add <regex>"
+            try:
+                re.compile(value)
+            except re.error as exc:
+                return f"❌ Некорректный regex: {exc}"
+            if value in patterns:
+                return _render("ℹ️ Такой паттерн уже есть.\n\n")
+            patterns.append(value)
+            patterns = save_nas_transfer_patterns(patterns)
+            return _render("✅ Паттерн добавлен.\n\n")
+
+        if op in {"del", "delete", "rm", "удалить", "-"}:
+            if not value.isdigit():
+                return "❌ Укажите номер паттерна: !nas patterns del <номер>"
+            index = int(value)
+            if index < 1 or index > len(patterns):
+                return f"❌ Нет паттерна с номером {index}. Список: !nas patterns"
+            removed = patterns.pop(index - 1)
+            patterns = save_nas_transfer_patterns(patterns)
+            return _render(f"🗑 Удалён паттерн: {removed}\n\n")
+
+        return _render(f"❓ Неизвестное действие «{op}».\n\n")
 
     async def _handle_ext_config_console(self, arg: str = "") -> str:
         import sqlite3
@@ -2032,6 +2101,11 @@ class MatrixCommandBot:
             arg_commands.append(
                 "• !dbbackup <имя_базы> — статистика бэкапов по базе "
                 "(или жми кнопку-реакцию под сводкой !dbbackup)"
+            )
+        if "nas_transfer_monitor" in enabled:
+            arg_commands.append(
+                "• !nas patterns [add <regex> | del <номер>] — "
+                "паттерны темы письма передачи бэкапов на NAS"
             )
         if arg_commands:
             lines.append("")
@@ -2713,6 +2787,17 @@ class MatrixCommandBot:
             parts = normalized.split(maxsplit=1)
             arg = parts[1] if len(parts) > 1 else ""
             return command, await self._handle_web_password(arg)
+        if command == "!nas":
+            if "nas_transfer_monitor" not in self._enabled_extensions():
+                return command, (
+                    "❌ Команда !nas недоступна: расширение "
+                    "«nas_transfer_monitor» выключено."
+                )
+            parts = normalized.split(maxsplit=1)
+            arg = parts[1].strip() if len(parts) > 1 else ""
+            if arg:
+                return command, self._handle_nas_patterns(arg)
+            return command, await self._handle_ext_nas_transfer()
         ext_item = _EXT_ITEM_BY_COMMAND.get(command)
         if ext_item is not None:
             return command, await self._run_extension_command(ext_item)
