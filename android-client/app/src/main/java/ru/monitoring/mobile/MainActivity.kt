@@ -7537,7 +7537,8 @@ private fun MonitoringApp(
                 if (label.isBlank() || action.isBlank()) return@mapNotNull null
                 val keep = action.startsWith("nas_set_hours") ||
                     action.startsWith("nas_unignore") ||
-                    action == "nas_ignore_clear"
+                    action == "nas_ignore_clear" ||
+                    action.startsWith("nas_pat_del|")
                 if (!keep) return@mapNotNull null
                 label to action
             }.distinctBy { (_, action) -> action }
@@ -7607,6 +7608,30 @@ private fun MonitoringApp(
                         shape = RoundedCornerShape(10.dp)
                     ) {
                         Text("➕ Добавить в игнор")
+                    }
+
+                    // Паттерны темы письма «Передача бэкапов на NAS» (regex subject).
+                    OutlinedTextField(
+                        value = nasPatternInput,
+                        onValueChange = { nasPatternInput = it },
+                        label = { Text("Новый паттерн темы письма") },
+                        placeholder = { Text("например NAS transfer .* OK") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = {
+                            val value = nasPatternInput.trim()
+                            if (value.isNotEmpty()) {
+                                onExtensionsSettingsAction("nas_pat_add|" + Uri.encode(value))
+                                nasPatternInput = ""
+                            }
+                        },
+                        enabled = nasPatternInput.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("➕ Добавить паттерн")
                     }
 
                     nasSettingsOptions.forEach { (label, action) ->

@@ -1,3 +1,11 @@
+## [8.63.20] - 2026-06-14
+
+### Added
+- RU: Matrix command-bot — у команды `!nas` появилось управление паттернами темы письма «Передача бэкапов на NAS» (паритет с меню паттернов Telegram-бота): `!nas patterns` — список паттернов, `!nas patterns add <regex>` — добавить, `!nas patterns del <номер>` — удалить. Паттерны хранятся в таблице `backup_patterns` (категория `nas_transfer`) и читаются парсером `parse_nas_transfer`; при пустом списке применяется встроенный дефолтный паттерн. Подсказка по команде добавлена в `!extensions`, итог `!nas` теперь ссылается на `!nas patterns`.
+- EN: Matrix command-bot — the `!nas` command now manages "NAS backup transfer" email subject patterns (parity with the Telegram bot's pattern menu): `!nas patterns` lists patterns, `!nas patterns add <regex>` adds one, `!nas patterns del <number>` removes one. Patterns are stored in the `backup_patterns` table (category `nas_transfer`) and consumed by the `parse_nas_transfer` parser; the built-in default pattern is used when the list is empty. A usage hint was added to `!extensions`, and the `!nas` summary now points to `!nas patterns`.
+- RU: Android (шестерёнка плашки «📤 NAS» → настройки) — в диалоге «⚙️ Настройки: Передача на NAS» добавлено управление паттернами темы письма: поле ввода «➕ Добавить паттерн» и кнопки «🗑 паттерн: …» для удаления. Сервер (BFF `/v1/settings/extensions/actions`, действие `settings_ext_nas`) реализует `nas_pat_add|<regex>` (с проверкой regex и дублей) и `nas_pat_del|<id>`, показывает текущие паттерны в тексте настроек. Паттерны — те же из таблицы `backup_patterns` (категория `nas_transfer`).
+- EN: Android (gear on the "📤 NAS" tile → settings) — the "⚙️ Settings: NAS transfer" dialog now manages email subject patterns: a "➕ Add pattern" input field and "🗑 pattern: …" delete buttons. The server (BFF `/v1/settings/extensions/actions`, action `settings_ext_nas`) implements `nas_pat_add|<regex>` (with regex and duplicate validation) and `nas_pat_del|<id>`, and shows the current patterns in the settings text. The patterns are the same ones from the `backup_patterns` table (category `nas_transfer`).
+
 ## [8.63.19] - 2026-06-14
 
 ### Added
