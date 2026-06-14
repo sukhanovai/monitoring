@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.63.18
+Server Monitoring System v8.63.19
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.63.18
+Версия: 8.63.19
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -804,6 +804,72 @@ def save_config_console_patterns(patterns) -> list:
         conn.commit()
     except Exception as exc:
         logger.error("Ошибка сохранения паттернов config_console: %s", exc)
+    return cleaned
+
+
+def get_nas_transfer_patterns() -> list:
+    """Паттерны темы письма nas_transfer из таблицы backup_patterns.
+
+    Если в таблице ничего нет — отдаём дефолтный паттерн из config.settings,
+    чтобы UI всегда показывал актуальное поведение парсера.
+    """
+    try:
+        from core.config_manager import config_manager
+
+        patterns = config_manager.get_backup_patterns()
+        section = patterns.get("nas_transfer", {})
+        result = []
+        if isinstance(section, dict):
+            result = list(section.get("subject", []) or [])
+        elif isinstance(section, list):
+            result = list(section)
+        result = [str(p) for p in result if str(p).strip()]
+        if result:
+            return result
+    except Exception as exc:
+        logger.error("Ошибка чтения паттернов nas_transfer: %s", exc)
+    # Фолбэк на дефолт
+    try:
+        from config.settings import BACKUP_PATTERNS
+
+        fallback = BACKUP_PATTERNS.get("nas_transfer", {})
+        if isinstance(fallback, dict):
+            return [str(p) for p in fallback.get("subject", []) if str(p).strip()]
+    except Exception:
+        pass
+    return []
+
+
+def save_nas_transfer_patterns(patterns) -> list:
+    """Перезаписывает паттерны темы nas_transfer в таблице backup_patterns.
+
+    Хранятся строками (pattern_type='subject', category='nas_transfer'). Старые
+    записи этой категории удаляются и заменяются переданным списком (без дублей).
+    """
+    cleaned: list = []
+    seen: set = set()
+    for value in patterns or []:
+        text = str(value).strip()
+        if text and text not in seen:
+            seen.add(text)
+            cleaned.append(text)
+    try:
+        from core.config_manager import config_manager
+
+        conn = config_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM backup_patterns WHERE category = 'nas_transfer'")
+        for pattern in cleaned:
+            cursor.execute(
+                """
+                INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+                VALUES ('subject', ?, 'nas_transfer', 1)
+                """,
+                (pattern,),
+            )
+        conn.commit()
+    except Exception as exc:
+        logger.error("Ошибка сохранения паттернов nas_transfer: %s", exc)
     return cleaned
 
 

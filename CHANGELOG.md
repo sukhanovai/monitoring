@@ -1,3 +1,17 @@
+## [8.63.19] - 2026-06-14
+
+### Added
+- RU: Telegram-бот — в настройках расширения «Передача бэкапов на NAS» появился раздел «✏️ Паттерны»: можно просматривать, добавлять и удалять regex-паттерны темы письма (с группами `(?P<host>…)` и `(?P<status>…)`), по которым парсятся итоговые письма скрипта передачи бэкапов 1С на NAS. Паттерны хранятся в таблице `backup_patterns` (категория `nas_transfer`) и используются парсером `parse_nas_transfer`; при пустом списке применяется встроенный дефолтный паттерн.
+- EN: Telegram bot — the "NAS backup transfer" extension settings now have a "✏️ Patterns" section: you can view, add and delete regex subject patterns (with `(?P<host>…)` and `(?P<status>…)` groups) used to parse the final emails of the 1C-to-NAS backup transfer script. Patterns are stored in the `backup_patterns` table (category `nas_transfer`) and consumed by the `parse_nas_transfer` parser; the built-in default pattern is used when the list is empty.
+
+### Changed
+- RU: Android — на плашке точечной проверки серверов исправлена подсказка: теперь она корректно сообщает, что карточка действий (редактировать / вкл-выкл / удалить) открывается долгим тапом по плашке хоста, а не обычным нажатием (обычный тап выполняет проверку доступности).
+- EN: Android — fixed the hint on the targeted server-check tile: it now correctly states that the action card (edit / enable-disable / delete) opens with a long tap on the host tile, not a regular tap (a regular tap runs the availability check).
+
+### Removed
+- RU: Android — на плашке «📸 Передачи ZFS-снэпшотов» убран список последних распарсенных писем и убрана дублирующая подсказка о нажатии на кнопку хоста (подсказка остаётся одна — в тексте сообщения от сервера).
+- EN: Android — on the "📸 ZFS snapshot transfers" tile, removed the list of recently parsed emails and removed the duplicate hint about tapping the host button (a single hint remains — in the server message text).
+
 ## [8.63.18] - 2026-06-13
 
 ### Fixed
