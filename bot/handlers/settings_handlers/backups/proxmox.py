@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/proxmox.py
-Server Monitoring System v8.63.20
+Server Monitoring System v8.63.21
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Proxmox vzdump backup settings: hosts list CRUD, pattern menu/handlers. (PR7d).
 Система мониторинга серверов
-Версия: 8.63.20
+Версия: 8.63.21
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имена сохранены —
@@ -142,6 +142,10 @@ def show_proxmox_backup_settings(update, context):
 
 def show_proxmox_patterns_menu(update, context):
     """Показать паттерны для Proxmox"""
+    from bot.handlers.settings_handlers._legacy import (
+        view_patterns_handler,
+    )  # circular-safe lazy import
+
     back_callback = (
         context.user_data.pop("patterns_back_override", None) or "settings_ext_backup_proxmox"
     )
