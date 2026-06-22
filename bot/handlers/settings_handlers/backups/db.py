@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/backups/db.py
-Server Monitoring System v8.63.20
+Server Monitoring System v8.63.21
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database backup UI settings extracted from _legacy.py (PR7e серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.20
+Версия: 8.63.21
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самая крупная backup-семья (после supplier_stock): UI Telegram-настроек
@@ -513,6 +513,10 @@ def show_backup_databases(update, context):
 
 def show_db_patterns_menu(update, context):
     """Показать паттерны для БД"""
+    from bot.handlers.settings_handlers._legacy import (
+        view_patterns_handler,
+    )  # circular-safe lazy import
+
     context.user_data["patterns_filter"] = "db"
     context.user_data["patterns_back"] = "settings_ext_backup_db"
     context.user_data["patterns_add"] = "add_pattern"
@@ -522,6 +526,10 @@ def show_db_patterns_menu(update, context):
 
 def show_db_patterns_menu_from_backup(update, context):
     """Показать паттерны БД из меню бэкапов БД."""
+    from bot.handlers.settings_handlers._legacy import (
+        view_patterns_handler,
+    )  # circular-safe lazy import
+
     context.user_data["patterns_filter"] = "db"
     context.user_data["patterns_back"] = "backup_databases"
     context.user_data["patterns_add"] = "add_pattern"

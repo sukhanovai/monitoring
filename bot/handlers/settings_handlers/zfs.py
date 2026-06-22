@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/zfs.py
-Server Monitoring System v8.63.20
+Server Monitoring System v8.63.21
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ZFS settings UI handlers extracted from
 bot/handlers/settings_handlers/_legacy.py (PR7c серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.20
+Версия: 8.63.21
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Блок UI Telegram-бота для настроек ZFS-мониторинга: меню статуса
@@ -131,6 +131,10 @@ def _build_zfs_pattern_from_fragments(
 
 def show_zfs_patterns_menu(update, context):
     """Показать паттерны для ZFS"""
+    from bot.handlers.settings_handlers._legacy import (
+        view_patterns_handler,
+    )  # circular-safe lazy import
+
     context.user_data["patterns_filter"] = "zfs"
     context.user_data["patterns_back"] = "settings_zfs"
     context.user_data["patterns_add"] = "add_zfs_pattern"

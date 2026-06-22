@@ -1,3 +1,9 @@
+## [8.63.21] - 2026-06-22
+
+### Fixed
+- RU: Telegram-бот — исправлен `NameError: name 'view_patterns_handler' is not defined` при открытии меню паттернов бэкапов БД («Настройки → Бэкапы БД → Паттерны», в т.ч. callback `settings_patterns_db_from_backup`), а также паттернов Proxmox, почты и ZFS. Функция `view_patterns_handler` определена в `_legacy.py`, но модули `backups/db.py`, `backups/proxmox.py`, `backups/mail.py` и `zfs.py` её не импортировали и не получали биндинги `_legacy` (в отличие от `callback_dispatcher.py`), поэтому вызов падал. Во все затронутые функции (`show_db_patterns_menu`, `show_db_patterns_menu_from_backup`, `show_proxmox_patterns_menu`, `show_mail_patterns_menu`, `show_zfs_patterns_menu`) добавлен ленивый импорт по образцу ранее исправленного `show_stock_load_patterns_menu`.
+- EN: Telegram bot — fixed `NameError: name 'view_patterns_handler' is not defined` when opening the DB backup patterns menu ("Settings → DB backups → Patterns", including the `settings_patterns_db_from_backup` callback), as well as the Proxmox, mail and ZFS pattern menus. The `view_patterns_handler` function is defined in `_legacy.py`, but the `backups/db.py`, `backups/proxmox.py`, `backups/mail.py` and `zfs.py` modules neither imported it nor received the `_legacy` bindings (unlike `callback_dispatcher.py`), so the call failed. Added a lazy import to every affected function (`show_db_patterns_menu`, `show_db_patterns_menu_from_backup`, `show_proxmox_patterns_menu`, `show_mail_patterns_menu`, `show_zfs_patterns_menu`), following the previously fixed `show_stock_load_patterns_menu`.
+
 ## [8.63.20] - 2026-06-14
 
 ### Added
