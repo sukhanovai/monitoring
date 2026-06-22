@@ -1,3 +1,9 @@
+## [8.63.22] - 2026-06-22
+
+### Changed
+- RU: Релизный/деплой-маркер. Функционально повторяет фикс `view_patterns_handler` из 8.63.21 (ленивые импорты в меню паттернов БД/Proxmox/почты/ZFS уже в коде); версия поднята до 8.63.22, чтобы после перезапуска бота на ветке `develop` было видно, что развёрнут именно код с исправлением (а не предыдущая сборка). Кода обработчиков изменения не касаются.
+- EN: Release/deploy marker. Functionally identical to the `view_patterns_handler` fix from 8.63.21 (the lazy imports in the DB/Proxmox/mail/ZFS pattern menus are already in the code); the version is bumped to 8.63.22 so that, after the `develop` bot is restarted, it is clear the fixed code is actually deployed (not the previous build). No handler logic was changed.
+
 ## [8.63.21] - 2026-06-22
 
 ### Fixed
