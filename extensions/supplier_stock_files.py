@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.63.24
+Server Monitoring System v8.63.25
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.63.24
+Версия: 8.63.25
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -117,7 +117,7 @@ _LEGACY_IEK_OUTPUT_TEMPLATES = {
 }
 
 DEFAULT_HDE_SETTINGS: Dict[str, Any] = {
-    "base_url": "http://80.252.22.15/ut_vips/hs/smsh",
+    "base_url": "http://80.252.22.15/UT_vips/hs/smsh",
     "basic_user": "SmartShopUser001",
     "basic_pass": "",
     "company_inn": "",
