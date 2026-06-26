@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/patterns.py
-Server Monitoring System v8.63.22
+Server Monitoring System v8.63.23
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Pattern helpers extracted from modules/mail_monitor.py (PR6 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.22
+Версия: 8.63.23
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Сборщики regex/glob-паттернов из конфигурации БД для разных типов писем
