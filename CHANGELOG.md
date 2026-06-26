@@ -1,3 +1,9 @@
+## [8.63.24] - 2026-06-26
+
+### Fixed
+- RU: Telegram-бот — повторное исправление несохранения параметров HD-Electric API (`Пароль`, `ИНН/КПП`, `Секрет` и др.) в меню «⚙️ HD-Electric API». Предыдущий фикс (8.63.23) содержал корректное изменение `settings_value.py`, однако на сервере мешал git pull из-за неотслеживаемого файла `scripts/hdelectric_pull.py`. Данный релиз является повторным выпуском того же исправления: ключ `supplier_stock_source_hde_field` в диспетчере `handle_setting_value` гарантирует маршрутизацию текстового ввода в `supplier_stock_handle_source_hde_field_input`.
+- EN: Telegram bot — re-release of the HD-Electric API parameter save fix (`Password`, `INN/KPP`, `Secret`, etc.) in the "⚙️ HD-Electric API" menu. The previous fix (8.63.23) had the correct `settings_value.py` change, but the server's git pull was blocked by an untracked `scripts/hdelectric_pull.py` file. This release re-issues the same fix: the `supplier_stock_source_hde_field` key in the `handle_setting_value` dispatcher ensures typed text is routed to `supplier_stock_handle_source_hde_field_input`.
+
 ## [8.63.23] - 2026-06-26
 
 ### Fixed
