@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/settings_value.py
-Server Monitoring System v8.63.22
+Server Monitoring System v8.63.23
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчик текстового ввода значений настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.22
+Версия: 8.63.23
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
@@ -108,6 +108,7 @@ def handle_setting_value(update, context):
         or context.user_data.get("supplier_stock_edit_source")
         or context.user_data.get("supplier_stock_source_field")
         or context.user_data.get("supplier_stock_source_iek_field")
+        or context.user_data.get("supplier_stock_source_hde_field")
         or context.user_data.get("supplier_stock_resource_add")
         or context.user_data.get("supplier_stock_resource_field")
         or context.user_data.get("supplier_stock_ftp_field")

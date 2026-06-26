@@ -1,3 +1,9 @@
+## [8.63.23] - 2026-06-26
+
+### Fixed
+- RU: Telegram-бот — исправлено несохранение параметров источника HD-Electric API (`Пароль`, `ИНН/КПП`, `Секрет` и др.). В диспетчере текстового ввода `handle_setting_value` (`bot/handlers/settings_handlers/settings_value.py`) отсутствовал ключ `supplier_stock_source_hde_field` в списке условий, перенаправляющих ввод в `supplier_stock_handle_input`. Из-за этого введённый текст не доходил до обработчика `supplier_stock_handle_source_hde_field_input`, и показанные значения (URL, логин, запросы, файл) на деле были дефолтами из `DEFAULT_HDE_SETTINGS`, а не сохранёнными. Ключ добавлен рядом с `supplier_stock_source_iek_field`.
+- EN: Telegram bot — fixed HD-Electric API source parameters not being saved (`Password`, `INN/KPP`, `Secret`, etc.). The text-input dispatcher `handle_setting_value` (`bot/handlers/settings_handlers/settings_value.py`) was missing the `supplier_stock_source_hde_field` key in the list of conditions routing input to `supplier_stock_handle_input`. As a result the typed text never reached the `supplier_stock_handle_source_hde_field_input` handler, and the displayed values (URL, login, endpoints, file) were actually defaults from `DEFAULT_HDE_SETTINGS`, not saved values. Added the key next to `supplier_stock_source_iek_field`.
+
 ## [8.63.22] - 2026-06-26
 
 ### Added
