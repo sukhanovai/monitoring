@@ -6623,6 +6623,170 @@ private fun MonitoringApp(
                             Text("💾 Сохранить изменения")
                         }
                     }
+                    // ⚙️ Настройки HD-Electric API — нативные поля для редактирования параметров.
+                    if (supplierSettingsCurrent &&
+                        supplierSubAction.startsWith("supplier_stock_source_hde_field|")
+                    ) {
+                        val hdeFieldSourceId = supplierSubAction
+                            .removePrefix("supplier_stock_source_hde_field|")
+                            .substringBefore("|")
+                        val hdeField = supplierSubAction.substringAfterLast("|")
+                        when (hdeField) {
+                            "base_url" -> {
+                                OutlinedTextField(
+                                    value = supplierStockHdeUrlInput,
+                                    onValueChange = { supplierStockHdeUrlInput = it },
+                                    label = { Text("URL API HD-Electric") },
+                                    placeholder = { Text("http://host/ut_vips/hs/smsh") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Button(
+                                    onClick = {
+                                        val v = supplierStockHdeUrlInput.trim()
+                                        if (v.isNotEmpty()) {
+                                            onExtensionsSettingsAction("supplier_stock_source_hde_field|$hdeFieldSourceId|base_url|" + Uri.encode(v))
+                                            supplierStockHdeUrlInput = ""
+                                        }
+                                    },
+                                    enabled = supplierStockHdeUrlInput.isNotBlank(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) { Text("💾 Сохранить URL") }
+                            }
+                            "basic_user" -> {
+                                OutlinedTextField(
+                                    value = supplierStockHdeUserInput,
+                                    onValueChange = { supplierStockHdeUserInput = it },
+                                    label = { Text("Логин Basic Auth") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Button(
+                                    onClick = {
+                                        val v = supplierStockHdeUserInput.trim()
+                                        if (v.isNotEmpty()) {
+                                            onExtensionsSettingsAction("supplier_stock_source_hde_field|$hdeFieldSourceId|basic_user|" + Uri.encode(v))
+                                            supplierStockHdeUserInput = ""
+                                        }
+                                    },
+                                    enabled = supplierStockHdeUserInput.isNotBlank(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) { Text("💾 Сохранить логин") }
+                            }
+                            "basic_pass" -> {
+                                OutlinedTextField(
+                                    value = supplierStockHdePassInput,
+                                    onValueChange = { supplierStockHdePassInput = it },
+                                    label = { Text("Пароль Basic Auth") },
+                                    singleLine = true,
+                                    visualTransformation = hiddenTransformation,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Button(
+                                    onClick = {
+                                        val v = supplierStockHdePassInput
+                                        if (v.isNotEmpty()) {
+                                            onExtensionsSettingsAction("supplier_stock_source_hde_field|$hdeFieldSourceId|basic_pass|" + Uri.encode(v))
+                                            supplierStockHdePassInput = ""
+                                        }
+                                    },
+                                    enabled = supplierStockHdePassInput.isNotEmpty(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) { Text("💾 Сохранить пароль") }
+                            }
+                            "company_inn" -> {
+                                OutlinedTextField(
+                                    value = supplierStockHdeInnInput,
+                                    onValueChange = { supplierStockHdeInnInput = it },
+                                    label = { Text("ИНН/КПП организации") },
+                                    placeholder = { Text("1234567890/123456789") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Button(
+                                    onClick = {
+                                        val v = supplierStockHdeInnInput.trim()
+                                        if (v.isNotEmpty()) {
+                                            onExtensionsSettingsAction("supplier_stock_source_hde_field|$hdeFieldSourceId|company_inn|" + Uri.encode(v))
+                                            supplierStockHdeInnInput = ""
+                                        }
+                                    },
+                                    enabled = supplierStockHdeInnInput.isNotBlank(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) { Text("💾 Сохранить ИНН/КПП") }
+                            }
+                            "smsh_secret" -> {
+                                OutlinedTextField(
+                                    value = supplierStockHdeSecretInput,
+                                    onValueChange = { supplierStockHdeSecretInput = it },
+                                    label = { Text("Секрет организации SmShSecret") },
+                                    singleLine = true,
+                                    visualTransformation = hiddenTransformation,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Button(
+                                    onClick = {
+                                        val v = supplierStockHdeSecretInput
+                                        if (v.isNotEmpty()) {
+                                            onExtensionsSettingsAction("supplier_stock_source_hde_field|$hdeFieldSourceId|smsh_secret|" + Uri.encode(v))
+                                            supplierStockHdeSecretInput = ""
+                                        }
+                                    },
+                                    enabled = supplierStockHdeSecretInput.isNotEmpty(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) { Text("💾 Сохранить секрет") }
+                            }
+                            "fetch_endpoints" -> {
+                                OutlinedTextField(
+                                    value = supplierStockHdeEndpointsInput,
+                                    onValueChange = { supplierStockHdeEndpointsInput = it },
+                                    label = { Text("Запросы (stock, price, transit)") },
+                                    placeholder = { Text("stock, price, transit") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Button(
+                                    onClick = {
+                                        val v = supplierStockHdeEndpointsInput.trim()
+                                        if (v.isNotEmpty()) {
+                                            onExtensionsSettingsAction("supplier_stock_source_hde_field|$hdeFieldSourceId|fetch_endpoints|" + Uri.encode(v))
+                                            supplierStockHdeEndpointsInput = ""
+                                        }
+                                    },
+                                    enabled = supplierStockHdeEndpointsInput.isNotBlank(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) { Text("💾 Сохранить запросы") }
+                            }
+                            "output_name" -> {
+                                OutlinedTextField(
+                                    value = supplierStockHdeOutputInput,
+                                    onValueChange = { supplierStockHdeOutputInput = it },
+                                    label = { Text("Имя выходного файла Excel") },
+                                    placeholder = { Text("hdelectric.xlsx") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Button(
+                                    onClick = {
+                                        val v = supplierStockHdeOutputInput.trim()
+                                        if (v.isNotEmpty()) {
+                                            onExtensionsSettingsAction("supplier_stock_source_hde_field|$hdeFieldSourceId|output_name|" + Uri.encode(v))
+                                            supplierStockHdeOutputInput = ""
+                                        }
+                                    },
+                                    enabled = supplierStockHdeOutputInput.isNotBlank(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) { Text("💾 Сохранить имя файла") }
+                            }
+                        }
+                    }
                     // 📨 Источники почты — нативная форма добавления правила вложений.
                     // Показывается на экране списка правил, но не на экране подтверждения удаления.
                     if (supplierSettingsCurrent &&

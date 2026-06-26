@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/supplier_stock.py
-Server Monitoring System v8.63.21
+Server Monitoring System v8.63.22
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock UI handlers extracted from
 bot/handlers/settings_handlers/_legacy.py (PR7b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.21
+Версия: 8.63.22
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самодостаточный блок UI Telegram-бота для настроек supplier-stock
@@ -498,6 +498,8 @@ def _supplier_stock_processing_mode_label(value: str | None) -> str:
     mode = (value or "table").strip().lower()
     if mode == "iek_json":
         return "IEK JSON"
+    if mode == "hdelectric_api":
+        return "HD-Electric API"
     return "Табличный"
 
 
@@ -2693,6 +2695,29 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
             f"• Префикс артикула: `{prefix_text}`",
             f"• Файлы: `{outputs_text}`",
         ]
+    elif processing_mode == "hdelectric_api":
+        hde_settings = source.get("hde_api") or {}
+        hde_url = _escape_pattern_text(hde_settings.get("base_url") or "не задано")
+        hde_user = _escape_pattern_text(hde_settings.get("basic_user") or "не задано")
+        hde_pass_state = "задано" if hde_settings.get("basic_pass") else "не задано"
+        hde_inn = _escape_pattern_text(hde_settings.get("company_inn") or "не задано")
+        hde_secret_state = "задано" if hde_settings.get("smsh_secret") else "не задано"
+        hde_endpoints = _escape_pattern_text(
+            ", ".join(hde_settings.get("fetch_endpoints") or ["stock", "price", "transit"])
+        )
+        hde_output = _escape_pattern_text(hde_settings.get("output_name") or "не задано")
+        hde_csv = "вкл" if hde_settings.get("also_csv") else "выкл"
+        iek_section = [
+            "⚙️ *HD\\-Electric API*",
+            f"• URL: `{hde_url}`",
+            f"• Логин: `{hde_user}`",
+            f"• Пароль: `{hde_pass_state}`",
+            f"• ИНН/КПП: `{hde_inn}`",
+            f"• Секрет: `{hde_secret_state}`",
+            f"• Запросы: `{hde_endpoints}`",
+            f"• Файл: `{hde_output}`",
+            f"• CSV: `{hde_csv}`",
+        ]
 
     message_lines = [
         "⚙️ *Источник остатков*\n",
@@ -2783,6 +2808,15 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
             [
                 InlineKeyboardButton(
                     "⚙️ IEK JSON", callback_data=f"supplier_stock_source_iek_settings|{source_id}"
+                )
+            ]
+        )
+    elif processing_mode == "hdelectric_api":
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "⚙️ HD-Electric API",
+                    callback_data=f"supplier_stock_source_hde_settings|{source_id}",
                 )
             ]
         )
@@ -3001,6 +3035,210 @@ def show_supplier_stock_source_iek_settings(update, context, source_id: str) -> 
     query.edit_message_text(
         message, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+
+def show_supplier_stock_source_hde_settings(update, context, source_id: str) -> None:
+    """Показать настройки HD-Electric API."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
+        )
+        return
+
+    hde = source.get("hde_api") or {}
+    base_url = _escape_pattern_text(hde.get("base_url") or "не задано")
+    basic_user = _escape_pattern_text(hde.get("basic_user") or "не задано")
+    pass_state = "задано" if hde.get("basic_pass") else "не задано"
+    company_inn = _escape_pattern_text(hde.get("company_inn") or "не задано")
+    secret_state = "задано" if hde.get("smsh_secret") else "не задано"
+    endpoints = _escape_pattern_text(
+        ", ".join(hde.get("fetch_endpoints") or ["stock", "price", "transit"])
+    )
+    output_name = _escape_pattern_text(hde.get("output_name") or "не задано")
+    also_csv = "вкл" if hde.get("also_csv") else "выкл"
+
+    message = (
+        "⚙️ *HD\\-Electric API*\n\n"
+        f"• URL: `{base_url}`\n"
+        f"• Логин: `{basic_user}`\n"
+        f"• Пароль: `{pass_state}`\n"
+        f"• ИНН/КПП: `{company_inn}`\n"
+        f"• Секрет организации: `{secret_state}`\n"
+        f"• Запросы: `{endpoints}`\n"
+        f"• Файл: `{output_name}`\n"
+        f"• Экспорт CSV: `{also_csv}`\n\n"
+        "Выберите действие:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("🔗 URL", callback_data=f"supplier_stock_source_hde_field|{source_id}|base_url")],
+        [
+            InlineKeyboardButton("👤 Логин", callback_data=f"supplier_stock_source_hde_field|{source_id}|basic_user"),
+            InlineKeyboardButton("🔐 Пароль", callback_data=f"supplier_stock_source_hde_field|{source_id}|basic_pass"),
+        ],
+        [
+            InlineKeyboardButton("🏢 ИНН/КПП", callback_data=f"supplier_stock_source_hde_field|{source_id}|company_inn"),
+            InlineKeyboardButton("🗝️ Секрет", callback_data=f"supplier_stock_source_hde_field|{source_id}|smsh_secret"),
+        ],
+        [InlineKeyboardButton("📡 Запросы", callback_data=f"supplier_stock_source_hde_field|{source_id}|fetch_endpoints")],
+        [
+            InlineKeyboardButton("📄 Файл", callback_data=f"supplier_stock_source_hde_field|{source_id}|output_name"),
+            InlineKeyboardButton(f"📊 CSV: {also_csv}", callback_data=f"supplier_stock_source_hde_csv_toggle_{source_id}"),
+        ],
+        [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data=f"supplier_stock_source_settings|{source_id}"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
+    ]
+
+    query.edit_message_text(
+        message, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+def supplier_stock_start_source_hde_field_edit(update, context, source_id: str, field: str) -> None:
+    """Запросить изменение параметра HD-Electric API."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
+        )
+        return
+
+    context.user_data["supplier_stock_source_hde_field"] = field
+    context.user_data["supplier_stock_source_hde_field_id"] = source_id
+
+    prompts = {
+        "base_url": "Введите базовый URL API HD-Electric (без слэша на конце):",
+        "basic_user": "Введите логин Basic Auth:",
+        "basic_pass": "Введите пароль Basic Auth (или '-' чтобы оставить):",
+        "company_inn": "Введите ИНН/КПП организации (заголовок CompanyINN):",
+        "smsh_secret": "Введите секрет организации (заголовок CompanySmShSecret):",
+        "fetch_endpoints": "Введите запросы через запятую: stock, price, transit:",
+        "output_name": "Введите имя выходного файла Excel (например: hdelectric.xlsx):",
+    }
+
+    hde = source.get("hde_api") or {}
+    current_values = {
+        "base_url": hde.get("base_url") or "-",
+        "basic_user": hde.get("basic_user") or "-",
+        "basic_pass": "задано" if hde.get("basic_pass") else "-",
+        "company_inn": hde.get("company_inn") or "-",
+        "smsh_secret": "задано" if hde.get("smsh_secret") else "-",
+        "fetch_endpoints": ", ".join(hde.get("fetch_endpoints") or ["stock", "price", "transit"]),
+        "output_name": hde.get("output_name") or "-",
+    }
+
+    prompt = prompts.get(field, "Введите значение:")
+    current_value = current_values.get(field, "-")
+    _supplier_stock_remember_prompt_message(context, query)
+    query.edit_message_text(
+        f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("❌ Отмена", callback_data=f"supplier_stock_source_hde_settings|{source_id}")],
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+            ]
+        ),
+    )
+
+
+def supplier_stock_handle_source_hde_field_input(update, context):
+    """Обработка ввода при редактировании параметров HD-Electric API."""
+    field = context.user_data.get("supplier_stock_source_hde_field")
+    source_id = context.user_data.get("supplier_stock_source_hde_field_id")
+    user_input = (update.message.text or "").strip()
+
+    if not field or not source_id:
+        return None
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        update.message.reply_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("↩️ Назад", callback_data="supplier_stock_sources")]]
+            ),
+        )
+        return None
+
+    hde = source.setdefault("hde_api", {})
+
+    if user_input in ("-", ""):
+        config["download"]["sources"] = sources
+        save_supplier_stock_config(config)
+        context.user_data.pop("supplier_stock_source_hde_field", None)
+        context.user_data.pop("supplier_stock_source_hde_field_id", None)
+        _supplier_stock_close_prompt_message(context)
+        update.message.reply_text(
+            "✅ Настройка обновлена.",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("↩️ Назад", callback_data=f"supplier_stock_source_hde_settings|{source_id}")],
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+                ]
+            ),
+        )
+        return None
+
+    if field in ("base_url", "basic_user", "basic_pass", "company_inn", "smsh_secret", "output_name"):
+        hde[field] = "" if user_input.lower() in ("none", "нет") else user_input
+    elif field == "fetch_endpoints":
+        valid = {"stock", "price", "transit"}
+        chosen = [ep.strip() for ep in re.split(r"[,\s]+", user_input) if ep.strip() in valid]
+        if not chosen:
+            update.message.reply_text("❌ Допустимые значения: stock, price, transit.")
+            return None
+        hde["fetch_endpoints"] = chosen
+    else:
+        update.message.reply_text("❌ Не удалось определить поле настройки.")
+        return None
+
+    source["hde_api"] = hde
+    config["download"]["sources"] = sources
+    save_supplier_stock_config(config)
+
+    context.user_data.pop("supplier_stock_source_hde_field", None)
+    context.user_data.pop("supplier_stock_source_hde_field_id", None)
+    _supplier_stock_close_prompt_message(context)
+
+    update.message.reply_text(
+        "✅ Настройка обновлена.",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("↩️ Назад", callback_data=f"supplier_stock_source_hde_settings|{source_id}")],
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+            ]
+        ),
+    )
+    return None
 
 
 def show_supplier_stock_mail_source_settings(update, context, source_id: str):
@@ -3251,7 +3489,7 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
         "auth": "Введите login:password, '-' чтобы оставить или 'none' чтобы очистить:",
         "pre_request": "Введите URL | данные для предзапроса, '-' чтобы оставить или 'none' чтобы очистить:",
         "options": "Введите опции (headers, append) через запятую, '-' чтобы оставить или 'none' чтобы очистить:",
-        "processing_mode": "Введите тип обработки (`table` или `iek\\_json`), '-' чтобы оставить:",
+        "processing_mode": "Введите тип обработки (`table`, `iek\\_json` или `hdelectric\\_api`), '-' чтобы оставить:",
         "upload_subdir": "Введите подкаталог для выгрузки (или '-' чтобы оставить, 'none' чтобы очистить):",
         "individual_path": "Введите UNC путь индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
         "individual_login": "Введите логин индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
@@ -4223,6 +4461,8 @@ def supplier_stock_handle_input(update, context):
     """Обработчик ввода для настроек остатков поставщиков."""
     if context.user_data.get("supplier_stock_source_iek_field"):
         return supplier_stock_handle_source_iek_field_input(update, context)
+    if context.user_data.get("supplier_stock_source_hde_field"):
+        return supplier_stock_handle_source_hde_field_input(update, context)
     if context.user_data.get("supplier_stock_resource_field"):
         return supplier_stock_handle_resource_field_input(update, context)
     if context.user_data.get("supplier_stock_resource_add"):
@@ -4835,11 +5075,13 @@ def supplier_stock_handle_source_field_input(update, context):
         else:
             mode = _normalize_supplier_processing_mode(user_input)
             if not mode:
-                update.message.reply_text("❌ Допустимые значения: table, iek_json.")
+                update.message.reply_text("❌ Допустимые значения: table, iek_json, hdelectric_api.")
                 return None
             source["processing_mode"] = mode
             if mode == "iek_json":
                 source.setdefault("iek_json", {})
+            elif mode == "hdelectric_api":
+                source.setdefault("hde_api", {})
     elif field == "upload_subdir":
         if user_input in ("-", ""):
             pass
@@ -5720,11 +5962,14 @@ def _unique_supplier_source_id(source_id: str, sources: list[dict]) -> str:
 def _normalize_supplier_processing_mode(value: str) -> str | None:
     if not value:
         return None
+
     lowered = value.strip().lower()
     if lowered in ("table", "табличный", "таблица"):
         return "table"
     if lowered in ("iek_json", "iek", "json"):
         return "iek_json"
+    if lowered in ("hdelectric_api", "hdelectric", "hde", "hd-electric", "hd_electric"):
+        return "hdelectric_api"
     return None
 
 

@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.21
+Server Monitoring System v8.63.22
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.21
+Версия: 8.63.22
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -6730,6 +6730,83 @@ def v1_extensions_actions():
         menu_options = [
             {"label": "🗑 Очистить пароль", "action": "supplier_stock_ftp_clear_password"},
             {"label": "↩️ Назад", "action": "supplier_stock_download"},
+            {"label": "✖️ Закрыть", "action": "close"},
+        ]
+        return (
+            jsonify(
+                {
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": message,
+                    "menu_options": menu_options,
+                }
+            ),
+            200,
+        )
+
+    if action.startswith("supplier_stock_source_hde_settings|") or action.startswith(
+        "supplier_stock_source_hde_field|"
+    ):
+        config = get_supplier_stock_config()
+        sources = (config.get("download", {}) or {}).get("sources", []) or []
+        notice = ""
+        parts = raw_action.split("|")
+        source_id = parts[1].strip() if len(parts) > 1 else ""
+        source = next((s for s in sources if str(s.get("id")) == source_id), None)
+        if source and action.startswith("supplier_stock_source_hde_field|"):
+            field = parts[2].strip() if len(parts) > 2 else ""
+            if len(parts) > 3:
+                value = unquote(parts[3])
+                hde = source.setdefault("hde_api", {})
+                valid_fields = {"base_url", "basic_user", "basic_pass", "company_inn", "smsh_secret", "output_name"}
+                if field in valid_fields:
+                    hde[field] = value.strip() if field not in ("basic_pass", "smsh_secret") else value
+                    notice = f"✅ Сохранено: {field}\n\n"
+                elif field == "fetch_endpoints":
+                    valid_ep = {"stock", "price", "transit"}
+                    chosen = [ep.strip() for ep in re.split(r"[,\s]+", value) if ep.strip() in valid_ep]
+                    if chosen:
+                        hde["fetch_endpoints"] = chosen
+                        notice = f"✅ Запросы: {', '.join(chosen)}\n\n"
+                    else:
+                        notice = "❌ Допустимые значения: stock, price, transit\n\n"
+                config.setdefault("download", {})["sources"] = sources
+                save_supplier_stock_config(config)
+        if not source:
+            notice = f"❌ Источник {source_id!r} не найден\n\n"
+            hde = {}
+        else:
+            hde = source.get("hde_api") or {}
+        base_url = hde.get("base_url") or "не задано"
+        basic_user = hde.get("basic_user") or "не задано"
+        pass_state = "задано" if hde.get("basic_pass") else "не задано"
+        company_inn = hde.get("company_inn") or "не задано"
+        secret_state = "задано" if hde.get("smsh_secret") else "не задано"
+        endpoints = ", ".join(hde.get("fetch_endpoints") or ["stock", "price", "transit"])
+        output_name = hde.get("output_name") or "не задано"
+        also_csv = "вкл" if hde.get("also_csv") else "выкл"
+        message = (
+            f"{notice}⚙️ HD-Electric API\n\n"
+            f"• URL: {base_url}\n"
+            f"• Логин: {basic_user}\n"
+            f"• Пароль: {pass_state}\n"
+            f"• ИНН/КПП: {company_inn}\n"
+            f"• Секрет: {secret_state}\n"
+            f"• Запросы: {endpoints}\n"
+            f"• Файл: {output_name}\n"
+            f"• CSV: {also_csv}\n\n"
+            "Нажмите на поле ниже для редактирования."
+        )
+        menu_options = [
+            {"label": "🔗 URL", "action": f"supplier_stock_source_hde_field|{source_id}|base_url"},
+            {"label": "👤 Логин", "action": f"supplier_stock_source_hde_field|{source_id}|basic_user"},
+            {"label": "🔐 Пароль", "action": f"supplier_stock_source_hde_field|{source_id}|basic_pass"},
+            {"label": "🏢 ИНН/КПП", "action": f"supplier_stock_source_hde_field|{source_id}|company_inn"},
+            {"label": "🗝️ Секрет", "action": f"supplier_stock_source_hde_field|{source_id}|smsh_secret"},
+            {"label": "📡 Запросы", "action": f"supplier_stock_source_hde_field|{source_id}|fetch_endpoints"},
+            {"label": "📄 Файл", "action": f"supplier_stock_source_hde_field|{source_id}|output_name"},
+            {"label": "↩️ Назад", "action": "supplier_stock_sources"},
             {"label": "✖️ Закрыть", "action": "close"},
         ]
         return (

@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.63.21
+Server Monitoring System v8.63.22
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.63.21
+Версия: 8.63.22
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -116,6 +116,17 @@ _LEGACY_IEK_OUTPUT_TEMPLATES = {
     "orc": "{source_id}_orc.csv",
 }
 
+DEFAULT_HDE_SETTINGS: Dict[str, Any] = {
+    "base_url": "http://80.252.22.15/ut_vips/hs/smsh",
+    "basic_user": "SmartShopUser001",
+    "basic_pass": "",
+    "company_inn": "",
+    "smsh_secret": "",
+    "fetch_endpoints": ["stock", "price", "transit"],
+    "also_csv": False,
+    "output_name": "hdelectric.xlsx",
+}
+
 _scheduler_lock = threading.Lock()
 _scheduler_started = False
 _last_run_markers: set[str] = set()
@@ -196,6 +207,8 @@ def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, 
                 source["individual_directory"].setdefault("password", "")
                 if source.get("processing_mode") == "iek_json":
                     source["iek_json"] = _normalize_iek_json_settings(source.get("iek_json"))
+                elif source.get("processing_mode") == "hdelectric_api":
+                    source["hde_api"] = _normalize_hde_settings(source.get("hde_api"))
     mail_sources = merged.get("mail", {}).get("sources", [])
     if isinstance(mail_sources, list):
         for source in mail_sources:
@@ -279,6 +292,33 @@ def _normalize_iek_json_settings(value: Any) -> Dict[str, Any]:
             if outputs.get(key) == legacy_template:
                 outputs[key] = DEFAULT_IEK_JSON_SETTINGS["outputs"][key]
         normalized["outputs"] = outputs
+    return normalized
+
+
+def _normalize_hde_settings(value: Any) -> Dict[str, Any]:
+    settings: Dict[str, Any] = {}
+    if isinstance(value, dict):
+        settings = dict(value)
+    normalized = _merge_dicts(DEFAULT_HDE_SETTINGS, settings)
+    if isinstance(settings.get("base_url"), str) and settings["base_url"].strip():
+        normalized["base_url"] = settings["base_url"].strip().rstrip("/")
+    if isinstance(settings.get("basic_user"), str):
+        normalized["basic_user"] = settings["basic_user"]
+    if isinstance(settings.get("basic_pass"), str):
+        normalized["basic_pass"] = settings["basic_pass"]
+    if isinstance(settings.get("company_inn"), str):
+        normalized["company_inn"] = settings["company_inn"]
+    if isinstance(settings.get("smsh_secret"), str):
+        normalized["smsh_secret"] = settings["smsh_secret"]
+    if isinstance(settings.get("fetch_endpoints"), list):
+        valid = {"stock", "price", "transit"}
+        normalized["fetch_endpoints"] = [
+            ep for ep in settings["fetch_endpoints"] if ep in valid
+        ] or list(DEFAULT_HDE_SETTINGS["fetch_endpoints"])
+    if isinstance(settings.get("also_csv"), bool):
+        normalized["also_csv"] = settings["also_csv"]
+    if isinstance(settings.get("output_name"), str) and settings["output_name"].strip():
+        normalized["output_name"] = settings["output_name"].strip()
     return normalized
 
 
@@ -642,6 +682,127 @@ def _run_shell_command(
         "stderr": result.stderr.strip(),
         "path": output_path,
     }
+
+
+def _run_hde_api_fetch(
+    source: Dict[str, Any],
+    output_path: Path,
+    now: datetime,
+) -> Dict[str, Any]:
+    """Загрузить данные из HD-Electric Smart-Shop API и сохранить в xlsx."""
+    try:
+        import time as _time
+
+        import requests
+        from requests.auth import HTTPBasicAuth
+        import pandas as pd
+    except ImportError as exc:
+        return {"success": False, "error": f"Зависимость не установлена: {exc}"}
+
+    hde = _normalize_hde_settings(source.get("hde_api"))
+    base_url = hde["base_url"].rstrip("/")
+    basic_user = hde["basic_user"]
+    basic_pass = hde["basic_pass"]
+    company_inn = hde["company_inn"]
+    smsh_secret = hde["smsh_secret"]
+    fetch_endpoints = set(hde["fetch_endpoints"])
+    also_csv = hde["also_csv"]
+
+    session = requests.Session()
+    session.auth = HTTPBasicAuth(basic_user, basic_pass)
+    session.headers.update({
+        "CompanyINN": company_inn,
+        "CompanySmShSecret": smsh_secret,
+        "Accept": "application/json",
+    })
+
+    def _fetch(path: str) -> dict:
+        url = f"{base_url}/{path.lstrip('/')}"
+        last_err = None
+        for attempt in range(1, 4):
+            try:
+                r = session.get(url, timeout=60)
+                r.raise_for_status()
+                r.encoding = r.encoding or "utf-8"
+                return r.json()
+            except Exception as exc:
+                last_err = exc
+                if attempt < 3:
+                    _time.sleep(5)
+        raise RuntimeError(f"{url}: {last_err}")
+
+    def _to_num(series: "pd.Series") -> "pd.Series":
+        import pandas as _pd
+        return _pd.to_numeric(series, errors="coerce")
+
+    def _parse_stocks(payload: dict) -> "pd.DataFrame":
+        import pandas as _pd
+        rows = payload.get("stocks", []) or []
+        df = _pd.DataFrame(rows)
+        if df.empty:
+            return _pd.DataFrame(columns=["vendor_code", "brand_name", "location_name", "unit", "quantity"])
+        if "unit_code" in df.columns:
+            if "unit" in df.columns:
+                df["unit"] = df["unit"].fillna(df["unit_code"])
+            else:
+                df = df.rename(columns={"unit_code": "unit"})
+            df = df.drop(columns=[c for c in ("unit_code",) if c in df.columns])
+        df["quantity"] = _to_num(df.get("quantity"))
+        return df
+
+    def _parse_prices(payload: dict) -> "pd.DataFrame":
+        import pandas as _pd
+        rows = payload.get("prices", []) or []
+        df = _pd.DataFrame(rows)
+        if df.empty:
+            return _pd.DataFrame(columns=["vendor_code", "price_withvat", "price_novat", "vat", "base_price"])
+        for col in ("price_withvat", "price_novat", "vat", "base_price"):
+            if col in df.columns:
+                df[col] = _to_num(df[col])
+        return df
+
+    def _parse_transit(payload: dict) -> "pd.DataFrame":
+        import pandas as _pd
+        items = payload.get("items", []) or []
+        out = []
+        for it in items:
+            base = {"vendor_code": it.get("vendor_code"), "brand_name": it.get("brand_name"), "unit": it.get("unit")}
+            for a in (it.get("planned_arrival") or [{"location_name": None, "quantity": None, "planned_date": None}]):
+                out.append({**base, "location_name": a.get("location_name"), "quantity": a.get("quantity"), "planned_date": a.get("planned_date")})
+        df = _pd.DataFrame(out)
+        if not df.empty:
+            df["quantity"] = _to_num(df["quantity"])
+        return df
+
+    def _build_summary(stocks: "pd.DataFrame", prices: "pd.DataFrame", transit: "pd.DataFrame") -> "pd.DataFrame":
+        import pandas as _pd
+        stock_sum = stocks.groupby("vendor_code", as_index=False)["quantity"].sum().rename(columns={"quantity": "free_total"}) if not stocks.empty else _pd.DataFrame(columns=["vendor_code", "free_total"])
+        tr_sum = transit.groupby("vendor_code", as_index=False)["quantity"].sum().rename(columns={"quantity": "transit_total"}) if not transit.empty else _pd.DataFrame(columns=["vendor_code", "transit_total"])
+        price_cols = [c for c in ("vendor_code", "price_novat", "price_withvat", "base_price") if c in prices.columns]
+        price_slim = prices[price_cols] if price_cols else pd.DataFrame(columns=["vendor_code"])
+        df = stock_sum.merge(price_slim, on="vendor_code", how="outer").merge(tr_sum, on="vendor_code", how="outer")
+        return df.sort_values("vendor_code").reset_index(drop=True)
+
+    import pandas as pd
+
+    stocks = _parse_stocks(_fetch("freestock")) if "stock" in fetch_endpoints else pd.DataFrame(columns=["vendor_code", "brand_name", "location_name", "unit", "quantity"])
+    prices = _parse_prices(_fetch("pricelist")) if "price" in fetch_endpoints else pd.DataFrame(columns=["vendor_code", "price_withvat", "price_novat", "vat", "base_price"])
+    transit = _parse_transit(_fetch("goodsintransit")) if "transit" in fetch_endpoints else pd.DataFrame(columns=["vendor_code", "brand_name", "unit", "location_name", "quantity", "planned_date"])
+    summary = _build_summary(stocks, prices, transit)
+
+    _ensure_parent(output_path)
+    with pd.ExcelWriter(output_path, engine="openpyxl") as xw:
+        summary.to_excel(xw, sheet_name="Сводная", index=False)
+        prices.to_excel(xw, sheet_name="Прайс", index=False)
+        stocks.to_excel(xw, sheet_name="Остатки", index=False)
+        transit.to_excel(xw, sheet_name="В пути", index=False)
+
+    if also_csv:
+        for sheet_name, df in (("summary", summary), ("prices", prices), ("stocks", stocks), ("transit", transit)):
+            csv_path = output_path.with_name(f"{output_path.stem}_{sheet_name}.csv")
+            df.to_csv(csv_path, index=False, encoding="utf-8-sig", sep=";")
+
+    return {"success": True, "path": str(output_path), "rows": len(summary)}
 
 
 def append_supplier_stock_report(entry: Dict[str, Any]) -> None:
@@ -1049,28 +1210,40 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
 
         try:
             render_context = _build_render_context(source, now)
-            output_name = source.get("output_name")
-            rendered_url = _render_template(str(source.get("url", "")), now, render_context)
-            if not rendered_url:
-                entry.update({"status": "error", "error": "URL не задан"})
-                append_supplier_stock_report(entry)
-                results.append(entry)
-                _log("📦 Остатки поставщиков: %s -> error (URL не задан)", entry["source_id"])
-                continue
-            if output_name:
+            processing_mode = source.get("processing_mode") or "table"
+
+            if processing_mode == "hdelectric_api":
+                hde_settings = _normalize_hde_settings(source.get("hde_api"))
+                output_name = source.get("output_name") or hde_settings["output_name"]
                 output_name = _render_template(str(output_name), now, render_context)
                 output_path = temp_dir / output_name
+                original_path = output_path
+                entry.update({"output_name": output_name})
+                _log("📦 Остатки поставщиков: %s -> старт (HD-Electric API)", entry["source_id"])
+                result = _run_hde_api_fetch(source, output_path, now)
             else:
-                output_path = temp_dir / f"{source_id}_orig"
-            original_path = output_path
+                output_name = source.get("output_name")
+                rendered_url = _render_template(str(source.get("url", "")), now, render_context)
+                if not rendered_url:
+                    entry.update({"status": "error", "error": "URL не задан"})
+                    append_supplier_stock_report(entry)
+                    results.append(entry)
+                    _log("📦 Остатки поставщиков: %s -> error (URL не задан)", entry["source_id"])
+                    continue
+                if output_name:
+                    output_name = _render_template(str(output_name), now, render_context)
+                    output_path = temp_dir / output_name
+                else:
+                    output_path = temp_dir / f"{source_id}_orig"
+                original_path = output_path
 
-            entry.update({"url": rendered_url, "output_name": output_name})
-            _log("📦 Остатки поставщиков: %s -> старт (%s)", entry["source_id"], rendered_url)
+                entry.update({"url": rendered_url, "output_name": output_name})
+                _log("📦 Остатки поставщиков: %s -> старт (%s)", entry["source_id"], rendered_url)
 
-            if entry["method"] == "shell":
-                result = _run_shell_command(source, now, temp_dir, render_context)
-            else:
-                result = _download_http(source, output_path, now, render_context)
+                if entry["method"] == "shell":
+                    result = _run_shell_command(source, now, temp_dir, render_context)
+                else:
+                    result = _download_http(source, output_path, now, render_context)
 
             entry.update(result)
             entry["status"] = "success" if result.get("success") else "error"
@@ -1087,7 +1260,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                             entry["source_id"],
                             unpacked_path,
                         )
-                if source.get("processing_mode") == "iek_json":
+                if processing_mode == "iek_json":
                     processing_result = _process_iek_json_file(
                         output_path,
                         config,
@@ -1096,6 +1269,18 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                         "download",
                         original_path,
                     )
+                elif processing_mode == "hdelectric_api":
+                    _hde_results = [{"status": "success", "outputs": [{"output": str(output_path), "rows": result.get("rows", 0)}]}]
+                    processing_result = _transfer_processed_outputs(
+                        _hde_results,
+                        config,
+                        source_id,
+                        "download",
+                        original_path,
+                        now,
+                    )
+                    if processing_result:
+                        processing_result["processor"] = "hdelectric_api"
                 else:
                     processing_result = _process_supplier_stock_file(
                         output_path,
