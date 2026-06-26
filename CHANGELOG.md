@@ -1,3 +1,9 @@
+## [8.63.25] - 2026-06-26
+
+### Fixed
+- RU: HD-Electric API — исправлен некорректный регистр в дефолтном `base_url` в `DEFAULT_HDE_SETTINGS` (`extensions/supplier_stock_files.py`): `/ut_vips/` → `/UT_vips/`. Сервер IIS на стороне HD-Electric отдаёт `301 Moved Permanently` при строчном пути и при некоторых условиях (кастомные заголовки `CompanyINN`/`CompanySmShSecret`) теряет авторизацию при редиректе. Правильный путь определён по фактическому `301`-ответу от сервера.
+- EN: HD-Electric API — fixed incorrect casing in the default `base_url` in `DEFAULT_HDE_SETTINGS` (`extensions/supplier_stock_files.py`): `/ut_vips/` → `/UT_vips/`. The IIS server at HD-Electric returns `301 Moved Permanently` for the lowercase path, and under certain conditions (custom headers `CompanyINN`/`CompanySmShSecret`) authorization is lost on redirect. The correct path was confirmed from the server's actual `301` response.
+
 ## [8.63.24] - 2026-06-26
 
 ### Fixed

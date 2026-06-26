@@ -1,11 +1,11 @@
 """
 /bot/handlers/tls_cert_handlers.py
-Server Monitoring System v8.63.24
+Server Monitoring System v8.63.25
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram handlers for the TLS certificate monitor extension
 Система мониторинга серверов
-Версия: 8.63.24
+Версия: 8.63.25
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Telegram-обработчики расширения мониторинга TLS-сертификатов
