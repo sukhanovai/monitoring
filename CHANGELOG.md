@@ -1,3 +1,9 @@
+## [8.63.22] - 2026-06-26
+
+### Added
+- RU: Поставщик остатков HD-Electric — новый режим обработки `hdelectric_api` для источников остатков. Система обращается напрямую к API Smart-Shop (эндпоинты `freestock`, `pricelist`, `goodsintransit`), формирует многостраничный Excel-файл (листы «Сводная», «Прайс», «Остатки», «В пути») и опционально CSV. Настройки источника (`base_url`, `basic_user`, `basic_pass`, `company_inn`, `smsh_secret`, `fetch_endpoints`, `output_name`, `also_csv`) хранятся в подразделе `hde_api` конфига. Telegram-бот: добавлены меню «⚙️ HD-Electric API» и посекционное редактирование всех полей. Андроид-приложение: добавлены нативные поля ввода для каждого параметра HD-Electric в диалоге настроек поставщиков. Web BFF (Android): добавлены обработчики действий `supplier_stock_source_hde_settings|` и `supplier_stock_source_hde_field|`.
+- EN: HD-Electric supplier stock — new `hdelectric_api` processing mode for stock sources. The system queries the Smart-Shop API directly (`freestock`, `pricelist`, `goodsintransit` endpoints), builds a multi-sheet Excel file (sheets: Summary, Price, Stock, Transit) and optional CSV files. Source settings (`base_url`, `basic_user`, `basic_pass`, `company_inn`, `smsh_secret`, `fetch_endpoints`, `output_name`, `also_csv`) are stored in the `hde_api` sub-key. Telegram bot: added "⚙️ HD-Electric API" sub-menu with per-field editing. Android app: added native input fields for each HD-Electric parameter in the supplier settings dialog. Web BFF (Android): added action handlers for `supplier_stock_source_hde_settings|` and `supplier_stock_source_hde_field|`.
+
 ## [8.63.21] - 2026-06-22
 
 ### Fixed
