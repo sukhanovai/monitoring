@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.21
+Server Monitoring System v8.63.22
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.21
+Версия: 8.63.22
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -4125,6 +4125,31 @@ def v1_patch_settings_report():
     return jsonify(_build_report_settings_payload(request_id)), 200
 
 
+def _parse_supplier_stock_headers_payload(raw_value: str) -> dict | None:
+    """Разобрать заголовки запроса источника остатков (Имя=Значение, разделитель — запятая/перевод строки).
+
+    Возвращает dict с заголовками, пустой dict если значение пустое, либо None при ошибке формата.
+    """
+    if not raw_value:
+        return {}
+    result: dict[str, str] = {}
+    for part in re.split(r"[,\n]+", raw_value):
+        part = part.strip()
+        if not part:
+            continue
+        if "=" in part:
+            key, value = part.split("=", 1)
+        elif ":" in part:
+            key, value = part.split(":", 1)
+        else:
+            return None
+        key = key.strip()
+        if not key:
+            return None
+        result[key] = value.strip()
+    return result
+
+
 @app.route("/v1/settings/extensions/actions", methods=["POST"])
 def v1_extensions_actions():
     request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
@@ -6346,8 +6371,11 @@ def v1_extensions_actions():
             output_name = (fields.get("output") or "").strip()
             method = (fields.get("method") or "http").strip() or "http"
             unpack = (fields.get("unpack") or "").strip().lower() in ("1", "true", "yes", "on")
+            headers_map = _parse_supplier_stock_headers_payload((fields.get("headers") or "").strip())
             if not name or not url or not output_name:
                 notice = "❌ Заполните название, URL и имя файла назначения\n\n"
+            elif headers_map is None:
+                notice = "❌ Заголовки запроса должны быть в формате Имя=Значение\n\n"
             else:
                 base_id = re.sub(r"[^a-zA-Z0-9]+", "_", name.lower()).strip("_") or "source"
                 existing = {str(s.get("id")) for s in sources if s.get("id")}
@@ -6356,17 +6384,18 @@ def v1_extensions_actions():
                 while new_id in existing:
                     new_id = f"{base_id}_{suffix}"
                     suffix += 1
-                sources.append(
-                    {
-                        "id": new_id,
-                        "name": name,
-                        "url": url,
-                        "output_name": output_name,
-                        "method": method,
-                        "enabled": True,
-                        "unpack_archive": unpack,
-                    }
-                )
+                new_source = {
+                    "id": new_id,
+                    "name": name,
+                    "url": url,
+                    "output_name": output_name,
+                    "method": method,
+                    "enabled": True,
+                    "unpack_archive": unpack,
+                }
+                if headers_map:
+                    new_source["headers"] = headers_map
+                sources.append(new_source)
                 config.setdefault("download", {})["sources"] = sources
                 save_supplier_stock_config(config)
                 notice = f"✅ Источник «{name}» добавлен\n\n"
@@ -6404,6 +6433,7 @@ def v1_extensions_actions():
                         key, value = pair.split("=", 1)
                         fields[key.strip().lower()] = unquote(value)
             updated = None
+            headers_error = False
             for source in sources:
                 if str(source.get("id")) == target:
                     updated = source
@@ -6416,14 +6446,29 @@ def v1_extensions_actions():
                         value = (fields.get(field_key) or "").strip()
                         if value:
                             source[src_key] = value
+                    if "headers" in fields:
+                        raw_headers = (fields.get("headers") or "").strip()
+                        if raw_headers.lower() in ("none", "нет", "-"):
+                            source.pop("headers", None)
+                        elif raw_headers:
+                            headers_map = _parse_supplier_stock_headers_payload(raw_headers)
+                            if headers_map is None:
+                                headers_error = True
+                            elif headers_map:
+                                source["headers"] = headers_map
+                            else:
+                                source.pop("headers", None)
                     break
             config.setdefault("download", {})["sources"] = sources
             save_supplier_stock_config(config)
-            notice = (
-                f"✅ Источник «{updated.get('name') or target}» обновлён\n\n"
-                if updated
-                else "ℹ️ Источник не найден\n\n"
-            )
+            if headers_error:
+                notice = "❌ Заголовки запроса должны быть в формате Имя=Значение\n\n"
+            else:
+                notice = (
+                    f"✅ Источник «{updated.get('name') or target}» обновлён\n\n"
+                    if updated
+                    else "ℹ️ Источник не найден\n\n"
+                )
         elif action.startswith("supplier_stock_source_edit|"):
             candidate = raw_action.split("|", 1)[1].strip()
             if any(str(s.get("id")) == candidate for s in sources):
@@ -6461,15 +6506,24 @@ def v1_extensions_actions():
             ]
         elif editing_id:
             src = next(s for s in sources if str(s.get("id")) == editing_id)
+            src_headers = src.get("headers") or {}
+            src_headers_label = (
+                ", ".join(f"{key}={value}" for key, value in src_headers.items())
+                if src_headers
+                else "не заданы"
+            )
             message = (
                 f"{notice}✏️ Редактирование источника «{src.get('name') or editing_id}»\n\n"
                 "Текущие значения:\n"
                 f"• Название: {src.get('name') or '—'}\n"
                 f"• URL: {src.get('url') or 'не задан'}\n"
                 f"• Файл: {src.get('output_name') or 'не задано'}\n"
-                f"• Метод: {src.get('method') or 'http'}\n\n"
+                f"• Метод: {src.get('method') or 'http'}\n"
+                f"• Заголовки запроса: {src_headers_label}\n\n"
                 "Заполните только те поля, которые нужно изменить "
-                "(пустые поля останутся без изменений)."
+                "(пустые поля останутся без изменений). "
+                "Для заголовков: формат Имя=Значение через запятую, "
+                "«none» чтобы очистить."
             )
             menu_options = [
                 {"label": "↩️ К списку источников", "action": "supplier_stock_sources"},
@@ -6487,14 +6541,21 @@ def v1_extensions_actions():
                     method = source.get("method") or "http"
                     status = "🟢 вкл" if source.get("enabled", True) else "🔴 выкл"
                     unpack = "да" if source.get("unpack_archive", False) else "нет"
+                    headers_map = source.get("headers") or {}
                     lines.append(f"{idx}. {status} {name}")
                     lines.append(f"    URL: {url}")
                     lines.append(f"    Файл: {output_name}")
                     lines.append(f"    Метод: {method} · Распаковка: {unpack}")
+                    if headers_map:
+                        headers_label = ", ".join(
+                            f"{key}={value}" for key, value in headers_map.items()
+                        )
+                        lines.append(f"    Заголовки: {headers_label}")
             lines.append("")
             lines.append(
-                "Базовые поля (название, URL, файл, метод) редактируются здесь; "
-                "поиск ссылки, переменные, авторизация и обработка — пока в Telegram-боте."
+                "Базовые поля (название, URL, файл, метод, заголовки запроса) "
+                "редактируются здесь; поиск ссылки, переменные, авторизация "
+                "и обработка — пока в Telegram-боте."
             )
             message = "\n".join(lines)
             menu_options = []

@@ -1,3 +1,9 @@
+## [8.63.22] - 2026-06-26
+
+### Added
+- RU: Остатки поставщиков — у источников скачивания (метод `http`) появилась настройка «🧾 Заголовки запроса»: произвольные HTTP-заголовки в формате `Имя=Значение` (через запятую/новую строку), которые добавляются к запросу при скачивании файла остатков. Нужны для API-поставщиков, требующих кастомные заголовки помимо Basic-авторизации — например HD-Electric (Smart-Shop API) с `CompanyINN` и `CompanySmShSecret`. Загрузчик уже умел читать `source["headers"]`, но задать их через интерфейсы было нельзя. Теперь поддержано в Telegram-боте (карточка источника, мастер добавления и пошаговое редактирование), в серверном BFF (`/v1/settings/extensions/actions`, действия `supplier_stock_source_add` / `supplier_stock_source_update`) и в Android-приложении (нативные формы добавления и редактирования источника). В Android передаётся параметр `headers` (URL-кодируется, поэтому `=`/`&` внутри значений не ломают разбор); пустое поле при редактировании = без изменений, `none` = очистить.
+- EN: Supplier stock — download sources (method `http`) gained a "🧾 Request headers" setting: arbitrary HTTP headers in `Name=Value` format (comma/newline separated) added to the request when downloading the stock file. Needed for API suppliers that require custom headers on top of Basic auth — e.g. HD-Electric (Smart-Shop API) with `CompanyINN` and `CompanySmShSecret`. The downloader already read `source["headers"]`, but there was no way to set them via the interfaces. Now supported in the Telegram bot (source card, add wizard and step-by-step editing), in the server BFF (`/v1/settings/extensions/actions`, actions `supplier_stock_source_add` / `supplier_stock_source_update`) and in the Android app (native add/edit source forms). Android sends a `headers` parameter (URL-encoded, so `=`/`&` inside values don't break parsing); an empty field on edit = no change, `none` = clear.
+
 ## [8.63.21] - 2026-06-22
 
 ### Fixed

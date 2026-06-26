@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/supplier_stock.py
-Server Monitoring System v8.63.21
+Server Monitoring System v8.63.22
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock UI handlers extracted from
 bot/handlers/settings_handlers/_legacy.py (PR7b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.21
+Версия: 8.63.22
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самодостаточный блок UI Telegram-бота для настроек supplier-stock
@@ -2632,6 +2632,12 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
         else "не задано"
     )
     auth_state = "задано" if source.get("auth") else "не задано"
+    headers_map = source.get("headers") or {}
+    headers_text = (
+        ", ".join([f"{key}={value}" for key, value in headers_map.items()])
+        if headers_map
+        else "не задано"
+    )
     pre_request = source.get("pre_request") or {}
     pre_request_text = "не задано"
     if pre_request:
@@ -2704,6 +2710,7 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
         f"• Поиск ссылки: `{discover_text}`",
         f"• Переменные: `{_escape_pattern_text(vars_text)}`",
         f"• Авторизация: `{auth_state}`",
+        f"• Заголовки запроса: `{_escape_pattern_text(headers_text)}`",
         f"• Предзапрос: `{pre_request_text}`",
         f"• Опции: `{_escape_pattern_text(options_text)}`",
         f"• Подкаталог выгрузки: `{upload_subdir}`",
@@ -2765,6 +2772,12 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
             ),
             InlineKeyboardButton(
                 "⚙️ Опции", callback_data=f"supplier_stock_source_field|{source_id}|options"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "🧾 Заголовки запроса",
+                callback_data=f"supplier_stock_source_field|{source_id}|headers",
             ),
         ],
         [
@@ -3249,6 +3262,11 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
         "vars": "Введите переменные подстановки key=value через запятую, '-' чтобы оставить или 'none' чтобы очистить:",
         "output_name": "Введите имя файла назначения (или '-' чтобы оставить):",
         "auth": "Введите login:password, '-' чтобы оставить или 'none' чтобы очистить:",
+        "headers": (
+            "Введите заголовки запроса в формате Имя=Значение через запятую или с новой строки, "
+            "'-' чтобы оставить или 'none' чтобы очистить.\n"
+            "Пример: CompanyINN=5402143985/540401001, CompanySmShSecret=3rGAxa9dYM"
+        ),
         "pre_request": "Введите URL | данные для предзапроса, '-' чтобы оставить или 'none' чтобы очистить:",
         "options": "Введите опции (headers, append) через запятую, '-' чтобы оставить или 'none' чтобы очистить:",
         "processing_mode": "Введите тип обработки (`table` или `iek\\_json`), '-' чтобы оставить:",
@@ -3265,6 +3283,10 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
         "vars": source.get("vars") or "-",
         "output_name": source.get("output_name") or "-",
         "auth": "задано" if source.get("auth") else "-",
+        "headers": (
+            ", ".join([f"{key}={value}" for key, value in (source.get("headers") or {}).items()])
+            or "-"
+        ),
         "pre_request": source.get("pre_request") or "-",
         "options": (
             "headers/append" if (source.get("include_headers") or source.get("append")) else "-"
@@ -4802,6 +4824,22 @@ def supplier_stock_handle_source_field_input(update, context):
                 return None
             username, password = user_input.split(":", 1)
             source["auth"] = {"username": username, "password": password}
+    elif field == "headers":
+        if user_input in ("-", ""):
+            pass
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("headers", None)
+        else:
+            headers_map = _parse_supplier_headers(user_input)
+            if headers_map is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть Имя=Значение через запятую/новую строку, '-' или 'none'."
+                )
+                return None
+            if headers_map:
+                source["headers"] = headers_map
+            else:
+                source.pop("headers", None)
     elif field == "pre_request":
         if user_input in ("-", ""):
             pass
@@ -5484,6 +5522,28 @@ def supplier_stock_handle_source_input(update, context):
                 return None
             source_data.update(options)
 
+        context.user_data["supplier_stock_source_stage"] = "headers"
+        context.user_data["supplier_stock_source_data"] = source_data
+        update.message.reply_text(
+            "Если нужны дополнительные заголовки запроса, введите их в формате "
+            "Имя=Значение через запятую или с новой строки.\n"
+            "Пример: CompanyINN=5402143985/540401001, CompanySmShSecret=3rGAxa9dYM\n"
+            "Введите '-' если не нужно:"
+        )
+        return None
+
+    if stage == "headers":
+        if user_input not in ("-", ""):
+            headers_map = _parse_supplier_headers(user_input)
+            if headers_map is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть Имя=Значение через запятую/новую строку. "
+                    "Попробуйте снова или введите '-':"
+                )
+                return None
+            if headers_map:
+                source_data["headers"] = headers_map
+
         source_data.setdefault("method", "http")
         source_data.setdefault("enabled", True)
         source_data.setdefault("unpack_archive", False)
@@ -5686,6 +5746,39 @@ def supplier_stock_handle_source_edit_input(update, context):
         config["download"]["sources"] = sources
         save_supplier_stock_config(config)
 
+        context.user_data["supplier_stock_edit_source_stage"] = "headers"
+        current_headers = source.get("headers") or {}
+        current_headers_label = (
+            ", ".join([f"{key}={value}" for key, value in current_headers.items()])
+            if current_headers
+            else "-"
+        )
+        update.message.reply_text(
+            "Введите заголовки запроса в формате Имя=Значение через запятую/новую строку, "
+            "'-' чтобы оставить текущее или 'none' чтобы очистить.\n"
+            "Пример: CompanyINN=5402143985/540401001, CompanySmShSecret=3rGAxa9dYM\n"
+            f"Текущее значение: {current_headers_label}"
+        )
+        return None
+
+    if stage == "headers":
+        if user_input.lower() in ("none", "нет"):
+            source.pop("headers", None)
+        elif user_input not in ("-",):
+            headers_map = _parse_supplier_headers(user_input)
+            if headers_map is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть Имя=Значение через запятую/новую строку, '-' или 'none'."
+                )
+                return None
+            if headers_map:
+                source["headers"] = headers_map
+            else:
+                source.pop("headers", None)
+
+        config["download"]["sources"] = sources
+        save_supplier_stock_config(config)
+
         context.user_data.pop("supplier_stock_edit_source", None)
         context.user_data.pop("supplier_stock_edit_source_stage", None)
         context.user_data.pop("supplier_stock_edit_source_id", None)
@@ -5817,6 +5910,30 @@ def _parse_supplier_vars(raw_value: str) -> dict | None:
         if "=" not in part:
             return None
         key, value = part.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            return None
+        result[key] = value
+    return result
+
+
+def _parse_supplier_headers(raw_value: str) -> dict | None:
+    """Разобрать заголовки запроса в формате Имя=Значение (через запятую/новую строку)."""
+    if not raw_value:
+        return {}
+    parts = re.split(r"[,\n]+", raw_value)
+    result: dict[str, str] = {}
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        if "=" in part:
+            key, value = part.split("=", 1)
+        elif ":" in part:
+            key, value = part.split(":", 1)
+        else:
+            return None
         key = key.strip()
         value = value.strip()
         if not key:

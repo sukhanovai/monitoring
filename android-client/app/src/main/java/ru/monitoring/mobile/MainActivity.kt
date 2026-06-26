@@ -6528,13 +6528,22 @@ private fun MonitoringApp(
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth()
                             )
+                            OutlinedTextField(
+                                value = supplierStockSourceHeadersInput,
+                                onValueChange = { supplierStockSourceHeadersInput = it },
+                                label = { Text("Заголовки запроса (необязательно)") },
+                                placeholder = { Text("CompanyINN=5402143985/540401001, CompanySmShSecret=3rGAxa9dYM") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
                             FilterChip(
                                 selected = supplierStockSourceUnpack,
                                 onClick = { supplierStockSourceUnpack = !supplierStockSourceUnpack },
                                 label = { Text("📦 Распаковывать архив") }
                             )
                             Text(
-                                "Метод по умолчанию — http. Расширенные параметры " +
+                                "Метод по умолчанию — http. Заголовки — в формате " +
+                                    "Имя=Значение через запятую (нужны, например, для HD-Electric: " +
+                                    "CompanyINN и CompanySmShSecret). Остальные расширенные параметры " +
                                     "(поиск ссылки, переменные, авторизация, обработка) " +
                                     "пока настраиваются в Telegram-боте.",
                                 style = MaterialTheme.typography.bodySmall,
@@ -6549,11 +6558,13 @@ private fun MonitoringApp(
                                         "&url=" + Uri.encode(supplierStockSourceUrlInput.trim()) +
                                         "&output=" + Uri.encode(supplierStockSourceOutputInput.trim()) +
                                         "&method=http" +
+                                        "&headers=" + Uri.encode(supplierStockSourceHeadersInput.trim()) +
                                         "&unpack=" + (if (supplierStockSourceUnpack) "1" else "0")
                                     onExtensionsSettingsAction("supplier_stock_source_add|$payload")
                                     supplierStockSourceNameInput = ""
                                     supplierStockSourceUrlInput = ""
                                     supplierStockSourceOutputInput = ""
+                                    supplierStockSourceHeadersInput = ""
                                     supplierStockSourceUnpack = false
                                     showSupplierStockAddSourceForm = false
                                 },
@@ -6600,21 +6611,33 @@ private fun MonitoringApp(
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
+                        OutlinedTextField(
+                            value = supplierStockEditSourceHeadersInput,
+                            onValueChange = { supplierStockEditSourceHeadersInput = it },
+                            label = { Text("Заголовки запроса (пусто = без изменений)") },
+                            placeholder = { Text("CompanyINN=…, CompanySmShSecret=… · none = очистить") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         val canSaveEdit = supplierStockEditSourceNameInput.isNotBlank() ||
                             supplierStockEditSourceUrlInput.isNotBlank() ||
                             supplierStockEditSourceOutputInput.isNotBlank() ||
-                            supplierStockEditSourceMethodInput.isNotBlank()
+                            supplierStockEditSourceMethodInput.isNotBlank() ||
+                            supplierStockEditSourceHeadersInput.isNotBlank()
                         Button(
                             onClick = {
-                                val payload = "name=" + Uri.encode(supplierStockEditSourceNameInput.trim()) +
+                                var payload = "name=" + Uri.encode(supplierStockEditSourceNameInput.trim()) +
                                     "&url=" + Uri.encode(supplierStockEditSourceUrlInput.trim()) +
                                     "&output=" + Uri.encode(supplierStockEditSourceOutputInput.trim()) +
                                     "&method=" + Uri.encode(supplierStockEditSourceMethodInput.trim())
+                                if (supplierStockEditSourceHeadersInput.isNotBlank()) {
+                                    payload += "&headers=" + Uri.encode(supplierStockEditSourceHeadersInput.trim())
+                                }
                                 onExtensionsSettingsAction("supplier_stock_source_update|$editSourceId|$payload")
                                 supplierStockEditSourceNameInput = ""
                                 supplierStockEditSourceUrlInput = ""
                                 supplierStockEditSourceOutputInput = ""
                                 supplierStockEditSourceMethodInput = ""
+                                supplierStockEditSourceHeadersInput = ""
                             },
                             enabled = canSaveEdit,
                             modifier = Modifier.fillMaxWidth(),
