@@ -6508,18 +6508,34 @@ private fun MonitoringApp(
                                 value = supplierStockSourceNameInput,
                                 onValueChange = { supplierStockSourceNameInput = it },
                                 label = { Text("Название источника") },
-                                placeholder = { Text("например DKC Мага") },
+                                placeholder = { Text("например HD-Electric") },
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth()
                             )
-                            OutlinedTextField(
-                                value = supplierStockSourceUrlInput,
-                                onValueChange = { supplierStockSourceUrlInput = it },
-                                label = { Text("URL для скачивания") },
-                                placeholder = { Text("http://site/file.zip") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
+                            FilterChip(
+                                selected = supplierStockSourceIsShell,
+                                onClick = { supplierStockSourceIsShell = !supplierStockSourceIsShell },
+                                label = { Text(if (supplierStockSourceIsShell) "🖥 Метод: shell (скрипт)" else "🌐 Метод: http (URL)") }
                             )
+                            if (supplierStockSourceIsShell) {
+                                OutlinedTextField(
+                                    value = supplierStockSourceCommandInput,
+                                    onValueChange = { supplierStockSourceCommandInput = it },
+                                    label = { Text("Команда shell") },
+                                    placeholder = { Text("python3 /opt/scripts/hdelectric_pull.py --out {output}") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            } else {
+                                OutlinedTextField(
+                                    value = supplierStockSourceUrlInput,
+                                    onValueChange = { supplierStockSourceUrlInput = it },
+                                    label = { Text("URL для скачивания") },
+                                    placeholder = { Text("http://site/file.zip") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                             OutlinedTextField(
                                 value = supplierStockSourceOutputInput,
                                 onValueChange = { supplierStockSourceOutputInput = it },
@@ -6534,25 +6550,32 @@ private fun MonitoringApp(
                                 label = { Text("📦 Распаковывать архив") }
                             )
                             Text(
-                                "Метод по умолчанию — http. Расширенные параметры " +
-                                    "(поиск ссылки, переменные, авторизация, обработка) " +
-                                    "пока настраиваются в Telegram-боте.",
+                                "Расширенные параметры (поиск ссылки, переменные, авторизация, " +
+                                    "подкаталог выгрузки, обработка) настраиваются в Telegram-боте.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             val canAddSource = supplierStockSourceNameInput.isNotBlank() &&
-                                supplierStockSourceUrlInput.isNotBlank() &&
-                                supplierStockSourceOutputInput.isNotBlank()
+                                supplierStockSourceOutputInput.isNotBlank() &&
+                                (if (supplierStockSourceIsShell) true
+                                 else supplierStockSourceUrlInput.isNotBlank())
                             Button(
                                 onClick = {
-                                    val payload = "name=" + Uri.encode(supplierStockSourceNameInput.trim()) +
-                                        "&url=" + Uri.encode(supplierStockSourceUrlInput.trim()) +
+                                    val method = if (supplierStockSourceIsShell) "shell" else "http"
+                                    var payload = "name=" + Uri.encode(supplierStockSourceNameInput.trim()) +
                                         "&output=" + Uri.encode(supplierStockSourceOutputInput.trim()) +
-                                        "&method=http" +
+                                        "&method=" + method +
                                         "&unpack=" + (if (supplierStockSourceUnpack) "1" else "0")
+                                    if (supplierStockSourceIsShell) {
+                                        payload += "&command=" + Uri.encode(supplierStockSourceCommandInput.trim())
+                                    } else {
+                                        payload += "&url=" + Uri.encode(supplierStockSourceUrlInput.trim())
+                                    }
                                     onExtensionsSettingsAction("supplier_stock_source_add|$payload")
                                     supplierStockSourceNameInput = ""
                                     supplierStockSourceUrlInput = ""
+                                    supplierStockSourceCommandInput = ""
+                                    supplierStockSourceIsShell = false
                                     supplierStockSourceOutputInput = ""
                                     supplierStockSourceUnpack = false
                                     showSupplierStockAddSourceForm = false
@@ -6596,23 +6619,34 @@ private fun MonitoringApp(
                             value = supplierStockEditSourceMethodInput,
                             onValueChange = { supplierStockEditSourceMethodInput = it },
                             label = { Text("Новый метод (пусто = без изменений)") },
-                            placeholder = { Text("http") },
+                            placeholder = { Text("http или shell") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supplierStockEditSourceCommandInput,
+                            onValueChange = { supplierStockEditSourceCommandInput = it },
+                            label = { Text("Команда shell (пусто = без изменений)") },
+                            placeholder = { Text("python3 /opt/scripts/hdelectric_pull.py --out {output}") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
                         val canSaveEdit = supplierStockEditSourceNameInput.isNotBlank() ||
                             supplierStockEditSourceUrlInput.isNotBlank() ||
                             supplierStockEditSourceOutputInput.isNotBlank() ||
-                            supplierStockEditSourceMethodInput.isNotBlank()
+                            supplierStockEditSourceMethodInput.isNotBlank() ||
+                            supplierStockEditSourceCommandInput.isNotBlank()
                         Button(
                             onClick = {
                                 val payload = "name=" + Uri.encode(supplierStockEditSourceNameInput.trim()) +
                                     "&url=" + Uri.encode(supplierStockEditSourceUrlInput.trim()) +
                                     "&output=" + Uri.encode(supplierStockEditSourceOutputInput.trim()) +
-                                    "&method=" + Uri.encode(supplierStockEditSourceMethodInput.trim())
+                                    "&method=" + Uri.encode(supplierStockEditSourceMethodInput.trim()) +
+                                    "&command=" + Uri.encode(supplierStockEditSourceCommandInput.trim())
                                 onExtensionsSettingsAction("supplier_stock_source_update|$editSourceId|$payload")
                                 supplierStockEditSourceNameInput = ""
                                 supplierStockEditSourceUrlInput = ""
+                                supplierStockEditSourceCommandInput = ""
                                 supplierStockEditSourceOutputInput = ""
                                 supplierStockEditSourceMethodInput = ""
                             },

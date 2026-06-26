@@ -1,3 +1,13 @@
+## [8.63.22] - 2026-06-26
+
+### Added
+- RU: Telegram-бот — в настройках источника остатков (раздел «Источники файлов») добавлены поля `Метод` и `Команда` для метода `shell`. Экран теперь адаптируется под метод: для `http` показываются URL, поиск ссылки, авторизация, предзапрос, опции; для `shell` — поле команды вместо HTTP-специфичных настроек. Кнопки «🔄 Метод» и «💻 Команда» добавлены на клавиатуру редактирования источника.
+- EN: Telegram bot — the download source settings screen ("Sources" section) now has `Method` and `Command` fields for the `shell` method. The UI adapts based on the method: `http` shows URL, link discovery, auth, pre-request, options; `shell` shows the command field instead. "🔄 Method" and "💻 Command" buttons added to the source editing keyboard.
+- RU: Android-приложение — форма добавления источника остатков теперь поддерживает метод `shell`: чип-переключатель «Метод: http / Метод: shell» меняет поле URL на поле «Команда shell». Форма редактирования источника дополнена полем «Команда shell» и подсказкой `http или shell` в поле метода. Новое состояние: `supplierStockSourceIsShell`, `supplierStockSourceCommandInput`, `supplierStockEditSourceCommandInput`.
+- EN: Android app — the "Add source" form now supports the `shell` method: a toggle chip switches the URL field to a "Shell command" field. The "Edit source" form gains a "Shell command" field and an updated method placeholder (`http or shell`). New state: `supplierStockSourceIsShell`, `supplierStockSourceCommandInput`, `supplierStockEditSourceCommandInput`.
+- RU: Бэкенд (web_interface) — обработчики `supplier_stock_source_add` и `supplier_stock_source_update` теперь принимают поле `command`; при методе `shell` URL не обязателен.
+- EN: Backend (web_interface) — `supplier_stock_source_add` and `supplier_stock_source_update` handlers now accept the `command` field; URL is not required when the method is `shell`.
+
 ## [8.63.21] - 2026-06-22
 
 ### Fixed

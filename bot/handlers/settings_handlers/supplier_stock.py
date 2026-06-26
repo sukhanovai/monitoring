@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/supplier_stock.py
-Server Monitoring System v8.63.21
+Server Monitoring System v8.63.22
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock UI handlers extracted from
 bot/handlers/settings_handlers/_legacy.py (PR7b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.21
+Версия: 8.63.22
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самодостаточный блок UI Telegram-бота для настроек supplier-stock
@@ -2614,9 +2614,12 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
         return
 
     name = _escape_pattern_text(source.get("name") or source_id)
+    method_raw = source.get("method") or "http"
+    is_shell = method_raw == "shell"
     url = _escape_pattern_text(source.get("url") or "не задан")
+    command_text = _escape_pattern_text(source.get("command") or "не задана")
     output_name = _escape_pattern_text(source.get("output_name") or "не задано")
-    method = _escape_pattern_text(source.get("method") or "http")
+    method = _escape_pattern_text(method_raw)
     processing_mode = source.get("processing_mode") or "table"
     processing_label = _escape_pattern_text(_supplier_stock_processing_mode_label(processing_mode))
     discover = source.get("discover")
@@ -2697,15 +2700,22 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
     message_lines = [
         "⚙️ *Источник остатков*\n",
         f"{status_icon} *{name}*",
-        f"• URL: `{url}`",
-        f"• Файл: `{output_name}`",
         f"• Метод: `{method}`",
+    ]
+    if is_shell:
+        message_lines.append(f"• Команда: `{command_text}`")
+    else:
+        message_lines += [
+            f"• URL: `{url}`",
+            f"• Поиск ссылки: `{discover_text}`",
+            f"• Авторизация: `{auth_state}`",
+            f"• Предзапрос: `{pre_request_text}`",
+            f"• Опции: `{_escape_pattern_text(options_text)}`",
+        ]
+    message_lines += [
+        f"• Файл: `{output_name}`",
         f"• Обработка: `{processing_label}`",
-        f"• Поиск ссылки: `{discover_text}`",
         f"• Переменные: `{_escape_pattern_text(vars_text)}`",
-        f"• Авторизация: `{auth_state}`",
-        f"• Предзапрос: `{pre_request_text}`",
-        f"• Опции: `{_escape_pattern_text(options_text)}`",
         f"• Подкаталог выгрузки: `{upload_subdir}`",
         f"• Индивидуальный каталог: `{individual_status}`",
         f"• UNC индивидуального каталога: `{individual_path}`",
@@ -2739,34 +2749,60 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
                 "✏️ Название", callback_data=f"supplier_stock_source_field|{source_id}|name"
             ),
             InlineKeyboardButton(
-                "🔗 URL", callback_data=f"supplier_stock_source_field|{source_id}|url"
+                "🔄 Метод", callback_data=f"supplier_stock_source_field|{source_id}|method"
             ),
         ],
-        [
-            InlineKeyboardButton(
-                "🔎 Поиск ссылки", callback_data=f"supplier_stock_source_field|{source_id}|discover"
-            ),
-            InlineKeyboardButton(
-                "🧩 Переменные", callback_data=f"supplier_stock_source_field|{source_id}|vars"
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                "📄 Имя файла", callback_data=f"supplier_stock_source_field|{source_id}|output_name"
-            ),
-            InlineKeyboardButton(
-                "🔐 Авторизация", callback_data=f"supplier_stock_source_field|{source_id}|auth"
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                "📬 Предзапрос",
-                callback_data=f"supplier_stock_source_field|{source_id}|pre_request",
-            ),
-            InlineKeyboardButton(
-                "⚙️ Опции", callback_data=f"supplier_stock_source_field|{source_id}|options"
-            ),
-        ],
+    ]
+    if is_shell:
+        keyboard += [
+            [
+                InlineKeyboardButton(
+                    "💻 Команда", callback_data=f"supplier_stock_source_field|{source_id}|command"
+                ),
+                InlineKeyboardButton(
+                    "📄 Имя файла",
+                    callback_data=f"supplier_stock_source_field|{source_id}|output_name",
+                ),
+            ],
+        ]
+    else:
+        keyboard += [
+            [
+                InlineKeyboardButton(
+                    "🔗 URL", callback_data=f"supplier_stock_source_field|{source_id}|url"
+                ),
+                InlineKeyboardButton(
+                    "📄 Имя файла",
+                    callback_data=f"supplier_stock_source_field|{source_id}|output_name",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔎 Поиск ссылки",
+                    callback_data=f"supplier_stock_source_field|{source_id}|discover",
+                ),
+                InlineKeyboardButton(
+                    "🧩 Переменные",
+                    callback_data=f"supplier_stock_source_field|{source_id}|vars",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔐 Авторизация",
+                    callback_data=f"supplier_stock_source_field|{source_id}|auth",
+                ),
+                InlineKeyboardButton(
+                    "📬 Предзапрос",
+                    callback_data=f"supplier_stock_source_field|{source_id}|pre_request",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "⚙️ Опции", callback_data=f"supplier_stock_source_field|{source_id}|options"
+                ),
+            ],
+        ]
+    keyboard += [
         [
             InlineKeyboardButton(
                 "🧩 Тип обработки",
@@ -3244,6 +3280,8 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
 
     prompts = {
         "name": "Введите название источника (или '-' чтобы оставить):",
+        "method": "Введите метод получения файла (`http` или `shell`), '-' чтобы оставить:",
+        "command": "Введите команду shell для запуска скрипта (или '-' чтобы оставить, 'none' чтобы очистить):",
         "url": "Введите URL для скачивания (или '-' чтобы оставить):",
         "discover": "Введите параметры поиска URL (URL | regex | prefix), '-' чтобы оставить или 'none' чтобы очистить:",
         "vars": "Введите переменные подстановки key=value через запятую, '-' чтобы оставить или 'none' чтобы очистить:",
@@ -3260,6 +3298,8 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
 
     current_values = {
         "name": source.get("name") or source_id,
+        "method": source.get("method") or "http",
+        "command": source.get("command") or "-",
         "url": source.get("url") or "-",
         "discover": source.get("discover") or "-",
         "vars": source.get("vars") or "-",
@@ -4747,6 +4787,22 @@ def supplier_stock_handle_source_field_input(update, context):
             return None
         else:
             source["name"] = user_input
+    elif field == "method":
+        if user_input in ("-", ""):
+            pass
+        else:
+            normalized = user_input.strip().lower()
+            if normalized not in ("http", "shell"):
+                update.message.reply_text("❌ Допустимые значения: http, shell.")
+                return None
+            source["method"] = normalized
+    elif field == "command":
+        if user_input in ("-", ""):
+            pass
+        elif user_input.lower() in ("none", "нет"):
+            source.pop("command", None)
+        else:
+            source["command"] = user_input
     elif field == "url":
         if user_input in ("-", ""):
             pass
