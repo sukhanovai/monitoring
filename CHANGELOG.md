@@ -1,3 +1,9 @@
+## [8.63.29] - 2026-06-27
+
+### Fixed
+- RU: Telegram-бот — устранён `NameError: name 'handle_backup_pattern_input' is not defined` при вводе текста паттерна (и аналогичный сбой при добавлении/редактировании паттерна и серверов). Диспетчер `handle_setting_value` (`bot/handlers/settings_handlers/settings_value.py`) вызывал обработчики, определённые только в `_legacy.py`, которых не было в его пространстве имён (прямой импорт невозможен из-за кольца `_legacy` ↔ `settings_value`). Из-за этого ввод паттерна падал с необработанной ошибкой и паттерн не сохранялся. Обработчики (`handle_backup_pattern_input`, `handle_backup_pattern_edit_input`, `handle_server_type_creation`, `handle_server_type_editing`, `handle_server_edit_input`, `handle_server_input`) теперь резолвятся ленивым импортом в момент вызова.
+- EN: Telegram bot — fixed `NameError: name 'handle_backup_pattern_input' is not defined` when typing a pattern (and the same crash when adding/editing patterns and servers). The `handle_setting_value` dispatcher (`bot/handlers/settings_handlers/settings_value.py`) called handlers defined only in `_legacy.py` that were absent from its namespace (a direct import is impossible due to the `_legacy` ↔ `settings_value` import cycle). As a result, pattern input raised an unhandled error and the pattern was not saved. The handlers (`handle_backup_pattern_input`, `handle_backup_pattern_edit_input`, `handle_server_type_creation`, `handle_server_type_editing`, `handle_server_edit_input`, `handle_server_input`) are now resolved via a lazy import at call time.
+
 ## [8.63.28] - 2026-06-27
 
 ### Fixed

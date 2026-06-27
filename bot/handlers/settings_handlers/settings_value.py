@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/settings_value.py
-Server Monitoring System v8.63.28
+Server Monitoring System v8.63.29
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчик текстового ввода значений настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.28
+Версия: 8.63.29
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
@@ -122,20 +122,30 @@ def handle_setting_value(update, context):
     ):
         return supplier_stock_handle_input(update, context)
 
+    # Обработчики серверов определены в _legacy.py; импортируем лениво, чтобы
+    # не образовать цикл (см. комментарий у adding_backup_pattern ниже).
     # Проверяем, не создается ли тип серверов
     if context.user_data.get("creating_server_type"):
+        from bot.handlers.settings_handlers._legacy import handle_server_type_creation
+
         return handle_server_type_creation(update, context)
 
     # Проверяем, не редактируется ли тип серверов
     if context.user_data.get("editing_server_type"):
+        from bot.handlers.settings_handlers._legacy import handle_server_type_editing
+
         return handle_server_type_editing(update, context)
 
     # Проверяем, не редактируется ли сервер
     if context.user_data.get("editing_server"):
+        from bot.handlers.settings_handlers._legacy import handle_server_edit_input
+
         return handle_server_edit_input(update, context)
 
     # Затем проверяем, не добавляется ли сервер
     if context.user_data.get("adding_server"):
+        from bot.handlers.settings_handlers._legacy import handle_server_input
+
         return handle_server_input(update, context)
 
     # Затем проверяем, не добавляется/редактируется ли категория БД
@@ -172,12 +182,20 @@ def handle_setting_value(update, context):
     if context.user_data.get("editing_db_entry"):
         return handle_db_entry_edit_input(update, context)
 
-    # Проверяем, не добавляется ли паттерн бэкапов
+    # Проверяем, не добавляется ли паттерн бэкапов.
+    # Импорт ленивый: handle_backup_pattern_input определён в _legacy.py,
+    # а _legacy импортирует settings_value через `*` — прямой импорт на
+    # уровне модуля привёл бы к циклу, поэтому резолвим обработчик в момент
+    # вызова (иначе NameError при вводе паттерна).
     if context.user_data.get("adding_backup_pattern"):
+        from bot.handlers.settings_handlers._legacy import handle_backup_pattern_input
+
         return handle_backup_pattern_input(update, context)
 
-    # Проверяем, не редактируется ли паттерн бэкапов
+    # Проверяем, не редактируется ли паттерн бэкапов (тот же ленивый импорт)
     if context.user_data.get("editing_backup_pattern"):
+        from bot.handlers.settings_handlers._legacy import handle_backup_pattern_edit_input
+
         return handle_backup_pattern_edit_input(update, context)
 
     # Проверяем, не редактируется ли дефолтный паттерн БД
