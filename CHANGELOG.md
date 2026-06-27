@@ -1,3 +1,9 @@
+## [8.63.30] - 2026-06-27
+
+### Fixed
+- RU: Telegram-бот — в «Бэкапы БД» → деталях базы исчезало «Нет данных за последние 168 часов», хотя письмо успешно распозналось и бэкап сохранился. Парсер писем сохраняет имя БД в нижнем регистре (берёт его из темы через `subject_lower`, например `buh2025`), а меню/детали запрашивают по ключу из конфига (`Buh2025`) точным регистрозависимым сравнением SQL. Список БД совпадение находил (через `_normalize_db_key`), но запросы статуса и деталей — нет. Запросы по `database_name` (`get_database_details`, `get_database_recent_status`, `_get_latest_database_display_name`, `_get_latest_backup_type`) теперь сравнивают имя нормализованно (`REPLACE(LOWER(database_name), '-', '_')`), как и список БД (`extensions/backup_monitor/bot_handler.py`, `extensions/backup_monitor/backup_handlers.py`).
+- EN: Telegram bot — in "DB Backups" → database details, "No data for the last 168 hours" appeared even though the email was recognized and the backup was saved. The mail parser stores the database name in lower case (extracted from the subject via `subject_lower`, e.g. `buh2025`), while the menu/details query by the config key (`Buh2025`) using exact, case-sensitive SQL. The DB list found the match (via `_normalize_db_key`), but the status and details queries did not. Queries on `database_name` (`get_database_details`, `get_database_recent_status`, `_get_latest_database_display_name`, `_get_latest_backup_type`) now compare the name normalized (`REPLACE(LOWER(database_name), '-', '_')`), consistent with the DB list (`extensions/backup_monitor/bot_handler.py`, `extensions/backup_monitor/backup_handlers.py`).
+
 ## [8.63.29] - 2026-06-27
 
 ### Fixed

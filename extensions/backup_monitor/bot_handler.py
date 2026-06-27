@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.63.29
+Server Monitoring System v8.63.30
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.63.29
+Версия: 8.63.30
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -436,10 +436,16 @@ class BackupMonitorBot(BackupBase):
     def get_database_details(self, backup_type, db_name, hours=168):
         """Получает детальную информацию по конкретной базе данных"""
         since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        # database_name сравниваем нормализованно (регистр + '-'→'_'), т.к.
+        # парсер сохраняет имя из subject_lower (например 'buh2025'), а UI
+        # запрашивает по ключу из конфига ('Buh2025'). Та же нормализация, что
+        # и в _normalize_db_key для списка БД.
         query = """
             SELECT backup_status, task_type, error_count, email_subject, received_at
-            FROM database_backups 
-            WHERE backup_type = ? AND database_name = ? AND received_at >= ?
+            FROM database_backups
+            WHERE backup_type = ?
+              AND REPLACE(LOWER(database_name), '-', '_') = REPLACE(LOWER(?), '-', '_')
+              AND received_at >= ?
             ORDER BY received_at DESC
             LIMIT 10
         """
@@ -451,7 +457,9 @@ class BackupMonitorBot(BackupBase):
         query = """
             SELECT backup_status, received_at, error_count
             FROM database_backups
-            WHERE backup_type = ? AND database_name = ? AND received_at >= ?
+            WHERE backup_type = ?
+              AND REPLACE(LOWER(database_name), '-', '_') = REPLACE(LOWER(?), '-', '_')
+              AND received_at >= ?
             ORDER BY received_at DESC
         """
         return self.execute_query(query, (backup_type, db_name, since_time))
