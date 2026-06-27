@@ -1,3 +1,9 @@
+## [8.63.28] - 2026-06-27
+
+### Fixed
+- RU: Telegram-бот — паттерны бэкапов БД, добавленные через мастер «Бэкапы БД» → «Настройка паттернов» → «Добавить паттерн», теперь действительно влияют на разбор писем. Мастер сохраняет паттерн в таблицу `backup_patterns`, однако парсер писем `parse_database_backup` читал паттерны БД только из настройки `BACKUP_PATTERNS` (через `get_database_patterns_from_config`) и таблицу игнорировал — поэтому бэкап только что добавленной базы (например `Buh2025` с темой `mdm-1c Buh2025 dump complete`) не отслеживался, и казалось, что паттерн «не сохраняется». Теперь `get_database_patterns_from_config` подмешивает паттерны из таблицы `backup_patterns` (`modules/mail_parts/patterns.py`), а парсер дополнительно обрабатывает пользовательские категории БД вне `company/barnaul/client/yandex` (`modules/mail_parts/parsers/database.py`).
+- EN: Telegram bot — database backup patterns added via the "DB Backups" → "Pattern settings" → "Add pattern" wizard now actually affect mail parsing. The wizard saves the pattern into the `backup_patterns` table, but the `parse_database_backup` mail parser read DB patterns only from the `BACKUP_PATTERNS` setting (via `get_database_patterns_from_config`) and ignored the table — so a backup of a just-added database (e.g. `Buh2025` with the subject `mdm-1c Buh2025 dump complete`) was never tracked, making it look like the pattern "wasn't saved". Now `get_database_patterns_from_config` merges patterns from the `backup_patterns` table (`modules/mail_parts/patterns.py`), and the parser additionally handles custom DB categories beyond `company/barnaul/client/yandex` (`modules/mail_parts/parsers/database.py`).
+
 ## [8.63.27] - 2026-06-27
 
 ### Fixed

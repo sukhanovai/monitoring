@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/database.py
-Server Monitoring System v8.63.27
+Server Monitoring System v8.63.28
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 DatabaseBackupParserMixin — часть BackupProcessor (PR6c серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.27
+Версия: 8.63.28
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Mixin DatabaseBackupParserMixin; объединяется с другими mixin'ами в BackupProcessor.
@@ -195,6 +195,46 @@ class DatabaseBackupParserMixin:
                         "database_name": db_name,
                         "database_display_name": display_name,
                         "backup_type": "yandex",
+                    }
+                    return backup_info
+
+            # Пользовательские категории БД (созданные через «Управление
+            # базами» и не входящие в company/barnaul/client/yandex). Их
+            # паттерны добавляются через мастер бота и попадают сюда из
+            # get_database_patterns_from_config(). Без этой ветки бэкап базы в
+            # такой категории не отслеживался бы.
+            known_categories = {"company", "barnaul", "client", "yandex"}
+            for category, category_patterns in patterns.items():
+                if category in known_categories or not isinstance(category_patterns, list):
+                    continue
+                for pattern in category_patterns:
+                    if not isinstance(pattern, str):
+                        continue
+                    match = re.search(pattern, subject_lower, re.IGNORECASE)
+                    if not match:
+                        continue
+                    db_name = match.group(1).strip() if match.groups() else "unknown"
+                    logger.info(
+                        "✅ Найден бэкап %s: '%s' по паттерну: %s",
+                        category,
+                        db_name,
+                        pattern,
+                    )
+
+                    category_dbs = DATABASE_BACKUP_CONFIG.get(category, {})
+                    display_name = (
+                        category_dbs.get(db_name, db_name)
+                        if isinstance(category_dbs, dict)
+                        else db_name
+                    )
+
+                    backup_info = {
+                        "host_name": "db-backup",
+                        "backup_status": "success",
+                        "task_type": "database_dump",
+                        "database_name": db_name,
+                        "database_display_name": display_name,
+                        "backup_type": category,
                     }
                     return backup_info
 

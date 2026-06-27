@@ -1,13 +1,13 @@
 """
 /core/monitor_parts/__init__.py
-Server Monitoring System v8.63.27
+Server Monitoring System v8.63.28
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Decomposed monitor core package. Старый core/monitor_core.py остаётся
 тонким фасадом и реэкспортирует имена отсюда — внешние импортёры не
 правятся.
 Система мониторинга серверов
-Версия: 8.63.27
+Версия: 8.63.28
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет ядра мониторинга, выделенный из core/monitor_core.py (PR5 серии
