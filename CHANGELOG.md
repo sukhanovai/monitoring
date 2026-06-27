@@ -1,5 +1,13 @@
 # Changelog / История изменений
 
+## [8.0.4] - 2026-06-27
+
+### RU
+- Исправлено добавление паттернов БД через мастер («Бэкапы БД» → «Настройка паттернов» → «Добавить паттерн»): callback-кнопки выбора категории (`db_pattern_set_category_*`) перехватывались обработчиком бэкапов и отвечали «Неизвестная команда», из-за чего паттерн не сохранялся. Теперь все callback'и мастера паттернов БД (`db_pattern_*`) корректно маршрутизируются в обработчик настроек.
+
+### EN
+- Fixed adding DB patterns via the wizard (“DB Backups” → “Pattern settings” → “Add pattern”): the category-selection callbacks (`db_pattern_set_category_*`) were being intercepted by the backup handler and replied “Unknown command”, so the pattern was never saved. All DB-pattern wizard callbacks (`db_pattern_*`) are now routed to the settings handler correctly.
+
 ## [8.0.3] - 2026-04-12
 
 ### RU
