@@ -1,3 +1,9 @@
+## [8.63.27] - 2026-06-27
+
+### Fixed
+- RU: Telegram-бот — исправлена ошибка `Can't parse entities: can't find end of the entity` при попытке изменить имя слим-файла HD-Electric API. В тексте подсказки пример `hdelectric_slim.xlsx` содержал подчёркивания вне backticks, и при `parse_mode="Markdown"` Telegram трактовал их как незакрытый курсив. Пример обёрнут в backticks (`bot/handlers/settings_handlers/supplier_stock.py`).
+- EN: Telegram bot — fixed `Can't parse entities: can't find end of the entity` error when trying to edit the HD-Electric API slim file name. The prompt example `hdelectric_slim.xlsx` contained underscores outside backticks, and with `parse_mode="Markdown"` Telegram treated them as an unclosed italic. The example is now wrapped in backticks (`bot/handlers/settings_handlers/supplier_stock.py`).
+
 ## [8.63.26] - 2026-06-27
 
 ### Fixed
