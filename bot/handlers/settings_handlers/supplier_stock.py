@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/supplier_stock.py
-Server Monitoring System v8.63.25
+Server Monitoring System v8.63.26
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock UI handlers extracted from
 bot/handlers/settings_handlers/_legacy.py (PR7b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.25
+Версия: 8.63.26
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самодостаточный блок UI Telegram-бота для настроек supplier-stock
@@ -3066,6 +3066,10 @@ def show_supplier_stock_source_hde_settings(update, context, source_id: str) -> 
     )
     output_name = _escape_pattern_text(hde.get("output_name") or "не задано")
     also_csv = "вкл" if hde.get("also_csv") else "выкл"
+    slim_export = "вкл" if hde.get("slim_export") else "выкл"
+    slim_output_name = _escape_pattern_text(hde.get("slim_output_name") or "не задано")
+    slim_code_header = _escape_pattern_text(hde.get("slim_code_header") or "Art.")
+    slim_qty_header = _escape_pattern_text(hde.get("slim_qty_header") or "Quant.")
 
     message = (
         "⚙️ *HD\\-Electric API*\n\n"
@@ -3077,6 +3081,11 @@ def show_supplier_stock_source_hde_settings(update, context, source_id: str) -> 
         f"• Запросы: `{endpoints}`\n"
         f"• Файл: `{output_name}`\n"
         f"• Экспорт CSV: `{also_csv}`\n\n"
+        "*Слим\\-выгрузка \\(только остатки\\)*\n"
+        f"• Слим\\-файл: `{slim_export}`\n"
+        f"• Имя слим\\-файла: `{slim_output_name}`\n"
+        f"• Заголовок кода: `{slim_code_header}`\n"
+        f"• Заголовок кол\\-ва: `{slim_qty_header}`\n\n"
         "Выберите действие:"
     )
 
@@ -3094,6 +3103,14 @@ def show_supplier_stock_source_hde_settings(update, context, source_id: str) -> 
         [
             InlineKeyboardButton("📄 Файл", callback_data=f"supplier_stock_source_hde_field|{source_id}|output_name"),
             InlineKeyboardButton(f"📊 CSV: {also_csv}", callback_data=f"supplier_stock_source_hde_csv_toggle_{source_id}"),
+        ],
+        [InlineKeyboardButton(f"✂️ Слим-файл: {slim_export}", callback_data=f"supplier_stock_source_hde_slim_toggle_{source_id}")],
+        [
+            InlineKeyboardButton("📝 Имя слим-файла", callback_data=f"supplier_stock_source_hde_field|{source_id}|slim_output_name"),
+        ],
+        [
+            InlineKeyboardButton("🔤 Заголовок кода", callback_data=f"supplier_stock_source_hde_field|{source_id}|slim_code_header"),
+            InlineKeyboardButton("🔢 Заголовок кол-ва", callback_data=f"supplier_stock_source_hde_field|{source_id}|slim_qty_header"),
         ],
         [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
         [
@@ -3136,6 +3153,9 @@ def supplier_stock_start_source_hde_field_edit(update, context, source_id: str, 
         "smsh_secret": "Введите секрет организации (заголовок CompanySmShSecret):",
         "fetch_endpoints": "Введите запросы через запятую: stock, price, transit:",
         "output_name": "Введите имя выходного файла Excel (например: hdelectric.xlsx):",
+        "slim_output_name": "Введите имя слим-файла (например: hdelectric_slim.xlsx или .csv):",
+        "slim_code_header": "Введите заголовок колонки кода в слим-файле (например: Art.):",
+        "slim_qty_header": "Введите заголовок колонки количества в слим-файле (например: Quant.):",
     }
 
     hde = source.get("hde_api") or {}
@@ -3147,6 +3167,9 @@ def supplier_stock_start_source_hde_field_edit(update, context, source_id: str, 
         "smsh_secret": "задано" if hde.get("smsh_secret") else "-",
         "fetch_endpoints": ", ".join(hde.get("fetch_endpoints") or ["stock", "price", "transit"]),
         "output_name": hde.get("output_name") or "-",
+        "slim_output_name": hde.get("slim_output_name") or "-",
+        "slim_code_header": hde.get("slim_code_header") or "Art.",
+        "slim_qty_header": hde.get("slim_qty_header") or "Quant.",
     }
 
     prompt = prompts.get(field, "Введите значение:")
@@ -3207,7 +3230,17 @@ def supplier_stock_handle_source_hde_field_input(update, context):
         )
         return None
 
-    if field in ("base_url", "basic_user", "basic_pass", "company_inn", "smsh_secret", "output_name"):
+    if field in (
+        "base_url",
+        "basic_user",
+        "basic_pass",
+        "company_inn",
+        "smsh_secret",
+        "output_name",
+        "slim_output_name",
+        "slim_code_header",
+        "slim_qty_header",
+    ):
         hde[field] = "" if user_input.lower() in ("none", "нет") else user_input
     elif field == "fetch_endpoints":
         valid = {"stock", "price", "transit"}

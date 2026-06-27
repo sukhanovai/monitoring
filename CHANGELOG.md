@@ -1,3 +1,13 @@
+## [8.63.26] - 2026-06-27
+
+### Fixed
+- RU: HD-Electric API — имя выходного файла теперь берётся из настройки HD-Electric API (`hde_api.output_name`, например `hdelectric.xlsx`), а не из поля «Файл» источника. Раньше при значении поля источника `-` итоговый файл выгружался с именем `-`. Изменён приоритет в `run_supplier_stock_fetch` (`extensions/supplier_stock_files.py`).
+- EN: HD-Electric API — the output file name is now taken from the HD-Electric API setting (`hde_api.output_name`, e.g. `hdelectric.xlsx`) instead of the source's "File" field. Previously, when the source field was `-`, the resulting file was uploaded named `-`. Changed priority in `run_supplier_stock_fetch` (`extensions/supplier_stock_files.py`).
+
+### Added
+- RU: HD-Electric API — дополнительная «слим»-выгрузка: помимо полного Excel формируется отдельный файл только с двумя колонками из листа «Остатки» (`vendor_code`, `quantity`) с настраиваемыми заголовками (по умолчанию `Art.` и `Quant.`). Новые настройки в подразделе `hde_api`: `slim_export` (вкл/выкл), `slim_output_name` (имя файла, `.xlsx` или `.csv`), `slim_code_header`, `slim_qty_header`. Слим-файл выгружается на тот же ресурс рядом с оригиналом. Telegram-бот: в меню «⚙️ HD-Electric API» добавлены переключатель «✂️ Слим-файл» и поля редактирования имени и заголовков. Web BFF (Android): добавлены те же поля и переключатели CSV/Слим в меню HD-Electric API.
+- EN: HD-Electric API — additional "slim" export: alongside the full Excel, a separate file is produced with only two columns from the "Остатки" (stocks) sheet (`vendor_code`, `quantity`) with configurable headers (default `Art.` and `Quant.`). New settings in the `hde_api` sub-key: `slim_export` (on/off), `slim_output_name` (file name, `.xlsx` or `.csv`), `slim_code_header`, `slim_qty_header`. The slim file is uploaded to the same resource next to the original. Telegram bot: the "⚙️ HD-Electric API" menu now has a "✂️ Slim file" toggle and fields to edit the name and headers. Web BFF (Android): added the same fields and CSV/Slim toggles to the HD-Electric API menu.
+
 ## [8.63.25] - 2026-06-26
 
 ### Fixed

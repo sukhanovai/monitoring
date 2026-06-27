@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/callback_dispatcher.py
-Server Monitoring System v8.63.25
+Server Monitoring System v8.63.26
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Главный диспатчер callback-кнопок настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.25
+Версия: 8.63.26
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
@@ -891,6 +891,18 @@ def settings_callback_handler(update, context):
                 if str(source.get("id")) == source_id:
                     hde = source.setdefault("hde_api", {})
                     hde["also_csv"] = not hde.get("also_csv", False)
+                    break
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+            show_supplier_stock_source_hde_settings(update, context, source_id)
+        elif data.startswith("supplier_stock_source_hde_slim_toggle_"):
+            source_id = data.replace("supplier_stock_source_hde_slim_toggle_", "")
+            config = get_supplier_stock_config()
+            sources = config.get("download", {}).get("sources", [])
+            for source in sources:
+                if str(source.get("id")) == source_id:
+                    hde = source.setdefault("hde_api", {})
+                    hde["slim_export"] = not hde.get("slim_export", False)
                     break
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
