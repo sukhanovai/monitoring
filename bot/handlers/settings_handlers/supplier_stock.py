@@ -3153,7 +3153,7 @@ def supplier_stock_start_source_hde_field_edit(update, context, source_id: str, 
         "smsh_secret": "Введите секрет организации (заголовок CompanySmShSecret):",
         "fetch_endpoints": "Введите запросы через запятую: stock, price, transit:",
         "output_name": "Введите имя выходного файла Excel (например: hdelectric.xlsx):",
-        "slim_output_name": "Введите имя слим-файла (например: hdelectric_slim.xlsx или .csv):",
+        "slim_output_name": "Введите имя слим-файла (например: `hdelectric_slim.xlsx` или `.csv`):",
         "slim_code_header": "Введите заголовок колонки кода в слим-файле (например: Art.):",
         "slim_qty_header": "Введите заголовок колонки количества в слим-файле (например: Quant.):",
     }
