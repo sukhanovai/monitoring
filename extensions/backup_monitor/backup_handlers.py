@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.63.29
+Server Monitoring System v8.63.30
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.63.29
+Версия: 8.63.30
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -2041,7 +2041,8 @@ def _get_latest_database_display_name(backup_bot, backup_type, db_name):
             """
             SELECT database_display_name
             FROM database_backups
-            WHERE backup_type = ? AND database_name = ?
+            WHERE backup_type = ?
+              AND REPLACE(LOWER(database_name), '-', '_') = REPLACE(LOWER(?), '-', '_')
               AND database_display_name IS NOT NULL
               AND TRIM(database_display_name) != ''
             ORDER BY received_at DESC
@@ -2063,7 +2064,8 @@ def _get_latest_backup_type(backup_bot, db_name, hours=168):
             """
             SELECT backup_type
             FROM database_backups
-            WHERE database_name = ? AND received_at >= ?
+            WHERE REPLACE(LOWER(database_name), '-', '_') = REPLACE(LOWER(?), '-', '_')
+              AND received_at >= ?
             ORDER BY received_at DESC
             LIMIT 1
             """,
