@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.63.25
+Server Monitoring System v8.63.26
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.63.25
+Версия: 8.63.26
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -125,6 +125,10 @@ DEFAULT_HDE_SETTINGS: Dict[str, Any] = {
     "fetch_endpoints": ["stock", "price", "transit"],
     "also_csv": False,
     "output_name": "hdelectric.xlsx",
+    "slim_export": False,
+    "slim_output_name": "hdelectric_slim.xlsx",
+    "slim_code_header": "Art.",
+    "slim_qty_header": "Quant.",
 }
 
 _scheduler_lock = threading.Lock()
@@ -319,6 +323,14 @@ def _normalize_hde_settings(value: Any) -> Dict[str, Any]:
         normalized["also_csv"] = settings["also_csv"]
     if isinstance(settings.get("output_name"), str) and settings["output_name"].strip():
         normalized["output_name"] = settings["output_name"].strip()
+    if isinstance(settings.get("slim_export"), bool):
+        normalized["slim_export"] = settings["slim_export"]
+    if isinstance(settings.get("slim_output_name"), str) and settings["slim_output_name"].strip():
+        normalized["slim_output_name"] = settings["slim_output_name"].strip()
+    if isinstance(settings.get("slim_code_header"), str) and settings["slim_code_header"].strip():
+        normalized["slim_code_header"] = settings["slim_code_header"].strip()
+    if isinstance(settings.get("slim_qty_header"), str) and settings["slim_qty_header"].strip():
+        normalized["slim_qty_header"] = settings["slim_qty_header"].strip()
     return normalized
 
 
@@ -802,7 +814,35 @@ def _run_hde_api_fetch(
             csv_path = output_path.with_name(f"{output_path.stem}_{sheet_name}.csv")
             df.to_csv(csv_path, index=False, encoding="utf-8-sig", sep=";")
 
-    return {"success": True, "path": str(output_path), "rows": len(summary)}
+    extra_outputs: list[str] = []
+    if hde.get("slim_export"):
+        slim_name = _render_template(
+            str(hde.get("slim_output_name") or "hdelectric_slim.xlsx"), now, {}
+        )
+        slim_code_header = hde.get("slim_code_header") or "Art."
+        slim_qty_header = hde.get("slim_qty_header") or "Quant."
+        slim_path = output_path.with_name(slim_name)
+        slim_df = stocks.copy()
+        if "vendor_code" not in slim_df.columns:
+            slim_df["vendor_code"] = None
+        if "quantity" not in slim_df.columns:
+            slim_df["quantity"] = None
+        slim_df = slim_df[["vendor_code", "quantity"]].rename(
+            columns={"vendor_code": slim_code_header, "quantity": slim_qty_header}
+        )
+        if slim_path.suffix.lower() in (".xlsx", ".xls"):
+            with pd.ExcelWriter(slim_path, engine="openpyxl") as sw:
+                slim_df.to_excel(sw, sheet_name="Остатки", index=False)
+        else:
+            slim_df.to_csv(slim_path, index=False, encoding="utf-8-sig", sep=";")
+        extra_outputs.append(str(slim_path))
+
+    return {
+        "success": True,
+        "path": str(output_path),
+        "rows": len(summary),
+        "extra_outputs": extra_outputs,
+    }
 
 
 def append_supplier_stock_report(entry: Dict[str, Any]) -> None:
@@ -1214,7 +1254,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
 
             if processing_mode == "hdelectric_api":
                 hde_settings = _normalize_hde_settings(source.get("hde_api"))
-                output_name = source.get("output_name") or hde_settings["output_name"]
+                output_name = hde_settings["output_name"] or source.get("output_name")
                 output_name = _render_template(str(output_name), now, render_context)
                 output_path = temp_dir / output_name
                 original_path = output_path
@@ -1270,7 +1310,10 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                         original_path,
                     )
                 elif processing_mode == "hdelectric_api":
-                    _hde_results = [{"status": "success", "outputs": [{"output": str(output_path), "rows": result.get("rows", 0)}]}]
+                    _hde_outputs = [{"output": str(output_path), "rows": result.get("rows", 0)}]
+                    for _extra in result.get("extra_outputs", []) or []:
+                        _hde_outputs.append({"output": _extra})
+                    _hde_results = [{"status": "success", "outputs": _hde_outputs}]
                     processing_result = _transfer_processed_outputs(
                         _hde_results,
                         config,

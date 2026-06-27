@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.25
+Server Monitoring System v8.63.26
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.25
+Версия: 8.63.26
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -6759,10 +6759,26 @@ def v1_extensions_actions():
             if len(parts) > 3:
                 value = unquote(parts[3])
                 hde = source.setdefault("hde_api", {})
-                valid_fields = {"base_url", "basic_user", "basic_pass", "company_inn", "smsh_secret", "output_name"}
+                valid_fields = {
+                    "base_url",
+                    "basic_user",
+                    "basic_pass",
+                    "company_inn",
+                    "smsh_secret",
+                    "output_name",
+                    "slim_output_name",
+                    "slim_code_header",
+                    "slim_qty_header",
+                }
                 if field in valid_fields:
                     hde[field] = value.strip() if field not in ("basic_pass", "smsh_secret") else value
                     notice = f"✅ Сохранено: {field}\n\n"
+                elif field == "slim_export":
+                    hde["slim_export"] = not hde.get("slim_export", False)
+                    notice = f"✂️ Слим-файл: {'вкл' if hde['slim_export'] else 'выкл'}\n\n"
+                elif field == "also_csv":
+                    hde["also_csv"] = not hde.get("also_csv", False)
+                    notice = f"📊 CSV: {'вкл' if hde['also_csv'] else 'выкл'}\n\n"
                 elif field == "fetch_endpoints":
                     valid_ep = {"stock", "price", "transit"}
                     chosen = [ep.strip() for ep in re.split(r"[,\s]+", value) if ep.strip() in valid_ep]
@@ -6786,6 +6802,10 @@ def v1_extensions_actions():
         endpoints = ", ".join(hde.get("fetch_endpoints") or ["stock", "price", "transit"])
         output_name = hde.get("output_name") or "не задано"
         also_csv = "вкл" if hde.get("also_csv") else "выкл"
+        slim_export = "вкл" if hde.get("slim_export") else "выкл"
+        slim_output_name = hde.get("slim_output_name") or "не задано"
+        slim_code_header = hde.get("slim_code_header") or "Art."
+        slim_qty_header = hde.get("slim_qty_header") or "Quant."
         message = (
             f"{notice}⚙️ HD-Electric API\n\n"
             f"• URL: {base_url}\n"
@@ -6796,6 +6816,11 @@ def v1_extensions_actions():
             f"• Запросы: {endpoints}\n"
             f"• Файл: {output_name}\n"
             f"• CSV: {also_csv}\n\n"
+            "✂️ Слим-выгрузка (только остатки)\n"
+            f"• Слим-файл: {slim_export}\n"
+            f"• Имя слим-файла: {slim_output_name}\n"
+            f"• Заголовок кода: {slim_code_header}\n"
+            f"• Заголовок кол-ва: {slim_qty_header}\n\n"
             "Нажмите на поле ниже для редактирования."
         )
         menu_options = [
@@ -6806,6 +6831,11 @@ def v1_extensions_actions():
             {"label": "🗝️ Секрет", "action": f"supplier_stock_source_hde_field|{source_id}|smsh_secret"},
             {"label": "📡 Запросы", "action": f"supplier_stock_source_hde_field|{source_id}|fetch_endpoints"},
             {"label": "📄 Файл", "action": f"supplier_stock_source_hde_field|{source_id}|output_name"},
+            {"label": f"📊 CSV: {also_csv}", "action": f"supplier_stock_source_hde_field|{source_id}|also_csv|toggle"},
+            {"label": f"✂️ Слим-файл: {slim_export}", "action": f"supplier_stock_source_hde_field|{source_id}|slim_export|toggle"},
+            {"label": "📝 Имя слим-файла", "action": f"supplier_stock_source_hde_field|{source_id}|slim_output_name"},
+            {"label": "🔤 Заголовок кода", "action": f"supplier_stock_source_hde_field|{source_id}|slim_code_header"},
+            {"label": "🔢 Заголовок кол-ва", "action": f"supplier_stock_source_hde_field|{source_id}|slim_qty_header"},
             {"label": "↩️ Назад", "action": "supplier_stock_sources"},
             {"label": "✖️ Закрыть", "action": "close"},
         ]
