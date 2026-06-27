@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/patterns.py
-Server Monitoring System v8.63.27
+Server Monitoring System v8.63.28
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Pattern helpers extracted from modules/mail_monitor.py (PR6 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.27
+Версия: 8.63.28
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Сборщики regex/glob-паттернов из конфигурации БД для разных типов писем
@@ -51,6 +51,67 @@ from lib.logging import setup_logging
 from modules.mail_parts import logger  # noqa: F401  — общий логгер пакета
 
 
+# Категории таблицы backup_patterns, которые принадлежат другим расширениям
+# (а не бэкапам БД) и не должны попадать в паттерны баз данных.
+_NON_DATABASE_PATTERN_CATEGORIES = {
+    "mail",
+    "zfs",
+    "proxmox",
+    "snapshot_transfer",
+    "nas_transfer",
+    "config_console",
+    "stock_load",
+}
+
+
+def _merge_db_patterns_from_table(result: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Дополняет паттерны БД записями из таблицы ``backup_patterns``.
+
+    Паттерны, добавленные через мастер Telegram-бота
+    («Бэкапы БД» → «Настройка паттернов» → «Добавить паттерн»), сохраняются в
+    таблицу ``backup_patterns``, а не в настройку ``BACKUP_PATTERNS``. Без
+    этого слияния парсер писем их не видит — бэкап только что добавленной базы
+    не отслеживается, и пользователю кажется, что паттерн «не сохранился».
+    """
+    try:
+        table_patterns = config_manager.get_backup_patterns()
+    except Exception as exc:
+        logger.error(f"❌ Не удалось прочитать backup_patterns: {exc}")
+        return result
+
+    if not isinstance(table_patterns, dict):
+        return result
+
+    for category, type_map in table_patterns.items():
+        if not isinstance(category, str) or category in _NON_DATABASE_PATTERN_CATEGORIES:
+            continue
+        if not isinstance(type_map, dict):
+            continue
+
+        collected: list[str] = []
+        for pattern_type, patterns_list in type_map.items():
+            # Паттерны Proxmox исторически хранятся под категорией "database".
+            if isinstance(pattern_type, str) and pattern_type.startswith("proxmox"):
+                continue
+            if isinstance(patterns_list, list):
+                collected.extend(p for p in patterns_list if isinstance(p, str))
+            elif isinstance(patterns_list, str):
+                collected.append(patterns_list)
+
+        if not collected:
+            continue
+
+        existing = result.get(category)
+        if not isinstance(existing, list):
+            existing = [existing] if isinstance(existing, str) else []
+            result[category] = existing
+        for pattern in collected:
+            if pattern not in existing:
+                existing.append(pattern)
+
+    return result
+
+
 def get_database_patterns_from_config() -> dict[str, list[str]]:
     """Правильно извлекает паттерны из конфигурации."""
     try:
@@ -63,11 +124,11 @@ def get_database_patterns_from_config() -> dict[str, list[str]]:
                 all_patterns = json.loads(all_patterns)
             except Exception:
                 logger.error("❌ Не удалось распарсить BACKUP_PATTERNS как JSON")
-                return {"company": [], "barnaul": [], "client": [], "yandex": []}
+                all_patterns = {}
 
         if not isinstance(all_patterns, dict):
             logger.error(f"❌ BACKUP_PATTERNS не словарь: {type(all_patterns)}")
-            return {"company": [], "barnaul": [], "client": [], "yandex": []}
+            all_patterns = {}
 
         db_patterns = all_patterns.get("database", {})
 
@@ -83,16 +144,19 @@ def get_database_patterns_from_config() -> dict[str, list[str]]:
                         item,
                     )
         elif isinstance(db_patterns, dict):
-            result = db_patterns
+            result = dict(db_patterns)
         else:
             result = {}
 
-        return {
-            "company": result.get("company", []),
-            "barnaul": result.get("barnaul", []),
-            "client": result.get("client", []),
-            "yandex": result.get("yandex", []),
-        }
+        # Гарантируем наличие базовых категорий, на которые опирается парсер.
+        for base_category in ("company", "barnaul", "client", "yandex"):
+            result.setdefault(base_category, [])
+
+        # Подмешиваем паттерны, добавленные через мастер бота (таблица
+        # backup_patterns), иначе они не влияют на разбор писем.
+        result = _merge_db_patterns_from_table(result)
+
+        return result
 
     except Exception as exc:
         logger.error(f"❌ Ошибка извлечения паттернов: {exc}")
