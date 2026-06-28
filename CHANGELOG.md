@@ -1,3 +1,9 @@
+## [8.63.31] - 2026-06-28
+
+### Fixed
+- RU: Telegram-бот — в «Главное меню» → «Бэкапы БД» не появлялась авто-обнаруженная база Yandex (например `MDM` из письма `yandex MDM backup`), хотя парсер писем её распознал и сохранил бэкап в `backups.db`. Категория `yandex` разбирается обобщённым паттерном `yandex (.+?) backup`, поэтому имя базы извлекается автоматически и в статической конфигурации (`yandex_backups`) его может не быть. Однако `get_database_monitor_snapshot` показывала только базы из конфига: записи из `backups.db`, отсутствующие в белом списке `allowed_by_type`, отфильтровывались. Теперь бэкапы авто-обнаруживаемых категорий (`yandex`) показываются в меню даже без предварительной настройки, тогда как незнакомые базы обычных категорий по-прежнему фильтруются (`extensions/backup_monitor/backup_handlers.py`).
+- EN: Telegram bot — in "Main menu" → "DB Backups", an auto-discovered Yandex database (e.g. `MDM` from the `yandex MDM backup` email) did not appear, even though the mail parser recognized it and saved the backup into `backups.db`. The `yandex` category is parsed by the generic `yandex (.+?) backup` pattern, so the database name is extracted automatically and may be absent from the static config (`yandex_backups`). However `get_database_monitor_snapshot` only listed databases from the config: entries from `backups.db` not present in the `allowed_by_type` whitelist were filtered out. Now backups of auto-discovered categories (`yandex`) are shown in the menu even without prior configuration, while unknown databases of ordinary categories are still filtered out (`extensions/backup_monitor/backup_handlers.py`).
+
 ## [8.63.30] - 2026-06-27
 
 ### Fixed

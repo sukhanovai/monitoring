@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.63.30
+Server Monitoring System v8.63.31
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.63.30
+Версия: 8.63.31
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -693,6 +693,15 @@ def _toggle_database_monitoring(backup_type: str, db_name: str) -> bool:
     return now_enabled
 
 
+# Категории, в которых письма разбираются обобщённым паттерном
+# (например `yandex (.+?) backup`), поэтому имя базы извлекается
+# автоматически и заранее в конфигурации может отсутствовать. Бэкапы
+# таких категорий, попавшие в backups.db, показываем в меню даже без
+# предварительной настройки — иначе авто-обнаруженная база (как «MDM»)
+# не появится в списке.
+AUTO_DISCOVER_BACKUP_TYPES = {"yandex"}
+
+
 def get_database_monitor_snapshot(backup_bot):
     """Возвращает унифицированный список БД и статусов из settings DB + backups DB."""
     from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
@@ -741,7 +750,10 @@ def get_database_monitor_snapshot(backup_bot):
             continue
         backup_type = _normalize_backup_type(raw_backup_type, raw_db_name)
         normalized_key = _normalize_db_key(raw_db_name)
-        if backup_type not in allowed_by_type or normalized_key not in allowed_by_type[backup_type]:
+        is_allowed = (
+            backup_type in allowed_by_type and normalized_key in allowed_by_type[backup_type]
+        )
+        if not is_allowed and backup_type not in AUTO_DISCOVER_BACKUP_TYPES:
             continue
 
         bucket = entries_by_type.setdefault(backup_type, {})
