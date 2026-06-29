@@ -6768,7 +6768,7 @@ private fun MonitoringApp(
                                     value = supplierStockHdeOutputInput,
                                     onValueChange = { supplierStockHdeOutputInput = it },
                                     label = { Text("Имя выходного файла Excel") },
-                                    placeholder = { Text("hdelectric.xlsx") },
+                                    placeholder = { Text("hdelectric.xls") },
                                     singleLine = true,
                                     modifier = Modifier.fillMaxWidth()
                                 )

@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.63.31
+Server Monitoring System v8.63.32
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.63.31
+Версия: 8.63.32
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -124,9 +124,9 @@ DEFAULT_HDE_SETTINGS: Dict[str, Any] = {
     "smsh_secret": "",
     "fetch_endpoints": ["stock", "price", "transit"],
     "also_csv": False,
-    "output_name": "hdelectric.xlsx",
+    "output_name": "hdelectric.xls",
     "slim_export": False,
-    "slim_output_name": "hdelectric_slim.xlsx",
+    "slim_output_name": "hdelectric_slim.xls",
     "slim_code_header": "Art.",
     "slim_qty_header": "Quant.",
 }
@@ -696,6 +696,23 @@ def _run_shell_command(
     }
 
 
+def _write_excel_sheets(path: Path, sheets: list[tuple[str, Any]]) -> None:
+    """Записать листы в Excel, выбрав движок по расширению (.xls → xlwt)."""
+    import pandas as pd
+
+    engine = "xlwt" if path.suffix.lower() == ".xls" else "openpyxl"
+    try:
+        with pd.ExcelWriter(path, engine=engine) as xw:
+            for sheet_name, df in sheets:
+                df.to_excel(xw, sheet_name=sheet_name, index=False)
+    except (ImportError, ValueError) as exc:
+        if engine == "xlwt":
+            raise RuntimeError(
+                "Для формата .xls требуется библиотека xlwt (pip install xlwt)"
+            ) from exc
+        raise
+
+
 def _run_hde_api_fetch(
     source: Dict[str, Any],
     output_path: Path,
@@ -803,11 +820,15 @@ def _run_hde_api_fetch(
     summary = _build_summary(stocks, prices, transit)
 
     _ensure_parent(output_path)
-    with pd.ExcelWriter(output_path, engine="openpyxl") as xw:
-        summary.to_excel(xw, sheet_name="Сводная", index=False)
-        prices.to_excel(xw, sheet_name="Прайс", index=False)
-        stocks.to_excel(xw, sheet_name="Остатки", index=False)
-        transit.to_excel(xw, sheet_name="В пути", index=False)
+    _write_excel_sheets(
+        output_path,
+        [
+            ("Сводная", summary),
+            ("Прайс", prices),
+            ("Остатки", stocks),
+            ("В пути", transit),
+        ],
+    )
 
     if also_csv:
         for sheet_name, df in (("summary", summary), ("prices", prices), ("stocks", stocks), ("transit", transit)):
@@ -817,7 +838,7 @@ def _run_hde_api_fetch(
     extra_outputs: list[str] = []
     if hde.get("slim_export"):
         slim_name = _render_template(
-            str(hde.get("slim_output_name") or "hdelectric_slim.xlsx"), now, {}
+            str(hde.get("slim_output_name") or "hdelectric_slim.xls"), now, {}
         )
         slim_code_header = hde.get("slim_code_header") or "Art."
         slim_qty_header = hde.get("slim_qty_header") or "Quant."
@@ -831,8 +852,7 @@ def _run_hde_api_fetch(
             columns={"vendor_code": slim_code_header, "quantity": slim_qty_header}
         )
         if slim_path.suffix.lower() in (".xlsx", ".xls"):
-            with pd.ExcelWriter(slim_path, engine="openpyxl") as sw:
-                slim_df.to_excel(sw, sheet_name="Остатки", index=False)
+            _write_excel_sheets(slim_path, [("Остатки", slim_df)])
         else:
             slim_df.to_csv(slim_path, index=False, encoding="utf-8-sig", sep=";")
         extra_outputs.append(str(slim_path))
