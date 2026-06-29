@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/report.py
-Server Monitoring System v8.63.31
+Server Monitoring System v8.63.32
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning report assembly extracted from core/monitor_core.py
 (PR5 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.31
+Версия: 8.63.32
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Сборка ежеутреннего сводного отчёта о доступности серверов и состоянии

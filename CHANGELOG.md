@@ -1,3 +1,9 @@
+## [8.63.32] - 2026-06-29
+
+### Changed
+- RU: HD-Electric API — формат выходных файлов по умолчанию изменён с `.xlsx` на `.xls` (Excel 97-2003). Дефолтные имена: `hdelectric.xls` (полный) и `hdelectric_slim.xls` (слим). Движок записи теперь выбирается по расширению имени файла: `.xls` → `xlwt`, `.xlsx` → `openpyxl`, прочее (слим) → CSV. Если для `.xls` не установлена библиотека `xlwt`, выгрузка завершается понятной ошибкой. Уже сохранённые в конфиге имена файлов не меняются автоматически — при необходимости переключить формат задайте новое имя в меню «⚙️ HD-Electric API». Затронуты `extensions/supplier_stock_files.py` (helper `_write_excel_sheets`, дефолты), подсказки Telegram-бота и плейсхолдер Android.
+- EN: HD-Electric API — default output file format changed from `.xlsx` to `.xls` (Excel 97-2003). Default names: `hdelectric.xls` (full) and `hdelectric_slim.xls` (slim). The writer engine is now chosen by file extension: `.xls` → `xlwt`, `.xlsx` → `openpyxl`, anything else (slim) → CSV. If `xlwt` is not installed for `.xls`, the export fails with a clear error. File names already stored in the config are not changed automatically — set a new name in the "⚙️ HD-Electric API" menu to switch the format. Affected `extensions/supplier_stock_files.py` (helper `_write_excel_sheets`, defaults), Telegram bot prompts and the Android placeholder.
+
 ## [8.63.31] - 2026-06-28
 
 ### Fixed

@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/supplier_stock.py
-Server Monitoring System v8.63.31
+Server Monitoring System v8.63.32
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock UI handlers extracted from
 bot/handlers/settings_handlers/_legacy.py (PR7b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.31
+Версия: 8.63.32
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Самодостаточный блок UI Telegram-бота для настроек supplier-stock
@@ -3152,8 +3152,8 @@ def supplier_stock_start_source_hde_field_edit(update, context, source_id: str, 
         "company_inn": "Введите ИНН/КПП организации (заголовок CompanyINN):",
         "smsh_secret": "Введите секрет организации (заголовок CompanySmShSecret):",
         "fetch_endpoints": "Введите запросы через запятую: stock, price, transit:",
-        "output_name": "Введите имя выходного файла Excel (например: hdelectric.xlsx):",
-        "slim_output_name": "Введите имя слим-файла (например: `hdelectric_slim.xlsx` или `.csv`):",
+        "output_name": "Введите имя выходного файла Excel (например: hdelectric.xls):",
+        "slim_output_name": "Введите имя слим-файла (например: `hdelectric_slim.xls` или `.csv`):",
         "slim_code_header": "Введите заголовок колонки кода в слим-файле (например: Art.):",
         "slim_qty_header": "Введите заголовок колонки количества в слим-файле (например: Quant.):",
     }
