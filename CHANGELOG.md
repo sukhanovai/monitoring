@@ -1,3 +1,9 @@
+## [8.63.33] - 2026-06-29
+
+### Fixed
+- RU: HD-Electric API — исправлена запись `.xls`: pandas 2.x полностью удалил движок `xlwt`, поэтому `pd.ExcelWriter(engine="xlwt")` падал даже при установленной библиотеке (ошибочно сообщая «требуется xlwt»). Запись `.xls` теперь выполняется напрямую через `xlwt` (helper `_write_xls_direct` в `extensions/supplier_stock_files.py`), минуя pandas. Значения приводятся к нативным типам (`_xls_cell_value`: NaN→пусто, numpy→int/float, прочее→str), имена листов санируются под ограничения xlwt (≤31 символа, без `[]:*?/\`). `.xlsx` по-прежнему пишется через openpyxl.
+- EN: HD-Electric API — fixed `.xls` writing: pandas 2.x fully removed the `xlwt` engine, so `pd.ExcelWriter(engine="xlwt")` failed even with the library installed (wrongly reporting "xlwt required"). `.xls` is now written directly via `xlwt` (helper `_write_xls_direct` in `extensions/supplier_stock_files.py`), bypassing pandas. Values are coerced to native types (`_xls_cell_value`: NaN→empty, numpy→int/float, other→str), and sheet names are sanitized for xlwt limits (≤31 chars, no `[]:*?/\`). `.xlsx` is still written via openpyxl.
+
 ## [8.63.32] - 2026-06-29
 
 ### Changed

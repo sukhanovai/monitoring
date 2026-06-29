@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.63.32
+Server Monitoring System v8.63.33
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.63.32
+Версия: 8.63.33
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -696,21 +696,65 @@ def _run_shell_command(
     }
 
 
+def _xls_cell_value(value: Any) -> Any:
+    """Привести значение pandas/numpy к типу, понятному xlwt."""
+    import pandas as pd
+
+    if value is None:
+        return ""
+    try:
+        if pd.isna(value):
+            return ""
+    except (TypeError, ValueError):
+        pass
+    if isinstance(value, bool):
+        return value
+    # numpy-числа имеют .item(); приводим к нативным python-типам
+    item = getattr(value, "item", None)
+    if callable(item):
+        try:
+            value = value.item()
+        except (ValueError, TypeError):
+            pass
+    if isinstance(value, (int, float)):
+        return value
+    return str(value)
+
+
+def _write_xls_direct(path: Path, sheets: list[tuple[str, Any]]) -> None:
+    """Записать .xls напрямую через xlwt (pandas 2.x движок xlwt убрал)."""
+    try:
+        import xlwt
+    except ImportError as exc:
+        raise RuntimeError(
+            "Для формата .xls требуется библиотека xlwt (pip install xlwt)"
+        ) from exc
+
+    workbook = xlwt.Workbook(encoding="utf-8")
+    for sheet_name, df in sheets:
+        # xlwt: имя листа ≤ 31 символа, без спецсимволов []:*?/\
+        safe_name = re.sub(r"[\[\]:\*\?/\\]", "_", str(sheet_name))[:31] or "Sheet"
+        worksheet = workbook.add_sheet(safe_name)
+        columns = list(df.columns)
+        for col_idx, column_name in enumerate(columns):
+            worksheet.write(0, col_idx, str(column_name))
+        for row_idx, (_, row) in enumerate(df.iterrows(), start=1):
+            for col_idx, column_name in enumerate(columns):
+                worksheet.write(row_idx, col_idx, _xls_cell_value(row[column_name]))
+    workbook.save(str(path))
+
+
 def _write_excel_sheets(path: Path, sheets: list[tuple[str, Any]]) -> None:
     """Записать листы в Excel, выбрав движок по расширению (.xls → xlwt)."""
     import pandas as pd
 
-    engine = "xlwt" if path.suffix.lower() == ".xls" else "openpyxl"
-    try:
-        with pd.ExcelWriter(path, engine=engine) as xw:
-            for sheet_name, df in sheets:
-                df.to_excel(xw, sheet_name=sheet_name, index=False)
-    except (ImportError, ValueError) as exc:
-        if engine == "xlwt":
-            raise RuntimeError(
-                "Для формата .xls требуется библиотека xlwt (pip install xlwt)"
-            ) from exc
-        raise
+    if path.suffix.lower() == ".xls":
+        _write_xls_direct(path, sheets)
+        return
+
+    with pd.ExcelWriter(path, engine="openpyxl") as xw:
+        for sheet_name, df in sheets:
+            df.to_excel(xw, sheet_name=sheet_name, index=False)
 
 
 def _run_hde_api_fetch(

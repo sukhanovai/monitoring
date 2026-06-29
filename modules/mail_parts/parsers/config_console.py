@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/config_console.py
-Server Monitoring System v8.63.32
+Server Monitoring System v8.63.33
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ConfigConsoleBackupParserMixin — часть BackupProcessor.
 Система мониторинга серверов
-Версия: 8.63.32
+Версия: 8.63.33
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Mixin ConfigConsoleBackupParserMixin; объединяется с другими mixin'ами в
