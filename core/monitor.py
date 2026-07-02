@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.63.33
+Server Monitoring System v8.63.34
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.63.33
+Версия: 8.63.34
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -13,7 +13,7 @@ Core monitoring module
 
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List
 
 from config import (
@@ -392,15 +392,20 @@ class Monitor:
         )
         for collection_time in collection_times:
             scheduled_collection_dt = datetime.combine(today, collection_time)
-            check_interval_seconds = self._get_check_interval_seconds()
-            trigger_window_start = scheduled_collection_dt
-            trigger_window_end = scheduled_collection_dt + timedelta(
-                seconds=check_interval_seconds - 1
-            )
             slot_key = f"{today.isoformat()} {collection_time.strftime('%H:%M')}"
-            if not (trigger_window_start <= current_time <= trigger_window_end):
+            # Триггер «время слота уже наступило и слот ещё не отправлялся».
+            # Раньше здесь было узкое окно [план, план+CHECK_INTERVAL): если
+            # итерация цикла (опрос всех серверов) длилась дольше интервала,
+            # окно проскакивалось и отчёт молча пропадал на весь день.
+            if current_time < scheduled_collection_dt:
                 continue
             if slot_key in self.sent_collection_slots:
+                continue
+            # Защита от повторной отправки после перезапуска сервиса:
+            # отправленные слоты сохраняются в БД настроек.
+            persisted_slots = self._load_sent_collection_slots(today)
+            if slot_key in persisted_slots:
+                self.sent_collection_slots.add(slot_key)
                 continue
             debug_log(
                 f"🚀 Триггер автозапуска утреннего отчета: "
@@ -449,11 +454,45 @@ class Monitor:
 
             self.last_report_date = today
             self.sent_collection_slots.add(slot_key)
+            self._persist_sent_collection_slot(slot_key, today)
             debug_log("✅ Утренний отчет отправлен")
 
             # Короткая пауза, чтобы не запускать повторно в ту же секунду
             time.sleep(2)
             return
+
+    def _load_sent_collection_slots(self, today) -> set:
+        """Слоты отчёта, уже отправленные сегодня (из БД настроек).
+
+        Хранение в БД переживает перезапуск сервиса: без него рестарт после
+        планового времени приводил бы к повторной отправке отчёта.
+        """
+        try:
+            raw = config_manager.get_setting("MORNING_REPORT_SENT_SLOTS", [], use_cache=False)
+            if isinstance(raw, str):
+                import json
+
+                raw = json.loads(raw) if raw.strip() else []
+            if not isinstance(raw, list):
+                return set()
+            prefix = f"{today.isoformat()} "
+            return {str(item) for item in raw if str(item).startswith(prefix)}
+        except Exception as e:
+            debug_log(f"⚠️ Не удалось прочитать MORNING_REPORT_SENT_SLOTS: {e}")
+            return set()
+
+    def _persist_sent_collection_slot(self, slot_key: str, today) -> None:
+        """Фиксирует отправленный слот отчёта в БД настроек (только за сегодня)."""
+        try:
+            slots = sorted(self._load_sent_collection_slots(today) | {slot_key})
+            config_manager.set_setting(
+                "MORNING_REPORT_SENT_SLOTS",
+                slots,
+                "time",
+                "Отправленные слоты утреннего отчета (служебное, за текущий день)",
+            )
+        except Exception as e:
+            debug_log(f"⚠️ Не удалось сохранить MORNING_REPORT_SENT_SLOTS: {e}")
 
     def _send_startup_notification(self) -> None:
         """Формирует и отправляет единое стартовое уведомление.

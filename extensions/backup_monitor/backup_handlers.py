@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.63.33
+Server Monitoring System v8.63.34
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.63.33
+Версия: 8.63.34
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -1796,10 +1796,22 @@ def remove_nas_pattern(query, raw_index):
 def show_stock_loads(query, backup_bot, hours=24):
     """Показывает результаты загрузки остатков 1С."""
     try:
+        from .backup_utils import get_stock_load_expected_files
+
+        expected_files = get_stock_load_expected_files()
+        expected_text = str(expected_files) if expected_files > 0 else "не задано"
+        expected_button = InlineKeyboardButton(
+            "🔢 Ожидаемое кол-во файлов", callback_data="backup_stock_expected"
+        )
+
         results = backup_bot.get_stock_loads(hours=hours)
 
         if not results:
-            message = "📦 *Загрузка остатков 1С*\n\n" f"❌ Нет данных за последние {hours} часов."
+            message = (
+                "📦 *Загрузка остатков 1С*\n\n"
+                f"❌ Нет данных за последние {hours} часов.\n\n"
+                f"Ожидаемое кол-во файлов за сутки: *{expected_text}*"
+            )
             query.edit_message_text(
                 message,
                 parse_mode="Markdown",
@@ -1810,6 +1822,7 @@ def show_stock_loads(query, backup_bot, hours=24):
                                 "⚙️ Настройка паттернов почты", callback_data="backup_mail_patterns"
                             )
                         ],
+                        [expected_button],
                         [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
                         [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
                     ]
@@ -1825,7 +1838,8 @@ def show_stock_loads(query, backup_bot, hours=24):
 
         total_suppliers = sum(len(items) for items in grouped.values())
         message = f"📦 *Загрузка остатков 1С (за {hours}ч)*\n"
-        message += f"Всего поставщиков: {total_suppliers}\n\n"
+        message += f"Всего поставщиков: {total_suppliers}\n"
+        message += f"Ожидаемое кол-во файлов за сутки: *{expected_text}*\n\n"
 
         for source_name, items in grouped.items():
             message += f"*{_md(source_name)}* ({len(items)})\n"
@@ -1839,12 +1853,17 @@ def show_stock_loads(query, backup_bot, hours=24):
                 )
             message += "\n"
 
+        keyboard = [
+            [InlineKeyboardButton("🔄 Обновить", callback_data="backup_stock_loads")],
+            [expected_button],
+            [InlineKeyboardButton("↩️ Назад", callback_data="main_menu")],
+            [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+        ]
         query.edit_message_text(
             message,
             parse_mode="Markdown",
-            reply_markup=create_navigation_buttons(
-                back_button="main_menu", refresh_button="backup_stock_loads"
-            ),
+            reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
     except BadRequest as exc:
@@ -1855,6 +1874,57 @@ def show_stock_loads(query, backup_bot, hours=24):
     except Exception as e:
         logger.error(f"Ошибка в show_stock_loads: {e}")
         query.edit_message_text("❌ Ошибка при получении данных по остаткам")
+
+
+def prompt_stock_expected_files(query, context):
+    """Просит ввести ожидаемое число файлов загрузки остатков 1С."""
+    from .backup_utils import get_stock_load_expected_files
+
+    context.user_data["stock_set_expected_files"] = True
+    current = get_stock_load_expected_files()
+    current_text = str(current) if current > 0 else "не задано"
+    keyboard = [[InlineKeyboardButton("↩️ Отмена", callback_data="backup_stock_loads")]]
+    query.edit_message_text(
+        "🔢 *Ожидаемое кол-во файлов остатков 1С*\n\n"
+        f"Текущее значение: *{current_text}*\n\n"
+        "Отправьте сообщением число файлов, которое должно загружаться за сутки.\n"
+        "Утренний/ручной отчёт сверяет успешные загрузки с этим числом.\n"
+        "`0` — отключить сверку (показывается фактическое количество).",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+def set_stock_expected_files_value(update, raw_text):
+    """Сохраняет ожидаемое число файлов остатков 1С (из обработчика ввода)."""
+    from .backup_utils import save_stock_load_expected_files
+
+    text = str(raw_text or "").strip()
+    try:
+        value = int(text)
+        if value < 0:
+            raise ValueError("negative")
+    except (TypeError, ValueError):
+        update.message.reply_text(
+            "❌ Введите целое число ≥ 0 (0 — отключить сверку)."
+        )
+        return
+
+    saved = save_stock_load_expected_files(value)
+    result_text = (
+        f"✅ Ожидаемое кол-во файлов за сутки: {saved}"
+        if saved > 0
+        else "✅ Сверка количества файлов отключена (0)"
+    )
+    update.message.reply_text(
+        result_text,
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("📦 Остатки 1С", callback_data="backup_stock_loads")],
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+            ]
+        ),
+    )
 
 
 def show_stale_databases(query, backup_bot):

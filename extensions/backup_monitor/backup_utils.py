@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.63.33
+Server Monitoring System v8.63.34
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.63.33
+Версия: 8.63.34
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -546,6 +546,458 @@ def get_backup_summary(
     except Exception as e:
         logger.exception("Ошибка формирования отчета о бэкапах: %s", e)
         return "❌ Ошибка формирования отчета о бэкапах\n", True
+
+
+def get_proxmox_backup_stats(period_hours=24, unavailable_hosts=None) -> dict:
+    """Статистика бэкапов Proxmox за период для секции отчёта.
+
+    Возвращает dict:
+      {"total", "ok", "stale": [host, ...], "unavailable": [host, ...],
+       "no_data": bool, "error": str|None}
+    """
+    stats = {"total": 0, "ok": 0, "stale": [], "unavailable": [], "no_data": False, "error": None}
+    try:
+        from config.db_settings import DATA_DIR, PROXMOX_HOSTS
+
+        proxmox_hosts_config = PROXMOX_HOSTS if isinstance(PROXMOX_HOSTS, dict) else {}
+        db_path = DATA_DIR / "backups.db"
+        if not db_path.exists():
+            stats["error"] = "База данных бэкапов недоступна"
+            return stats
+
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        stale_threshold = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT DISTINCT host_name
+                FROM proxmox_backups
+                WHERE received_at >= datetime('now', '-30 days')
+                ORDER BY host_name
+                """
+            )
+            all_hosts = [row[0] for row in cursor.fetchall()]
+            if proxmox_hosts_config:
+                all_hosts = sorted(
+                    host
+                    for host, value in proxmox_hosts_config.items()
+                    if _is_proxmox_host_enabled(value)
+                )
+
+            cursor.execute(
+                """
+                SELECT host_name, backup_status, MAX(received_at) as last_backup
+                FROM proxmox_backups
+                WHERE received_at >= ?
+                GROUP BY host_name
+                """,
+                (since_time,),
+            )
+            recent_results = cursor.fetchall()
+
+            cursor.execute(
+                """
+                SELECT host_name, MAX(received_at) as last_backup
+                FROM proxmox_backups
+                GROUP BY host_name
+                HAVING last_backup < ?
+                """,
+                (stale_threshold,),
+            )
+            stale_rows = cursor.fetchall()
+        except Exception as exc:
+            if "no such table: proxmox_backups" in str(exc):
+                stats["no_data"] = True
+                return stats
+            raise
+        finally:
+            conn.close()
+
+        if not all_hosts:
+            stats["no_data"] = True
+            return stats
+
+        allowed_hosts = set(all_hosts)
+        unavailable_hosts_norm = {_normalize_host_key(h) for h in (unavailable_hosts or [])}
+        unavailable_set = set()
+        if proxmox_hosts_config and unavailable_hosts_norm:
+            for host_name, host_value in proxmox_hosts_config.items():
+                if host_name not in allowed_hosts:
+                    continue
+                aliases = {_normalize_host_key(host_name)}
+                if isinstance(host_value, dict):
+                    for key in ("ip", "host", "hostname", "name", "address", "addr"):
+                        value = host_value.get(key)
+                        if isinstance(value, (list, tuple, set)):
+                            aliases.update(_normalize_host_key(item) for item in value)
+                        elif value:
+                            aliases.add(_normalize_host_key(value))
+                elif host_value:
+                    aliases.add(_normalize_host_key(host_value))
+                if aliases & unavailable_hosts_norm:
+                    unavailable_set.add(host_name)
+        if unavailable_hosts_norm and not unavailable_set:
+            unavailable_set = {
+                host for host in allowed_hosts if _normalize_host_key(host) in unavailable_hosts_norm
+            }
+
+        stats["total"] = len(all_hosts)
+        stats["ok"] = len(
+            [
+                r
+                for r in recent_results
+                if r[1] == "success" and r[0] in allowed_hosts and r[0] not in unavailable_set
+            ]
+        )
+        stats["stale"] = sorted(
+            {host for host, _ in stale_rows if host in allowed_hosts}
+        )
+        stats["unavailable"] = sorted(unavailable_set)
+        return stats
+    except Exception as exc:
+        logger.exception("Ошибка сбора статистики бэкапов Proxmox: %s", exc)
+        stats["error"] = "Ошибка сбора данных"
+        return stats
+
+
+def get_database_backup_stats(period_hours=24) -> dict:
+    """Статистика бэкапов БД за период для секции отчёта.
+
+    Возвращает dict:
+      {"categories": [{"key", "name", "total", "ok",
+                       "stale": [db, ...], "missing": [db, ...]}],
+       "no_data": bool, "error": str|None}
+    """
+    stats = {"categories": [], "no_data": False, "error": None}
+    category_names = {
+        "company_database": "Основные",
+        "barnaul": "Барнаул",
+        "client": "Клиенты",
+        "yandex": "Yandex",
+    }
+    try:
+        from config.db_settings import DATA_DIR, DATABASE_BACKUP_CONFIG
+
+        database_backup_config = (
+            DATABASE_BACKUP_CONFIG if isinstance(DATABASE_BACKUP_CONFIG, dict) else {}
+        )
+        db_path = DATA_DIR / "backups.db"
+        if not db_path.exists():
+            stats["error"] = "База данных бэкапов недоступна"
+            return stats
+
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        stale_threshold = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT backup_type, database_name, backup_status, MAX(received_at)
+                FROM database_backups
+                WHERE received_at >= ?
+                GROUP BY backup_type, database_name
+                """,
+                (since_time,),
+            )
+            db_results = [
+                (_normalize_backup_type(backup_type, db_name), db_name, status)
+                for backup_type, db_name, status, _ in cursor.fetchall()
+            ]
+
+            cursor.execute(
+                """
+                SELECT backup_type, database_name, MAX(received_at) as last_backup
+                FROM database_backups
+                GROUP BY backup_type, database_name
+                HAVING last_backup < ?
+                """,
+                (stale_threshold,),
+            )
+            stale_rows = [
+                (_normalize_backup_type(backup_type, db_name), db_name)
+                for backup_type, db_name, _ in cursor.fetchall()
+            ]
+        except Exception as exc:
+            if "no such table: database_backups" in str(exc):
+                stats["no_data"] = True
+                return stats
+            raise
+        finally:
+            conn.close()
+
+        def _get_db_config(config: dict, *keys: str) -> dict:
+            for key in keys:
+                value = config.get(key)
+                if isinstance(value, dict):
+                    return value
+            return {}
+
+        company_databases = _get_db_config(
+            database_backup_config, "company_databases", "company_database", "company"
+        )
+        client_databases = _get_db_config(
+            database_backup_config, "client_databases", "client", "clients"
+        )
+        if "trade" in client_databases and "trade" in company_databases:
+            client_databases = {
+                key: value for key, value in client_databases.items() if key != "trade"
+            }
+
+        config_databases = {
+            "company_database": company_databases,
+            "barnaul": _get_db_config(
+                database_backup_config, "barnaul_backups", "barnaul", "Филиалы"
+            ),
+            "client": client_databases,
+            "yandex": _get_db_config(database_backup_config, "yandex_backups", "yandex"),
+        }
+
+        recent_keys = {(backup_type, db_name) for backup_type, db_name, _ in db_results}
+        success_keys = {
+            (backup_type, db_name)
+            for backup_type, db_name, status in db_results
+            if status == "success"
+        }
+        stale_keys = {
+            (backup_type, db_name)
+            for backup_type, db_name in stale_rows
+            if (backup_type, db_name) not in recent_keys
+        }
+
+        has_config = any(databases for databases in config_databases.values())
+        if not has_config:
+            # Без конфигурации считаем по фактическим записям за период.
+            fallback: dict = {}
+            for backup_type, db_name, status in db_results:
+                entry = fallback.setdefault(
+                    backup_type, {"total": 0, "ok": 0, "stale": [], "missing": []}
+                )
+                entry["total"] += 1
+                if status == "success":
+                    entry["ok"] += 1
+            for category in ("company_database", "barnaul", "client", "yandex"):
+                if category not in fallback:
+                    continue
+                entry = fallback[category]
+                stats["categories"].append(
+                    {
+                        "key": category,
+                        "name": category_names.get(category, category),
+                        "total": entry["total"],
+                        "ok": entry["ok"],
+                        "stale": sorted(
+                            db for cat, db in stale_keys if cat == category
+                        ),
+                        "missing": [],
+                    }
+                )
+            if not stats["categories"]:
+                stats["no_data"] = True
+            return stats
+
+        for category in ("company_database", "barnaul", "client", "yandex"):
+            databases = config_databases.get(category) or {}
+            if not databases:
+                continue
+            ok_count = sum(
+                1 for db_key in databases if (category, db_key) in success_keys
+            )
+            missing = sorted(
+                db_key for db_key in databases if (category, db_key) not in recent_keys
+            )
+            stale = sorted(
+                db_key
+                for db_key in databases
+                if (category, db_key) in stale_keys and db_key not in missing
+            )
+            stats["categories"].append(
+                {
+                    "key": category,
+                    "name": category_names.get(category, category),
+                    "total": len(databases),
+                    "ok": ok_count,
+                    "stale": stale,
+                    "missing": missing,
+                }
+            )
+        if not stats["categories"]:
+            stats["no_data"] = True
+        return stats
+    except Exception as exc:
+        logger.exception("Ошибка сбора статистики бэкапов БД: %s", exc)
+        stats["error"] = "Ошибка сбора данных"
+        return stats
+
+
+def get_mail_backup_stats(period_hours=24) -> dict:
+    """Статистика бэкапа почтового сервера за период для секции отчёта.
+
+    Возвращает dict:
+      {"latest": {"size", "path", "received_at", "hours_ago"}|None,
+       "fresh": bool, "no_data": bool, "error": str|None}
+    """
+    stats = {"latest": None, "fresh": False, "no_data": False, "error": None}
+    try:
+        from config.db_settings import DATA_DIR
+
+        db_path = DATA_DIR / "backups.db"
+        if not db_path.exists():
+            stats["error"] = "База данных бэкапов недоступна"
+            return stats
+
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT backup_status, total_size, backup_path, received_at
+                FROM mail_server_backups
+                ORDER BY received_at DESC
+                LIMIT 1
+                """
+            )
+            latest = cursor.fetchone()
+        except Exception as exc:
+            if "no such table: mail_server_backups" in str(exc):
+                stats["no_data"] = True
+                return stats
+            raise
+        finally:
+            conn.close()
+
+        if not latest:
+            stats["no_data"] = True
+            return stats
+
+        _, size, path, received_at = latest
+        hours_ago = None
+        try:
+            last_time = datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
+            hours_ago = int((datetime.now() - last_time).total_seconds() / 3600)
+        except (TypeError, ValueError):
+            pass
+
+        stats["latest"] = {
+            "size": size or "неизвестно",
+            "path": path or "без пути",
+            "received_at": received_at,
+            "hours_ago": hours_ago,
+        }
+        stats["fresh"] = bool(received_at and str(received_at) >= since_time)
+        return stats
+    except Exception as exc:
+        logger.exception("Ошибка сбора статистики бэкапа почты: %s", exc)
+        stats["error"] = "Ошибка сбора данных"
+        return stats
+
+
+def get_stock_load_expected_files() -> int:
+    """Ожидаемое число файлов загрузки остатков 1С за сутки.
+
+    Настройка STOCK_LOAD_EXPECTED_FILES (0 — не задано: сверка не выполняется,
+    в отчёте показывается фактическое количество).
+    """
+    try:
+        from core.config_manager import config_manager
+
+        raw = config_manager.get_setting("STOCK_LOAD_EXPECTED_FILES", 0)
+        value = int(raw)
+        return max(0, value)
+    except (TypeError, ValueError):
+        return 0
+    except Exception as exc:
+        logger.error("Ошибка чтения STOCK_LOAD_EXPECTED_FILES: %s", exc)
+        return 0
+
+
+def save_stock_load_expected_files(value: int) -> int:
+    """Сохраняет ожидаемое число файлов загрузки остатков 1С (0 — не задано)."""
+    normalized = max(0, int(value))
+    try:
+        from core.config_manager import config_manager
+
+        config_manager.set_setting("STOCK_LOAD_EXPECTED_FILES", normalized, "stock_load")
+    except Exception as exc:
+        logger.error("Ошибка сохранения STOCK_LOAD_EXPECTED_FILES: %s", exc)
+    return normalized
+
+
+def get_stock_load_stats(period_hours=24) -> dict:
+    """Статистика загрузки остатков 1С за период для секции отчёта.
+
+    Возвращает dict:
+      {"total", "success", "warning", "failed", "unknown", "expected",
+       "no_data": bool, "error": str|None}
+    """
+    stats = {
+        "total": 0,
+        "success": 0,
+        "warning": 0,
+        "failed": 0,
+        "unknown": 0,
+        "expected": get_stock_load_expected_files(),
+        "no_data": False,
+        "error": None,
+    }
+    try:
+        from config.db_settings import DATA_DIR
+
+        db_path = DATA_DIR / "backups.db"
+        if not db_path.exists():
+            stats["error"] = "База данных бэкапов недоступна"
+            return stats
+
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT status
+                FROM stock_load_results
+                WHERE received_at >= ?
+                """,
+                (since_time,),
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            if "no such table: stock_load_results" in str(exc):
+                stats["no_data"] = True
+                return stats
+            raise
+        finally:
+            conn.close()
+
+        if not rows:
+            stats["no_data"] = True
+            return stats
+
+        stats["total"] = len(rows)
+        stats["success"] = len([r for r in rows if r[0] == "success"])
+        stats["warning"] = len([r for r in rows if r[0] == "warning"])
+        stats["failed"] = len([r for r in rows if r[0] == "failed"])
+        stats["unknown"] = (
+            stats["total"] - stats["success"] - stats["warning"] - stats["failed"]
+        )
+        return stats
+    except Exception as exc:
+        logger.exception("Ошибка сбора статистики остатков 1С: %s", exc)
+        stats["error"] = "Ошибка сбора данных"
+        return stats
 
 
 def get_stock_load_summary(period_hours=16) -> str:
