@@ -62,6 +62,12 @@ class MorningReportWorker(
 
             val receivedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             prefs.morningReportText = reportText
+            // Структурированные секции (заголовок + флаг + скрытые до тапа
+            // подробности) — то же, что рендерит экран через
+            // MorningReportSectionsView; пусто у старых бэкендов.
+            prefs.morningReportSectionsJson = response.morningReport
+                ?.let { ApiFactory.morningReportToJson(it) }
+                ?: ""
             prefs.morningReportReceivedAt = receivedAt
             prefs.morningReportUnread = true
 

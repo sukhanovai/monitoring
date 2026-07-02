@@ -49,6 +49,7 @@ import ru.monitoring.mobile.api.ExtensionsActionResponse
 import ru.monitoring.mobile.api.MergeWindowsTypesRequest
 import ru.monitoring.mobile.api.MenuOption
 import ru.monitoring.mobile.api.MobileTokenRefresher
+import ru.monitoring.mobile.api.MorningReportPayload
 import ru.monitoring.mobile.api.ManagedServer
 import ru.monitoring.mobile.api.RenameWindowsTypeRequest
 import ru.monitoring.mobile.api.ServerAvailability
@@ -578,6 +579,7 @@ class MainViewModel(
             themeMode = preferences.themeMode,
             morningReportNotificationsEnabled = preferences.morningReportNotificationsEnabled,
             morningReportText = preferences.morningReportText,
+            morningReportPayload = ApiFactory.morningReportFromJson(preferences.morningReportSectionsJson),
             morningReportReceivedAt = preferences.morningReportReceivedAt,
             morningReportUnread = preferences.morningReportUnread,
             projectVersion = projectVersion,
@@ -1175,10 +1177,12 @@ class MainViewModel(
 
     fun clearMorningReport() {
         preferences.morningReportText = ""
+        preferences.morningReportSectionsJson = ""
         preferences.morningReportReceivedAt = ""
         preferences.morningReportUnread = false
         state = state.copy(
             morningReportText = "",
+            morningReportPayload = null,
             morningReportReceivedAt = "",
             morningReportUnread = false
         )
@@ -1259,15 +1263,18 @@ class MainViewModel(
         return "UP: $up, DOWN: $down, UNKNOWN: $unknown"
     }
 
-    private fun saveMorningReport(reportText: String) {
+    private fun saveMorningReport(reportText: String, payload: MorningReportPayload? = null) {
         val normalized = reportText.trim()
         if (normalized.isBlank()) return
         val receivedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        val sectionsJson = payload?.let { ApiFactory.morningReportToJson(it) } ?: ""
         preferences.morningReportText = normalized
+        preferences.morningReportSectionsJson = sectionsJson
         preferences.morningReportReceivedAt = receivedAt
         preferences.morningReportUnread = true
         state = state.copy(
             morningReportText = normalized,
+            morningReportPayload = payload,
             morningReportReceivedAt = receivedAt,
             morningReportUnread = true
         )
@@ -2708,7 +2715,7 @@ class MainViewModel(
                 .onSuccess { response ->
                     val actionMessage = response.message ?: response.result ?: "Команда отправлена"
                     if (normalizedAction == "send_morning_report") {
-                        saveMorningReport(actionMessage)
+                        saveMorningReport(actionMessage, response.morningReport)
                     }
                     state = state.copy(
                         isLoading = false,
@@ -3662,6 +3669,7 @@ data class MainUiState(
     val themeMode: String = "dark",
     val morningReportNotificationsEnabled: Boolean = true,
     val morningReportText: String = "",
+    val morningReportPayload: MorningReportPayload? = null,
     val morningReportReceivedAt: String = "",
     val morningReportUnread: Boolean = false,
     val projectVersion: String = "",

@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.35
+Server Monitoring System v8.63.36
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.35
+Версия: 8.63.36
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1564,6 +1564,10 @@ def _execute_mobile_control_action(action: str):
     """
     Executes explicit control actions for Android API.
     Returns tuple: (ok: bool, message: str, result: str, menu_options: list[dict] | None)
+    optionally followed by a 5th element (extra: dict | None) — used only by
+    "send_morning_report" to carry the structured report payload. Callers
+    must unpack tolerantly (e.g. `result[:4]` + `result[4] if len(result) > 4`)
+    since every other branch still returns a plain 4-tuple.
     """
     from core.config_manager import config_manager as settings_manager
 
@@ -2954,8 +2958,15 @@ def _execute_mobile_control_action(action: str):
     if action == "send_morning_report":
         from modules.morning_report import morning_report
 
-        report_text = morning_report.force_report()
-        return True, report_text, "accepted", None
+        # force_report_formats() строит секции один раз (collect + build) и
+        # отдаёт вместе с плоским текстом структурированный JSON-payload —
+        # Android рендерит по нему сворачиваемые карточки секций, как
+        # Telegram/Matrix. 5-й элемент возврата — необязательное поле,
+        # которое читает только вызывающий v1_control_actions (см. его
+        # tolerant-распаковку action_result[:4] / action_result[4]).
+        formats = morning_report.force_report_formats()
+        report_text = formats.get("plain") or "❌ Ошибка сбора данных для отчета"
+        return True, report_text, "accepted", None, formats.get("payload")
 
     if action == "force_quiet":
         monitor_core.set_silent_override(True)
@@ -3739,7 +3750,11 @@ def v1_control_actions():
             400,
         )
 
-    ok, message, result, menu_options = _execute_mobile_control_action(action)
+    action_result = _execute_mobile_control_action(action)
+    ok, message, result, menu_options = action_result[:4]
+    # 5-й элемент (структурированный payload утреннего отчёта) есть только
+    # для "send_morning_report" — для остальных действий None.
+    morning_report_payload = action_result[4] if len(action_result) > 4 else None
     if ok:
         return (
             jsonify(
@@ -3749,6 +3764,7 @@ def v1_control_actions():
                     "result": result,
                     "message": message,
                     "menu_options": menu_options,
+                    "morning_report": morning_report_payload,
                 }
             ),
             200,

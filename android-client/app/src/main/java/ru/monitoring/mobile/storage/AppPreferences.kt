@@ -65,6 +65,17 @@ class AppPreferences(context: Context) {
             prefs.edit().putString(KEY_MORNING_REPORT_TEXT, value).apply()
         }
 
+    // Структурированный отчёт (секции с заголовком/флагом/строками) для
+    // сворачиваемых карточек на экране «Последний отчёт» — сериализован в
+    // JSON через ApiFactory.morningReportToJson/-FromJson (SharedPreferences
+    // хранит только примитивы). Пусто у старых бэкендов/до первого запроса
+    // после обновления — экран в этом случае откатывается на плоский текст.
+    var morningReportSectionsJson: String
+        get() = prefs.getString(KEY_MORNING_REPORT_SECTIONS_JSON, "") ?: ""
+        set(value) {
+            prefs.edit().putString(KEY_MORNING_REPORT_SECTIONS_JSON, value).apply()
+        }
+
     var morningReportReceivedAt: String
         get() = prefs.getString(KEY_MORNING_REPORT_RECEIVED_AT, "") ?: ""
         set(value) {
@@ -117,6 +128,7 @@ class AppPreferences(context: Context) {
         private const val KEY_MORNING_REPORT_SCHEDULE_TIME = "morning_report_schedule_time"
         private const val DEFAULT_MORNING_REPORT_TIME = "08:30"
         private const val KEY_MORNING_REPORT_TEXT = "morning_report_text"
+        private const val KEY_MORNING_REPORT_SECTIONS_JSON = "morning_report_sections_json"
         private const val KEY_MORNING_REPORT_RECEIVED_AT = "morning_report_received_at"
         private const val KEY_MORNING_REPORT_UNREAD = "morning_report_unread"
         private const val KEY_LAST_DOWN_SERVERS_FINGERPRINT = "last_down_servers_fingerprint"

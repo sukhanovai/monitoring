@@ -19,6 +19,17 @@ object ApiFactory {
         .add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
         .build()
 
+    // Для персистентности структурированного отчёта в SharedPreferences
+    // (AppPreferences хранит только примитивы) — сериализуем/десериализуем
+    // MorningReportPayload тем же Moshi, которым Retrofit парсит ответ API.
+    private val morningReportAdapter = moshi.adapter(MorningReportPayload::class.java)
+
+    fun morningReportToJson(payload: MorningReportPayload): String =
+        morningReportAdapter.toJson(payload)
+
+    fun morningReportFromJson(json: String): MorningReportPayload? =
+        if (json.isBlank()) null else runCatching { morningReportAdapter.fromJson(json) }.getOrNull()
+
     private fun normalizeToken(raw: String): String = raw
         .trim()
         .removePrefix("Bearer ")

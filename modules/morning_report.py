@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.63.35
+Server Monitoring System v8.63.36
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.63.35
+Версия: 8.63.36
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -390,8 +390,9 @@ class MorningReport:
     def force_report_formats(self):
         """Формирует ручной отчёт во всех форматах каналов доставки.
 
-        Возвращает dict {"plain", "telegram_html", "matrix_html"};
-        HTML-варианты None при ошибке сбора данных.
+        Возвращает dict {"plain", "telegram_html", "matrix_html", "payload"};
+        HTML-варианты и структурированный payload — None при ошибке сбора
+        данных.
         """
         data_collected = self.collect_morning_data(manual_call=True)
         if not data_collected:
@@ -399,12 +400,42 @@ class MorningReport:
                 "plain": "❌ Ошибка сбора данных для отчета",
                 "telegram_html": None,
                 "matrix_html": None,
+                "payload": None,
             }
         report = self.build_report()
         return {
             "plain": self.render_plain(report),
             "telegram_html": self.render_telegram_html(report),
             "matrix_html": self.render_matrix_html(report),
+            "payload": self._report_to_json_payload(report),
+        }
+
+    def _report_to_json_payload(self, report):
+        """JSON-сериализуемое представление отчёта для мобильного API.
+
+        Тот же список секций (title/has_issues/lines), из которого
+        render_telegram_html/render_matrix_html строят сворачиваемые
+        blockquote/details — Android рендерит по нему такие же
+        сворачиваемые карточки на клиенте, без парсинга плоского текста.
+        """
+        if not report:
+            return None
+        collection_time = report.get("collection_time") or datetime.now()
+        return {
+            "report_type": report.get("report_type"),
+            "app_version": report.get("app_version"),
+            "generated_at": collection_time.isoformat(),
+            "has_issues": bool(report["problem_areas"]),
+            "problem_areas": list(report["problem_areas"]),
+            "composition": report.get("composition"),
+            "sections": [
+                {
+                    "title": section["title"],
+                    "has_issues": bool(section["has_issues"]),
+                    "lines": list(section["lines"]),
+                }
+                for section in report["sections"]
+            ],
         }
 
     # ------------------------------------------------------------------
