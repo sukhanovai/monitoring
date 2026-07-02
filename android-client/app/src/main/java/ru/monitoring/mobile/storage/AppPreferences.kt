@@ -49,6 +49,16 @@ class AppPreferences(context: Context) {
             prefs.edit().putBoolean(KEY_MORNING_REPORT_NOTIFICATIONS_ENABLED, value).apply()
         }
 
+    // Время ежедневного запроса утреннего отчёта (HH:MM). Хранится, чтобы
+    // MorningReportWorker после каждого выполнения мог заново выставить
+    // точное время следующего запуска (иначе периодическая задача дрейфует).
+    var morningReportScheduleTime: String
+        get() = prefs.getString(KEY_MORNING_REPORT_SCHEDULE_TIME, DEFAULT_MORNING_REPORT_TIME)
+            ?: DEFAULT_MORNING_REPORT_TIME
+        set(value) {
+            prefs.edit().putString(KEY_MORNING_REPORT_SCHEDULE_TIME, value).apply()
+        }
+
     var morningReportText: String
         get() = prefs.getString(KEY_MORNING_REPORT_TEXT, "") ?: ""
         set(value) {
@@ -104,6 +114,8 @@ class AppPreferences(context: Context) {
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_MORNING_REPORT_NOTIFICATIONS_ENABLED = "morning_report_notifications_enabled"
+        private const val KEY_MORNING_REPORT_SCHEDULE_TIME = "morning_report_schedule_time"
+        private const val DEFAULT_MORNING_REPORT_TIME = "08:30"
         private const val KEY_MORNING_REPORT_TEXT = "morning_report_text"
         private const val KEY_MORNING_REPORT_RECEIVED_AT = "morning_report_received_at"
         private const val KEY_MORNING_REPORT_UNREAD = "morning_report_unread"

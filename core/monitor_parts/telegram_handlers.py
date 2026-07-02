@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/telegram_handlers.py
-Server Monitoring System v8.63.33
+Server Monitoring System v8.63.34
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram callback / command handlers extracted from core/monitor_core.py
 (PR5b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.33
+Версия: 8.63.34
 Автор: Александр Суханов (c)
 Лицензия: MIT
 ~30 handler-функций UI Telegram-бота, выделенных из монолитного
@@ -1079,21 +1079,27 @@ def send_morning_report_handler(update, context):
     try:
         from modules.morning_report import morning_report
 
-        # Генерируем отчёт (ручной запуск)
-        report_text = morning_report.force_report()
+        # Генерируем отчёт (ручной запуск) во всех форматах: HTML даёт
+        # свёрнутые секции (blockquote expandable), plain — фолбэк.
+        formats = morning_report.force_report_formats()
+        report_html = formats.get("telegram_html")
+        report_text = formats.get("plain") or "❌ Нет данных для отчета"
 
         # Отправляем в текущий чат (как отдельное сообщение — надёжнее, чем edit)
-        # Если Telegram не может распарсить Markdown (из-за спецсимволов в данных),
+        # Если Telegram не может распарсить HTML (из-за спецсимволов в данных),
         # отправляем отчёт обычным текстом, чтобы команда не падала.
         try:
-            context.bot.send_message(chat_id=chat_id, text=report_text, parse_mode="Markdown")
+            if report_html:
+                context.bot.send_message(chat_id=chat_id, text=report_html, parse_mode="HTML")
+            else:
+                context.bot.send_message(chat_id=chat_id, text=report_text, parse_mode=None)
         except Exception as send_error:
             error_text = str(send_error).lower()
             if "parse entities" not in error_text:
                 raise
 
             debug_log(
-                "⚠️ Утренний отчёт содержит невалидный Markdown, "
+                "⚠️ Утренний отчёт содержит невалидный HTML, "
                 "повторная отправка с отключённым parse_mode"
             )
             context.bot.send_message(chat_id=chat_id, text=report_text, parse_mode=None)

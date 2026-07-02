@@ -19,9 +19,9 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import ru.monitoring.mobile.MainActivity
@@ -43,6 +43,7 @@ class MorningReportWorker(
         }
         if (token.isBlank()) {
             Log.w("MorningReportWorker", "doWork skipped: blank token")
+            rescheduleNextRun(applicationContext)
             return Result.success()
         }
 
@@ -67,6 +68,10 @@ class MorningReportWorker(
             ensureNotificationChannel(applicationContext)
             showNotification(applicationContext, reportText)
             Log.i("MorningReportWorker", "doWork success: baseUrl=$baseUrl, report_len=${reportText.length}")
+            // Переустанавливаем точное время следующего запуска: без этого
+            // периодическая задача дрейфует (каждое отложенное выполнение
+            // сдвигает расписание навсегда — отчёт «уползает» с 9:01 на 6:07).
+            rescheduleNextRun(applicationContext)
             Result.success()
         }.getOrElse {
             Log.e("MorningReportWorker", "doWork failed: baseUrl=$baseUrl, error=${it.message}", it)
@@ -132,6 +137,7 @@ class MorningReportWorker(
 
         fun schedule(context: Context, timeRaw: String, enabled: Boolean) {
             val workManager = WorkManager.getInstance(context)
+            AppPreferences(context).morningReportScheduleTime = timeRaw
             if (!enabled) {
                 workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
                 return
@@ -141,15 +147,20 @@ class MorningReportWorker(
             val now = LocalDateTime.now()
             var nextRun = now.withHour(targetTime.hour).withMinute(targetTime.minute).withSecond(0).withNano(0)
             if (!nextRun.isAfter(now)) nextRun = nextRun.plusDays(1)
+            val nextRunMillis = nextRun.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
-            val initialDelay = Duration.between(now, nextRun).toMinutes().coerceAtLeast(1)
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
 
+            // setInitialDelay задаёт точным только ПЕРВЫЙ запуск, дальше
+            // периодическая задача дрейфует (каждое отложенное выполнение
+            // сдвигает расписание навсегда). setNextScheduleTimeOverride
+            // фиксирует точное время запуска; после каждого выполнения
+            // doWork() переустанавливает его на следующий день.
             val request = PeriodicWorkRequestBuilder<MorningReportWorker>(24, TimeUnit.HOURS)
-                .setInitialDelay(initialDelay, TimeUnit.MINUTES)
                 .setConstraints(constraints)
+                .setNextScheduleTimeOverride(nextRunMillis)
                 .build()
 
             workManager.enqueueUniquePeriodicWork(
@@ -157,6 +168,13 @@ class MorningReportWorker(
                 ExistingPeriodicWorkPolicy.UPDATE,
                 request
             )
+        }
+
+        fun rescheduleNextRun(context: Context) {
+            val prefs = AppPreferences(context)
+            val enabled = prefs.morningReportNotificationsEnabled &&
+                prefs.apiToken.trim().isNotBlank()
+            schedule(context, prefs.morningReportScheduleTime, enabled)
         }
 
         private fun parseTimeOrDefault(raw: String): LocalTime {

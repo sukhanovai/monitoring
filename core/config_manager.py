@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v8.63.33
+Server Monitoring System v8.63.34
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 8.63.33
+Версия: 8.63.34
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -399,6 +399,14 @@ class ConfigManager:
                 "snapshot_transfer",
                 "Хосты/пулы/время старта для мониторинга передачи снэпшотов",
                 "dict",
+            ),
+            # Загрузка остатков 1С (расширение stock_load_monitor)
+            (
+                "STOCK_LOAD_EXPECTED_FILES",
+                "0",
+                "stock_load",
+                "Ожидаемое число файлов загрузки остатков 1С за сутки (0 — не задано)",
+                "int",
             ),
             # Веб-интерфейс
             ("WEB_PORT", "5000", "web", "Порт веб-интерфейса", "int"),

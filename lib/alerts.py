@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.63.33
+Server Monitoring System v8.63.34
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.63.33
+Версия: 8.63.34
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -228,6 +228,8 @@ def send_alert(
     tags: Optional[List[str]] = None,
     metadata: Optional[Dict[str, Any]] = None,
     attach_menu_button: bool = False,
+    telegram_html: Optional[str] = None,
+    matrix_html: Optional[str] = None,
 ) -> bool:
     """
     Универсальная функция отправки алертов
@@ -240,6 +242,11 @@ def send_alert(
         metadata: Дополнительные метаданные
         attach_menu_button: Прикрепить под Matrix-сообщением кнопку-эмодзи
             «открыть меню» (📋). Используется для утренних/сводных отчётов.
+        telegram_html: HTML-вариант сообщения для Telegram (parse_mode=HTML,
+            в т.ч. свёрнутые секции через <blockquote expandable>). При ошибке
+            парсинга выполняется фолбэк на обычный текст message.
+        matrix_html: HTML-вариант для Matrix (formatted_body,
+            в т.ч. свёрнутые секции через <details>); body — message.
 
     Returns:
         True если сообщение отправлено успешно
@@ -274,7 +281,7 @@ def send_alert(
 
     # Telegram
     if _telegram_bot and _chat_ids:
-        telegram_sent = _send_telegram_alert(full_message, alert_type)
+        telegram_sent = _send_telegram_alert(full_message, alert_type, html=telegram_html)
         debug_log(f"📬 Результат Telegram отправки: {'успех' if telegram_sent else 'ошибка'}")
         if telegram_sent:
             sent = True
@@ -282,7 +289,9 @@ def send_alert(
             errors.append("Telegram: ошибка отправки")
 
     # Matrix
-    matrix_sent = _send_matrix_alert(full_message, attach_menu_button=attach_menu_button)
+    matrix_sent = _send_matrix_alert(
+        full_message, attach_menu_button=attach_menu_button, html=matrix_html
+    )
     if matrix_sent:
         sent = True
 
@@ -302,13 +311,15 @@ def send_alert(
     return sent
 
 
-def _send_telegram_alert(message: str, alert_type: str) -> bool:
+def _send_telegram_alert(message: str, alert_type: str, html: Optional[str] = None) -> bool:
     """
     Отправка алерта через Telegram
 
     Args:
         message: Текст сообщения
         alert_type: Тип алерта
+        html: HTML-вариант сообщения (parse_mode=HTML); при ошибке парсинга
+            выполняется фолбэк на обычный текст message
 
     Returns:
         True если отправлено успешно
@@ -320,7 +331,10 @@ def _send_telegram_alert(message: str, alert_type: str) -> bool:
     total_chats = len(_chat_ids)
 
     # Для критических алертов добавляем дополнительное форматирование
-    if alert_type == "critical":
+    if html:
+        formatted_message = html
+        parse_mode = "HTML"
+    elif alert_type == "critical":
         formatted_message = f"*{message}*"
         parse_mode = "Markdown"
     else:
@@ -328,13 +342,22 @@ def _send_telegram_alert(message: str, alert_type: str) -> bool:
         parse_mode = None
 
     def _send_to_chat(chat_id: str) -> bool:
+        chat_text = formatted_message
+        chat_parse_mode = parse_mode
         for attempt in range(1, _config.max_retries + 1):
             try:
                 _telegram_bot.send_message(
-                    chat_id=chat_id, text=formatted_message, parse_mode=parse_mode
+                    chat_id=chat_id, text=chat_text, parse_mode=chat_parse_mode
                 )
                 return True
             except Exception as e:
+                # HTML не распарсился (спецсимволы в данных) — фолбэк на
+                # обычный текст, чтобы отчёт всё равно дошёл.
+                if chat_parse_mode == "HTML" and "parse entities" in str(e).lower():
+                    debug_log(f"⚠️ Telegram HTML не распарсился, фолбэк на текст: {e}")
+                    chat_text = message
+                    chat_parse_mode = None
+                    continue
                 if attempt >= _config.max_retries:
                     error_log(f"Ошибка отправки в чат {chat_id}: {e}")
                     return False
@@ -517,10 +540,15 @@ send_message = send_alert
 
 
 def _build_matrix_message_payload(
-    message: str, buttons: Optional[List[Dict[str, str]]] = None
+    message: str,
+    buttons: Optional[List[Dict[str, str]]] = None,
+    html: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Собирает payload Matrix-сообщения c поддержкой псевдо-кнопок через HTML-ссылки."""
     payload: Dict[str, Any] = {"msgtype": "m.text", "body": message}
+    if html:
+        payload["format"] = "org.matrix.custom.html"
+        payload["formatted_body"] = html
     if not buttons:
         return payload
 
@@ -539,7 +567,8 @@ def _build_matrix_message_payload(
     payload["body"] = "\n".join(fallback_lines)
     payload["format"] = "org.matrix.custom.html"
     html_actions = " | ".join(html_links)
-    payload["formatted_body"] = f"<p>{message}</p><p>{html_actions}</p>"
+    body_html = html if html else f"<p>{message}</p>"
+    payload["formatted_body"] = f"{body_html}<p>{html_actions}</p>"
     return payload
 
 
@@ -547,8 +576,9 @@ async def _send_matrix_alert_async(
     message: str,
     buttons: Optional[List[Dict[str, str]]] = None,
     attach_menu_button: bool = False,
+    html: Optional[str] = None,
 ) -> bool:
-    payload = _build_matrix_message_payload(message, buttons=buttons)
+    payload = _build_matrix_message_payload(message, buttons=buttons, html=html)
     client = AsyncClient(_matrix_homeserver, user="")
     client.access_token = _matrix_access_token
     try:
@@ -598,6 +628,7 @@ def _send_matrix_alert(
     message: str,
     buttons: Optional[List[Dict[str, str]]] = None,
     attach_menu_button: bool = False,
+    html: Optional[str] = None,
 ) -> bool:
     """Отправляет уведомление в Matrix room, если канал настроен."""
     global _matrix_homeserver, _matrix_access_token, _matrix_room_id
@@ -640,6 +671,7 @@ def _send_matrix_alert(
                     message,
                     buttons=buttons,
                     attach_menu_button=attach_menu_button,
+                    html=html,
                 )
             )
             if sent:
@@ -655,7 +687,7 @@ def _send_matrix_alert(
             f"{_matrix_homeserver}/_matrix/client/v3/rooms/"
             f"{encoded_room_id}/send/m.room.message/{txn_id}"
         )
-        payload = _build_matrix_message_payload(message, buttons=buttons)
+        payload = _build_matrix_message_payload(message, buttons=buttons, html=html)
         response = requests.put(
             url,
             headers={"Authorization": f"Bearer {_matrix_access_token}"},

@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.63.33
+Server Monitoring System v8.63.34
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.63.33
+Версия: 8.63.34
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -62,6 +62,8 @@ from extensions.backup_monitor.backup_handlers import (
     show_stale_databases,
     show_stale_hosts,
     show_stock_loads,
+    prompt_stock_expected_files,
+    set_stock_expected_files_value,
     show_today_status,
     toggle_database_monitoring,
 )
@@ -781,6 +783,12 @@ def backup_callback(update, context):
                 return
             show_stock_loads(query, backup_bot)
 
+        elif data == "backup_stock_expected":
+            if not extension_manager.is_extension_enabled("stock_load_monitor"):
+                query.edit_message_text("📦 Мониторинг остатков 1С отключён")
+                return
+            prompt_stock_expected_files(query, context)
+
         elif data == "backup_nas_transfer":
             if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
                 query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
@@ -1072,6 +1080,12 @@ def backup_host_settings_input_handler(update, context):
     if context.user_data.get("nas_add_ignore_base"):
         context.user_data.pop("nas_add_ignore_base", None)
         add_nas_ignore_base_value(update, message_text)
+        return
+
+    # Ожидаемое число файлов остатков 1С (ввод инициирован prompt_stock_expected_files)
+    if context.user_data.get("stock_set_expected_files"):
+        context.user_data.pop("stock_set_expected_files", None)
+        set_stock_expected_files_value(update, message_text)
         return
 
     # Добавление серверов в список config_console (prompt_cc_server_add)
