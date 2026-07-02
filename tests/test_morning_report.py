@@ -1,6 +1,6 @@
 """
 Тесты рендеров утреннего/ручного отчёта (modules/morning_report.py):
-формат N/N (%), сворачивание секций без проблем в Telegram
+формат N/N (%), сворачивание ВСЕХ секций (включая проблемные) в Telegram
 (<blockquote expandable>) и Matrix (<details>), секция доступности
 одной строкой.
 """
@@ -73,7 +73,7 @@ def test_render_plain_contains_sections_and_problems():
     assert "🟢 Серверы: 2/2 (100%)" in text
 
 
-def test_render_telegram_html_collapses_only_ok_sections():
+def test_render_telegram_html_collapses_all_sections():
     mr = MorningReport()
     report = _make_report(
         [
@@ -82,14 +82,12 @@ def test_render_telegram_html_collapses_only_ok_sections():
         ]
     )
     html_text = mr.render_telegram_html(report)
-    # Секция без проблем свёрнута в expandable blockquote.
+    # Обе секции — и проблемная, и без проблем — свёрнуты в expandable blockquote.
     assert "<blockquote expandable>🟢 Серверы: 2/2 (100%)</blockquote>" in html_text
-    # Проблемная секция раскрыта (её строки вне blockquote).
-    assert "<blockquote expandable>🔴 Передач" not in html_text
-    assert "🔴 Передач: 0/1 (0%)" in html_text
+    assert "<blockquote expandable>🔴 Передач: 0/1 (0%)</blockquote>" in html_text
 
 
-def test_render_matrix_html_uses_details_for_ok_sections():
+def test_render_matrix_html_uses_details_for_all_sections():
     mr = MorningReport()
     report = _make_report(
         [
@@ -99,7 +97,7 @@ def test_render_matrix_html_uses_details_for_ok_sections():
     )
     html_text = mr.render_matrix_html(report)
     assert "<details><summary>🟢 <strong>🖥 Доступность серверов</strong></summary>" in html_text
-    assert "<details><summary>🔴" not in html_text
+    assert "<details><summary>🔴 <strong>📤 Передача бэкапов на NAS</strong></summary>" in html_text
     assert "🔴 Передач: 0/1 (0%)" in html_text
 
 
@@ -113,6 +111,83 @@ def test_render_escapes_html_in_data():
     html_text = mr.render_telegram_html(report)
     assert "<script>" not in html_text
     assert "&lt;script&gt;" in html_text
+
+
+def test_snapshot_transfer_section_keeps_only_aggregate(monkeypatch):
+    """«Передачи снэпшотов»: только общая строка, без деталей по хостам."""
+    import sqlite3
+
+    from core.config_manager import config_manager as settings_manager
+
+    mr = MorningReport()
+
+    conn = sqlite3.connect(":memory:")
+    conn.execute(
+        "CREATE TABLE snapshot_transfers "
+        "(id INTEGER PRIMARY KEY, host_name TEXT, status TEXT, received_at TEXT)"
+    )
+    conn.execute(
+        "INSERT INTO snapshot_transfers (host_name, status, received_at) "
+        "VALUES ('host-a', 'SUCCESS', datetime('now'))"
+    )
+    conn.execute(
+        "INSERT INTO snapshot_transfers (host_name, status, received_at) "
+        "VALUES ('host-b', 'ERROR', datetime('now'))"
+    )
+    conn.commit()
+
+    monkeypatch.setattr(
+        mr,
+        "_zfs_db_and_allowed",
+        lambda: (":memory:", set()),
+    )
+    monkeypatch.setattr(sqlite3, "connect", lambda *_a, **_k: conn)
+    monkeypatch.setattr(
+        settings_manager,
+        "get_setting",
+        lambda key, default=None, **_k: (
+            {"host-a": {"enabled": True}, "host-b": {"enabled": True}}
+            if key == "SNAPSHOT_TRANSFER_HOSTS"
+            else default
+        ),
+    )
+
+    lines, has_issues = mr.get_snapshot_transfer_for_report()
+    assert lines == ["🔴 Хостов: 1/2 (50%)"]
+    assert has_issues is True
+
+
+def test_stock_expected_files_saved_via_handle_setting_value(monkeypatch):
+    """Регрессия: ввод «Ожидаемое кол-во файлов» (Остатки 1С) не сохранялся.
+
+    Причина: флаг `stock_set_expected_files` проверялся только в
+    `extensions/backup_monitor/bot_handler.py` (backup_host_settings_input_handler),
+    а весь текстовый ввод бота сначала перехватывает `handle_setting_value`
+    (bot/handlers/settings_handlers/settings_value.py) — они регистрируются в
+    одной group=0 диспетчера python-telegram-bot, и до второго обработчика
+    дело не доходит. Флаг теперь проверяется прямо в handle_setting_value.
+    """
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    import extensions.backup_monitor.backup_handlers as backup_handlers
+    from bot.handlers.settings_handlers.settings_value import handle_setting_value
+    from extensions.backup_monitor.backup_utils import get_stock_load_expected_files
+
+    # Тестовые заглушки telegram.* (см. tests/conftest.py) не принимают позиционные
+    # аргументы конструктора — подменяем клавиатуру-хелперы no-op'ами, поскольку
+    # содержимое UI-ответа для этого теста не важно.
+    monkeypatch.setattr(backup_handlers, "InlineKeyboardButton", lambda *a, **k: None)
+    monkeypatch.setattr(backup_handlers, "InlineKeyboardMarkup", lambda *a, **k: None)
+
+    update = SimpleNamespace(message=SimpleNamespace(text="7", reply_text=Mock()))
+    context = SimpleNamespace(user_data={"stock_set_expected_files": True})
+
+    handle_setting_value(update, context)
+
+    assert "stock_set_expected_files" not in context.user_data
+    assert get_stock_load_expected_files() == 7
+    update.message.reply_text.assert_called_once()
 
 
 def test_render_plain_all_ok_summary():
