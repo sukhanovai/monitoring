@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/report.py
-Server Monitoring System v8.63.36
+Server Monitoring System v8.63.37
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Report composition settings UI (Telegram)
 Система мониторинга серверов
-Версия: 8.63.36
+Версия: 8.63.37
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Меню настройки состава утреннего/ручного отчёта: мультивыбор расширений,

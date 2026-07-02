@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/telegram_handlers.py
-Server Monitoring System v8.63.36
+Server Monitoring System v8.63.37
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram callback / command handlers extracted from core/monitor_core.py
 (PR5b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.36
+Версия: 8.63.37
 Автор: Александр Суханов (c)
 Лицензия: MIT
 ~30 handler-функций UI Telegram-бота, выделенных из монолитного
@@ -1077,20 +1077,38 @@ def send_morning_report_handler(update, context):
         return
 
     try:
-        from modules.morning_report import morning_report
+        from modules.morning_report import (
+            build_report_keyboard,
+            morning_report,
+            register_report_payload,
+        )
 
-        # Генерируем отчёт (ручной запуск) во всех форматах: HTML даёт
-        # свёрнутые секции (blockquote expandable), plain — фолбэк.
+        # Генерируем отчёт (ручной запуск) во всех форматах. В HTML только
+        # заголовки секций; подробности разворачиваются кнопками секций
+        # под сообщением (payload кладётся в реестр по report_id).
         formats = morning_report.force_report_formats()
         report_html = formats.get("telegram_html")
         report_text = formats.get("plain") or "❌ Нет данных для отчета"
+        payload = formats.get("payload")
+        report_markup = None
+        if payload:
+            try:
+                report_id = register_report_payload(payload)
+                report_markup = build_report_keyboard(report_id, payload, 0)
+            except Exception as markup_error:
+                debug_log(f"⚠️ Не удалось построить кнопки секций отчёта: {markup_error}")
 
         # Отправляем в текущий чат (как отдельное сообщение — надёжнее, чем edit)
         # Если Telegram не может распарсить HTML (из-за спецсимволов в данных),
         # отправляем отчёт обычным текстом, чтобы команда не падала.
         try:
             if report_html:
-                context.bot.send_message(chat_id=chat_id, text=report_html, parse_mode="HTML")
+                context.bot.send_message(
+                    chat_id=chat_id,
+                    text=report_html,
+                    parse_mode="HTML",
+                    reply_markup=report_markup,
+                )
             else:
                 context.bot.send_message(chat_id=chat_id, text=report_text, parse_mode=None)
         except Exception as send_error:
@@ -1102,7 +1120,12 @@ def send_morning_report_handler(update, context):
                 "⚠️ Утренний отчёт содержит невалидный HTML, "
                 "повторная отправка с отключённым parse_mode"
             )
-            context.bot.send_message(chat_id=chat_id, text=report_text, parse_mode=None)
+            context.bot.send_message(
+                chat_id=chat_id,
+                text=report_text,
+                parse_mode=None,
+                reply_markup=report_markup,
+            )
 
         if not query:
             update.message.reply_text("📊 Отчет отправлен")
