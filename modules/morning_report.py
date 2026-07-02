@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.63.34
+Server Monitoring System v8.63.35
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.63.34
+Версия: 8.63.35
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -295,7 +295,10 @@ class MorningReport:
         return "\n".join(lines)
 
     def render_telegram_html(self, report):
-        """HTML для Telegram: секции без проблем свёрнуты в expandable blockquote."""
+        """HTML для Telegram: все секции свёрнуты в expandable blockquote —
+        виден только заголовок с флагом состояния, подробности скрыты до
+        разворота. Список проблемных секций виден сразу в блоке «Требует
+        внимания» наверху сообщения."""
         if not report:
             return None
 
@@ -323,12 +326,7 @@ class MorningReport:
             body = "\n".join(esc(line) for line in section["lines"])
             if not body:
                 continue
-            if section["has_issues"]:
-                # Проблемная секция раскрыта — детали видны сразу.
-                lines.append(body)
-            else:
-                # Секция без проблем свёрнута: детали доступны по развороту.
-                lines.append(f"<blockquote expandable>{body}</blockquote>")
+            lines.append(f"<blockquote expandable>{body}</blockquote>")
 
         lines.append(REPORT_DIVIDER)
         if report.get("composition"):
@@ -338,7 +336,9 @@ class MorningReport:
         return "\n".join(lines)
 
     def render_matrix_html(self, report):
-        """HTML для Matrix: секции без проблем свёрнуты в <details>."""
+        """HTML для Matrix: все секции свёрнуты в <details> — виден только
+        заголовок с флагом состояния, подробности скрыты до разворота.
+        Список проблемных секций виден сразу в блоке «Требует внимания»."""
         if not report:
             return None
 
@@ -365,10 +365,7 @@ class MorningReport:
             icon = "🔴" if section["has_issues"] else "🟢"
             title = f"{icon} <strong>{esc(section['title'])}</strong>"
             body = "<br/>".join(esc(line) for line in section["lines"])
-            if section["has_issues"]:
-                parts.append(f"<p>{title}<br/>{body}</p>")
-            else:
-                parts.append(f"<details><summary>{title}</summary><p>{body}</p></details>")
+            parts.append(f"<details><summary>{title}</summary><p>{body}</p></details>")
 
         footer = []
         if report.get("composition"):
@@ -742,11 +739,13 @@ class MorningReport:
         return lines, has_issues
 
     def get_snapshot_transfer_for_report(self):
-        """Секция передач ZFS-снэпшотов: последний статус по каждому хосту.
+        """Секция передач ZFS-снэпшотов: общая сводка по всем хостам.
 
         Хосты берутся из настройки SNAPSHOT_TRANSFER_HOSTS (включённые) плюс
         фактические записи за 24 часа; по каждому хосту оценивается последний
-        статус (SUCCESS/SKIPPED — успех), а не сырые записи писем.
+        статус (SUCCESS/SKIPPED — успех), а не сырые записи писем. Подробности
+        по конкретному хосту в отчёте не нужны — они доступны в отдельном
+        меню «Передачи снэпшотов» (Telegram/Matrix), здесь только агрегат.
         """
         try:
             from core.config_manager import config_manager as settings_manager
@@ -799,26 +798,13 @@ class MorningReport:
                 return ["⚪ Нет данных за 24ч"], False
 
             ok_statuses = {"SUCCESS", "SKIPPED"}
-            running_statuses = {"STARTED", "BUSY"}
             ok_count = 0
-            host_lines = []
             for host in all_hosts:
                 latest = latest_by_host.get(host)
-                if latest is None:
-                    host_lines.append(f"🔴 {host}: нет передач за 24ч")
-                    continue
-                status_value = latest["status"] or "—"
-                if status_value in ok_statuses:
+                if latest is not None and (latest["status"] or "") in ok_statuses:
                     ok_count += 1
-                    icon = "🟢"
-                elif status_value in running_statuses:
-                    icon = "🟡"
-                else:
-                    icon = "🔴"
-                host_lines.append(f"{icon} {host}: {status_value}")
 
             lines = [self._status_line("Хостов", ok_count, len(all_hosts))]
-            lines.extend(host_lines)
             return lines, ok_count < len(all_hosts)
         except Exception as exc:
             debug_log(f"❌ Ошибка секции передач снэпшотов: {exc}")

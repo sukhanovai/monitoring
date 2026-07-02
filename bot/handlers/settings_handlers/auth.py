@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/auth.py
-Server Monitoring System v8.63.34
+Server Monitoring System v8.63.35
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 SSH/Windows authentication UI settings (PR7f серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.34
+Версия: 8.63.35
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имена

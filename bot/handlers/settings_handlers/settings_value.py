@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/settings_value.py
-Server Monitoring System v8.63.34
+Server Monitoring System v8.63.35
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчик текстового ввода значений настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.34
+Версия: 8.63.35
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
@@ -208,6 +208,17 @@ def handle_setting_value(update, context):
         from extensions.backup_monitor.backup_handlers import add_nas_ignore_base_value
 
         return add_nas_ignore_base_value(update, update.message.text)
+
+    # Ожидаемое число файлов загрузки остатков 1С (prompt_stock_expected_files).
+    # ВАЖНО: этот обработчик регистрируется раньше backup_monitor-модуля и в
+    # том же group=0, поэтому именно он первым перехватывает любой текстовый
+    # ввод — флаги, проверяемые только в extensions/backup_monitor/bot_handler.py
+    # (backup_host_settings_input_handler), туда никогда не доходят.
+    if context.user_data.get("stock_set_expected_files"):
+        context.user_data.pop("stock_set_expected_files", None)
+        from extensions.backup_monitor.backup_handlers import set_stock_expected_files_value
+
+        return set_stock_expected_files_value(update, update.message.text)
 
     # Если это обычная настройка
     if "editing_setting" not in context.user_data:
