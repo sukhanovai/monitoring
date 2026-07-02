@@ -190,6 +190,50 @@ def test_stock_expected_files_saved_via_handle_setting_value(monkeypatch):
     update.message.reply_text.assert_called_once()
 
 
+def test_report_to_json_payload_is_json_safe_and_matches_sections():
+    """Структурированный payload для мобильного API (Android): JSON-safe,
+    те же секции title/has_issues/lines, что рендерятся в Telegram/Matrix.
+    """
+    import json
+
+    mr = MorningReport()
+    report = _make_report(
+        [
+            {"title": "🖥 Доступность серверов", "lines": ["🟢 Серверы: 2/2 (100%)"], "has_issues": False},
+            {"title": "📤 Передача бэкапов на NAS", "lines": ["🔴 Передач: 0/1 (0%)"], "has_issues": True},
+        ]
+    )
+    payload = mr._report_to_json_payload(report)
+
+    # Сериализуется без ошибок (datetime уже приведён к строке).
+    encoded = json.dumps(payload, ensure_ascii=False)
+    assert isinstance(encoded, str)
+
+    assert payload["report_type"] == "Ручной отчёт"
+    assert payload["app_version"] == "1.0.0"
+    assert payload["generated_at"] == "2026-07-02T12:14:14"
+    assert payload["has_issues"] is True
+    assert payload["problem_areas"] == ["📤 Передача бэкапов на NAS"]
+    assert payload["composition"] == "💾 Бэкапы Proxmox"
+    assert payload["sections"] == [
+        {"title": "🖥 Доступность серверов", "has_issues": False, "lines": ["🟢 Серверы: 2/2 (100%)"]},
+        {"title": "📤 Передача бэкапов на NAS", "has_issues": True, "lines": ["🔴 Передач: 0/1 (0%)"]},
+    ]
+
+
+def test_report_to_json_payload_none_when_no_report():
+    mr = MorningReport()
+    assert mr._report_to_json_payload(None) is None
+
+
+def test_force_report_formats_includes_payload():
+    mr = MorningReport()
+    formats = mr.force_report_formats()
+    assert set(formats.keys()) == {"plain", "telegram_html", "matrix_html", "payload"}
+    assert isinstance(formats["payload"], dict)
+    assert "sections" in formats["payload"]
+
+
 def test_render_plain_all_ok_summary():
     mr = MorningReport()
     report = _make_report(

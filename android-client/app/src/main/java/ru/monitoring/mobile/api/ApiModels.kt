@@ -156,7 +156,29 @@ data class ControlActionResult(
     @Json(name = "text") val text: String? = null,
     @Json(name = "queued_job_id") val queuedJobId: String? = null,
     @Json(name = "menu_options") val menuOptions: List<MenuOption>? = null,
-    @Json(name = "menuOptions") val menuOptionsCamel: List<MenuOption>? = null
+    @Json(name = "menuOptions") val menuOptionsCamel: List<MenuOption>? = null,
+    // Заполнено только для action="send_morning_report" — структурированные
+    // секции отчёта, из которых Telegram/Matrix уже строят сворачиваемые
+    // blockquote/details. null у старых бэкендов и для прочих действий.
+    @Json(name = "morning_report") val morningReport: MorningReportPayload? = null
+)
+
+/** Секция утреннего/ручного отчёта: заголовок с флагом + скрытые до тапа подробности. */
+data class MorningReportSection(
+    val title: String? = null,
+    @Json(name = "has_issues") val hasIssues: Boolean? = null,
+    val lines: List<String>? = null
+)
+
+/** Структурированный утренний/ручной отчёт для рендера сворачиваемых секций. */
+data class MorningReportPayload(
+    @Json(name = "report_type") val reportType: String? = null,
+    @Json(name = "app_version") val appVersion: String? = null,
+    @Json(name = "generated_at") val generatedAt: String? = null,
+    @Json(name = "has_issues") val hasIssues: Boolean? = null,
+    @Json(name = "problem_areas") val problemAreas: List<String>? = null,
+    val composition: String? = null,
+    val sections: List<MorningReportSection>? = null
 )
 
 data class ControlStatusResponse(

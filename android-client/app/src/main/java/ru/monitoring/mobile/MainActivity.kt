@@ -1342,6 +1342,154 @@ private fun MorningReportBody(text: String, modifier: Modifier = Modifier) {
     }
 }
 
+// --- Сворачиваемые секции утреннего/ручного отчёта (структурированный API) --
+// Та же логика, что уже сворачивает секции в Telegram (<blockquote expandable>)
+// и Matrix (<details>): виден только заголовок секции с флагом состояния,
+// подробности скрыты, пока пользователь не тапнет по заголовку. Используется,
+// когда бэкенд прислал structured payload (MorningReportPayload); иначе
+// экран откатывается на плоский MorningReportBody(text=...).
+
+private fun reportLineAccentColor(line: String, successColor: Color, warnColor: Color): Color = when {
+    line.startsWith("🔴") || line.startsWith("⚠️") || line.startsWith("❌") -> warnColor
+    line.startsWith("🟢") || line.startsWith("✅") -> successColor
+    else -> Color.Unspecified
+}
+
+private fun formatMorningReportGeneratedAt(generatedAt: String?): java.time.LocalDateTime? {
+    if (generatedAt.isNullOrBlank()) return null
+    return runCatching { java.time.LocalDateTime.parse(generatedAt) }.getOrNull()
+}
+
+@Composable
+private fun MorningReportSectionCard(
+    section: ru.monitoring.mobile.api.MorningReportSection,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val successColor = Color(0xFF2E7D32)
+    val warnColor = MaterialTheme.colorScheme.error
+    val icon = if (section.hasIssues == true) "🔴" else "🟢"
+    ElevatedCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "$icon ${section.title.orEmpty()}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Свернуть секцию" else "Развернуть секцию"
+                )
+            }
+            if (expanded) {
+                Column(
+                    modifier = Modifier.padding(top = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    section.lines.orEmpty().forEach { line ->
+                        Text(
+                            text = line,
+                            color = reportLineAccentColor(line, successColor, warnColor),
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MorningReportSectionsView(
+    payload: ru.monitoring.mobile.api.MorningReportPayload,
+    modifier: Modifier = Modifier
+) {
+    // Ключ — индекс секции: заголовки формально могут повторяться, а состав
+    // секций стабилен в рамках одного полученного отчёта.
+    val expandedSections = remember(payload) { androidx.compose.runtime.mutableStateMapOf<Int, Boolean>() }
+    val generated = formatMorningReportGeneratedAt(payload.generatedAt)
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val reportIcon = if (payload.hasIssues == true) "🔴" else "🟢"
+        Text(
+            text = "$reportIcon ${payload.reportType.orEmpty()} мониторинга",
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp
+        )
+        val metaParts = buildList {
+            payload.appVersion?.takeIf { it.isNotBlank() }?.let { add("v$it") }
+            generated?.let {
+                add(it.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+                add(it.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")))
+            }
+        }
+        if (metaParts.isNotEmpty()) {
+            Text(
+                text = metaParts.joinToString(" • "),
+                fontStyle = FontStyle.Italic,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+        val problemAreas = payload.problemAreas.orEmpty()
+        if (problemAreas.isNotEmpty()) {
+            Text(
+                text = "⚠️ Требует внимания (${problemAreas.size}):",
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 14.sp
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                problemAreas.forEach { area ->
+                    Text(text = "• $area", fontSize = 14.sp, modifier = Modifier.padding(start = 12.dp))
+                }
+            }
+        } else {
+            Text(
+                text = "✅ Всё в норме — критичных проблем не обнаружено",
+                color = Color(0xFF2E7D32),
+                fontSize = 14.sp
+            )
+        }
+
+        payload.sections.orEmpty().forEachIndexed { index, section ->
+            MorningReportSectionCard(
+                section = section,
+                expanded = expandedSections[index] ?: false,
+                onToggle = { expandedSections[index] = !(expandedSections[index] ?: false) }
+            )
+        }
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        val footerParts = buildList {
+            payload.composition?.takeIf { it.isNotBlank() }?.let { add("🧩 Состав: $it") }
+            generated?.let {
+                add("⏰ Сформирован: " + it.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")))
+            }
+        }
+        footerParts.forEach { line ->
+            Text(
+                text = line,
+                fontStyle = FontStyle.Italic,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun OpsMetricChip(
@@ -3344,13 +3492,23 @@ private fun MonitoringApp(
                                     }
                                 }
                                 if (state.morningReportText.isNotBlank()) {
+                                    val reportPayload = state.morningReportPayload
                                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                        MorningReportBody(
-                                            text = state.morningReportText,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(14.dp)
-                                        )
+                                        if (reportPayload != null) {
+                                            MorningReportSectionsView(
+                                                payload = reportPayload,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(14.dp)
+                                            )
+                                        } else {
+                                            MorningReportBody(
+                                                text = state.morningReportText,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(14.dp)
+                                            )
+                                        }
                                     }
                                     if (state.morningReportReceivedAt.isNotBlank()) {
                                         Text(
@@ -5749,10 +5907,18 @@ private fun MonitoringApp(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (state.morningReportText.isNotBlank()) {
-                        MorningReportBody(
-                            text = state.morningReportText,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        val reportPayload = state.morningReportPayload
+                        if (reportPayload != null) {
+                            MorningReportSectionsView(
+                                payload = reportPayload,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        } else {
+                            MorningReportBody(
+                                text = state.morningReportText,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                         if (state.morningReportReceivedAt.isNotBlank()) {
                             Text(
                                 "Получен: ${state.morningReportReceivedAt}",
