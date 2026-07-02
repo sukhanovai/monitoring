@@ -73,7 +73,13 @@ def test_render_plain_contains_sections_and_problems():
     assert "🟢 Серверы: 2/2 (100%)" in text
 
 
-def test_render_telegram_html_collapses_all_sections():
+def test_render_telegram_html_hides_all_section_bodies_by_default():
+    """Telegram: в тексте только заголовки секций; подробностей нет вовсе.
+
+    Telegram сворачивает <blockquote expandable> лишь при контенте длиннее
+    ~3 строк — короткие секции показывались целиком. Поэтому тела секций
+    из текста убраны полностью (разворачиваются кнопками секций).
+    """
     mr = MorningReport()
     report = _make_report(
         [
@@ -82,9 +88,32 @@ def test_render_telegram_html_collapses_all_sections():
         ]
     )
     html_text = mr.render_telegram_html(report)
-    # Обе секции — и проблемная, и без проблем — свёрнуты в expandable blockquote.
-    assert "<blockquote expandable>🟢 Серверы: 2/2 (100%)</blockquote>" in html_text
-    assert "<blockquote expandable>🔴 Передач: 0/1 (0%)</blockquote>" in html_text
+    # Заголовки секций с флагами на месте.
+    assert "🟢 <b>🖥 Доступность серверов</b>" in html_text
+    assert "🔴 <b>📤 Передача бэкапов на NAS</b>" in html_text
+    # А содержимое секций в тексте отсутствует.
+    assert "Серверы: 2/2 (100%)" not in html_text
+    assert "Передач: 0/1 (0%)" not in html_text
+    assert "blockquote" not in html_text
+
+
+def test_render_telegram_html_expands_sections_by_mask():
+    """Кнопка секции разворачивает её тело (битовая маска expanded_mask)."""
+    mr = MorningReport()
+    report = _make_report(
+        [
+            {"title": "🖥 Доступность серверов", "lines": ["🟢 Серверы: 2/2 (100%)"], "has_issues": False},
+            {"title": "📤 Передача бэкапов на NAS", "lines": ["🔴 Передач: 0/1 (0%)"], "has_issues": True},
+        ]
+    )
+    # Раскрыта только вторая секция (бит 1).
+    html_text = mr.render_telegram_html(report, expanded_mask=0b10)
+    assert "Серверы: 2/2 (100%)" not in html_text
+    assert "<blockquote>🔴 Передач: 0/1 (0%)</blockquote>" in html_text
+    # Раскрыты обе.
+    html_text = mr.render_telegram_html(report, expanded_mask=0b11)
+    assert "<blockquote>🟢 Серверы: 2/2 (100%)</blockquote>" in html_text
+    assert "<blockquote>🔴 Передач: 0/1 (0%)</blockquote>" in html_text
 
 
 def test_render_matrix_html_uses_details_for_all_sections():
@@ -108,9 +137,58 @@ def test_render_escapes_html_in_data():
             {"title": "🖥 Доступность серверов", "lines": ["🔴 <script> s1 (10.0.0.1)"], "has_issues": True},
         ]
     )
-    html_text = mr.render_telegram_html(report)
+    html_text = mr.render_telegram_html(report, expanded_mask=0b1)
     assert "<script>" not in html_text
     assert "&lt;script&gt;" in html_text
+
+
+def test_report_registry_roundtrip_and_eviction():
+    """Реестр payload'ов: get после register; вытеснение старых записей."""
+    import modules.morning_report as mrmod
+
+    payload = {"sections": [{"title": "t", "has_issues": False, "lines": ["x"]}]}
+    report_id = mrmod.register_report_payload(payload)
+    assert mrmod.get_report_payload(report_id) is payload
+
+    # Реестр ограничен: после LIMIT новых записей старая вытесняется.
+    for _ in range(mrmod._REPORT_REGISTRY_LIMIT):
+        mrmod.register_report_payload({"sections": []})
+    assert mrmod.get_report_payload(report_id) is None
+
+
+def test_build_report_keyboard_buttons(monkeypatch):
+    """Клавиатура отчёта: кнопка на секцию (2 в ряд) + «развернуть всё»."""
+    import telegram
+
+    import modules.morning_report as mrmod
+
+    monkeypatch.setattr(telegram, "InlineKeyboardButton", lambda text, callback_data: (text, callback_data))
+    monkeypatch.setattr(telegram, "InlineKeyboardMarkup", lambda rows: rows)
+
+    payload = {
+        "sections": [
+            {"title": "🖥 Доступность серверов", "has_issues": False, "lines": ["a"]},
+            {"title": "💾 Бэкапы Proxmox (за 24ч)", "has_issues": False, "lines": ["b"]},
+            {"title": "📤 Передача бэкапов на NAS (за 24ч)", "has_issues": True, "lines": ["c"]},
+        ]
+    }
+    rows = mrmod.build_report_keyboard("rid1", payload, expanded_mask=0b001)
+
+    flat = [button for row in rows for button in row]
+    labels = [text for text, _ in flat]
+    callbacks = [data for _, data in flat]
+
+    # Раскрытая секция — «▾», свёрнутые — «▸»; суффикс «(за 24ч)» убран.
+    assert labels[0].startswith("▾ ")
+    assert labels[1] == "▸ 💾 Бэкапы Proxmox"
+    assert "(за 24ч)" not in labels[1]
+    # callback_data несёт report_id, индекс секции и текущую маску.
+    assert callbacks[0] == "mrs|rid1|0|1"
+    assert callbacks[1] == "mrs|rid1|1|1"
+    assert callbacks[2] == "mrs|rid1|2|1"
+    # Служебный ряд: маска не полная и не нулевая — обе кнопки.
+    assert "mrs|rid1|a|1" in callbacks
+    assert "mrs|rid1|n|1" in callbacks
 
 
 def test_snapshot_transfer_section_keeps_only_aggregate(monkeypatch):

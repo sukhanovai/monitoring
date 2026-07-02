@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.63.36
+Server Monitoring System v8.63.37
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.63.36
+Версия: 8.63.37
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -165,6 +165,15 @@ def callback_router(update, context):
 
     if not check_access(update):
         deny_access(update)
+        return
+
+    # Кнопки секций утреннего/ручного отчёта («mrs|…»). Обрабатываются ДО
+    # _safe_answer: обработчик сам отвечает на callback (в т.ч. alert
+    # «отчёт устарел»), а повторный answer после ответа роутера не показался бы.
+    if data.startswith("mrs|"):
+        from modules.morning_report import handle_report_section_callback
+
+        handle_report_section_callback(update, context)
         return
 
     _safe_answer(query)

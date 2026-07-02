@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.63.36
+Server Monitoring System v8.63.37
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.63.36
+Версия: 8.63.37
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -229,6 +229,7 @@ def send_alert(
     metadata: Optional[Dict[str, Any]] = None,
     attach_menu_button: bool = False,
     telegram_html: Optional[str] = None,
+    telegram_reply_markup: Optional[Any] = None,
     matrix_html: Optional[str] = None,
 ) -> bool:
     """
@@ -242,9 +243,10 @@ def send_alert(
         metadata: Дополнительные метаданные
         attach_menu_button: Прикрепить под Matrix-сообщением кнопку-эмодзи
             «открыть меню» (📋). Используется для утренних/сводных отчётов.
-        telegram_html: HTML-вариант сообщения для Telegram (parse_mode=HTML,
-            в т.ч. свёрнутые секции через <blockquote expandable>). При ошибке
-            парсинга выполняется фолбэк на обычный текст message.
+        telegram_html: HTML-вариант сообщения для Telegram (parse_mode=HTML).
+            При ошибке парсинга выполняется фолбэк на обычный текст message.
+        telegram_reply_markup: InlineKeyboardMarkup для Telegram-сообщения —
+            кнопки разворота секций утреннего/ручного отчёта.
         matrix_html: HTML-вариант для Matrix (formatted_body,
             в т.ч. свёрнутые секции через <details>); body — message.
 
@@ -281,7 +283,9 @@ def send_alert(
 
     # Telegram
     if _telegram_bot and _chat_ids:
-        telegram_sent = _send_telegram_alert(full_message, alert_type, html=telegram_html)
+        telegram_sent = _send_telegram_alert(
+            full_message, alert_type, html=telegram_html, reply_markup=telegram_reply_markup
+        )
         debug_log(f"📬 Результат Telegram отправки: {'успех' if telegram_sent else 'ошибка'}")
         if telegram_sent:
             sent = True
@@ -311,7 +315,12 @@ def send_alert(
     return sent
 
 
-def _send_telegram_alert(message: str, alert_type: str, html: Optional[str] = None) -> bool:
+def _send_telegram_alert(
+    message: str,
+    alert_type: str,
+    html: Optional[str] = None,
+    reply_markup: Optional[Any] = None,
+) -> bool:
     """
     Отправка алерта через Telegram
 
@@ -320,6 +329,8 @@ def _send_telegram_alert(message: str, alert_type: str, html: Optional[str] = No
         alert_type: Тип алерта
         html: HTML-вариант сообщения (parse_mode=HTML); при ошибке парсинга
             выполняется фолбэк на обычный текст message
+        reply_markup: InlineKeyboardMarkup под сообщением (кнопки секций
+            отчёта); прикладывается и к HTML-варианту, и к текстовому фолбэку
 
     Returns:
         True если отправлено успешно
@@ -347,7 +358,10 @@ def _send_telegram_alert(message: str, alert_type: str, html: Optional[str] = No
         for attempt in range(1, _config.max_retries + 1):
             try:
                 _telegram_bot.send_message(
-                    chat_id=chat_id, text=chat_text, parse_mode=chat_parse_mode
+                    chat_id=chat_id,
+                    text=chat_text,
+                    parse_mode=chat_parse_mode,
+                    reply_markup=reply_markup,
                 )
                 return True
             except Exception as e:

@@ -1,24 +1,117 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.63.36
+Server Monitoring System v8.63.37
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.63.36
+Версия: 8.63.37
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
 """
 
 import html
+import re
 import sqlite3
+import threading
 import time
+from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 
 from lib.logging import debug_log, info_log
 
 REPORT_DIVIDER = "━━━━━━━━━━━━━━━━━━"
+
+# --- Реестр payload'ов отчёта для Telegram-кнопок секций --------------------
+# Telegram сворачивает <blockquote expandable> только если контент длиннее
+# ~3 строк — короткие секции показывались целиком. Поэтому в Telegram детали
+# секций вообще не кладутся в текст: под сообщением рисуются inline-кнопки
+# секций, тап по кнопке редактирует сообщение, разворачивая/сворачивая тело
+# секции. callback_data несёт (report_id, секция, битовая маска раскрытых),
+# а сам payload отчёта хранится здесь, в памяти процесса. После рестарта
+# сервиса кнопки старых сообщений отвечают «отчёт устарел».
+REPORT_SECTION_CALLBACK_PREFIX = "mrs|"
+_REPORT_REGISTRY: "OrderedDict[str, dict]" = OrderedDict()
+_REPORT_REGISTRY_LOCK = threading.Lock()
+_REPORT_REGISTRY_LIMIT = 8
+
+# Суффикс периода в заголовке секции («… (за 24ч)») — в кнопках лишний.
+_SECTION_TITLE_PERIOD_RE = re.compile(r"\s*\(за \d+ч\)\s*$")
+_BUTTON_TITLE_MAX_LEN = 24
+
+
+def register_report_payload(payload: dict) -> str:
+    """Кладёт payload отчёта в реестр и возвращает его report_id."""
+    from uuid import uuid4
+
+    # 12 hex-символов достаточно уникальны, а callback_data (макс. 64 байта)
+    # с ними остаётся коротким: "mrs|<12>|<idx>|<mask>" ≈ 25 символов.
+    report_id = uuid4().hex[:12]
+    with _REPORT_REGISTRY_LOCK:
+        _REPORT_REGISTRY[report_id] = payload
+        while len(_REPORT_REGISTRY) > _REPORT_REGISTRY_LIMIT:
+            _REPORT_REGISTRY.popitem(last=False)
+    return report_id
+
+
+def get_report_payload(report_id: str):
+    """Возвращает payload отчёта по report_id (None, если вытеснен/рестарт)."""
+    with _REPORT_REGISTRY_LOCK:
+        return _REPORT_REGISTRY.get(report_id)
+
+
+def _short_section_title(title: str) -> str:
+    """Заголовок секции для inline-кнопки: без «(за 24ч)», не длиннее лимита."""
+    short = _SECTION_TITLE_PERIOD_RE.sub("", str(title or "")).strip()
+    if len(short) > _BUTTON_TITLE_MAX_LEN:
+        short = short[: _BUTTON_TITLE_MAX_LEN - 1].rstrip() + "…"
+    return short
+
+
+def build_report_keyboard(report_id: str, payload: dict, expanded_mask: int = 0):
+    """Inline-клавиатура отчёта: кнопка на каждую секцию + развернуть/свернуть всё."""
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+    sections = payload.get("sections") or []
+    buttons = []
+    row = []
+    for idx, section in enumerate(sections):
+        expanded = bool(expanded_mask >> idx & 1)
+        arrow = "▾" if expanded else "▸"
+        label = f"{arrow} {_short_section_title(section.get('title'))}"
+        row.append(
+            InlineKeyboardButton(
+                label,
+                callback_data=f"{REPORT_SECTION_CALLBACK_PREFIX}{report_id}|{idx}|{expanded_mask}",
+            )
+        )
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    if sections:
+        all_mask = (1 << len(sections)) - 1
+        toggle_row = []
+        if expanded_mask != all_mask:
+            toggle_row.append(
+                InlineKeyboardButton(
+                    "⬇️ Развернуть всё",
+                    callback_data=f"{REPORT_SECTION_CALLBACK_PREFIX}{report_id}|a|{expanded_mask}",
+                )
+            )
+        if expanded_mask != 0:
+            toggle_row.append(
+                InlineKeyboardButton(
+                    "⬆️ Свернуть всё",
+                    callback_data=f"{REPORT_SECTION_CALLBACK_PREFIX}{report_id}|n|{expanded_mask}",
+                )
+            )
+        if toggle_row:
+            buttons.append(toggle_row)
+    return InlineKeyboardMarkup(buttons)
 
 
 class MorningReport:
@@ -294,24 +387,52 @@ class MorningReport:
         lines.append(f"⏰ Сформирован: {collection_time.strftime('%H:%M:%S')}")
         return "\n".join(lines)
 
-    def render_telegram_html(self, report):
-        """HTML для Telegram: все секции свёрнуты в expandable blockquote —
-        виден только заголовок с флагом состояния, подробности скрыты до
-        разворота. Список проблемных секций виден сразу в блоке «Требует
-        внимания» наверху сообщения."""
-        if not report:
+    def render_telegram_html(self, report, expanded_mask=0):
+        """HTML для Telegram: в тексте только заголовки секций с флагами.
+
+        Telegram сворачивает <blockquote expandable> лишь при контенте
+        длиннее ~3 строк, поэтому короткие секции показывались целиком.
+        Теперь подробности секций в текст не попадают вовсе — они
+        разворачиваются по нажатию inline-кнопки секции (редактирование
+        сообщения с новой битовой маской expanded_mask).
+        """
+        return self.render_telegram_html_from_payload(
+            self._report_to_json_payload(report), expanded_mask
+        )
+
+    def render_telegram_html_from_payload(self, payload, expanded_mask=0):
+        """HTML для Telegram из JSON-payload отчёта (см. render_telegram_html).
+
+        Используется и при первичной отправке, и при перерисовке из
+        callback-обработчика кнопок секций — payload берётся из реестра.
+        """
+        if not payload:
             return None
 
         def esc(text):
             return html.escape(str(text), quote=False)
 
-        problem_areas = report["problem_areas"]
-        report_icon = "🔴" if problem_areas else "🟢"
-        lines = [
-            f"{report_icon} <b>{esc(report['report_type'])} мониторинга</b>",
-            f"<i>{esc(self._report_meta_line(report))}</i>",
-            REPORT_DIVIDER,
-        ]
+        generated_at = None
+        raw_generated = payload.get("generated_at")
+        if raw_generated:
+            try:
+                generated_at = datetime.fromisoformat(str(raw_generated))
+            except ValueError:
+                generated_at = None
+
+        problem_areas = payload.get("problem_areas") or []
+        report_icon = "🔴" if payload.get("has_issues") else "🟢"
+        meta_parts = []
+        if payload.get("app_version"):
+            meta_parts.append(f"v{payload['app_version']}")
+        if generated_at:
+            meta_parts.append(generated_at.strftime("%d.%m.%Y"))
+            meta_parts.append(generated_at.strftime("%H:%M"))
+
+        lines = [f"{report_icon} <b>{esc(payload.get('report_type'))} мониторинга</b>"]
+        if meta_parts:
+            lines.append(f"<i>{esc(' • '.join(meta_parts))}</i>")
+        lines.append(REPORT_DIVIDER)
 
         if problem_areas:
             lines.append(f"⚠️ <b>Требует внимания ({len(problem_areas)}):</b>")
@@ -319,20 +440,22 @@ class MorningReport:
         else:
             lines.append("✅ <b>Всё в норме</b> — критичных проблем не обнаружено")
 
-        for section in report["sections"]:
-            icon = "🔴" if section["has_issues"] else "🟢"
+        for idx, section in enumerate(payload.get("sections") or []):
+            icon = "🔴" if section.get("has_issues") else "🟢"
             lines.append("")
-            lines.append(f"{icon} <b>{esc(section['title'])}</b>")
-            body = "\n".join(esc(line) for line in section["lines"])
-            if not body:
+            lines.append(f"{icon} <b>{esc(section.get('title'))}</b>")
+            if not (expanded_mask >> idx & 1):
                 continue
-            lines.append(f"<blockquote expandable>{body}</blockquote>")
+            body = "\n".join(esc(line) for line in section.get("lines") or [])
+            if body:
+                lines.append(f"<blockquote>{body}</blockquote>")
 
         lines.append(REPORT_DIVIDER)
-        if report.get("composition"):
-            lines.append(f"🧩 <i>Состав: {esc(report['composition'])}</i>")
-        collection_time = report.get("collection_time", datetime.now())
-        lines.append(f"⏰ <i>Сформирован: {collection_time.strftime('%H:%M:%S')}</i>")
+        lines.append("<i>▸ Подробности секций — кнопками под сообщением</i>")
+        if payload.get("composition"):
+            lines.append(f"🧩 <i>Состав: {esc(payload['composition'])}</i>")
+        if generated_at:
+            lines.append(f"⏰ <i>Сформирован: {generated_at.strftime('%H:%M:%S')}</i>")
         return "\n".join(lines)
 
     def render_matrix_html(self, report):
@@ -1116,17 +1239,30 @@ class MorningReport:
             report = self.build_report()
             message = self.render_plain(report)
 
+            # Telegram: текст с одними заголовками секций + inline-кнопки,
+            # разворачивающие подробности (payload — в реестре по report_id).
+            payload = self._report_to_json_payload(report)
+            telegram_html = None
+            telegram_markup = None
+            if payload:
+                telegram_html = self.render_telegram_html_from_payload(payload, 0)
+                try:
+                    report_id = register_report_payload(payload)
+                    telegram_markup = build_report_keyboard(report_id, payload, 0)
+                except Exception as exc:
+                    debug_log(f"⚠️ Не удалось построить кнопки секций отчёта: {exc}")
+
             # Отправляем через унифицированный канал алертов. Для отчёта
             # просим повесить под Matrix-сообщением кнопку-эмодзи «открыть
             # меню» — пользователю удобно открыть !menu прямо из отчёта.
-            # HTML-варианты дают свёрнутые секции в Telegram и Matrix.
             from lib.alerts import send_alert
 
             sent_ok = send_alert(
                 message,
                 force=True,
                 attach_menu_button=True,
-                telegram_html=self.render_telegram_html(report),
+                telegram_html=telegram_html,
+                telegram_reply_markup=telegram_markup,
                 matrix_html=self.render_matrix_html(report),
             )
 
@@ -1179,3 +1315,71 @@ class MorningReport:
 
 # Глобальный экземпляр отчета
 morning_report = MorningReport()
+
+
+def handle_report_section_callback(update, context):
+    """Обработчик inline-кнопок секций отчёта в Telegram.
+
+    callback_data: "mrs|<report_id>|<idx|a|n>|<mask>" — idx переключает одну
+    секцию, "a"/"n" разворачивает/сворачивает все. Сообщение перерисовывается
+    с новой маской; payload берётся из реестра (после рестарта сервиса —
+    ответ «отчёт устарел»). Отвечает на callback сам — роутер не должен
+    вызывать query.answer() до этого обработчика, иначе alert не покажется.
+    """
+    query = update.callback_query
+
+    def _answer(**kwargs):
+        try:
+            query.answer(**kwargs)
+        except Exception as exc:
+            debug_log(f"⚠️ Ответ на callback секции отчёта не доставлен: {exc}")
+
+    parts = str(query.data or "").split("|")
+    if len(parts) != 4:
+        _answer()
+        return
+    _, report_id, idx_token, mask_raw = parts
+
+    payload = get_report_payload(report_id)
+    if payload is None:
+        _answer(
+            text="⚠️ Данные этого отчёта уже недоступны (сервис перезапускался). Запросите свежий отчёт.",
+            show_alert=True,
+        )
+        return
+
+    sections_count = len(payload.get("sections") or [])
+    all_mask = (1 << sections_count) - 1 if sections_count else 0
+    try:
+        mask = int(mask_raw)
+    except (TypeError, ValueError):
+        mask = 0
+
+    if idx_token == "a":
+        new_mask = all_mask
+    elif idx_token == "n":
+        new_mask = 0
+    else:
+        try:
+            idx = int(idx_token)
+        except (TypeError, ValueError):
+            _answer()
+            return
+        if not 0 <= idx < sections_count:
+            _answer()
+            return
+        new_mask = mask ^ (1 << idx)
+    new_mask &= all_mask
+
+    try:
+        query.edit_message_text(
+            morning_report.render_telegram_html_from_payload(payload, new_mask),
+            parse_mode="HTML",
+            reply_markup=build_report_keyboard(report_id, payload, new_mask),
+        )
+    except Exception as exc:
+        if "Message is not modified" not in str(exc):
+            debug_log(f"⚠️ Не удалось перерисовать секции отчёта: {exc}")
+            _answer(text="❌ Не удалось обновить отчёт", show_alert=True)
+            return
+    _answer()
