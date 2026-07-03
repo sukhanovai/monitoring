@@ -314,6 +314,49 @@ def test_force_report_formats_includes_payload():
     assert "sections" in formats["payload"]
 
 
+def test_backup_wizard_flags_delegated_from_handle_setting_value(monkeypatch):
+    """Регрессия: мастера ввода backup_monitor не сохраняли значения.
+
+    Флаги cc_add_server / cc_add_pattern / nas_add_pattern /
+    backup_add_proxmox_host / backup_edit_proxmox_host_name проверялись
+    только в backup_host_settings_input_handler
+    (extensions/backup_monitor/bot_handler.py), который никогда не
+    вызывается: весь текстовый ввод первым перехватывает
+    handle_setting_value (та же group=0 диспетчера python-telegram-bot).
+    Теперь эти флаги делегируются оригинальному обработчику.
+    """
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    import extensions.backup_monitor.backup_handlers as backup_handlers
+    import extensions.backup_monitor.bot_handler as bot_handler
+    from bot.handlers.settings_handlers.settings_value import handle_setting_value
+    from extensions.backup_monitor.backup_utils import get_config_console_servers
+
+    # Тестовые заглушки telegram.* не принимают аргументы конструктора.
+    monkeypatch.setattr(backup_handlers, "InlineKeyboardButton", lambda *a, **k: None)
+    monkeypatch.setattr(backup_handlers, "InlineKeyboardMarkup", lambda *a, **k: None)
+    monkeypatch.setattr(bot_handler, "InlineKeyboardButton", lambda *a, **k: None)
+    monkeypatch.setattr(bot_handler, "InlineKeyboardMarkup", lambda *a, **k: None)
+
+    # cc_add_server: сервер попадает в CONFIG_CONSOLE_SERVERS.
+    update = SimpleNamespace(message=SimpleNamespace(text="sr-test-host", reply_text=Mock()))
+    context = SimpleNamespace(user_data={"cc_add_server": True})
+    handle_setting_value(update, context)
+    assert "cc_add_server" not in context.user_data
+    assert "sr-test-host" in get_config_console_servers()
+    update.message.reply_text.assert_called()
+
+    # backup_add_proxmox_host: хост появляется в PROXMOX_HOSTS.
+    update2 = SimpleNamespace(message=SimpleNamespace(text="pve-test-99", reply_text=Mock()))
+    context2 = SimpleNamespace(user_data={"backup_add_proxmox_host": True})
+    handle_setting_value(update2, context2)
+    assert "backup_add_proxmox_host" not in context2.user_data
+    hosts = bot_handler.BackupMonitorBot().get_proxmox_hosts_config()
+    assert "pve-test-99" in hosts
+    update2.message.reply_text.assert_called()
+
+
 def test_render_plain_all_ok_summary():
     mr = MorningReport()
     report = _make_report(
