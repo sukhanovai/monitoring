@@ -3524,7 +3524,10 @@ class MainViewModel(
 
     private fun rescheduleBackgroundWorkers() {
         val notificationsEnabled = state.morningReportNotificationsEnabled && state.token.isNotBlank()
-        val scheduleTime = state.metricsTimeInput.ifBlank { "08:30" }
+        // При старте приложения metricsTimeInput ещё пуст (настройки с сервера
+        // не загружены) — не затираем ранее синхронизированное время дефолтом,
+        // а берём сохранённое в prefs (его дефолт и так "08:30").
+        val scheduleTime = state.metricsTimeInput.ifBlank { preferences.morningReportScheduleTime }
 
         MorningReportWorker.schedule(
             context = appContext,

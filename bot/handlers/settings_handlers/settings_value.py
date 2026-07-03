@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/settings_value.py
-Server Monitoring System v8.63.38
+Server Monitoring System v8.63.39
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчик текстового ввода значений настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.38
+Версия: 8.63.39
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
@@ -219,6 +219,24 @@ def handle_setting_value(update, context):
         from extensions.backup_monitor.backup_handlers import set_stock_expected_files_value
 
         return set_stock_expected_files_value(update, update.message.text)
+
+    # Остальные мастера ввода backup_monitor (по той же причине — см. выше):
+    # серверы/паттерны «Бэкапа конфигов», паттерн передачи на NAS, добавление
+    # и переименование хостов Proxmox. Делегируем оригинальному обработчику
+    # целиком — вся логика (включая inline-ветки хостов Proxmox) живёт там.
+    if any(
+        context.user_data.get(flag)
+        for flag in (
+            "cc_add_server",
+            "cc_add_pattern",
+            "nas_add_pattern",
+            "backup_add_proxmox_host",
+            "backup_edit_proxmox_host_name",
+        )
+    ):
+        from extensions.backup_monitor.bot_handler import backup_host_settings_input_handler
+
+        return backup_host_settings_input_handler(update, context)
 
     # Если это обычная настройка
     if "editing_setting" not in context.user_data:

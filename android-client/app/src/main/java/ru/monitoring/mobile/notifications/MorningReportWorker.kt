@@ -19,6 +19,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -43,6 +44,31 @@ class MorningReportWorker(
         }
         if (token.isBlank()) {
             Log.w("MorningReportWorker", "doWork skipped: blank token")
+            rescheduleNextRun(applicationContext)
+            return Result.success()
+        }
+
+        // Самоисцеление «уплывшего» расписания: унаследованная от старых
+        // версий периодическая задача может сработать сильно раньше целевого
+        // времени (например, в 6:0x при расписании 9:0x). В этом случае отчёт
+        // не запрашиваем — только переустанавливаем корректное время
+        // следующего запуска (сегодня в HH:MM, раз оно ещё впереди).
+        // Запуски ПОСЛЕ целевого времени легитимны (Doze/отложенное
+        // выполнение): отчёт придёт позже, но придёт.
+        val targetTime = parseTimeOrDefault(prefs.morningReportScheduleTime)
+        val now = LocalDateTime.now()
+        val todayTarget = now
+            .withHour(targetTime.hour)
+            .withMinute(targetTime.minute)
+            .withSecond(0)
+            .withNano(0)
+        val minutesBeforeTarget = Duration.between(now, todayTarget).toMinutes()
+        if (minutesBeforeTarget > EARLY_RUN_TOLERANCE_MINUTES) {
+            Log.w(
+                "MorningReportWorker",
+                "doWork skipped: fired ${minutesBeforeTarget}m before scheduled " +
+                    "${prefs.morningReportScheduleTime} (drifted legacy schedule), re-anchoring"
+            )
             rescheduleNextRun(applicationContext)
             return Result.success()
         }
@@ -140,6 +166,12 @@ class MorningReportWorker(
         private const val NOTIFICATION_ID = 202020
         private const val UNIQUE_WORK_NAME = "morning_report_daily_work"
         const val EXTRA_OPEN_MORNING_REPORT = "open_morning_report"
+
+        // Насколько раньше целевого времени запуск ещё считается легитимным.
+        // Больший опережающий сдвиг — признак «уплывшего» расписания
+        // (наследие PeriodicWorkRequest без override): отчёт не запрашиваем,
+        // только переустанавливаем время следующего запуска.
+        private const val EARLY_RUN_TOLERANCE_MINUTES = 30L
 
         fun schedule(context: Context, timeRaw: String, enabled: Boolean) {
             val workManager = WorkManager.getInstance(context)
