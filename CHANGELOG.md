@@ -1,3 +1,9 @@
+## [8.63.38] - 2026-07-03
+
+### Added
+- RU: Telegram — под утренним/ручным отчётом добавлена кнопка «✖️ Закрыть» (последний ряд клавиатуры, `modules/morning_report.py:build_report_keyboard`). Использует общий для всего бота обработчик `callback_data="close"` (`bot/handlers/callbacks.py`, просто удаляет сообщение) — отдельная логика не понадобилась.
+- EN: Telegram — a "✖️ Закрыть" (Close) button was added under the morning/manual report (last keyboard row, `modules/morning_report.py:build_report_keyboard`). It reuses the bot-wide `callback_data="close"` handler (`bot/handlers/callbacks.py`, which simply deletes the message) — no dedicated logic was needed.
+
 ## [8.63.37] - 2026-07-03
 
 ### Fixed
