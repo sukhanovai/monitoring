@@ -189,6 +189,8 @@ def test_build_report_keyboard_buttons(monkeypatch):
     # Служебный ряд: маска не полная и не нулевая — обе кнопки.
     assert "mrs|rid1|a|1" in callbacks
     assert "mrs|rid1|n|1" in callbacks
+    # Последний ряд — «Закрыть» на общем для бота callback_data="close".
+    assert rows[-1] == [("✖️ Закрыть", "close")]
 
 
 def test_snapshot_transfer_section_keeps_only_aggregate(monkeypatch):

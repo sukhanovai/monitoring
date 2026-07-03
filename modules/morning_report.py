@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.63.37
+Server Monitoring System v8.63.38
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.63.37
+Версия: 8.63.38
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -70,7 +70,9 @@ def _short_section_title(title: str) -> str:
 
 
 def build_report_keyboard(report_id: str, payload: dict, expanded_mask: int = 0):
-    """Inline-клавиатура отчёта: кнопка на каждую секцию + развернуть/свернуть всё."""
+    """Inline-клавиатура отчёта: кнопка на каждую секцию + развернуть/свернуть
+    всё + «Закрыть» (`callback_data="close"` — общий для всего бота обработчик
+    в bot/handlers/callbacks.py, просто удаляет сообщение)."""
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
     sections = payload.get("sections") or []
@@ -111,6 +113,7 @@ def build_report_keyboard(report_id: str, payload: dict, expanded_mask: int = 0)
             )
         if toggle_row:
             buttons.append(toggle_row)
+    buttons.append([InlineKeyboardButton("✖️ Закрыть", callback_data="close")])
     return InlineKeyboardMarkup(buttons)
 
 
