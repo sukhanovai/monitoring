@@ -290,9 +290,7 @@ def test_parse_config_console_backup_disabled_returns_none(processor, monkeypatc
 
     monkeypatch.setattr(extension_manager, "is_extension_enabled", lambda _id: False)
     assert (
-        processor.parse_config_console_backup(
-            "Config backup sr-pve5 OK", _CONFIG_CONSOLE_BODY
-        )
+        processor.parse_config_console_backup("Config backup sr-pve5 OK", _CONFIG_CONSOLE_BODY)
         is None
     )
 
@@ -330,6 +328,69 @@ def test_parse_email_file_dispatches_config_console(processor, monkeypatch, tmp_
         conn.close()
 
 
+def test_parse_email_file_config_console_wins_over_loose_db_pattern(
+    processor, monkeypatch, tmp_path
+) -> None:
+    """Регрессия: «Config backup pve13 OK» распознавалось как бэкап БД.
+
+    Пользовательский паттерн БД без якорей (например «Backup (\\w+) OK» из
+    таблицы backup_patterns) матчил тему письма конфигов/историй, запись
+    уходила в database_backups, а в отчёте копилось «Нет свежих отчётов:
+    pve11, pve13, pve3». Теперь parse_config_console_backup вызывается до
+    parse_database_backup.
+    """
+    import sqlite3 as _sqlite3
+    from pathlib import Path
+
+    import modules.mail_parts.parsers.database as database_parser
+    from extensions.extension_manager import extension_manager
+
+    monkeypatch.setattr(extension_manager, "is_extension_enabled", lambda _id: True)
+    monkeypatch.setattr(
+        database_parser,
+        "get_database_patterns_from_config",
+        lambda: {
+            "company": [],
+            "barnaul": [],
+            "client": [],
+            "yandex": [],
+            "database": [r"backup (\w+) ok"],
+        },
+    )
+
+    eml = (
+        "From: root@pve13\nTo: katok@202020.ru\n"
+        "Subject: Config backup pve13 OK\n"
+        "Date: Mon, 06 Jul 2026 09:31:34 +0700\n"
+        "Content-Type: text/plain; charset=utf-8\n\n"
+        "Хост: pve13\nОшибок: 0\n"
+    )
+    eml_path = Path(tmp_path) / "config_backup.eml"
+    eml_path.write_text(eml, encoding="utf-8")
+
+    result = processor.parse_email_file(eml_path)
+    assert result and "config_console_backup" in result
+    assert result["config_console_backup"]["host_name"] == "pve13"
+    assert result["config_console_backup"]["status"] == "OK"
+
+    conn = _sqlite3.connect(str(processor.db_path))
+    try:
+        cursor = conn.cursor()
+        # Таблица database_backups создаётся лениво в save_database_backup —
+        # само её отсутствие уже означает, что письмо туда не попало.
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='database_backups'"
+        )
+        if cursor.fetchone():
+            cursor.execute(
+                "SELECT COUNT(*) FROM database_backups WHERE database_name = ?",
+                ("pve13",),
+            )
+            assert cursor.fetchone()[0] == 0
+    finally:
+        conn.close()
+
+
 def test_save_config_console_backup_is_idempotent(monkeypatch) -> None:
     """INSERT OR IGNORE не плодит дублей при повторной обработке письма."""
     import sqlite3 as _sqlite3
@@ -341,9 +402,7 @@ def test_save_config_console_backup_is_idempotent(monkeypatch) -> None:
     monkeypatch.setattr(extension_manager, "is_extension_enabled", lambda _id: True)
 
     proc = BackupProcessor()
-    info = proc.parse_config_console_backup(
-        "Config backup sr-pve5 PARTIAL", _CONFIG_CONSOLE_BODY
-    )
+    info = proc.parse_config_console_backup("Config backup sr-pve5 PARTIAL", _CONFIG_CONSOLE_BODY)
     email_date = datetime(2026, 5, 30, 3, 2, 17)
     proc.save_config_console_backup(info, "Config backup sr-pve5 PARTIAL", email_date)
     proc.save_config_console_backup(info, "Config backup sr-pve5 PARTIAL", email_date)

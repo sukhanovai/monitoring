@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/proxmox.py
-Server Monitoring System v8.63.39
+Server Monitoring System v8.63.40
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ProxmoxBackupParserMixin — часть BackupProcessor (PR6c серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.39
+Версия: 8.63.40
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Mixin ProxmoxBackupParserMixin; объединяется с другими mixin'ами в BackupProcessor.
@@ -105,6 +105,16 @@ class ProxmoxBackupParserMixin:
                 logger.warning("❌ Дата письма отсутствует, используем текущее время")
                 email_date = datetime.now()
 
+            # Конфиги/истории разбираются ДО бэкапов БД: паттерны БД
+            # редактируются пользователем и могут быть незаанкоренными
+            # (например «Backup (\w+) OK» матчит «Config backup pve3 OK»),
+            # тогда как паттерн config_console заанкорен и чужие письма
+            # не перехватывает.
+            config_console = self.parse_config_console_backup(subject, self.get_email_body(msg))
+            if config_console:
+                self.save_config_console_backup(config_console, subject, email_date)
+                return {"config_console_backup": config_console}
+
             db_backup_info = self.parse_database_backup(subject, self.get_email_body(msg))
             if db_backup_info:
                 logger.info(
@@ -128,13 +138,6 @@ class ProxmoxBackupParserMixin:
             if nas_transfer:
                 self.save_nas_transfer(nas_transfer, subject, email_date)
                 return {"nas_transfer": nas_transfer}
-
-            config_console = self.parse_config_console_backup(
-                subject, self.get_email_body(msg)
-            )
-            if config_console:
-                self.save_config_console_backup(config_console, subject, email_date)
-                return {"config_console_backup": config_console}
 
             mail_backup_info = self.parse_mail_backup(subject)
             if mail_backup_info:
