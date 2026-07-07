@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.63.39
+Server Monitoring System v8.63.40
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.63.39
+Версия: 8.63.40
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -20,6 +20,16 @@ logger = logging.getLogger(__name__)
 
 def _normalize_db_key(name: str) -> str:
     return str(name or "").replace("-", "_").lower()
+
+
+def _norm_db_pair(backup_type: str, db_name: str) -> tuple[str, str]:
+    """Ключ (категория, имя БД) с нормализованным именем.
+
+    Парсер писем сохраняет имя БД в нижнем регистре (из subject_lower,
+    например 'buh2025'), а в конфиге ключ может быть 'Buh2025' — сравнивать
+    имена можно только нормализованно, как в get_database_details.
+    """
+    return (backup_type, _normalize_db_key(db_name))
 
 
 def _normalize_backup_type(backup_type: str, db_name: str) -> str:
@@ -274,33 +284,40 @@ def get_backup_summary(
             if databases
         }
         configured_db_keys = {
-            (category, db_name)
+            _norm_db_pair(category, db_name)
             for category, databases in configured_databases.items()
             for db_name in databases
         }
-        recent_db_keys = {(backup_type, db_name) for backup_type, db_name, _, _ in db_results}
+        recent_db_keys = {
+            _norm_db_pair(backup_type, db_name) for backup_type, db_name, _, _ in db_results
+        }
         successful_db_keys = {
-            (backup_type, db_name)
+            _norm_db_pair(backup_type, db_name)
             for backup_type, db_name, status, _ in db_results
             if status == "success"
         }
 
+        # Имена в missing_recent_db_keys остаются в написании из конфига —
+        # они идут в текст отчёта; сравнение везде нормализованное.
         missing_recent_db_keys = {
             (category, db_name)
             for category, databases in configured_databases.items()
             for db_name in databases
-            if (category, db_name) not in recent_db_keys
+            if _norm_db_pair(category, db_name) not in recent_db_keys
+        }
+        missing_recent_norm_keys = {
+            _norm_db_pair(category, db_name) for category, db_name in missing_recent_db_keys
         }
 
         stale_databases = [
             (backup_type, db_name, last_backup)
             for backup_type, db_name, last_backup in stale_databases
-            if (backup_type, db_name) in configured_db_keys
+            if _norm_db_pair(backup_type, db_name) in configured_db_keys
         ]
         stale_databases = [
             (backup_type, db_name, last_backup)
             for backup_type, db_name, last_backup in stale_databases
-            if (backup_type, db_name) not in recent_db_keys
+            if _norm_db_pair(backup_type, db_name) not in recent_db_keys
         ]
         stale_databases_unique = {}
         for backup_type, db_name, last_backup in stale_databases:
@@ -315,7 +332,7 @@ def get_backup_summary(
         stale_databases = [
             (backup_type, db_name, last_backup)
             for backup_type, db_name, last_backup in stale_databases
-            if (backup_type, db_name) not in missing_recent_db_keys
+            if _norm_db_pair(backup_type, db_name) not in missing_recent_norm_keys
         ]
 
         for category, databases in config_databases.items():
@@ -326,9 +343,9 @@ def get_backup_summary(
             successful_count = 0
             missing_recent = 0
             for db_key in databases.keys():
-                if (category, db_key) in successful_db_keys:
+                if _norm_db_pair(category, db_key) in successful_db_keys:
                     successful_count += 1
-                if (category, db_key) not in recent_db_keys:
+                if _norm_db_pair(category, db_key) not in recent_db_keys:
                     missing_recent += 1
 
             db_stats[category] = {
@@ -565,9 +582,7 @@ def get_proxmox_backup_stats(period_hours=24, unavailable_hosts=None) -> dict:
             stats["error"] = "База данных бэкапов недоступна"
             return stats
 
-        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime("%Y-%m-%d %H:%M:%S")
         stale_threshold = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
 
         conn = sqlite3.connect(str(db_path))
@@ -643,7 +658,9 @@ def get_proxmox_backup_stats(period_hours=24, unavailable_hosts=None) -> dict:
                     unavailable_set.add(host_name)
         if unavailable_hosts_norm and not unavailable_set:
             unavailable_set = {
-                host for host in allowed_hosts if _normalize_host_key(host) in unavailable_hosts_norm
+                host
+                for host in allowed_hosts
+                if _normalize_host_key(host) in unavailable_hosts_norm
             }
 
         stats["total"] = len(all_hosts)
@@ -654,9 +671,7 @@ def get_proxmox_backup_stats(period_hours=24, unavailable_hosts=None) -> dict:
                 if r[1] == "success" and r[0] in allowed_hosts and r[0] not in unavailable_set
             ]
         )
-        stats["stale"] = sorted(
-            {host for host, _ in stale_rows if host in allowed_hosts}
-        )
+        stats["stale"] = sorted({host for host, _ in stale_rows if host in allowed_hosts})
         stats["unavailable"] = sorted(unavailable_set)
         return stats
     except Exception as exc:
@@ -691,9 +706,7 @@ def get_database_backup_stats(period_hours=24) -> dict:
             stats["error"] = "База данных бэкапов недоступна"
             return stats
 
-        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime("%Y-%m-%d %H:%M:%S")
         stale_threshold = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
 
         conn = sqlite3.connect(str(db_path))
@@ -761,16 +774,18 @@ def get_database_backup_stats(period_hours=24) -> dict:
             "yandex": _get_db_config(database_backup_config, "yandex_backups", "yandex"),
         }
 
-        recent_keys = {(backup_type, db_name) for backup_type, db_name, _ in db_results}
+        recent_keys = {
+            _norm_db_pair(backup_type, db_name) for backup_type, db_name, _ in db_results
+        }
         success_keys = {
-            (backup_type, db_name)
+            _norm_db_pair(backup_type, db_name)
             for backup_type, db_name, status in db_results
             if status == "success"
         }
         stale_keys = {
-            (backup_type, db_name)
+            _norm_db_pair(backup_type, db_name)
             for backup_type, db_name in stale_rows
-            if (backup_type, db_name) not in recent_keys
+            if _norm_db_pair(backup_type, db_name) not in recent_keys
         }
 
         has_config = any(databases for databases in config_databases.values())
@@ -794,9 +809,7 @@ def get_database_backup_stats(period_hours=24) -> dict:
                         "name": category_names.get(category, category),
                         "total": entry["total"],
                         "ok": entry["ok"],
-                        "stale": sorted(
-                            db for cat, db in stale_keys if cat == category
-                        ),
+                        "stale": sorted(db for cat, db in stale_keys if cat == category),
                         "missing": [],
                     }
                 )
@@ -809,15 +822,15 @@ def get_database_backup_stats(period_hours=24) -> dict:
             if not databases:
                 continue
             ok_count = sum(
-                1 for db_key in databases if (category, db_key) in success_keys
+                1 for db_key in databases if _norm_db_pair(category, db_key) in success_keys
             )
             missing = sorted(
-                db_key for db_key in databases if (category, db_key) not in recent_keys
+                db_key for db_key in databases if _norm_db_pair(category, db_key) not in recent_keys
             )
             stale = sorted(
                 db_key
                 for db_key in databases
-                if (category, db_key) in stale_keys and db_key not in missing
+                if _norm_db_pair(category, db_key) in stale_keys and db_key not in missing
             )
             stats["categories"].append(
                 {
@@ -854,9 +867,7 @@ def get_mail_backup_stats(period_hours=24) -> dict:
             stats["error"] = "База данных бэкапов недоступна"
             return stats
 
-        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime("%Y-%m-%d %H:%M:%S")
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
         try:
@@ -959,9 +970,7 @@ def get_stock_load_stats(period_hours=24) -> dict:
             stats["error"] = "База данных бэкапов недоступна"
             return stats
 
-        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime("%Y-%m-%d %H:%M:%S")
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
         try:
@@ -990,9 +999,7 @@ def get_stock_load_stats(period_hours=24) -> dict:
         stats["success"] = len([r for r in rows if r[0] == "success"])
         stats["warning"] = len([r for r in rows if r[0] == "warning"])
         stats["failed"] = len([r for r in rows if r[0] == "failed"])
-        stats["unknown"] = (
-            stats["total"] - stats["success"] - stats["warning"] - stats["failed"]
-        )
+        stats["unknown"] = stats["total"] - stats["success"] - stats["warning"] - stats["failed"]
         return stats
     except Exception as exc:
         logger.exception("Ошибка сбора статистики остатков 1С: %s", exc)
@@ -1387,9 +1394,7 @@ def group_config_console_rows(rows, expected_servers=None):
     for host in ordered_hosts:
         actual = latest_ci.get(host.lower())
         if actual is None:
-            servers.append(
-                {"host": host, "latest": None, "missing": True, "runs": 0}
-            )
+            servers.append({"host": host, "latest": None, "missing": True, "runs": 0})
             missing.append(host)
         else:
             real_host, row = actual
