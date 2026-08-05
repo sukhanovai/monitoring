@@ -1,11 +1,11 @@
 """
 /config/db_settings.py
-Server Monitoring System v8.63.40
+Server Monitoring System v8.63.41
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
 Система мониторинга серверов
-Версия: 8.63.40
+Версия: 8.63.41
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Загрузчик настроек из базы данных
@@ -46,6 +46,39 @@ def get_setting(key: str, default: Any = None) -> Any:
     return default
 
 
+def _coerce_json_setting(key: str, value: Any, default: Any) -> Any:
+    """Приводит JSON-настройку к типу значения по умолчанию.
+
+    Если в таблице ``settings`` у ключа проставлен ``data_type='string'``
+    (так бывает после ручной правки БД или импорта из старой версии),
+    ``config_manager.get_setting`` возвращает сырую строку JSON. Дальше по
+    коду такое значение падало с ``'str' object has no attribute 'get'`` —
+    например, BACKUP_PATTERNS переставал отдавать паттерны NAS и конфигов.
+    """
+    if not isinstance(value, str):
+        return value
+    if not isinstance(default, (dict, list)):
+        return value
+
+    text = value.strip()
+    if not text:
+        return default
+
+    import ast
+    import json
+
+    for loader in (json.loads, ast.literal_eval):
+        try:
+            parsed = loader(text)
+        except Exception:
+            continue
+        if isinstance(parsed, type(default)):
+            return parsed
+
+    error_log(f"Настройка {key} хранится строкой и не разбирается как {type(default).__name__}")
+    return default
+
+
 def get_json_setting(key: str, default: Any = None) -> Any:
     """
     Получение JSON настройки из БД
@@ -59,10 +92,11 @@ def get_json_setting(key: str, default: Any = None) -> Any:
     """
     if USE_DB:
         try:
-            return config_manager.get_setting(key, default)
+            value = config_manager.get_setting(key, default)
         except Exception as e:
             error_log(f"Ошибка получения JSON настройки {key}: {e}")
             return default
+        return _coerce_json_setting(key, value, default)
     return default
 
 

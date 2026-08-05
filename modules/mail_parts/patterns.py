@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/patterns.py
-Server Monitoring System v8.63.40
+Server Monitoring System v8.63.41
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Pattern helpers extracted from modules/mail_monitor.py (PR6 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.40
+Версия: 8.63.41
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Сборщики regex/glob-паттернов из конфигурации БД для разных типов писем
@@ -64,6 +64,55 @@ _NON_DATABASE_PATTERN_CATEGORIES = {
 }
 
 
+def _as_pattern_mapping(value: object) -> dict:
+    """Приводит источник паттернов к словарю.
+
+    ``BACKUP_PATTERNS`` и ответ ``config_manager.get_backup_patterns()``
+    могут прийти строкой (JSON или Python-repr), если у настройки в БД
+    проставлен ``data_type='string'``. Тогда ``.get()`` падал с
+    ``'str' object has no attribute 'get'``, и письма о передаче на NAS
+    и о бэкапах конфигов/историй молча переставали разбираться.
+    """
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if text:
+            for loader in (json.loads, ast.literal_eval):
+                try:
+                    parsed = loader(text)
+                except Exception:
+                    continue
+                if isinstance(parsed, dict):
+                    return parsed
+    return {}
+
+
+def _extract_subject_patterns(value: object) -> list[str]:
+    """Достаёт список subject-паттернов из раздела конфигурации."""
+    if isinstance(value, dict):
+        subject = value.get("subject", [])
+    else:
+        subject = value
+
+    if isinstance(subject, str):
+        return [subject]
+    if isinstance(subject, list):
+        return [pattern for pattern in subject if isinstance(pattern, str)]
+    return []
+
+
+def _get_subject_patterns(category: str) -> list[str]:
+    """Возвращает subject-паттерны категории: таблица БД, затем настройка."""
+    table_patterns = _as_pattern_mapping(config_manager.get_backup_patterns())
+    subject_patterns = _extract_subject_patterns(table_patterns.get(category))
+    if subject_patterns:
+        return subject_patterns
+
+    fallback_patterns = _as_pattern_mapping(BACKUP_PATTERNS)
+    return _extract_subject_patterns(fallback_patterns.get(category))
+
+
 def _merge_db_patterns_from_table(result: dict[str, list[str]]) -> dict[str, list[str]]:
     """Дополняет паттерны БД записями из таблицы ``backup_patterns``.
 
@@ -74,12 +123,9 @@ def _merge_db_patterns_from_table(result: dict[str, list[str]]) -> dict[str, lis
     не отслеживается, и пользователю кажется, что паттерн «не сохранился».
     """
     try:
-        table_patterns = config_manager.get_backup_patterns()
+        table_patterns = _as_pattern_mapping(config_manager.get_backup_patterns())
     except Exception as exc:
         logger.error(f"❌ Не удалось прочитать backup_patterns: {exc}")
-        return result
-
-    if not isinstance(table_patterns, dict):
         return result
 
     for category, type_map in table_patterns.items():
@@ -115,20 +161,9 @@ def _merge_db_patterns_from_table(result: dict[str, list[str]]) -> dict[str, lis
 def get_database_patterns_from_config() -> dict[str, list[str]]:
     """Правильно извлекает паттерны из конфигурации."""
     try:
-        all_patterns = BACKUP_PATTERNS
-
-        if isinstance(all_patterns, str):
-            try:
-                import json
-
-                all_patterns = json.loads(all_patterns)
-            except Exception:
-                logger.error("❌ Не удалось распарсить BACKUP_PATTERNS как JSON")
-                all_patterns = {}
-
-        if not isinstance(all_patterns, dict):
-            logger.error(f"❌ BACKUP_PATTERNS не словарь: {type(all_patterns)}")
-            all_patterns = {}
+        all_patterns = _as_pattern_mapping(BACKUP_PATTERNS)
+        if not all_patterns and BACKUP_PATTERNS:
+            logger.error(f"❌ BACKUP_PATTERNS не словарь: {type(BACKUP_PATTERNS)}")
 
         db_patterns = all_patterns.get("database", {})
 
@@ -166,23 +201,7 @@ def get_database_patterns_from_config() -> dict[str, list[str]]:
 def get_zfs_patterns_from_config() -> list[str]:
     """Извлекает паттерны для писем ZFS из таблицы паттернов."""
     try:
-        patterns = config_manager.get_backup_patterns()
-        zfs_patterns = patterns.get("zfs", {})
-        subject_patterns: list[str] = []
-
-        if isinstance(zfs_patterns, dict):
-            subject_patterns = zfs_patterns.get("subject", [])
-        elif isinstance(zfs_patterns, list):
-            subject_patterns = zfs_patterns
-
-        if not subject_patterns:
-            fallback = BACKUP_PATTERNS.get("zfs", {})
-            if isinstance(fallback, dict):
-                subject_patterns = fallback.get("subject", [])
-            elif isinstance(fallback, list):
-                subject_patterns = fallback
-
-        return [pattern for pattern in subject_patterns if isinstance(pattern, str)]
+        return _get_subject_patterns("zfs")
 
     except Exception as exc:
         logger.error(f"❌ Ошибка извлечения ZFS паттернов: {exc}")
@@ -205,48 +224,15 @@ def _normalize_snapshot_pattern(pattern: str) -> str:
 def get_snapshot_transfer_patterns_from_config() -> list[str]:
     """Извлекает паттерны для писем о передаче снэпшотов."""
     try:
-        patterns = config_manager.get_backup_patterns()
-        if isinstance(patterns, str):
-            try:
-                patterns = json.loads(patterns)
-            except Exception:
-                patterns = {}
-        if not isinstance(patterns, dict):
-            patterns = {}
+        patterns = _as_pattern_mapping(config_manager.get_backup_patterns())
+        subject_patterns = _extract_subject_patterns(patterns.get("snapshot_transfer"))
 
-        transfer_patterns = patterns.get("snapshot_transfer", {})
-        subject_patterns: list[str] = []
+        fallback_source = _as_pattern_mapping(BACKUP_PATTERNS)
+        fallback_patterns = _extract_subject_patterns(fallback_source.get("snapshot_transfer"))
 
-        if isinstance(transfer_patterns, dict):
-            subject_patterns = transfer_patterns.get("subject", [])
-        elif isinstance(transfer_patterns, list):
-            subject_patterns = transfer_patterns
-
-        fallback_source = BACKUP_PATTERNS
-        if isinstance(fallback_source, str):
-            try:
-                fallback_source = json.loads(fallback_source)
-            except Exception:
-                fallback_source = {}
-        if not isinstance(fallback_source, dict):
-            fallback_source = {}
-
-        fallback = fallback_source.get("snapshot_transfer", {})
-        fallback_patterns: list[str] = []
-        if isinstance(fallback, dict):
-            fallback_patterns = fallback.get("subject", [])
-        elif isinstance(fallback, list):
-            fallback_patterns = fallback
-
-        normalized = [
-            _normalize_snapshot_pattern(pattern)
-            for pattern in subject_patterns
-            if isinstance(pattern, str)
-        ]
+        normalized = [_normalize_snapshot_pattern(pattern) for pattern in subject_patterns]
         normalized_fallback = [
-            _normalize_snapshot_pattern(pattern)
-            for pattern in fallback_patterns
-            if isinstance(pattern, str)
+            _normalize_snapshot_pattern(pattern) for pattern in fallback_patterns
         ]
 
         if not normalized:
@@ -265,23 +251,7 @@ def get_snapshot_transfer_patterns_from_config() -> list[str]:
 def get_nas_transfer_patterns_from_config() -> list[str]:
     """Извлекает паттерны для писем о передаче бэкапов на NAS."""
     try:
-        patterns = config_manager.get_backup_patterns()
-        nas_patterns = patterns.get("nas_transfer", {})
-        subject_patterns: list[str] = []
-
-        if isinstance(nas_patterns, dict):
-            subject_patterns = nas_patterns.get("subject", [])
-        elif isinstance(nas_patterns, list):
-            subject_patterns = nas_patterns
-
-        if not subject_patterns:
-            fallback = BACKUP_PATTERNS.get("nas_transfer", {})
-            if isinstance(fallback, dict):
-                subject_patterns = fallback.get("subject", [])
-            elif isinstance(fallback, list):
-                subject_patterns = fallback
-
-        return [pattern for pattern in subject_patterns if isinstance(pattern, str)]
+        return _get_subject_patterns("nas_transfer")
 
     except Exception as exc:
         logger.error(f"❌ Ошибка извлечения паттернов передачи на NAS: {exc}")
@@ -291,23 +261,7 @@ def get_nas_transfer_patterns_from_config() -> list[str]:
 def get_config_console_patterns_from_config() -> list[str]:
     """Извлекает паттерны для писем о бэкапе конфигов и историй консолей."""
     try:
-        patterns = config_manager.get_backup_patterns()
-        cfg_patterns = patterns.get("config_console", {})
-        subject_patterns: list[str] = []
-
-        if isinstance(cfg_patterns, dict):
-            subject_patterns = cfg_patterns.get("subject", [])
-        elif isinstance(cfg_patterns, list):
-            subject_patterns = cfg_patterns
-
-        if not subject_patterns:
-            fallback = BACKUP_PATTERNS.get("config_console", {})
-            if isinstance(fallback, dict):
-                subject_patterns = fallback.get("subject", [])
-            elif isinstance(fallback, list):
-                subject_patterns = fallback
-
-        return [pattern for pattern in subject_patterns if isinstance(pattern, str)]
+        return _get_subject_patterns("config_console")
 
     except Exception as exc:
         logger.error(f"❌ Ошибка извлечения паттернов конфигов/историй: {exc}")
@@ -317,23 +271,7 @@ def get_config_console_patterns_from_config() -> list[str]:
 def get_mail_patterns_from_config() -> list[str]:
     """Извлекает паттерны для писем о бэкапах почты из таблицы паттернов."""
     try:
-        patterns = config_manager.get_backup_patterns()
-        mail_patterns = patterns.get("mail", {})
-        subject_patterns: list[str] = []
-
-        if isinstance(mail_patterns, dict):
-            subject_patterns = mail_patterns.get("subject", [])
-        elif isinstance(mail_patterns, list):
-            subject_patterns = mail_patterns
-
-        if not subject_patterns:
-            fallback = BACKUP_PATTERNS.get("mail", {})
-            if isinstance(fallback, dict):
-                subject_patterns = fallback.get("subject", [])
-            elif isinstance(fallback, list):
-                subject_patterns = fallback
-
-        return [pattern for pattern in subject_patterns if isinstance(pattern, str)]
+        return _get_subject_patterns("mail")
 
     except Exception as exc:
         logger.error(f"❌ Ошибка извлечения паттернов почты: {exc}")
@@ -343,27 +281,11 @@ def get_mail_patterns_from_config() -> list[str]:
 def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
     """Извлекает паттерны для логов загрузки остатков из настроек."""
     try:
-        patterns = config_manager.get_backup_patterns()
-        if isinstance(patterns, str):
-            try:
-                import json
-
-                patterns = json.loads(patterns)
-            except Exception:
-                patterns = {}
-        if not isinstance(patterns, dict):
-            patterns = {}
+        patterns = _as_pattern_mapping(config_manager.get_backup_patterns())
         if not patterns:
-            fallback_raw = config_manager.get_setting("BACKUP_PATTERNS", BACKUP_PATTERNS)
-            if isinstance(fallback_raw, str):
-                try:
-                    import json
-
-                    fallback_raw = json.loads(fallback_raw)
-                except Exception:
-                    fallback_raw = {}
-            if isinstance(fallback_raw, dict):
-                patterns = fallback_raw
+            patterns = _as_pattern_mapping(
+                config_manager.get_setting("BACKUP_PATTERNS", BACKUP_PATTERNS)
+            )
         stock_patterns = patterns.get("stock_load", {})
 
         def _normalize_list(value: object) -> list[str]:

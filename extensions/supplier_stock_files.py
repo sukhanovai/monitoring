@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.63.40
+Server Monitoring System v8.63.41
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.63.40
+Версия: 8.63.41
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -51,6 +51,11 @@ from extensions.extension_manager import extension_manager
 SUPPLIER_STOCK_EXTENSION_ID = "supplier_stock_files"
 _logger = logging.getLogger("supplier_stock_files")
 _monitor_logger = logging.getLogger("monitoring")
+
+# Уже залогированные подтягивания «файла источника» в правила обработки
+# (правило, старое значение, новое значение) — чтобы не повторять запись
+# при каждом чтении конфигурации.
+_SYNCED_RULE_SOURCES: set[tuple[str, str, str]] = set()
 
 DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
     "resources": [],
@@ -233,12 +238,91 @@ def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, 
                 rule["requires_processing"] = _normalize_requires_processing(
                     rule.get("requires_processing", True)
                 )
+        _sync_processing_rules_with_sources(merged, processing_rules)
     reporting = merged.get("reporting", {})
     if not isinstance(reporting, dict):
         reporting = {}
     reporting["period_days"] = _normalize_report_period_days(reporting.get("period_days", 7))
     merged["reporting"] = reporting
     return merged
+
+
+def _sync_processing_rules_with_sources(
+    config: Dict[str, Any],
+    rules: List[Dict[str, Any]],
+) -> None:
+    """Подтягивает имя файла источника в правила обработки из самого источника.
+
+    Правило, привязанное к источнику (``source_id``), не даёт менять
+    «Файл источника» вручную — он берётся из источника (``output_template``
+    для почты, ``output_name`` для загрузки). Но при смене шаблона у
+    источника (например, поставщик прислал ``asd_orig.xlsx`` вместо
+    ``asd_orig.xls``) правило оставалось со старым именем и переставало
+    подходить: «подходящие правила обработки не найдены». Синхронизируем
+    при каждом чтении и сохранении конфигурации.
+    """
+    download_sources = config.get("download", {}).get("sources", [])
+    mail_sources = config.get("mail", {}).get("sources", [])
+    if not isinstance(download_sources, list):
+        download_sources = []
+    if not isinstance(mail_sources, list):
+        mail_sources = []
+
+    for rule in rules:
+        if not isinstance(rule, dict):
+            continue
+        source_id = rule.get("source_id")
+        if not source_id:
+            continue
+
+        download_source = _find_source_by_id(download_sources, source_id)
+        mail_source = _find_source_by_id(mail_sources, source_id)
+        rule_kind = rule.get("source_kind")
+
+        if rule_kind == "download":
+            source, kind = download_source, "download"
+        elif rule_kind == "mail":
+            source, kind = mail_source, "mail"
+        elif download_source and not mail_source:
+            source, kind = download_source, "download"
+        elif mail_source and not download_source:
+            source, kind = mail_source, "mail"
+        else:
+            # Источник с таким id есть и в загрузке, и в почте — какой из них
+            # имеется в виду, без source_kind не определить, не трогаем.
+            continue
+
+        if not source:
+            continue
+
+        template = (
+            source.get("output_name") if kind == "download" else source.get("output_template")
+        )
+        template = str(template or "").strip()
+        if not template or template == str(rule.get("source_file") or "").strip():
+            continue
+
+        previous = str(rule.get("source_file") or "не задано")
+        rule_label = str(rule.get("name") or rule.get("id") or source_id)
+        # Конфигурация читается по нескольку раз на письмо, поэтому об одной
+        # и той же рассинхронизации сообщаем один раз за жизнь процесса.
+        log_key = (rule_label, previous, template)
+        if log_key not in _SYNCED_RULE_SOURCES:
+            _SYNCED_RULE_SOURCES.add(log_key)
+            _logger.info(
+                "🧩 Правило обработки '%s': файл источника взят из настроек источника %s -> %s",
+                rule_label,
+                previous,
+                template,
+            )
+        rule["source_file"] = template
+
+
+def _find_source_by_id(sources: List[Dict[str, Any]], source_id: Any) -> Dict[str, Any] | None:
+    for item in sources:
+        if isinstance(item, dict) and str(item.get("id")) == str(source_id):
+            return item
+    return None
 
 
 def _normalize_requires_processing(value: Any) -> bool:
@@ -1263,7 +1347,7 @@ def process_supplier_stock_file(
     return _process_supplier_stock_file(
         path,
         config,
-        now or datetime.now(),
+        _as_naive_local(now) or datetime.now(),
         source_id,
         source_kind,
         input_index,
@@ -1519,6 +1603,21 @@ def _parse_archive_cleanup_days(config: Dict[str, Any]) -> int:
     return max(days, 0)
 
 
+def _as_naive_local(value: datetime | None) -> datetime | None:
+    """Переводит дату в наивное локальное время.
+
+    Разбор остатков вызывается с датой письма (``Date:``), которая приходит
+    с таймзоной, а ``datetime.fromtimestamp(st_mtime)`` наивная. Их прямое
+    сравнение падало с ``can't compare offset-naive and offset-aware
+    datetimes``, из-за чего письмо помечалось как необработанное.
+    """
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value
+    return value.astimezone().replace(tzinfo=None)
+
+
 def cleanup_supplier_stock_archives(
     config: Dict[str, Any] | None = None,
     now: datetime | None = None,
@@ -1528,7 +1627,7 @@ def cleanup_supplier_stock_archives(
     if cleanup_days <= 0:
         return {"removed": 0, "errors": 0, "days": cleanup_days}
 
-    current_time = now or datetime.now()
+    current_time = _as_naive_local(now) or datetime.now()
     cutoff = current_time - timedelta(days=cleanup_days)
     removed = 0
     errors = 0
