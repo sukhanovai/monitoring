@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/lifecycle.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main monitoring loop entry-point extracted from core/monitor_core.py
 (PR5 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Жизненный цикл монитора: однократная инициализация бота/state, затем
@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
+from functools import partial
 
 from core.monitor_state import state
 from lib.logging import debug_log, info_log
@@ -116,7 +117,7 @@ def start_monitoring() -> None:
     if is_startup_muted():
         debug_log("🔇 Тихий старт: стартовое сообщение мониторинга подавлено (--silent-start)")
     else:
-        send_alert(start_message)
+        send_alert(start_message, category="system")
 
     state.last_resource_check = datetime.now()
 
@@ -237,7 +238,11 @@ def start_monitoring() -> None:
 
             try:
                 check_zfs_pool_free_space_alerts(
-                    send_alert_func=send_alert,
+                    # Категория — чтобы оповещения расширения приходили только
+                    # подписанным на него пользователям (core/users.py).
+                    send_alert_func=partial(
+                        send_alert, category="zfs_pool_free_space_monitor"
+                    ),
                     repeat_interval_seconds=max(
                         int(config.RESOURCE_ALERT_INTERVAL), int(config.CHECK_INTERVAL)
                     ),
@@ -247,7 +252,7 @@ def start_monitoring() -> None:
 
             try:
                 check_tls_cert_alerts(
-                    send_alert_func=send_alert,
+                    send_alert_func=partial(send_alert, category="tls_cert_monitor"),
                     repeat_interval_seconds=max(
                         int(config.RESOURCE_ALERT_INTERVAL), int(config.CHECK_INTERVAL)
                     ),

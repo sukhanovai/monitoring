@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/callback_dispatcher.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Главный диспатчер callback-кнопок настроек (PR11 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Выделено из bot/handlers/settings_handlers/_legacy.py. Имя
@@ -42,6 +42,19 @@ from bot.handlers.settings_handlers.report import (  # noqa: F401
 # реэкспортируем их сюда же, чтобы внутренние ссылки в _legacy.py
 # (например, settings_callback_handler) продолжали работать.
 from bot.handlers.settings_handlers.supplier_stock import *  # noqa: F401, F403
+from bot.handlers.settings_handlers.users import (  # noqa: F401
+    delete_user_handler,
+    link_current_chat_handler,
+    show_my_notifications_menu,
+    show_user_card,
+    show_user_categories_menu,
+    show_users_menu,
+    toggle_user_alert_level_handler,
+    toggle_user_category_handler,
+    toggle_user_enabled_handler,
+    toggle_user_preference_handler,
+    toggle_user_role_handler,
+)
 from bot.handlers.settings_handlers.windows_creds import *  # noqa: F401, F403
 from bot.handlers.settings_handlers.zfs import *  # noqa: F401, F403
 from bot.handlers.zfs_pool_free_space_handlers import handle_text_input as handle_zfsp_text_input
@@ -170,6 +183,33 @@ def settings_callback_handler(update, context):
         elif data.startswith("report_ext_toggle_"):
             extension_id = data.replace("report_ext_toggle_", "", 1)
             toggle_report_extension_handler(update, context, extension_id)
+        # --- Многопользовательский режим: реестр и личные настройки ---
+        elif data == "settings_my_alerts":
+            show_my_notifications_menu(update, context)
+        elif data == "settings_users":
+            show_users_menu(update, context)
+        elif data == "user_pref_categories":
+            show_user_categories_menu(update, context)
+        elif data.startswith("user_pref_toggle_"):
+            toggle_user_preference_handler(
+                update, context, data.replace("user_pref_toggle_", "", 1)
+            )
+        elif data.startswith("user_pref_level_"):
+            toggle_user_alert_level_handler(update, context, data.replace("user_pref_level_", "", 1))
+        elif data.startswith("user_pref_cat_"):
+            toggle_user_category_handler(update, context, data.replace("user_pref_cat_", "", 1))
+        elif data == "user_link_this_chat":
+            link_current_chat_handler(update, context)
+        elif data.startswith("user_link_"):
+            link_current_chat_handler(update, context, int(data.replace("user_link_", "", 1)))
+        elif data.startswith("user_card_"):
+            show_user_card(update, context, int(data.replace("user_card_", "", 1)))
+        elif data.startswith("user_toggle_"):
+            toggle_user_enabled_handler(update, context, int(data.replace("user_toggle_", "", 1)))
+        elif data.startswith("user_role_"):
+            toggle_user_role_handler(update, context, int(data.replace("user_role_", "", 1)))
+        elif data.startswith("user_delete_"):
+            delete_user_handler(update, context, int(data.replace("user_delete_", "", 1)))
         elif data == "settings_extensions":
             show_settings_extensions_menu(update, context)
         elif data == "settings_extensions_manage":

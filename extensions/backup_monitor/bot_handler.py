@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -24,6 +24,28 @@ from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageH
 from config.settings import BOT_DEBUG_LOG_FILE
 from extensions.backup_monitor.backup_handlers import (
     _toggle_database_monitoring,
+    add_cc_pattern_value,
+    add_cc_server_value,
+    add_nas_ignore_base_value,
+    add_nas_pattern_value,
+    clear_cc_servers,
+    clear_nas_ignore_bases,
+    prompt_cc_pattern_add,
+    prompt_cc_server_add,
+    prompt_nas_ignore_add,
+    prompt_nas_pattern_add,
+    prompt_stock_expected_files,
+    remove_cc_pattern,
+    remove_cc_server,
+    remove_nas_ignore_base,
+    remove_nas_pattern,
+    set_cc_alert_hours,
+    set_nas_alert_hours,
+    set_stock_expected_files_value,
+    show_cc_patterns,
+    show_cc_server_detail,
+    show_cc_settings,
+    show_config_console_backups,
     show_database_backups_menu,
     show_database_backups_summary,
     show_database_details,
@@ -31,29 +53,9 @@ from extensions.backup_monitor.backup_handlers import (
     show_host_status,
     show_hosts_management_menu,
     show_hosts_menu,
-    add_nas_ignore_base_value,
-    clear_nas_ignore_bases,
-    prompt_nas_ignore_add,
-    remove_nas_ignore_base,
-    set_nas_alert_hours,
-    show_config_console_backups,
-    show_cc_server_detail,
-    show_cc_settings,
-    set_cc_alert_hours,
-    prompt_cc_server_add,
-    add_cc_server_value,
-    remove_cc_server,
-    clear_cc_servers,
-    show_cc_patterns,
-    prompt_cc_pattern_add,
-    add_cc_pattern_value,
-    remove_cc_pattern,
     show_mail_backups,
     show_main_menu,
     show_nas_patterns,
-    prompt_nas_pattern_add,
-    add_nas_pattern_value,
-    remove_nas_pattern,
     show_nas_settings,
     show_nas_transfers,
     show_proxmox_menu,
@@ -62,8 +64,6 @@ from extensions.backup_monitor.backup_handlers import (
     show_stale_databases,
     show_stale_hosts,
     show_stock_loads,
-    prompt_stock_expected_files,
-    set_stock_expected_files_value,
     show_today_status,
     toggle_database_monitoring,
 )

@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -21,8 +21,8 @@ from telegram.error import BadRequest
 
 from extensions.extension_manager import extension_manager
 
-from .backup_utils import DisplayFormatters
 from .backup_utils import (
+    DisplayFormatters,
     get_config_console_patterns_from_config,
     save_config_console_patterns,
 )

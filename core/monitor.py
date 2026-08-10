@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -183,7 +183,7 @@ class Monitor:
             if downtime > 0:
                 message += f" (простой: {int(downtime // 60)} мин {int(downtime % 60)} сек)"
 
-            send_alert(message)
+            send_alert(message, category="availability")
 
         # Обновляем статус
         self.server_status[ip] = {
@@ -213,7 +213,7 @@ class Monitor:
             message = f"🚨 {status.get('name')} ({ip}) не отвечает"
             message += f" ({int(downtime // 60)} мин {int(downtime % 60)} сек)"
 
-            send_alert(message, alert_type="critical")
+            send_alert(message, alert_type="critical", category="availability")
             self.server_status[ip]["alert_sent"] = True
             return True
 
@@ -335,7 +335,7 @@ class Monitor:
 
         message += f"⏰ Время проверки: {datetime.now().strftime('%H:%M:%S')}"
 
-        send_alert(message)
+        send_alert(message, category="resources")
         debug_log(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
 
     def check_morning_report(self) -> None:
@@ -584,7 +584,7 @@ class Monitor:
             lines.append("")
             lines.append("🌐 *Веб-интерфейс:* 🔴 модуль не загружен")
 
-        send_alert("\n".join(lines), force=True)
+        send_alert("\n".join(lines), force=True, category="system")
 
     def start(self) -> None:
         """Запускает основной цикл мониторинга"""

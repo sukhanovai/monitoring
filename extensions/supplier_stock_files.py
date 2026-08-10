@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -850,9 +850,9 @@ def _run_hde_api_fetch(
     try:
         import time as _time
 
+        import pandas as pd
         import requests
         from requests.auth import HTTPBasicAuth
-        import pandas as pd
     except ImportError as exc:
         return {"success": False, "error": f"Зависимость не установлена: {exc}"}
 

@@ -1,12 +1,12 @@
 """
 /bot/handlers/settings_handlers/__init__.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Settings handlers package — точка входа пакета декомпозиции
 bot/handlers/settings_handlers (PR7 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет settings_handlers — на этом этапе содержит единый legacy-модуль
@@ -18,6 +18,13 @@ bot/handlers/settings_handlers.py (~14 800 строк, 291 функция). Вн
 Дальнейшее разнесение по UI-семьям (menu, auth_servers, windows_creds,
 backups/{proxmox,db,zfs,mail,snapshot}, supplier_stock) — в PR7b+.
 """
+
+# ruff: noqa: I001
+# Порядок импортов здесь намеренный и сортировке не подлежит: сначала
+# `_legacy` (он тянет за собой `callback_dispatcher` и наполняет namespace
+# пакета), затем подмодули, чьи собственные импорты рассчитывают на уже
+# инициализированный пакет. Автосортировка ставит подмодули перед `_legacy`
+# и ломает этот порядок на частично инициализированном пакете.
 
 from __future__ import annotations
 
@@ -55,6 +62,7 @@ from bot.handlers.settings_handlers import (  # noqa: E402,F401
     report,
     settings_value,
     supplier_stock,
+    users,
     windows_creds,
     zfs,
 )
@@ -72,6 +80,7 @@ _PACKAGE_HELPER_MODULES = (
     report,
     settings_value,
     supplier_stock,
+    users,
     windows_creds,
     zfs,
     _backups_db,

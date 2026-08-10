@@ -14,7 +14,11 @@ import importlib
 from pathlib import Path
 
 import pytest
-import tomllib
+
+try:  # tomllib — stdlib только с Python 3.11, а нижняя граница проекта — 3.10
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - зависит от версии интерпретатора
+    tomllib = None  # type: ignore[assignment]
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -43,6 +47,8 @@ def _load_pyproject_mypy_overrides() -> list[dict]:
 
 @pytest.fixture(scope="module")
 def overrides() -> list[dict]:
+    if tomllib is None:
+        pytest.skip("Разбор pyproject.toml требует tomllib (Python 3.11+)")
     return _load_pyproject_mypy_overrides()
 
 

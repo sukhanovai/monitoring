@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -168,6 +168,8 @@ def settings_command(update, context):
     )
 
     keyboard.append([InlineKeyboardButton("🗒️ Состав отчёта", callback_data="settings_report")])
+    keyboard.append([InlineKeyboardButton("🔔 Мои оповещения", callback_data="settings_my_alerts")])
+    keyboard.append([InlineKeyboardButton("👥 Пользователи", callback_data="settings_users")])
 
     if extension_manager.is_extension_enabled("web_interface"):
         keyboard.append([InlineKeyboardButton("🌐 Веб-интерфейс", callback_data="settings_web")])

@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -131,11 +131,15 @@ def ensure_alert_bot() -> None:
         debug_log(f"Не удалось инициализировать бот алертов: {e}")
 
 
-def send_alert(message, force=False, alert_type="info"):
-    """Обертка над lib.alerts.send_alert с применением настроек и инициализацией бота."""
+def send_alert(message, force=False, alert_type="info", category=None):
+    """Обертка над lib.alerts.send_alert с применением настроек и инициализацией бота.
+
+    ``category`` — категория оповещения (`availability`, `resources`, id
+    расширения); по ней реестр пользователей решает, кому доставлять.
+    """
     ensure_alerts_config()
     ensure_alert_bot()
-    return base_send_alert(message, force=force, alert_type=alert_type)
+    return base_send_alert(message, force=force, alert_type=alert_type, category=category)
 
 
 def is_silent_time():

@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/availability.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server availability transition handlers extracted from
 core/monitor_core.py (PR5 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики смены статуса сервера UP/DOWN, выделенные из монолитного
@@ -37,9 +37,12 @@ def handle_server_up(ip: str, status: dict[str, Any], current_time: datetime) ->
     if status.get("alert_sent"):
         if last_up:
             downtime = (current_time - last_up).total_seconds()
-            send_alert(f"✅ {status['name']} ({ip}) доступен (простой: {int(downtime // 60)} мин)")
+            send_alert(
+                f"✅ {status['name']} ({ip}) доступен (простой: {int(downtime // 60)} мин)",
+                category="availability",
+            )
         else:
-            send_alert(f"✅ {status['name']} ({ip}) доступен")
+            send_alert(f"✅ {status['name']} ({ip}) доступен", category="availability")
 
     state.server_status[ip] = {
         "last_up": current_time,
@@ -73,6 +76,7 @@ def handle_server_down(ip: str, status: dict[str, Any], current_time: datetime) 
         send_alert(
             f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})",
             alert_type="critical",
+            category="availability",
         )
         state.server_status[ip]["alert_sent"] = True
 

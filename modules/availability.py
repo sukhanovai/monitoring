@@ -1,11 +1,11 @@
 """
 /app/modules/availability.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server Availability Monitoring Module
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль мониторинга доступности серверов
@@ -73,7 +73,10 @@ class AvailabilityMonitor:
             downtime = (current_time - status["last_up"]).total_seconds()
             from bot.handlers.commands import send_alert
 
-            send_alert(f"✅ {status['name']} ({ip}) доступен (простой: {int(downtime//60)} мин)")
+            send_alert(
+                f"✅ {status['name']} ({ip}) доступен (простой: {int(downtime//60)} мин)",
+                category="availability",
+            )
 
         self.server_status[ip] = {
             "last_up": current_time,
@@ -90,7 +93,8 @@ class AvailabilityMonitor:
             from bot.handlers.commands import send_alert
 
             send_alert(
-                f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})"
+                f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})",
+                category="availability",
             )
             self.server_status[ip]["alert_sent"] = True
 

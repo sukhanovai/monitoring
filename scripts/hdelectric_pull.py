@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 HD-Electric (Smart-Shop API) -> таблица номенклатуры.
 
@@ -13,17 +12,17 @@ HD-Electric (Smart-Shop API) -> таблица номенклатуры.
 Зависимости:  pip install requests pandas openpyxl
 """
 
-import sys
-import time
+import argparse
 import json
 import logging
-import argparse
+import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
+import pandas as pd
 import requests
 from requests.auth import HTTPBasicAuth
-import pandas as pd
 
 # ======================= КОНФИГ (правь тут) =======================
 BASE_URL    = "http://80.252.22.15/ut_vips/hs/smsh"   # без слэша на конце

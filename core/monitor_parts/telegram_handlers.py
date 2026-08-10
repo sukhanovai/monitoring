@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/telegram_handlers.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram callback / command handlers extracted from core/monitor_core.py
 (PR5b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 ~30 handler-функций UI Telegram-бота, выделенных из монолитного
@@ -71,13 +71,35 @@ perform_ram_check = _lazy("core.monitor_parts.resource_checks", "perform_ram_che
 perform_disk_check = _lazy("core.monitor_parts.resource_checks", "perform_disk_check")
 
 
+def _chat_allowed(chat_id) -> bool:
+    """Доступ чата к боту: реестр пользователей или legacy CHAT_IDS."""
+    try:
+        from core.users import is_authorized_telegram_chat
+
+        return is_authorized_telegram_chat(chat_id)
+    except Exception as exc:  # pragma: no cover - фолбэк на прежнюю проверку
+        debug_log(f"⚠️ Реестр пользователей недоступен, проверка по CHAT_IDS: {exc}")
+        return str(chat_id) in get_config().CHAT_IDS
+
+
+def _chat_user_id(chat_id):
+    """id пользователя реестра, которому принадлежит чат (или None)."""
+    try:
+        from core.users import resolve_telegram_user
+
+        user = resolve_telegram_user(str(chat_id))
+        return int(user["id"]) if user else None
+    except Exception as exc:  # pragma: no cover
+        debug_log(f"⚠️ Не удалось определить пользователя чата {chat_id}: {exc}")
+        return None
+
+
 def manual_check_handler(update, context):
     """Обработчик ручной проверки серверов"""
     query = update.callback_query if hasattr(update, "callback_query") else None
     chat_id = query.message.chat_id if query else update.message.chat_id
 
-    config = get_config()
-    if str(chat_id) not in config.CHAT_IDS:
+    if not _chat_allowed(chat_id):
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -104,8 +126,7 @@ def monitor_status(update, context):
         # Если вызвано как команда, а не callback
         chat_id = update.message.chat_id
 
-    config = get_config()
-    if str(chat_id) not in config.CHAT_IDS:
+    if not _chat_allowed(chat_id):
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -440,8 +461,7 @@ def check_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    config = get_config()
-    if str(chat_id) not in config.CHAT_IDS:
+    if not _chat_allowed(chat_id):
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -497,8 +517,7 @@ def check_cpu_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    config = get_config()
-    if str(chat_id) not in config.CHAT_IDS:
+    if not _chat_allowed(chat_id):
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -533,8 +552,7 @@ def check_ram_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    config = get_config()
-    if str(chat_id) not in config.CHAT_IDS:
+    if not _chat_allowed(chat_id):
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -569,8 +587,7 @@ def check_disk_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    config = get_config()
-    if str(chat_id) not in config.CHAT_IDS:
+    if not _chat_allowed(chat_id):
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -605,8 +622,7 @@ def check_linux_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    config = get_config()
-    if str(chat_id) not in config.CHAT_IDS:
+    if not _chat_allowed(chat_id):
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -698,8 +714,7 @@ def check_windows_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    config = get_config()
-    if str(chat_id) not in config.CHAT_IDS:
+    if not _chat_allowed(chat_id):
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -861,8 +876,7 @@ def check_other_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    config = get_config()
-    if str(chat_id) not in config.CHAT_IDS:
+    if not _chat_allowed(chat_id):
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -943,8 +957,7 @@ def check_all_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    config = get_config()
-    if str(chat_id) not in config.CHAT_IDS:
+    if not _chat_allowed(chat_id):
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -1068,8 +1081,7 @@ def send_morning_report_handler(update, context):
         except Exception as e:
             debug_log(f"⚠️ Не удалось ответить на callback: {e}")
 
-    config = get_config()
-    if str(chat_id) not in config.CHAT_IDS:
+    if not _chat_allowed(chat_id):
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -1086,7 +1098,8 @@ def send_morning_report_handler(update, context):
         # Генерируем отчёт (ручной запуск) во всех форматах. В HTML только
         # заголовки секций; подробности разворачиваются кнопками секций
         # под сообщением (payload кладётся в реестр по report_id).
-        formats = morning_report.force_report_formats()
+        # Состав отчёта — персональный для владельца чата (core/users.py).
+        formats = morning_report.force_report_formats(user_id=_chat_user_id(chat_id))
         report_html = formats.get("telegram_html")
         report_text = formats.get("plain") or "❌ Нет данных для отчета"
         payload = formats.get("payload")

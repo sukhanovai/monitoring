@@ -1,11 +1,11 @@
 """
 /lib/report_settings.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Report composition settings helper
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Хелпер настройки состава утреннего/ручного отчёта.
@@ -14,6 +14,11 @@ Report composition settings helper
 данных мониторинга доступности серверов (которые присутствуют всегда).
 Используется бэкендом отчёта (`modules/morning_report.py`), Telegram-ботом,
 Matrix-командами и мобильным API (`extensions/web_interface`).
+
+Состав отчёта персонализируется: у каждого пользователя реестра
+(`core/users.py`) свой набор. Значение из таблицы ``settings``
+(`REPORT_EXTENSIONS`) остаётся общесистемным дефолтом — его получают
+пользователи, которые состав ещё не настраивали, и вызовы без user_id.
 """
 
 from __future__ import annotations
@@ -118,8 +123,29 @@ def _normalize(raw_value):
     return [ext for ext in REPORT_CAPABLE_EXTENSIONS if ext in selected]
 
 
-def get_report_extensions(use_cache: bool = True):
-    """Возвращает список ID расширений, выбранных для включения в отчёт."""
+def normalize_report_extensions(raw_value):
+    """Публичная нормализация состава отчёта (используется реестром)."""
+    return _normalize(raw_value)
+
+
+def get_report_extensions(use_cache: bool = True, user_id=None):
+    """Состав отчёта: персональный для user_id, иначе общесистемный.
+
+    Args:
+        use_cache: использовать кэш `config_manager` (для общесистемного
+            значения; персональные настройки читаются из БД всегда).
+        user_id: id пользователя реестра. ``None`` — общесистемный состав
+            (он же дефолт для пользователей, которые состав не настраивали).
+    """
+    if user_id is not None:
+        try:
+            from core.users import PREF_REPORT_EXTENSIONS, user_registry
+
+            raw_value = user_registry.get_preference(user_id, PREF_REPORT_EXTENSIONS)
+            return _normalize(raw_value)
+        except Exception as exc:  # pragma: no cover - защита от проблем с БД
+            debug_log(f"⚠️ Не удалось прочитать состав отчёта пользователя {user_id}: {exc}")
+
     try:
         from core.config_manager import config_manager
 
@@ -133,9 +159,19 @@ def get_report_extensions(use_cache: bool = True):
     return _normalize(raw_value)
 
 
-def set_report_extensions(extensions) -> bool:
-    """Сохраняет выбранный состав отчёта (нормализуя и упорядочивая список)."""
+def set_report_extensions(extensions, user_id=None) -> bool:
+    """Сохраняет состав отчёта — персональный (user_id) или общесистемный."""
     normalized = _normalize(list(extensions) if extensions is not None else [])
+
+    if user_id is not None:
+        try:
+            from core.users import PREF_REPORT_EXTENSIONS, user_registry
+
+            return user_registry.set_preference(user_id, PREF_REPORT_EXTENSIONS, normalized)
+        except Exception as exc:  # pragma: no cover
+            debug_log(f"⚠️ Не удалось сохранить состав отчёта пользователя {user_id}: {exc}")
+            return False
+
     try:
         from core.config_manager import config_manager
 
@@ -151,23 +187,23 @@ def set_report_extensions(extensions) -> bool:
         return False
 
 
-def toggle_report_extension(extension_id: str) -> list:
+def toggle_report_extension(extension_id: str, user_id=None) -> list:
     """Переключает наличие расширения в отчёте и возвращает новый список."""
     if extension_id not in REPORT_CAPABLE_EXTENSIONS:
-        return get_report_extensions(use_cache=False)
-    current = set(get_report_extensions(use_cache=False))
+        return get_report_extensions(use_cache=False, user_id=user_id)
+    current = set(get_report_extensions(use_cache=False, user_id=user_id))
     if extension_id in current:
         current.discard(extension_id)
     else:
         current.add(extension_id)
-    set_report_extensions(current)
-    return get_report_extensions(use_cache=False)
+    set_report_extensions(current, user_id=user_id)
+    return get_report_extensions(use_cache=False, user_id=user_id)
 
 
-def is_report_extension_enabled(extension_id: str, selected=None) -> bool:
+def is_report_extension_enabled(extension_id: str, selected=None, user_id=None) -> bool:
     """True, если расширение выбрано для включения в отчёт."""
     if selected is None:
-        selected = get_report_extensions()
+        selected = get_report_extensions(user_id=user_id)
     return extension_id in selected
 
 

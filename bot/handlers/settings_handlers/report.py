@@ -1,21 +1,26 @@
 """
 /bot/handlers/settings_handlers/report.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Report composition settings UI (Telegram)
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Меню настройки состава утреннего/ручного отчёта: мультивыбор расширений,
 сведения которых добавляются в отчёт помимо базовых данных мониторинга.
+
+Состав персональный: правки применяются к пользователю, которому принадлежит
+текущий чат (`core/users.py`). Если чат не привязан ни к кому (реестр пуст,
+однопользовательский режим), меню правит общесистемный состав из настроек.
 """
 
 from __future__ import annotations
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+from bot.handlers.base import current_user
 from extensions.extension_manager import extension_manager
 from lib.report_settings import (
     REPORT_CAPABLE_EXTENSIONS,
@@ -27,13 +32,32 @@ from lib.report_settings import (
 )
 
 
-def _build_report_settings_view():
+def _report_user(update):
+    """Пользователь-владелец чата и его id (None — общесистемный режим)."""
+    user = current_user(update)
+    return user, (int(user["id"]) if user else None)
+
+
+def _build_report_settings_view(update):
     """Готовит текст и клавиатуру меню состава отчёта."""
-    selected = set(get_report_extensions(use_cache=False))
+    user, user_id = _report_user(update)
+    selected = set(get_report_extensions(use_cache=False, user_id=user_id))
+
+    if user:
+        scope_line = (
+            f"👤 Настройка личная: *{user.get('display_name') or user['username']}*.\n"
+            "Другие пользователи получают отчёт по своему составу.\n\n"
+        )
+    else:
+        scope_line = (
+            "👥 Чат не привязан к пользователю — правится общий состав "
+            "отчёта для всей системы.\n\n"
+        )
 
     message = (
         "🗒️ *Состав отчёта*\n\n"
-        "Базовые данные мониторинга доступности серверов в утреннем/ручном "
+        + scope_line
+        + "Базовые данные мониторинга доступности серверов в утреннем/ручном "
         "отчёте присутствуют всегда. Ниже отметьте расширения, сведения "
         "которых добавлять в отчёт.\n\n"
     )
@@ -88,7 +112,7 @@ def show_report_settings_menu(update, context):
     if query is not None:
         query.answer()
 
-    message, markup = _build_report_settings_view()
+    message, markup = _build_report_settings_view(update)
 
     if query is not None:
         query.edit_message_text(message, parse_mode="Markdown", reply_markup=markup)
@@ -98,17 +122,20 @@ def show_report_settings_menu(update, context):
 
 def toggle_report_extension_handler(update, context, extension_id):
     """Переключить присутствие расширения в отчёте и перерисовать меню."""
-    toggle_report_extension(extension_id)
+    _, user_id = _report_user(update)
+    toggle_report_extension(extension_id, user_id=user_id)
     show_report_settings_menu(update, context)
 
 
 def set_all_report_extensions_handler(update, context):
     """Включить все расширения в отчёт."""
-    set_report_extensions(list(REPORT_CAPABLE_EXTENSIONS))
+    _, user_id = _report_user(update)
+    set_report_extensions(list(REPORT_CAPABLE_EXTENSIONS), user_id=user_id)
     show_report_settings_menu(update, context)
 
 
 def clear_report_extensions_handler(update, context):
     """Убрать все расширения из отчёта (останутся только данные мониторинга)."""
-    set_report_extensions([])
+    _, user_id = _report_user(update)
+    set_report_extensions([], user_id=user_id)
     show_report_settings_menu(update, context)
