@@ -850,9 +850,9 @@ def _run_hde_api_fetch(
     try:
         import time as _time
 
+        import pandas as pd
         import requests
         from requests.auth import HTTPBasicAuth
-        import pandas as pd
     except ImportError as exc:
         return {"success": False, "error": f"Зависимость не установлена: {exc}"}
 

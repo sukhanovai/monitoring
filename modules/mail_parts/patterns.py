@@ -50,7 +50,6 @@ from extensions.supplier_stock_files import (
 from lib.logging import setup_logging
 from modules.mail_parts import logger  # noqa: F401  — общий логгер пакета
 
-
 # Категории таблицы backup_patterns, которые принадлежат другим расширениям
 # (а не бэкапам БД) и не должны попадать в паттерны баз данных.
 _NON_DATABASE_PATTERN_CATEGORIES = {

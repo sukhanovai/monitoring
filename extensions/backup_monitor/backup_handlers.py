@@ -21,8 +21,8 @@ from telegram.error import BadRequest
 
 from extensions.extension_manager import extension_manager
 
-from .backup_utils import DisplayFormatters
 from .backup_utils import (
+    DisplayFormatters,
     get_config_console_patterns_from_config,
     save_config_console_patterns,
 )
