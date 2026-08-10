@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -221,6 +221,34 @@ def should_send_alert(alert_type: str, force: bool) -> bool:
     return True
 
 
+def _resolve_delivery_targets(
+    alert_type: str,
+    category: Optional[str],
+    force: bool,
+    user_ids: Optional[List[int]] = None,
+    report: bool = False,
+) -> List[Dict[str, Any]]:
+    """Адресаты доставки из реестра пользователей.
+
+    Пустой список означает «реестр не заполнен» — вызывающий код падает
+    обратно на общие CHAT_IDS/MATRIX_ROOM_ID (однопользовательский режим).
+    """
+    try:
+        from core.users import user_registry
+
+        targets = user_registry.delivery_targets(
+            alert_type=alert_type, category=category, force=force, report=report
+        )
+    except Exception as exc:  # pragma: no cover - реестр не должен ронять алерты
+        debug_log(f"⚠️ Реестр пользователей недоступен, доставка по общим каналам: {exc}")
+        return []
+
+    if user_ids is not None:
+        wanted = {int(uid) for uid in user_ids}
+        targets = [t for t in targets if int(t["user"]["id"]) in wanted]
+    return targets
+
+
 def send_alert(
     message: str,
     alert_type: str = "info",
@@ -231,9 +259,17 @@ def send_alert(
     telegram_html: Optional[str] = None,
     telegram_reply_markup: Optional[Any] = None,
     matrix_html: Optional[str] = None,
+    category: Optional[str] = None,
+    user_ids: Optional[List[int]] = None,
 ) -> bool:
     """
     Универсальная функция отправки алертов
+
+    Доставка идёт по личным каналам пользователей из реестра
+    (`core/users.py`): каждый получает сообщение в свои Telegram-чаты и
+    Matrix-комнаты и только если оно проходит его персональные фильтры
+    (уровень, категория, личные тихие часы). Если реестр пуст, работает
+    прежний режим — общий список CHAT_IDS и общая Matrix-комната.
 
     Args:
         message: Текст сообщения
@@ -249,6 +285,10 @@ def send_alert(
             кнопки разворота секций утреннего/ручного отчёта.
         matrix_html: HTML-вариант для Matrix (formatted_body,
             в т.ч. свёрнутые секции через <details>); body — message.
+        category: Категория оповещения (`availability`, `resources`, id
+            расширения) — по ней работает персональная подписка получателей.
+        user_ids: Явные получатели (id пользователей реестра). Если задан,
+            фолбэка на общие каналы не происходит.
 
     Returns:
         True если сообщение отправлено успешно
@@ -277,27 +317,60 @@ def send_alert(
     sent = False
     errors = []
 
+    targets = _resolve_delivery_targets(alert_type, category, force, user_ids=user_ids)
+
     debug_log(
-        f"🔔 send_alert старт | type={alert_type} force={force} chats={len(_chat_ids) if _chat_ids else 0} len={len(full_message)}"
+        f"🔔 send_alert старт | type={alert_type} category={category or '—'} force={force} "
+        f"получателей={len(targets) if targets else 0} "
+        f"chats={len(_chat_ids) if _chat_ids else 0} len={len(full_message)}"
     )
 
-    # Telegram
-    if _telegram_bot and _chat_ids:
-        telegram_sent = _send_telegram_alert(
-            full_message, alert_type, html=telegram_html, reply_markup=telegram_reply_markup
+    if targets:
+        # Персональная доставка: каждому — в его каналы.
+        for target in targets:
+            user = target["user"]
+            if _telegram_bot and target["telegram"]:
+                telegram_sent = _send_telegram_alert(
+                    full_message,
+                    alert_type,
+                    html=telegram_html,
+                    reply_markup=telegram_reply_markup,
+                    chat_ids=target["telegram"],
+                )
+                if telegram_sent:
+                    sent = True
+                else:
+                    errors.append(f"Telegram ({user['username']}): ошибка отправки")
+            for room_id in target["matrix"]:
+                matrix_sent = _send_matrix_alert(
+                    full_message,
+                    attach_menu_button=attach_menu_button,
+                    html=matrix_html,
+                    room_id=room_id,
+                )
+                if matrix_sent:
+                    sent = True
+                else:
+                    errors.append(f"Matrix ({user['username']}): ошибка отправки")
+    elif user_ids is None:
+        # Однопользовательский режим: общий список чатов и общая комната.
+        if _telegram_bot and _chat_ids:
+            telegram_sent = _send_telegram_alert(
+                full_message, alert_type, html=telegram_html, reply_markup=telegram_reply_markup
+            )
+            debug_log(f"📬 Результат Telegram отправки: {'успех' if telegram_sent else 'ошибка'}")
+            if telegram_sent:
+                sent = True
+            else:
+                errors.append("Telegram: ошибка отправки")
+
+        matrix_sent = _send_matrix_alert(
+            full_message, attach_menu_button=attach_menu_button, html=matrix_html
         )
-        debug_log(f"📬 Результат Telegram отправки: {'успех' if telegram_sent else 'ошибка'}")
-        if telegram_sent:
+        if matrix_sent:
             sent = True
-        else:
-            errors.append("Telegram: ошибка отправки")
-
-    # Matrix
-    matrix_sent = _send_matrix_alert(
-        full_message, attach_menu_button=attach_menu_button, html=matrix_html
-    )
-    if matrix_sent:
-        sent = True
+    else:
+        debug_log("🔕 Нет подходящих получателей — сообщение не отправлено")
 
     # Записываем в историю
     _record_alert(
@@ -307,6 +380,8 @@ def send_alert(
             "type": alert_type,
             "sent": sent,
             "tags": tags or [],
+            "category": category,
+            "recipients": [t["user"]["username"] for t in targets],
             "metadata": metadata or {},
             "errors": errors,
         }
@@ -315,11 +390,61 @@ def send_alert(
     return sent
 
 
+def send_personal_message(
+    user_id: int,
+    message: str,
+    telegram_html: Optional[str] = None,
+    telegram_reply_markup: Optional[Any] = None,
+    matrix_html: Optional[str] = None,
+    attach_menu_button: bool = False,
+) -> bool:
+    """Доставляет готовое сообщение одному пользователю в его каналы.
+
+    Используется персонализированными отчётами: текст уже собран под
+    состав конкретного пользователя, фильтры уровня/категории не нужны.
+    """
+    try:
+        from core.users import CHANNEL_MATRIX, CHANNEL_TELEGRAM, user_registry
+
+        channels = user_registry.list_channels(user_id=user_id)
+    except Exception as exc:  # pragma: no cover
+        debug_log(f"⚠️ Не удалось получить каналы пользователя {user_id}: {exc}")
+        return False
+
+    telegram_chats = [
+        c["channel_ref"] for c in channels if c["channel_type"] == CHANNEL_TELEGRAM and c["enabled"]
+    ]
+    matrix_rooms = [
+        c["channel_ref"] for c in channels if c["channel_type"] == CHANNEL_MATRIX and c["enabled"]
+    ]
+
+    sent = False
+    if _telegram_bot and telegram_chats:
+        if _send_telegram_alert(
+            message,
+            "info",
+            html=telegram_html,
+            reply_markup=telegram_reply_markup,
+            chat_ids=telegram_chats,
+        ):
+            sent = True
+    for room_id in matrix_rooms:
+        if _send_matrix_alert(
+            message,
+            attach_menu_button=attach_menu_button,
+            html=matrix_html,
+            room_id=room_id,
+        ):
+            sent = True
+    return sent
+
+
 def _send_telegram_alert(
     message: str,
     alert_type: str,
     html: Optional[str] = None,
     reply_markup: Optional[Any] = None,
+    chat_ids: Optional[List[str]] = None,
 ) -> bool:
     """
     Отправка алерта через Telegram
@@ -331,15 +456,19 @@ def _send_telegram_alert(
             выполняется фолбэк на обычный текст message
         reply_markup: InlineKeyboardMarkup под сообщением (кнопки секций
             отчёта); прикладывается и к HTML-варианту, и к текстовому фолбэку
+        chat_ids: чаты доставки. ``None`` — общий список из настроек
+            (однопользовательский режим); реестр пользователей передаёт сюда
+            личные чаты конкретного получателя
 
     Returns:
         True если отправлено успешно
     """
-    if not _telegram_bot or not _chat_ids:
+    target_chats = list(chat_ids) if chat_ids is not None else list(_chat_ids or [])
+    if not _telegram_bot or not target_chats:
         error_log("Telegram бот не инициализирован")
         return False
 
-    total_chats = len(_chat_ids)
+    total_chats = len(target_chats)
 
     # Для критических алертов добавляем дополнительное форматирование
     if html:
@@ -382,7 +511,7 @@ def _send_telegram_alert(
     max_workers = min(8, total_chats) if total_chats > 0 else 1
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_map = {executor.submit(_send_to_chat, chat_id): chat_id for chat_id in _chat_ids}
+        future_map = {executor.submit(_send_to_chat, chat_id): chat_id for chat_id in target_chats}
         for future in as_completed(future_map):
             if future.result():
                 success_count += 1
@@ -390,7 +519,7 @@ def _send_telegram_alert(
     success_rate = success_count / total_chats if total_chats > 0 else 0
     debug_log(
         f"Telegram алерт отправлен: {success_count}/{total_chats} успешно ({success_rate:.0%}) | "
-        f"чаты={_chat_ids}"
+        f"чаты={target_chats}"
     )
 
     # Для мониторинга считаем успехом только доставку во все чаты
@@ -591,13 +720,15 @@ async def _send_matrix_alert_async(
     buttons: Optional[List[Dict[str, str]]] = None,
     attach_menu_button: bool = False,
     html: Optional[str] = None,
+    room_id: Optional[str] = None,
 ) -> bool:
     payload = _build_matrix_message_payload(message, buttons=buttons, html=html)
+    target_room = room_id or _matrix_room_id
     client = AsyncClient(_matrix_homeserver, user="")
     client.access_token = _matrix_access_token
     try:
         response = await client.room_send(
-            room_id=_matrix_room_id,
+            room_id=target_room,
             message_type="m.room.message",
             content=payload,
             tx_id=uuid4().hex,
@@ -613,7 +744,7 @@ async def _send_matrix_alert_async(
             if event_id:
                 try:
                     await client.room_send(
-                        room_id=_matrix_room_id,
+                        room_id=target_room,
                         message_type="m.reaction",
                         content={
                             "m.relates_to": {
@@ -643,8 +774,13 @@ def _send_matrix_alert(
     buttons: Optional[List[Dict[str, str]]] = None,
     attach_menu_button: bool = False,
     html: Optional[str] = None,
+    room_id: Optional[str] = None,
 ) -> bool:
-    """Отправляет уведомление в Matrix room, если канал настроен."""
+    """Отправляет уведомление в Matrix room, если канал настроен.
+
+    ``room_id`` — личная комната пользователя из реестра; без него берётся
+    общая комната из настроек (однопользовательский режим).
+    """
     global _matrix_homeserver, _matrix_access_token, _matrix_room_id
     if not (_matrix_homeserver and _matrix_access_token and _matrix_room_id):
         try:
@@ -670,12 +806,13 @@ def _send_matrix_alert(
         except Exception:
             pass
 
-    if not (_matrix_homeserver and _matrix_access_token and _matrix_room_id):
+    target_room = room_id or _matrix_room_id
+    if not (_matrix_homeserver and _matrix_access_token and target_room):
         debug_log(
             "Matrix отправка пропущена: канал не настроен "
             f"(homeserver={'ok' if _matrix_homeserver else 'empty'}, "
             f"token={'ok' if _matrix_access_token else 'empty'}, "
-            f"room_id={'ok' if _matrix_room_id else 'empty'})"
+            f"room_id={'ok' if target_room else 'empty'})"
         )
         return False
     if AsyncClient is not None:
@@ -686,6 +823,7 @@ def _send_matrix_alert(
                     buttons=buttons,
                     attach_menu_button=attach_menu_button,
                     html=html,
+                    room_id=target_room,
                 )
             )
             if sent:
@@ -695,7 +833,7 @@ def _send_matrix_alert(
             debug_log(f"Matrix nio path fallback to HTTP: {exc}")
 
     try:
-        encoded_room_id = quote(_matrix_room_id, safe="")
+        encoded_room_id = quote(target_room, safe="")
         txn_id = uuid4().hex
         url = (
             f"{_matrix_homeserver}/_matrix/client/v3/rooms/"

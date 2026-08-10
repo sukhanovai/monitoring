@@ -462,6 +462,20 @@ def test_module_imports(module_name: str) -> None:
     importlib.import_module(module_name)
 
 
+def test_users_registry_module_importable() -> None:
+    """Многопользовательский режим: реестр и его UI-модуль в боте."""
+    users = importlib.import_module("core.users")
+    assert users.user_registry is not None
+    assert users.CHANNEL_TELEGRAM in users.CHANNEL_TYPES
+
+    from bot.handlers.settings_handlers import users as users_menu
+
+    assert users_menu.show_users_menu.__module__ == "bot.handlers.settings_handlers.users"
+    assert (
+        users_menu.show_my_notifications_menu.__module__ == "bot.handlers.settings_handlers.users"
+    )
+
+
 def test_app_version_consistent() -> None:
     """APP_VERSION в config.settings должен быть единственным источником истины."""
     from config import settings

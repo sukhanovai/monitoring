@@ -1,11 +1,11 @@
 """
 /bot/handlers/commands.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Only commands, no inline buttons.
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Только команды, никаких inline-кнопок
@@ -59,26 +59,20 @@ def report_command(update, context):
     send_morning_report_handler(update, context)
 
 
-def send_alert(message, force=False):
-    """Отправляет сообщение в Telegram"""
+def send_alert(message, force=False, category=None):
+    """Отправляет сообщение через единый канал оповещений.
+
+    Раньше здесь был прямой цикл по `CHAT_IDS`, который игнорировал реестр
+    пользователей: сообщение уходило во все чаты независимо от личных
+    подписок получателей. Теперь вызов делегируется
+    `core.monitor_core.send_alert` → `lib.alerts.send_alert`, который
+    раскладывает сообщение по личным каналам с учётом персональных
+    фильтров (уровень, категория, тихие часы).
+    """
     try:
-        from lib.alerts import is_silent_time
-        from modules.availability import availability_monitor
+        from core.monitor_core import send_alert as unified_send_alert
 
-        if force or not is_silent_time():
-            from core.monitor_core import bot
-
-            if bot:
-                from config.db_settings import CHAT_IDS
-
-                for chat_id in CHAT_IDS:
-                    bot.send_message(chat_id=chat_id, text=message)
-                debug_log("✅ Сообщение отправлено")
-                return True
-        else:
-            debug_log("⏸️ Сообщение не отправлено (тихий режим)")
-
-        return False
+        return unified_send_alert(message, force=force, category=category)
     except Exception as e:
         debug_log(f"❌ Ошибка отправки сообщения: {e}")
         return False

@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1560,7 +1560,7 @@ def _map_mobile_action_to_legacy(action: str) -> str | None:
     return mapping.get(action)
 
 
-def _execute_mobile_control_action(action: str):
+def _execute_mobile_control_action(action: str, user_id=None):
     """
     Executes explicit control actions for Android API.
     Returns tuple: (ok: bool, message: str, result: str, menu_options: list[dict] | None)
@@ -2964,7 +2964,9 @@ def _execute_mobile_control_action(action: str):
         # Telegram/Matrix. 5-й элемент возврата — необязательное поле,
         # которое читает только вызывающий v1_control_actions (см. его
         # tolerant-распаковку action_result[:4] / action_result[4]).
-        formats = morning_report.force_report_formats()
+        # user_id — получатель из реестра: отчёт собирается по его личному
+        # составу (core/users.py). None — общесистемный состав.
+        formats = morning_report.force_report_formats(user_id=user_id)
         report_text = formats.get("plain") or "❌ Ошибка сбора данных для отчета"
         return True, report_text, "accepted", None, formats.get("payload")
 
@@ -3750,7 +3752,7 @@ def v1_control_actions():
             400,
         )
 
-    action_result = _execute_mobile_control_action(action)
+    action_result = _execute_mobile_control_action(action, user_id=_token_user_id(token_info))
     ok, message, result, menu_options = action_result[:4]
     # 5-й элемент (структурированный payload утреннего отчёта) есть только
     # для "send_morning_report" — для остальных действий None.
@@ -4022,7 +4024,31 @@ def v1_patch_settings_extension(extension_id):
     )
 
 
-def _build_report_settings_payload(request_id):
+def _token_user(token_info):
+    """Пользователь реестра, которому принадлежит токен мобильного клиента.
+
+    Персонализация API: состав отчёта и настройки доставки берутся под
+    конкретного пользователя. ``None`` — токен не привязан ни к кому
+    (однопользовательский режим), тогда работают общие настройки.
+    """
+    if not isinstance(token_info, dict):
+        return None
+    try:
+        from core.users import resolve_mobile_user
+
+        return resolve_mobile_user(token_info.get("sub"), token_info.get("device_id"))
+    except Exception as exc:  # pragma: no cover - реестр не должен ронять API
+        app.logger.warning("user registry unavailable: %s", exc)
+        return None
+
+
+def _token_user_id(token_info):
+    """id пользователя реестра для токена (или None)."""
+    user = _token_user(token_info)
+    return int(user["id"]) if user else None
+
+
+def _build_report_settings_payload(request_id, user_id=None, user=None):
     """Готовит тело ответа для настроек состава отчёта."""
     from lib.report_settings import (
         REPORT_CAPABLE_EXTENSIONS,
@@ -4031,7 +4057,7 @@ def _build_report_settings_payload(request_id):
         is_heavy_report_extension,
     )
 
-    selected = set(get_report_extensions(use_cache=False))
+    selected = set(get_report_extensions(use_cache=False, user_id=user_id))
     status_map = extension_manager.get_extensions_status()
 
     available = []
@@ -4057,6 +4083,19 @@ def _build_report_settings_payload(request_id):
                 ext_id for ext_id in REPORT_CAPABLE_EXTENSIONS if ext_id in selected
             ],
             "available": available,
+            # Кому принадлежит состав: персональный пользователь реестра или
+            # общесистемное значение (канал не привязан).
+            "scope": "user" if user_id is not None else "global",
+            "user": (
+                {
+                    "id": int(user["id"]),
+                    "username": user["username"],
+                    "display_name": user["display_name"],
+                    "role": user["role"],
+                }
+                if user
+                else None
+            ),
         },
     }
 
@@ -4079,8 +4118,14 @@ def v1_get_settings_report():
             401,
         )
 
-    app.logger.info("GET /v1/settings/report request_id=%s", request_id)
-    return jsonify(_build_report_settings_payload(request_id)), 200
+    user = _token_user(token_info)
+    user_id = int(user["id"]) if user else None
+    app.logger.info(
+        "GET /v1/settings/report request_id=%s user=%s",
+        request_id,
+        user["username"] if user else "-",
+    )
+    return jsonify(_build_report_settings_payload(request_id, user_id=user_id, user=user)), 200
 
 
 @app.route("/v1/settings/report", methods=["PATCH"])
@@ -4136,9 +4181,373 @@ def v1_patch_settings_report():
             400,
         )
 
-    set_report_extensions(extensions_list)
-    app.logger.info("PATCH /v1/settings/report request_id=%s", request_id)
-    return jsonify(_build_report_settings_payload(request_id)), 200
+    user = _token_user(token_info)
+    user_id = int(user["id"]) if user else None
+    set_report_extensions(extensions_list, user_id=user_id)
+    app.logger.info(
+        "PATCH /v1/settings/report request_id=%s user=%s",
+        request_id,
+        user["username"] if user else "-",
+    )
+    return jsonify(_build_report_settings_payload(request_id, user_id=user_id, user=user)), 200
+
+
+# ---------------------------------------------------------------------------
+# Многопользовательский режим: реестр пользователей и личные настройки
+# ---------------------------------------------------------------------------
+
+
+def _users_unauthorized(request_id):
+    return (
+        jsonify(
+            {
+                "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Invalid or expired token",
+                    "request_id": request_id,
+                }
+            }
+        ),
+        401,
+    )
+
+
+def _users_forbidden(request_id):
+    return (
+        jsonify(
+            {
+                "error": {
+                    "code": "FORBIDDEN",
+                    "message": "Admin role required",
+                    "request_id": request_id,
+                }
+            }
+        ),
+        403,
+    )
+
+
+def _users_validation_error(request_id, message):
+    return (
+        jsonify(
+            {
+                "error": {
+                    "code": "VALIDATION_FAILED",
+                    "message": message,
+                    "request_id": request_id,
+                }
+            }
+        ),
+        400,
+    )
+
+
+def _users_not_found(request_id, message="User not found"):
+    return (
+        jsonify(
+            {
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": message,
+                    "request_id": request_id,
+                }
+            }
+        ),
+        404,
+    )
+
+
+def _is_admin_token(token_info) -> bool:
+    """Админ реестра или токен без привязки (однопользовательский режим)."""
+    from core.users import ROLE_ADMIN
+
+    user = _token_user(token_info)
+    if user is None:
+        return True
+    return user.get("role") == ROLE_ADMIN
+
+
+def _serialize_user(user, with_details=True):
+    from core.users import user_registry
+
+    payload = {
+        "id": int(user["id"]),
+        "username": user["username"],
+        "display_name": user["display_name"],
+        "role": user["role"],
+        "enabled": bool(user["enabled"]),
+    }
+    if with_details:
+        user_id = int(user["id"])
+        payload["channels"] = [
+            {
+                "id": channel["id"],
+                "type": channel["channel_type"],
+                "ref": channel["channel_ref"],
+                "title": channel["title"],
+                "enabled": channel["enabled"],
+            }
+            for channel in user_registry.list_channels(user_id=user_id)
+        ]
+        payload["preferences"] = user_registry.get_preferences(user_id)
+    return payload
+
+
+@app.route("/v1/me", methods=["GET"])
+def v1_get_me():
+    """Текущий пользователь и его личные настройки доставки."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return _users_unauthorized(request_id)
+
+    from core.users import ALERT_LEVELS, alert_categories, alert_category_label
+
+    user = _token_user(token_info)
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "user": _serialize_user(user) if user else None,
+                "catalog": {
+                    "alert_levels": list(ALERT_LEVELS),
+                    "alert_categories": [
+                        {"id": category, "label": alert_category_label(category)}
+                        for category in alert_categories()
+                    ],
+                },
+            }
+        ),
+        200,
+    )
+
+
+@app.route("/v1/me/notifications", methods=["PATCH"])
+def v1_patch_me_notifications():
+    """Изменение личных настроек доставки текущего пользователя."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return _users_unauthorized(request_id)
+
+    from core.users import (
+        ALERT_LEVELS,
+        PERSONAL_PREFERENCE_KEYS,
+        PREF_ALERT_CATEGORIES,
+        PREF_ALERT_LEVELS,
+        PREF_REPORT_EXTENSIONS,
+        alert_categories,
+        user_registry,
+    )
+
+    user = _token_user(token_info)
+    if not user:
+        return _users_not_found(
+            request_id, "Token is not linked to a user; link a channel first"
+        )
+
+    payload = request.get_json(silent=True) or {}
+    user_id = int(user["id"])
+    applied = []
+    for key, value in payload.items():
+        if key not in PERSONAL_PREFERENCE_KEYS or key == PREF_REPORT_EXTENSIONS:
+            # Состав отчёта правится через /v1/settings/report, остальные
+            # ключи (сбор данных) персонализации не подлежат.
+            return _users_validation_error(request_id, f"Unsupported preference: {key}")
+        if key == PREF_ALERT_LEVELS:
+            if not isinstance(value, list) or any(item not in ALERT_LEVELS for item in value):
+                return _users_validation_error(request_id, "Invalid ALERT_LEVELS value")
+        if key == PREF_ALERT_CATEGORIES:
+            known = alert_categories()
+            if not isinstance(value, list) or any(item not in known for item in value):
+                return _users_validation_error(request_id, "Invalid ALERT_CATEGORIES value")
+        user_registry.set_preference(user_id, key, value)
+        applied.append(key)
+
+    app.logger.info(
+        "PATCH /v1/me/notifications request_id=%s user=%s keys=%s",
+        request_id,
+        user["username"],
+        ",".join(applied) or "-",
+    )
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "user": _serialize_user(user_registry.get_user(user_id)),
+                "applied": applied,
+            }
+        ),
+        200,
+    )
+
+
+@app.route("/v1/users", methods=["GET"])
+def v1_list_users():
+    """Реестр пользователей (админ)."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return _users_unauthorized(request_id)
+    if not _is_admin_token(token_info):
+        return _users_forbidden(request_id)
+
+    from core.users import CHANNEL_TYPES, user_registry
+
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "users": [_serialize_user(user) for user in user_registry.list_users()],
+                "channel_types": list(CHANNEL_TYPES),
+            }
+        ),
+        200,
+    )
+
+
+@app.route("/v1/users", methods=["POST"])
+def v1_create_user():
+    """Создание пользователя (админ)."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return _users_unauthorized(request_id)
+    if not _is_admin_token(token_info):
+        return _users_forbidden(request_id)
+
+    from core.users import ROLES, UserRegistryError, user_registry
+
+    payload = request.get_json(silent=True) or {}
+    username = str(payload.get("username") or "").strip()
+    if not username:
+        return _users_validation_error(request_id, "Field 'username' is required")
+    role = str(payload.get("role") or "user")
+    if role not in ROLES:
+        return _users_validation_error(request_id, f"Unknown role: {role}")
+
+    try:
+        user = user_registry.create_user(
+            username,
+            display_name=payload.get("display_name"),
+            role=role,
+            enabled=bool(payload.get("enabled", True)),
+        )
+    except UserRegistryError as exc:
+        return _users_validation_error(request_id, str(exc))
+
+    app.logger.info("POST /v1/users request_id=%s username=%s", request_id, username)
+    return jsonify({"request_id": request_id, "user": _serialize_user(user)}), 201
+
+
+@app.route("/v1/users/<int:user_id>", methods=["PATCH"])
+def v1_update_user(user_id):
+    """Изменение карточки пользователя (админ)."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return _users_unauthorized(request_id)
+    if not _is_admin_token(token_info):
+        return _users_forbidden(request_id)
+
+    from core.users import UserRegistryError, user_registry
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        user = user_registry.update_user(
+            user_id,
+            display_name=payload.get("display_name"),
+            role=payload.get("role"),
+            enabled=payload.get("enabled"),
+            username=payload.get("username"),
+        )
+    except UserRegistryError as exc:
+        return _users_validation_error(request_id, str(exc))
+    if not user:
+        return _users_not_found(request_id)
+
+    return jsonify({"request_id": request_id, "user": _serialize_user(user)}), 200
+
+
+@app.route("/v1/users/<int:user_id>", methods=["DELETE"])
+def v1_delete_user(user_id):
+    """Удаление пользователя вместе с каналами и настройками (админ)."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return _users_unauthorized(request_id)
+    if not _is_admin_token(token_info):
+        return _users_forbidden(request_id)
+
+    from core.users import user_registry
+
+    if not user_registry.delete_user(user_id):
+        return _users_not_found(request_id)
+    return jsonify({"request_id": request_id, "deleted": user_id}), 200
+
+
+@app.route("/v1/users/<int:user_id>/channels", methods=["POST"])
+def v1_link_user_channel(user_id):
+    """Привязка канала обмена (telegram/matrix/mobile/web) к пользователю."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return _users_unauthorized(request_id)
+    if not _is_admin_token(token_info):
+        return _users_forbidden(request_id)
+
+    from core.users import CHANNEL_TYPES, UserRegistryError, user_registry
+
+    payload = request.get_json(silent=True) or {}
+    channel_type = str(payload.get("type") or payload.get("channel_type") or "").strip()
+    channel_ref = str(payload.get("ref") or payload.get("channel_ref") or "").strip()
+    if channel_type not in CHANNEL_TYPES:
+        return _users_validation_error(
+            request_id, f"Field 'type' must be one of: {', '.join(CHANNEL_TYPES)}"
+        )
+    if not channel_ref:
+        return _users_validation_error(request_id, "Field 'ref' is required")
+
+    try:
+        user_registry.link_channel(
+            user_id, channel_type, channel_ref, title=payload.get("title")
+        )
+    except UserRegistryError as exc:
+        return _users_validation_error(request_id, str(exc))
+
+    user = user_registry.get_user(user_id)
+    return jsonify({"request_id": request_id, "user": _serialize_user(user)}), 200
+
+
+@app.route("/v1/users/<int:user_id>/channels", methods=["DELETE"])
+def v1_unlink_user_channel(user_id):
+    """Отвязка канала обмена от пользователя."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return _users_unauthorized(request_id)
+    if not _is_admin_token(token_info):
+        return _users_forbidden(request_id)
+
+    from core.users import user_registry
+
+    payload = request.get_json(silent=True) or {}
+    channel_type = str(
+        payload.get("type") or payload.get("channel_type") or request.args.get("type") or ""
+    ).strip()
+    channel_ref = str(
+        payload.get("ref") or payload.get("channel_ref") or request.args.get("ref") or ""
+    ).strip()
+    if not channel_type or not channel_ref:
+        return _users_validation_error(request_id, "Fields 'type' and 'ref' are required")
+
+    if not user_registry.unlink_channel(channel_type, channel_ref):
+        return _users_not_found(request_id, "Channel not found")
+
+    user = user_registry.get_user(user_id)
+    if not user:
+        return _users_not_found(request_id)
+    return jsonify({"request_id": request_id, "user": _serialize_user(user)}), 200
 
 
 @app.route("/v1/settings/extensions/actions", methods=["POST"])

@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/alerts.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Automatic resource monitoring + alert pipeline, extracted from
 core/monitor_core.py (PR5) and unified across modules/resources.py (PR8).
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Автоматическая проверка ресурсов всех серверов, дедупликация алертов
@@ -300,7 +300,7 @@ def send_resource_alerts(alerts: list[str]) -> None:
 
     message += f"⏰ Время проверки: {datetime.now().strftime('%H:%M:%S')}"
 
-    send_alert(message)
+    send_alert(message, category="resources")
     debug_log(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
 
 

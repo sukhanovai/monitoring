@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -34,7 +34,10 @@ REPORT_DIVIDER = "━━━━━━━━━━━━━━━━━━"
 REPORT_SECTION_CALLBACK_PREFIX = "mrs|"
 _REPORT_REGISTRY: "OrderedDict[str, dict]" = OrderedDict()
 _REPORT_REGISTRY_LOCK = threading.Lock()
-_REPORT_REGISTRY_LIMIT = 8
+# Лимит рассчитан на несколько последних отчётов ВСЕХ получателей: при
+# персональной рассылке (core/users.py) каждая отправка регистрирует по
+# payload'у на пользователя, и лимита в один отчёт хватало бы лишь на одного.
+_REPORT_REGISTRY_LIMIT = 64
 
 # Суффикс периода в заголовке секции («… (за 24ч)») — в кнопках лишний.
 _SECTION_TITLE_PERIOD_RE = re.compile(r"\s*\(за \d+ч\)\s*$")
@@ -178,12 +181,82 @@ class MorningReport:
     # Сборка структуры отчёта
     # ------------------------------------------------------------------
 
-    def build_report(self):
+    def _section_specs(self, period_label, period_hours, unavailable_hosts):
+        """Описание секций расширений: (ext_id, заголовок, сборщик данных).
+
+        Порядок совпадает с `REPORT_CAPABLE_EXTENSIONS` и задаёт порядок
+        секций в отчёте. Вынесено отдельно, чтобы одну и ту же секцию можно
+        было собрать один раз и переиспользовать в отчётах всех
+        пользователей, кто её выбрал (см. `build_report(section_cache=...)`).
+        """
+        return [
+            (
+                "backup_monitor",
+                f"💾 Бэкапы Proxmox ({period_label})",
+                lambda: self.get_proxmox_summary_for_report(period_hours, unavailable_hosts),
+            ),
+            (
+                "database_backup_monitor",
+                f"🗃️ Бэкапы БД ({period_label})",
+                lambda: self.get_database_summary_for_report(period_hours),
+            ),
+            (
+                "mail_backup_monitor",
+                f"📬 Бэкапы почты ({period_label})",
+                lambda: self.get_mail_summary_for_report(period_hours),
+            ),
+            (
+                "config_console_backup_monitor",
+                "🗂️ Бэкап конфигов и историй",
+                self.get_config_console_summary_for_report,
+            ),
+            (
+                "nas_transfer_monitor",
+                f"📤 Передача бэкапов на NAS ({period_label})",
+                lambda: self.get_nas_transfer_summary_for_report(period_hours),
+            ),
+            (
+                "stock_load_monitor",
+                f"📦 Загрузка остатков 1С ({period_label})",
+                lambda: self.get_stock_load_summary_for_report(period_hours),
+            ),
+            (
+                "supplier_stock_files",
+                "🏷️ Остатки поставщиков",
+                self.get_supplier_stock_summary_for_report,
+            ),
+            ("zfs_monitor", "🧊 Статусы ZFS", self.get_zfs_summary_for_report),
+            (
+                "zfs_pool_free_space_monitor",
+                "💽 Свободное место ZFS",
+                self.get_zfs_free_space_for_report,
+            ),
+            (
+                "snapshot_transfer_monitor",
+                "📸 Передачи снэпшотов (за 24ч)",
+                self.get_snapshot_transfer_for_report,
+            ),
+            ("tls_cert_monitor", "🔐 TLS-сертификаты", self.get_tls_cert_summary_for_report),
+            ("resource_monitor", "💻 Ресурсы серверов", self.get_resources_summary_for_report),
+        ]
+
+    def build_report(self, report_extensions=None, section_cache=None, user_id=None):
         """Собирает структуру отчёта: метаданные и список секций.
 
         Каждая секция: {"title", "lines": [str], "has_issues": bool}.
         Секции без проблем в Telegram/Matrix сворачиваются (виден только
         заголовок с флагом состояния), проблемные — раскрыты.
+
+        Args:
+            report_extensions: явный состав отчёта. ``None`` — берётся
+                персональный состав пользователя `user_id`, а без него —
+                общесистемный.
+            section_cache: разделяемый между пользователями словарь
+                ``{ext_id: (lines, has_issues)}``. Данные для одной и той же
+                секции собираются один раз, даже если её выбрали несколько
+                получателей — тяжёлые live-секции (TLS, ресурсы, ZFS) не
+                опрашивают серверы повторно на каждого пользователя.
+            user_id: получатель отчёта (для персонального состава).
         """
         if not self.morning_data or "status" not in self.morning_data:
             return None
@@ -194,18 +267,21 @@ class MorningReport:
 
         # Состав отчёта: какие расширения пользователь выбрал для включения
         # сведений помимо базовых данных мониторинга доступности.
-        try:
-            from lib.report_settings import get_report_extensions
+        if report_extensions is None:
+            try:
+                from lib.report_settings import get_report_extensions
 
-            # use_cache=False — иначе после переключения состава отчёта в
-            # настройках генерация читала бы устаревшее значение из кэша и
-            # включение/выключение расширений не вступало бы в силу.
-            report_extensions = set(get_report_extensions(use_cache=False))
-        except Exception as exc:
-            debug_log(f"⚠️ Не удалось получить состав отчёта: {exc}")
-            from lib.report_settings import DEFAULT_REPORT_EXTENSIONS
+                # use_cache=False — иначе после переключения состава отчёта в
+                # настройках генерация читала бы устаревшее значение из кэша и
+                # включение/выключение расширений не вступало бы в силу.
+                report_extensions = set(get_report_extensions(use_cache=False, user_id=user_id))
+            except Exception as exc:
+                debug_log(f"⚠️ Не удалось получить состав отчёта: {exc}")
+                from lib.report_settings import DEFAULT_REPORT_EXTENSIONS
 
-            report_extensions = set(DEFAULT_REPORT_EXTENSIONS)
+                report_extensions = set(DEFAULT_REPORT_EXTENSIONS)
+        else:
+            report_extensions = set(report_extensions)
 
         try:
             from config.settings import APP_VERSION
@@ -240,65 +316,18 @@ class MorningReport:
             if server.get("ip"):
                 unavailable_hosts.add(server.get("ip"))
 
-        # Бэкапы — отдельные секции по расширениям.
-        if _selected("backup_monitor"):
-            add_section(
-                f"💾 Бэкапы Proxmox ({period_label})",
-                self.get_proxmox_summary_for_report(period_hours, unavailable_hosts),
-            )
-
-        if _selected("database_backup_monitor"):
-            add_section(
-                f"🗃️ Бэкапы БД ({period_label})",
-                self.get_database_summary_for_report(period_hours),
-            )
-
-        if _selected("mail_backup_monitor"):
-            add_section(
-                f"📬 Бэкапы почты ({period_label})",
-                self.get_mail_summary_for_report(period_hours),
-            )
-
-        if _selected("config_console_backup_monitor"):
-            add_section(
-                "🗂️ Бэкап конфигов и историй",
-                self.get_config_console_summary_for_report(),
-            )
-
-        if _selected("nas_transfer_monitor"):
-            add_section(
-                f"📤 Передача бэкапов на NAS ({period_label})",
-                self.get_nas_transfer_summary_for_report(period_hours),
-            )
-
-        if _selected("stock_load_monitor"):
-            add_section(
-                f"📦 Загрузка остатков 1С ({period_label})",
-                self.get_stock_load_summary_for_report(period_hours),
-            )
-
-        if _selected("supplier_stock_files"):
-            add_section(
-                "🏷️ Остатки поставщиков",
-                self.get_supplier_stock_summary_for_report(),
-            )
-
-        if _selected("zfs_monitor"):
-            add_section("🧊 Статусы ZFS", self.get_zfs_summary_for_report())
-
-        if _selected("zfs_pool_free_space_monitor"):
-            add_section("💽 Свободное место ZFS", self.get_zfs_free_space_for_report())
-
-        if _selected("snapshot_transfer_monitor"):
-            add_section(
-                "📸 Передачи снэпшотов (за 24ч)", self.get_snapshot_transfer_for_report()
-            )
-
-        if _selected("tls_cert_monitor"):
-            add_section("🔐 TLS-сертификаты", self.get_tls_cert_summary_for_report())
-
-        if _selected("resource_monitor"):
-            add_section("💻 Ресурсы серверов", self.get_resources_summary_for_report())
+        for ext_id, title, collector in self._section_specs(
+            period_label, period_hours, unavailable_hosts
+        ):
+            if not _selected(ext_id):
+                continue
+            if section_cache is not None and ext_id in section_cache:
+                add_section(title, section_cache[ext_id])
+                continue
+            result = collector()
+            if section_cache is not None:
+                section_cache[ext_id] = result
+            add_section(title, result)
 
         composition = None
         try:
@@ -501,24 +530,28 @@ class MorningReport:
         parts.append("<p>" + "<br/>".join(footer) + "</p>")
         return "".join(parts)
 
-    def generate_report_message(self):
+    def generate_report_message(self, user_id=None):
         """Генерация текстового сообщения отчета (плоский формат)."""
-        return self.render_plain(self.build_report())
+        return self.render_plain(self.build_report(user_id=user_id))
 
-    def force_report(self):
-        """Формирует отчет для ручного запроса и возвращает текст"""
+    def force_report(self, user_id=None):
+        """Формирует отчет для ручного запроса и возвращает текст.
+
+        ``user_id`` — получатель из реестра (`core/users.py`): отчёт
+        собирается по его персональному составу. Без него — общесистемный.
+        """
         data_collected = self.collect_morning_data(manual_call=True)
         if not data_collected:
             return "❌ Ошибка сбора данных для отчета"
 
-        return self.generate_report_message()
+        return self.generate_report_message(user_id=user_id)
 
-    def force_report_formats(self):
+    def force_report_formats(self, user_id=None):
         """Формирует ручной отчёт во всех форматах каналов доставки.
 
         Возвращает dict {"plain", "telegram_html", "matrix_html", "payload"};
         HTML-варианты и структурированный payload — None при ошибке сбора
-        данных.
+        данных. ``user_id`` задаёт персональный состав отчёта.
         """
         data_collected = self.collect_morning_data(manual_call=True)
         if not data_collected:
@@ -528,7 +561,7 @@ class MorningReport:
                 "matrix_html": None,
                 "payload": None,
             }
-        report = self.build_report()
+        report = self.build_report(user_id=user_id)
         return {
             "plain": self.render_plain(report),
             "telegram_html": self.render_telegram_html(report),
@@ -1228,8 +1261,35 @@ class MorningReport:
         except Exception:
             return [datetime.now().time().replace(second=0, microsecond=0)]
 
+    def _render_delivery_formats(self, report):
+        """Готовит все форматы одного отчёта к отправке.
+
+        Возвращает (plain, telegram_html, telegram_markup, matrix_html).
+        Payload с кнопками секций регистрируется отдельно на каждого
+        получателя — маска разворота секций у каждого своя.
+        """
+        message = self.render_plain(report)
+        payload = self._report_to_json_payload(report)
+        telegram_html = None
+        telegram_markup = None
+        if payload:
+            telegram_html = self.render_telegram_html_from_payload(payload, 0)
+            try:
+                report_id = register_report_payload(payload)
+                telegram_markup = build_report_keyboard(report_id, payload, 0)
+            except Exception as exc:
+                debug_log(f"⚠️ Не удалось построить кнопки секций отчёта: {exc}")
+        return message, telegram_html, telegram_markup, self.render_matrix_html(report)
+
     def send_report(self, manual_call=False, collect_before_send=True):
-        """Отправка отчета"""
+        """Отправка отчета.
+
+        Каждому получателю из реестра (`core/users.py`) уходит отчёт,
+        собранный по ЕГО составу: данные мониторинга собираются один раз на
+        всех, а секции расширений кэшируются между получателями, поэтому
+        персонализация не умножает нагрузку на серверы. Если реестр пуст,
+        работает прежний режим — один общий отчёт во все каналы.
+        """
         try:
             # По умолчанию собираем данные перед отправкой, но при автозапуске
             # можно переиспользовать уже собранный слепок, чтобы не запускать
@@ -1239,47 +1299,86 @@ class MorningReport:
                 if not collected:
                     return False
 
-            report = self.build_report()
-            message = self.render_plain(report)
+            kind = "ручной" if manual_call else "автоматический"
+            recipients = self._report_recipients()
 
-            # Telegram: текст с одними заголовками секций + inline-кнопки,
-            # разворачивающие подробности (payload — в реестре по report_id).
-            payload = self._report_to_json_payload(report)
-            telegram_html = None
-            telegram_markup = None
-            if payload:
-                telegram_html = self.render_telegram_html_from_payload(payload, 0)
-                try:
-                    report_id = register_report_payload(payload)
-                    telegram_markup = build_report_keyboard(report_id, payload, 0)
-                except Exception as exc:
-                    debug_log(f"⚠️ Не удалось построить кнопки секций отчёта: {exc}")
-
-            # Отправляем через унифицированный канал алертов. Для отчёта
-            # просим повесить под Matrix-сообщением кнопку-эмодзи «открыть
-            # меню» — пользователю удобно открыть !menu прямо из отчёта.
-            from lib.alerts import send_alert
-
-            sent_ok = send_alert(
-                message,
-                force=True,
-                attach_menu_button=True,
-                telegram_html=telegram_html,
-                telegram_reply_markup=telegram_markup,
-                matrix_html=self.render_matrix_html(report),
-            )
-
-            if sent_ok:
-                debug_log(f"✅ Отчет отправлен ({'ручной' if manual_call else 'автоматический'})")
-            else:
-                debug_log(
-                    f"❌ Отчет не доставлен ({'ручной' if manual_call else 'автоматический'}): "
-                    "канал отправки вернул sent=False"
+            if not recipients:
+                # Однопользовательский режим: общий состав, общие каналы.
+                report = self.build_report()
+                message, telegram_html, telegram_markup, matrix_html = (
+                    self._render_delivery_formats(report)
                 )
-            return sent_ok
+
+                # Отправляем через унифицированный канал алертов. Для отчёта
+                # просим повесить под Matrix-сообщением кнопку-эмодзи «открыть
+                # меню» — пользователю удобно открыть !menu прямо из отчёта.
+                from lib.alerts import send_alert
+
+                sent_ok = send_alert(
+                    message,
+                    force=True,
+                    attach_menu_button=True,
+                    telegram_html=telegram_html,
+                    telegram_reply_markup=telegram_markup,
+                    matrix_html=matrix_html,
+                )
+
+                if sent_ok:
+                    debug_log(f"✅ Отчет отправлен ({kind})")
+                else:
+                    debug_log(
+                        f"❌ Отчет не доставлен ({kind}): канал отправки вернул sent=False"
+                    )
+                return sent_ok
+
+            from lib.alerts import send_personal_message
+
+            section_cache = {}
+            delivered = 0
+            for user in recipients:
+                user_id = int(user["id"])
+                try:
+                    report = self.build_report(section_cache=section_cache, user_id=user_id)
+                    message, telegram_html, telegram_markup, matrix_html = (
+                        self._render_delivery_formats(report)
+                    )
+                    sent_ok = send_personal_message(
+                        user_id,
+                        message,
+                        telegram_html=telegram_html,
+                        telegram_reply_markup=telegram_markup,
+                        matrix_html=matrix_html,
+                        attach_menu_button=True,
+                    )
+                except Exception as exc:
+                    debug_log(f"❌ Отчёт для {user['username']} не собран/не отправлен: {exc}")
+                    sent_ok = False
+                if sent_ok:
+                    delivered += 1
+                else:
+                    debug_log(f"❌ Отчёт не доставлен пользователю {user['username']}")
+
+            debug_log(f"📊 Отчет ({kind}) доставлен {delivered}/{len(recipients)} получателям")
+            return delivered > 0
         except Exception as e:
             debug_log(f"❌ Ошибка отправки отчета: {e}")
             return False
+
+    @staticmethod
+    def _report_recipients():
+        """Пользователи реестра, подписанные на утренний/сводный отчёт.
+
+        Пустой список означает «реестр не заполнен или отчёт никому не
+        нужен» — отправка падает обратно на общие каналы.
+        """
+        try:
+            from core.users import user_registry
+
+            targets = user_registry.delivery_targets(report=True, force=True)
+        except Exception as exc:  # pragma: no cover - реестр не должен ронять отчёт
+            debug_log(f"⚠️ Реестр пользователей недоступен, отчёт по общим каналам: {exc}")
+            return []
+        return [target["user"] for target in targets]
 
     def start_scheduler(self):
         """Запуск планировщика отчетов"""

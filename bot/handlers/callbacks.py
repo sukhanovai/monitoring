@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -404,7 +404,22 @@ def callback_router(update, context):
     # НАСТРОЙКИ (settings_handlers)
     # ------------------------------------------------
     elif data.startswith(
-        ("settings_", "set_", "manage_", "ssh_", "windows_", "server_type_", "report_ext_")
+        (
+            "settings_",
+            "set_",
+            "manage_",
+            "ssh_",
+            "windows_",
+            "server_type_",
+            "report_ext_",
+            # Многопользовательский режим: реестр и личные настройки доставки.
+            "user_pref_",
+            "user_card_",
+            "user_toggle_",
+            "user_role_",
+            "user_delete_",
+            "user_link_",
+        )
     ) or data in {
         "add_chat",
         "remove_chat",

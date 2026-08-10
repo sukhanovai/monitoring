@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.63.41
+Server Monitoring System v8.64.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.63.41
+Версия: 8.64.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -1232,7 +1232,22 @@ class MatrixCommandBot:
             lines.append(f"{flag} {name} ({ip}) [{stype}]")
         return "\n".join(lines)
 
-    async def _handle_report(self, command_text: str = "") -> str:
+    @staticmethod
+    def _matrix_user_id(sender: str = "", room_id: str = ""):
+        """id пользователя реестра по MXID отправителя или по комнате."""
+        try:
+            from core.users import resolve_matrix_user
+
+            user = resolve_matrix_user(room_id, sender)
+            return int(user["id"]) if user else None
+        except Exception as exc:  # pragma: no cover - реестр не должен ронять бота
+            debug_log(f"⚠️ Не удалось определить пользователя Matrix: {exc}")
+            return None
+
+    async def _handle_report(
+        self, command_text: str = "", sender: str = "", room_id: str = ""
+    ) -> str:
+        user_id = self._matrix_user_id(sender, room_id)
         parts = command_text.split()
         if len(parts) >= 2 and parts[1].lower() in (
             "config",
@@ -1241,11 +1256,15 @@ class MatrixCommandBot:
             "ext",
             "extensions",
         ):
-            return self._handle_report_config(parts[2:])
-        return morning_report.force_report()
+            return self._handle_report_config(parts[2:], user_id=user_id)
+        return morning_report.force_report(user_id=user_id)
 
-    def _handle_report_config(self, args: List[str]) -> str:
-        """Просмотр/изменение состава отчёта (какие расширения включать)."""
+    def _handle_report_config(self, args: List[str], user_id=None) -> str:
+        """Просмотр/изменение состава отчёта (какие расширения включать).
+
+        Состав персональный: правки применяются к пользователю, чья комната
+        (или MXID) привязана в реестре. Без привязки правится общий состав.
+        """
         from lib.report_settings import (
             REPORT_CAPABLE_EXTENSIONS,
             get_report_extension_label,
@@ -1258,11 +1277,11 @@ class MatrixCommandBot:
         if args:
             action = args[0].strip().lower()
             if action in ("all", "включить_все"):
-                set_report_extensions(list(REPORT_CAPABLE_EXTENSIONS))
+                set_report_extensions(list(REPORT_CAPABLE_EXTENSIONS), user_id=user_id)
             elif action in ("none", "clear", "очистить"):
-                set_report_extensions([])
+                set_report_extensions([], user_id=user_id)
             elif action in REPORT_CAPABLE_EXTENSIONS:
-                toggle_report_extension(action)
+                toggle_report_extension(action, user_id=user_id)
             else:
                 allowed = ", ".join(REPORT_CAPABLE_EXTENSIONS)
                 return (
@@ -1271,8 +1290,9 @@ class MatrixCommandBot:
                     "Также: !report config all | none"
                 )
 
-        selected = set(get_report_extensions(use_cache=False))
-        lines = ["🗒️ Состав утреннего/ручного отчёта:", ""]
+        selected = set(get_report_extensions(use_cache=False, user_id=user_id))
+        scope = "личный" if user_id is not None else "общий (канал не привязан к пользователю)"
+        lines = [f"🗒️ Состав утреннего/ручного отчёта ({scope}):", ""]
         for ext_id in REPORT_CAPABLE_EXTENSIONS:
             mark = "✅" if ext_id in selected else "⬜"
             heavy = " 🐢" if is_heavy_report_extension(ext_id) else ""
@@ -1284,6 +1304,147 @@ class MatrixCommandBot:
             "Переключить: !report config <ext_id>",
             "Включить все: !report config all",
             "Очистить: !report config none",
+        ]
+        return "\n".join(lines)
+
+    def _handle_me(self, sender: str = "", room_id: str = "") -> str:
+        """`!me` — личные настройки доставки текущего пользователя."""
+        from core.users import (
+            CHANNEL_LABELS,
+            PREF_ALERT_CATEGORIES,
+            PREF_ALERT_LEVELS,
+            PREF_ALERTS_ENABLED,
+            PREF_QUIET_END,
+            PREF_QUIET_HOURS_ENABLED,
+            PREF_QUIET_START,
+            PREF_REPORTS_ENABLED,
+            resolve_matrix_user,
+            user_registry,
+        )
+
+        user = resolve_matrix_user(room_id, sender)
+        if not user:
+            return (
+                "👤 Эта комната не привязана к пользователю системы.\n"
+                "Администратор может привязать её командой:\n"
+                f"!users link <username> matrix {room_id or '<room_id>'}"
+            )
+
+        user_id = int(user["id"])
+        prefs = user_registry.get_preferences(user_id)
+        channels = user_registry.list_channels(user_id=user_id)
+        quiet = (
+            f"{int(prefs.get(PREF_QUIET_START) or 0):02d}:00–"
+            f"{int(prefs.get(PREF_QUIET_END) or 0):02d}:00"
+        )
+
+        lines = [
+            f"👤 {user['display_name']} ({user['username']}), роль: {user['role']}",
+            "",
+            f"• Отчёт: {'да' if prefs.get(PREF_REPORTS_ENABLED) else 'нет'}",
+            f"• Оповещения: {'да' if prefs.get(PREF_ALERTS_ENABLED) else 'нет'}",
+            f"• Уровни: {', '.join(prefs.get(PREF_ALERT_LEVELS) or []) or '—'}",
+            f"• Категорий: {len(prefs.get(PREF_ALERT_CATEGORIES) or [])}",
+            f"• Тихие часы: {'вкл' if prefs.get(PREF_QUIET_HOURS_ENABLED) else 'выкл'} {quiet}",
+            "",
+            "Каналы обмена:",
+        ]
+        for channel in channels:
+            label = CHANNEL_LABELS.get(channel["channel_type"], channel["channel_type"])
+            lines.append(f"• {label}: {channel['channel_ref']}")
+        if not channels:
+            lines.append("• нет каналов")
+        lines += [
+            "",
+            "Состав отчёта: !report config",
+        ]
+        return "\n".join(lines)
+
+    def _handle_users(self, args: List[str], sender: str = "", room_id: str = "") -> str:
+        """`!users` — просмотр реестра и привязка каналов (только админ)."""
+        from core.users import (
+            CHANNEL_TYPES,
+            ROLE_ADMIN,
+            UserRegistryError,
+            resolve_matrix_user,
+            user_registry,
+        )
+
+        actor = resolve_matrix_user(room_id, sender)
+        action = args[0].strip().lower() if args else "list"
+
+        if action != "list":
+            if actor is not None and actor.get("role") != ROLE_ADMIN:
+                return "⛔ Управление пользователями доступно только администратору."
+
+        try:
+            if action == "add":
+                if len(args) < 2:
+                    return "Использование: !users add <username> [Отображаемое имя]"
+                username = args[1]
+                display_name = " ".join(args[2:]) or username
+                user = user_registry.create_user(username, display_name=display_name)
+                return f"✅ Пользователь {user['username']} создан (id={user['id']})."
+
+            if action == "link":
+                if len(args) < 4:
+                    return (
+                        "Использование: !users link <username> "
+                        f"<{'|'.join(CHANNEL_TYPES)}> <идентификатор>"
+                    )
+                user = user_registry.get_user_by_username(args[1])
+                if not user:
+                    return f"❌ Пользователь «{args[1]}» не найден."
+                user_registry.link_channel(int(user["id"]), args[2].lower(), args[3])
+                return f"✅ Канал {args[2]}:{args[3]} привязан к {user['username']}."
+
+            if action == "unlink":
+                if len(args) < 3:
+                    return f"Использование: !users unlink <{'|'.join(CHANNEL_TYPES)}> <идентификатор>"
+                removed = user_registry.unlink_channel(args[1].lower(), args[2])
+                return "✅ Канал отвязан." if removed else "❌ Такой канал не найден."
+
+            if action in ("enable", "disable"):
+                if len(args) < 2:
+                    return f"Использование: !users {action} <username>"
+                user = user_registry.get_user_by_username(args[1])
+                if not user:
+                    return f"❌ Пользователь «{args[1]}» не найден."
+                user_registry.update_user(int(user["id"]), enabled=(action == "enable"))
+                return f"✅ {user['username']}: {'включён' if action == 'enable' else 'выключен'}."
+
+            if action == "delete":
+                if len(args) < 2:
+                    return "Использование: !users delete <username>"
+                user = user_registry.get_user_by_username(args[1])
+                if not user:
+                    return f"❌ Пользователь «{args[1]}» не найден."
+                user_registry.delete_user(int(user["id"]))
+                return f"✅ Пользователь {user['username']} удалён."
+        except UserRegistryError as exc:
+            return f"❌ {exc}"
+
+        users = user_registry.list_users()
+        lines = ["👥 Пользователи системы:", ""]
+        for user in users:
+            channels = user_registry.list_channels(user_id=int(user["id"]))
+            flag = "🟢" if user["enabled"] else "🔴"
+            role = " 👑" if user["role"] == ROLE_ADMIN else ""
+            channel_text = ", ".join(
+                f"{c['channel_type']}:{c['channel_ref']}" for c in channels
+            )
+            lines.append(
+                f"{flag} {user['username']}{role} — {user['display_name']}\n"
+                f"   каналы: {channel_text or 'нет'}"
+            )
+        if not users:
+            lines.append("реестр пуст")
+        lines += [
+            "",
+            "Команды: !users add <username> [имя] | link <username> <тип> <id> |",
+            "unlink <тип> <id> | enable/disable <username> | delete <username>",
+            "Типы каналов: " + ", ".join(CHANNEL_TYPES),
+            "Личные настройки: !me",
         ]
         return "\n".join(lines)
 
@@ -2705,6 +2866,8 @@ class MatrixCommandBot:
             "• !check <имя|ip> — точечная проверка доступности сервера\n"
             "• !report — утренний/сводный отчёт\n"
             "• !report config — состав отчёта (какие расширения включать)\n"
+            "• !me — мои личные настройки доставки (отчёт, оповещения)\n"
+            "• !users — пользователи системы и их каналы (админ)\n"
             "• !servers — список серверов под мониторингом\n"
             "• !pause / !resume — пауза и возобновление мониторинга\n"
             "• !silent / !loud / !auto — режим тишины\n"
@@ -2812,7 +2975,13 @@ class MatrixCommandBot:
                 )
             return command, await self._handle_targeted(normalized, "resources")
         if command == "!report":
-            return command, await self._handle_report(normalized)
+            return command, await self._handle_report(normalized, sender=sender, room_id=room_id)
+        if command == "!me":
+            return command, self._handle_me(sender=sender, room_id=room_id)
+        if command == "!users":
+            return command, self._handle_users(
+                normalized.split()[1:], sender=sender, room_id=room_id
+            )
         if command == "!settings":
             return command, await self._handle_settings(normalized)
         if command == "!diag":
