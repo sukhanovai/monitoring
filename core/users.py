@@ -1,11 +1,11 @@
 """
 /core/users.py
-Server Monitoring System v8.64.1
+Server Monitoring System v8.64.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Multi-user registry: users, their channels and personal preferences
 Система мониторинга серверов
-Версия: 8.64.1
+Версия: 8.64.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 

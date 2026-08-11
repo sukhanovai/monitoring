@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/users.py
-Server Monitoring System v8.64.1
+Server Monitoring System v8.64.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Users and personal notification settings UI (Telegram)
 Система мониторинга серверов
-Версия: 8.64.1
+Версия: 8.64.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 
@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from bot.handlers.base import current_user
+from bot.handlers.base import current_user, escape_md, render_markdown
 from core.users import (
     ALERT_LEVEL_LABELS,
     ALERT_LEVELS,
@@ -65,12 +65,8 @@ def _answer(update):
 
 
 def _render(update, message, keyboard):
-    query = getattr(update, "callback_query", None)
-    markup = InlineKeyboardMarkup(keyboard)
-    if query is not None:
-        query.edit_message_text(message, parse_mode="Markdown", reply_markup=markup)
-    else:
-        update.message.reply_text(message, parse_mode="Markdown", reply_markup=markup)
+    """Рисует меню с фолбэком на текст без разметки (см. render_markdown)."""
+    render_markdown(update, message, reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 def _is_admin(update) -> bool:
@@ -116,7 +112,7 @@ def show_my_notifications_menu(update, context):
     quiet_range = f"{int(prefs.get(PREF_QUIET_START) or 0):02d}:00–{int(prefs.get(PREF_QUIET_END) or 0):02d}:00"
 
     message = (
-        f"🔔 *Мои оповещения* — {user.get('display_name') or user['username']}\n\n"
+        f"🔔 *Мои оповещения* — {escape_md(user.get('display_name') or user['username'])}\n\n"
         f"{reports_mark} Утренний/сводный отчёт\n"
         f"{alerts_mark} Оповещения мониторинга\n"
         f"📶 Уровни: {', '.join(sorted(levels)) if levels else '—'}\n"
@@ -301,8 +297,8 @@ def show_users_menu(update, context):
         state_mark = "🟢" if user["enabled"] else "🔴"
         role_mark = " 👑" if user["role"] == ROLE_ADMIN else ""
         lines.append(
-            f"{state_mark} *{user['display_name']}*{role_mark} "
-            f"(`{user['username']}`) — каналов: {len(channels)}"
+            f"{state_mark} *{escape_md(user['display_name'])}*{role_mark} "
+            f"(`{escape_md(user['username'])}`) — каналов: {len(channels)}"
         )
         keyboard.append(
             [
@@ -323,7 +319,7 @@ def show_users_menu(update, context):
     lines.append("")
     if owner is not None:
         owner_role = " 👑" if owner["role"] == ROLE_ADMIN else ""
-        lines.append(f"📍 Этот чат: *{owner['display_name']}*{owner_role}")
+        lines.append(f"📍 Этот чат: *{escape_md(owner['display_name'])}*{owner_role}")
     else:
         lines.append("📍 Этот чат ни к кому не привязан")
     if chat is not None and str(chat.id) in legacy_chat_ids():
@@ -357,7 +353,7 @@ def show_user_card(update, context, user_id: int):
     channels = user_registry.list_channels(user_id=int(user["id"]))
 
     lines = [
-        f"👤 *{user['display_name']}* (`{user['username']}`)",
+        f"👤 *{escape_md(user['display_name'])}* (`{escape_md(user['username'])}`)",
         f"Роль: {'администратор 👑' if user['role'] == ROLE_ADMIN else 'пользователь'}",
         f"Состояние: {'🟢 включён' if user['enabled'] else '🔴 выключен'}",
         "",
@@ -367,7 +363,7 @@ def show_user_card(update, context, user_id: int):
         for channel in channels:
             label = CHANNEL_LABELS.get(channel["channel_type"], channel["channel_type"])
             mark = "🟢" if channel["enabled"] else "🔴"
-            lines.append(f"{mark} {label}: `{channel['channel_ref']}`")
+            lines.append(f"{mark} {label}: `{escape_md(channel['channel_ref'])}`")
     else:
         lines.append("_каналов нет — сообщения не доставляются_")
 
@@ -377,7 +373,7 @@ def show_user_card(update, context, user_id: int):
             "*Персональные настройки:*",
             f"• Отчёт: {'да' if prefs.get(PREF_REPORTS_ENABLED) else 'нет'}",
             f"• Оповещения: {'да' if prefs.get(PREF_ALERTS_ENABLED) else 'нет'}",
-            f"• Уровни: {', '.join(prefs.get(PREF_ALERT_LEVELS) or []) or '—'}",
+            f"• Уровни: {escape_md(', '.join(prefs.get(PREF_ALERT_LEVELS) or [])) or '—'}",
             f"• Категорий: {len(prefs.get(PREF_ALERT_CATEGORIES) or [])}",
         ]
     )
