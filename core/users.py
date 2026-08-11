@@ -974,7 +974,7 @@ def is_authorized_telegram_chat(chat_id: Any) -> bool:
     return chat_ref in legacy_chat_ids()
 
 
-def can_manage_users(user: Optional[Dict[str, Any]], channel_type: Optional[str] = None) -> bool:
+def can_manage_users(user: Optional[Dict[str, Any]]) -> bool:
     """Может ли пользователь управлять реестром.
 
     Управление доступно администратору, а также — как аварийный выход —
@@ -982,11 +982,17 @@ def can_manage_users(user: Optional[Dict[str, Any]], channel_type: Optional[str]
     Без этого правила реестр можно было бы «запереть» (например, отдав
     последний чат администратора обычному пользователю) и чинить только
     правкой БД руками.
+
+    Достижимость администратора проверяется по ВСЕМ каналам сразу, а не по
+    тому, откуда пришла команда. Иначе аварийный выход открывался бы на
+    каждом транспорте отдельно: администратор в Telegram есть, но в Matrix
+    его нет — и обычный пользователь Matrix получал бы право удалять
+    пользователей.
     """
     if user is not None and user.get("role") == ROLE_ADMIN and user.get("enabled", True):
         return True
     try:
-        return not user_registry.has_reachable_admin(channel_type)
+        return not user_registry.has_reachable_admin()
     except Exception:  # pragma: no cover
         return False
 
@@ -1001,7 +1007,8 @@ def is_admin_telegram_chat(chat_id: Any) -> bool:
        такие чаты имели полный доступ к настройкам бота, и оставить их без
        управления пользователями значило бы урезать права молча;
     3. чат вообще не привязан к пользователю (однопользовательский режим);
-    4. в реестре не осталось достижимого администратора (аварийный выход).
+    4. во всём реестре не осталось достижимого администратора — ни на одном
+       из каналов (аварийный выход).
     """
     chat_ref = str(chat_id)
     user = resolve_telegram_user(chat_ref)
@@ -1011,7 +1018,7 @@ def is_admin_telegram_chat(chat_id: Any) -> bool:
         return True
     if user is None:
         return True
-    return can_manage_users(user, CHANNEL_TELEGRAM)
+    return can_manage_users(user)
 
 
 def user_label(user: Optional[Dict[str, Any]]) -> str:

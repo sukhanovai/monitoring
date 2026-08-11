@@ -1363,7 +1363,6 @@ class MatrixCommandBot:
     def _handle_users(self, args: List[str], sender: str = "", room_id: str = "") -> str:
         """`!users` — просмотр реестра и привязка каналов (только админ)."""
         from core.users import (
-            CHANNEL_MATRIX,
             CHANNEL_TYPES,
             ROLE_ADMIN,
             UserRegistryError,
@@ -1376,9 +1375,9 @@ class MatrixCommandBot:
         action = args[0].strip().lower() if args else "list"
 
         # can_manage_users пропускает администратора, а также любого, когда
-        # в реестре не осталось администратора с каналом связи — иначе
+        # во всём реестре не осталось администратора с каналом связи — иначе
         # реестр можно было бы запереть и чинить только правкой БД.
-        if action != "list" and not can_manage_users(actor, CHANNEL_MATRIX):
+        if action != "list" and not can_manage_users(actor):
             return "⛔ Управление пользователями доступно только администратору."
 
         try:
@@ -1404,7 +1403,9 @@ class MatrixCommandBot:
 
             if action == "unlink":
                 if len(args) < 3:
-                    return f"Использование: !users unlink <{'|'.join(CHANNEL_TYPES)}> <идентификатор>"
+                    return (
+                        f"Использование: !users unlink <{'|'.join(CHANNEL_TYPES)}> <идентификатор>"
+                    )
                 removed = user_registry.unlink_channel(args[1].lower(), args[2])
                 return "✅ Канал отвязан." if removed else "❌ Такой канал не найден."
 
@@ -1434,9 +1435,7 @@ class MatrixCommandBot:
             channels = user_registry.list_channels(user_id=int(user["id"]))
             flag = "🟢" if user["enabled"] else "🔴"
             role = " 👑" if user["role"] == ROLE_ADMIN else ""
-            channel_text = ", ".join(
-                f"{c['channel_type']}:{c['channel_ref']}" for c in channels
-            )
+            channel_text = ", ".join(f"{c['channel_type']}:{c['channel_ref']}" for c in channels)
             lines.append(
                 f"{flag} {user['username']}{role} — {user['display_name']}\n"
                 f"   каналы: {channel_text or 'нет'}"
@@ -2077,8 +2076,19 @@ class MatrixCommandBot:
 
         def _fmt(row) -> str:
             (
-                host_name, status_val, _dm, _rc, _st, completed_at_text,
-                vm, lxc, hist_c, hist_f, err, problem_items, received_at,
+                host_name,
+                status_val,
+                _dm,
+                _rc,
+                _st,
+                completed_at_text,
+                vm,
+                lxc,
+                hist_c,
+                hist_f,
+                err,
+                problem_items,
+                received_at,
             ) = row
             sn = str(status_val or "").upper().strip()
             text = (
@@ -2114,9 +2124,7 @@ class MatrixCommandBot:
                 if grouped["final"] is None:
                     return "📦 Финальная передача на NAS\n\nНет данных."
                 return "📦 Финальная передача всех конфигов на NAS:\n" + _fmt(grouped["final"])
-            entry = next(
-                (e for e in grouped["servers"] if e["host"].lower() == key), None
-            )
+            entry = next((e for e in grouped["servers"] if e["host"].lower() == key), None)
             if entry is None:
                 avail = ", ".join(e["host"] for e in grouped["servers"]) or "—"
                 return f"❓ Сервер «{arg}» не найден.\nДоступны: {avail}"
@@ -2206,9 +2214,7 @@ class MatrixCommandBot:
 
         login = (raw_value or "").strip()
         try:
-            config_manager.set_setting(
-                "WEB_LOGIN", login, category="web", data_type="string"
-            )
+            config_manager.set_setting("WEB_LOGIN", login, category="web", data_type="string")
         except Exception as exc:  # noqa: BLE001
             return f"❌ Не удалось сохранить логин: {str(exc)[:160]}"
         self._audit("settings", "settings", "set WEB_LOGIN", "applied")
@@ -2221,9 +2227,7 @@ class MatrixCommandBot:
 
         password = raw_value or ""
         try:
-            config_manager.set_setting(
-                "WEB_PASSWORD", password, category="web", data_type="string"
-            )
+            config_manager.set_setting("WEB_PASSWORD", password, category="web", data_type="string")
         except Exception as exc:  # noqa: BLE001
             return f"❌ Не удалось сохранить пароль: {str(exc)[:160]}"
         self._audit("settings", "settings", "set WEB_PASSWORD", "applied")
@@ -2957,8 +2961,7 @@ class MatrixCommandBot:
         if command == "!nas":
             if "nas_transfer_monitor" not in self._enabled_extensions():
                 return command, (
-                    "❌ Команда !nas недоступна: расширение "
-                    "«nas_transfer_monitor» выключено."
+                    "❌ Команда !nas недоступна: расширение " "«nas_transfer_monitor» выключено."
                 )
             parts = normalized.split(maxsplit=1)
             arg = parts[1].strip() if len(parts) > 1 else ""
