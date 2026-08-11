@@ -32,6 +32,7 @@ from core.users import (
     PREF_REPORT_EXTENSIONS,
     PREF_REPORTS_ENABLED,
     ROLE_ADMIN,
+    ROLE_USER,
     UserRegistry,
     UserRegistryError,
     alert_categories,
@@ -246,3 +247,101 @@ def test_resolve_mobile_user_prefers_device(registry, monkeypatch):
 
     assert resolve_mobile_user("admin")["username"] == "ivan"
     assert resolve_mobile_user("admin", "device-42")["username"] == "petr"
+
+
+# ---------------------------------------------------------------------------
+# Права на управление реестром: реестр нельзя «запереть» без администратора
+# ---------------------------------------------------------------------------
+
+
+def test_last_admin_cannot_be_demoted_disabled_or_deleted(registry):
+    admin = _make_user(registry, "boss", role=ROLE_ADMIN)
+    _make_user(registry, "ivan")
+    admin_id = int(admin["id"])
+
+    with pytest.raises(UserRegistryError):
+        registry.update_user(admin_id, role=ROLE_USER)
+    with pytest.raises(UserRegistryError):
+        registry.update_user(admin_id, enabled=False)
+    with pytest.raises(UserRegistryError):
+        registry.delete_user(admin_id)
+
+    assert registry.get_user(admin_id)["role"] == ROLE_ADMIN
+
+    # Как только появился второй администратор — первого можно разжаловать.
+    second = _make_user(registry, "boss2", role=ROLE_ADMIN)
+    assert registry.update_user(admin_id, role=ROLE_USER)["role"] == ROLE_USER
+    assert registry.count_admins() == 1
+    assert int(second["id"]) != admin_id
+
+
+def test_has_reachable_admin_requires_a_channel(registry):
+    admin = _make_user(registry, "boss", role=ROLE_ADMIN)
+    assert registry.has_reachable_admin() is False
+
+    registry.link_channel(int(admin["id"]), CHANNEL_TELEGRAM, "111")
+    assert registry.has_reachable_admin() is True
+    assert registry.has_reachable_admin(CHANNEL_TELEGRAM) is True
+    assert registry.has_reachable_admin(CHANNEL_MATRIX) is False
+
+
+def test_can_manage_users_falls_back_when_no_admin_reachable(registry, monkeypatch):
+    from core import users as users_module
+
+    monkeypatch.setattr(users_module, "user_registry", registry)
+    admin = _make_user(registry, "boss", role=ROLE_ADMIN)
+    plain = _make_user(registry, "ivan")
+
+    # Администратор без каналов недостижим — управление открыто всем,
+    # иначе реестр остался бы запертым.
+    assert users_module.can_manage_users(plain) is True
+
+    registry.link_channel(int(admin["id"]), CHANNEL_TELEGRAM, "111")
+    assert users_module.can_manage_users(plain) is False
+    assert users_module.can_manage_users(admin) is True
+
+
+def test_break_glass_checks_admins_on_all_channels(registry, monkeypatch):
+    """Админ в одном канале закрывает аварийный выход в остальных.
+
+    Регрессия: достижимость проверялась по каналу, откуда пришла команда,
+    поэтому обычный пользователь Matrix получал право удалять пользователей,
+    пока администратор был доступен только в Telegram.
+    """
+    from core import users as users_module
+
+    monkeypatch.setattr(users_module, "user_registry", registry)
+    admin = _make_user(registry, "boss", role=ROLE_ADMIN)
+    plain = _make_user(registry, "ivan")
+    registry.link_channel(int(admin["id"]), CHANNEL_TELEGRAM, "111")
+    registry.link_channel(int(plain["id"]), CHANNEL_MATRIX, "!ivan:example.org")
+
+    # В Matrix администратора нет вовсе — но он достижим в Telegram.
+    assert registry.has_reachable_admin(CHANNEL_MATRIX) is False
+    assert registry.has_reachable_admin() is True
+    assert users_module.can_manage_users(plain) is False
+    assert users_module.is_admin_telegram_chat("111") is True
+
+
+def test_legacy_chat_keeps_admin_rights(registry, monkeypatch):
+    """Чат из CHAT_IDS имел полный доступ до многопользовательского режима."""
+    from core import users as users_module
+
+    monkeypatch.setattr(users_module, "user_registry", registry)
+    _config_module.config_manager.set_setting(
+        "CHAT_IDS", ["111"], category="telegram", data_type="list"
+    )
+
+    admin = _make_user(registry, "boss", role=ROLE_ADMIN)
+    registry.link_channel(int(admin["id"]), CHANNEL_TELEGRAM, "999")
+
+    # Чат 111 отдали обычному пользователю — права на управление остаются,
+    # потому что чат перечислен в общем CHAT_IDS.
+    plain = _make_user(registry, "ivan")
+    registry.link_channel(int(plain["id"]), CHANNEL_TELEGRAM, "111")
+
+    assert users_module.is_admin_telegram_chat("111") is True
+    # Чужой чат обычного пользователя прав не получает.
+    registry.link_channel(int(plain["id"]), CHANNEL_TELEGRAM, "222")
+    assert users_module.is_admin_telegram_chat("222") is False
+    assert users_module.is_admin_telegram_chat("999") is True
