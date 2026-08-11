@@ -1,11 +1,11 @@
 """
 /bot/handlers/base.py
-Server Monitoring System v8.64.1
+Server Monitoring System v8.64.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Basic functions: access, universal responses, general checks
 Система мониторинга серверов
-Версия: 8.64.1
+Версия: 8.64.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Базовые функции: доступ, универсальные ответы, общие проверки
@@ -69,3 +69,45 @@ def safe_reply(update, text, **kwargs):
         update.message.reply_text(text, **kwargs)
     elif update.callback_query:
         update.callback_query.edit_message_text(text, **kwargs)
+
+
+# Спецсимволы legacy-Markdown Telegram (parse_mode="Markdown").
+_MARKDOWN_SPECIAL_CHARS = "_*[`"
+
+
+def escape_md(value) -> str:
+    """Экранирует данные пользователя для parse_mode="Markdown".
+
+    Имена, логины и идентификаторы каналов приходят извне: Telegram-логин
+    вида ``ivan_petrov`` или название чата со звёздочкой ломали разметку
+    целого меню («Can't parse entities»), и сообщение вообще не доходило.
+    Собственная реализация вместо `telegram.utils.helpers.escape_markdown`
+    — чтобы не зависеть от версии python-telegram-bot и работать в тестах.
+    """
+    text = str(value if value is not None else "")
+    return "".join(f"\\{char}" if char in _MARKDOWN_SPECIAL_CHARS else char for char in text)
+
+
+def render_markdown(update, text, reply_markup=None):
+    """Показывает Markdown-сообщение с фолбэком на обычный текст.
+
+    Если Telegram не смог разобрать разметку (неэкранированный спецсимвол
+    в данных), сообщение отправляется без parse_mode — пользователь видит
+    меню, пусть и без форматирования, вместо пустого экрана и ошибки
+    в логе.
+    """
+    query = getattr(update, "callback_query", None)
+
+    def _send(parse_mode):
+        if query is not None:
+            query.edit_message_text(text, parse_mode=parse_mode, reply_markup=reply_markup)
+        else:
+            update.message.reply_text(text, parse_mode=parse_mode, reply_markup=reply_markup)
+
+    try:
+        _send("Markdown")
+    except Exception as exc:
+        if "parse entities" not in str(exc).lower():
+            raise
+        debug_log(f"⚠️ Markdown не разобран, повтор без разметки: {exc}")
+        _send(None)

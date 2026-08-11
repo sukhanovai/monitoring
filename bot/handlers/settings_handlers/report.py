@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/report.py
-Server Monitoring System v8.64.1
+Server Monitoring System v8.64.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Report composition settings UI (Telegram)
 Система мониторинга серверов
-Версия: 8.64.1
+Версия: 8.64.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Меню настройки состава утреннего/ручного отчёта: мультивыбор расширений,
@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from bot.handlers.base import current_user
+from bot.handlers.base import current_user, escape_md, render_markdown
 from extensions.extension_manager import extension_manager
 from lib.report_settings import (
     REPORT_CAPABLE_EXTENSIONS,
@@ -45,7 +45,7 @@ def _build_report_settings_view(update):
 
     if user:
         scope_line = (
-            f"👤 Настройка личная: *{user.get('display_name') or user['username']}*.\n"
+            f"👤 Настройка личная: *{escape_md(user.get('display_name') or user['username'])}*.\n"
             "Другие пользователи получают отчёт по своему составу.\n\n"
         )
     else:
@@ -114,10 +114,7 @@ def show_report_settings_menu(update, context):
 
     message, markup = _build_report_settings_view(update)
 
-    if query is not None:
-        query.edit_message_text(message, parse_mode="Markdown", reply_markup=markup)
-    else:
-        update.message.reply_text(message, parse_mode="Markdown", reply_markup=markup)
+    render_markdown(update, message, reply_markup=markup)
 
 
 def toggle_report_extension_handler(update, context, extension_id):

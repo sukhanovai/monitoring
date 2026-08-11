@@ -1,3 +1,13 @@
+## [8.64.2] - 2026-08-12
+
+### Fixed
+- RU: Меню «👥 Пользователи», «🔔 Мои оповещения» и «🗒️ Состав отчёта» не открывались, если имя пользователя содержало спецсимвол Markdown. В лог падало «❌ Ошибка в settings_callback_handler: Can't parse entities: can't find end of the entity starting at byte offset …», а пользователь не видел вообще ничего. Имя пользователя берётся из названия/логина Telegram-чата (например `ivan_petrov`), и подставлялось в `parse_mode="Markdown"` без экранирования — одиночный `_` обрывал разметку всего сообщения. Теперь имена, логины и идентификаторы каналов экранируются (`bot/handlers/base.py`: `escape_md`), а рендер меню при неразобранной разметке повторяет отправку обычным текстом вместо потери сообщения (`bot/handlers/base.py`: `render_markdown`; применено в `bot/handlers/settings_handlers/users.py` и `report.py`).
+- EN: The "👥 Users", "🔔 My alerts" and "🗒️ Report composition" menus failed to open when a user's name contained a Markdown special character. The log showed "❌ Ошибка в settings_callback_handler: Can't parse entities: can't find end of the entity starting at byte offset …" and the user saw nothing at all. The display name comes from the Telegram chat title/username (e.g. `ivan_petrov`) and was interpolated into `parse_mode="Markdown"` unescaped — a single `_` broke the markup of the whole message. Names, logins and channel identifiers are now escaped (`bot/handlers/base.py`: `escape_md`), and the menu renderer retries as plain text when the markup cannot be parsed instead of dropping the message (`bot/handlers/base.py`: `render_markdown`; applied in `bot/handlers/settings_handlers/users.py` and `report.py`).
+
+### Added
+- RU: Тесты экранирования и фолбэка рендера меню: `tests/test_bot_markdown.py`.
+- EN: Tests for the escaping and the menu render fallback: `tests/test_bot_markdown.py`.
+
 ## [8.64.1] - 2026-08-10
 
 ### Fixed

@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/zfs.py
-Server Monitoring System v8.64.1
+Server Monitoring System v8.64.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ZfsBackupParserMixin — часть BackupProcessor (PR6c серии оптимизации).
 Система мониторинга серверов
-Версия: 8.64.1
+Версия: 8.64.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Mixin ZfsBackupParserMixin; объединяется с другими mixin'ами в BackupProcessor.
