@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/users.py
-Server Monitoring System v8.64.0
+Server Monitoring System v8.64.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Users and personal notification settings UI (Telegram)
 Система мониторинга серверов
-Версия: 8.64.0
+Версия: 8.64.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 
@@ -40,6 +40,8 @@ from core.users import (
     UserRegistryError,
     alert_categories,
     alert_category_label,
+    is_admin_telegram_chat,
+    legacy_chat_ids,
     user_registry,
 )
 from lib.logging import debug_log
@@ -72,11 +74,15 @@ def _render(update, message, keyboard):
 
 
 def _is_admin(update) -> bool:
-    """Админ реестра или (пока реестр не заполнен) любой доступный чат."""
-    user = current_user(update)
-    if user is None:
-        return True
-    return user.get("role") == ROLE_ADMIN
+    """Может ли текущий чат управлять реестром (см. `is_admin_telegram_chat`)."""
+    chat = getattr(update, "effective_chat", None)
+    if chat is None:
+        return False
+    try:
+        return is_admin_telegram_chat(chat.id)
+    except Exception as exc:  # pragma: no cover - реестр не должен запирать меню
+        debug_log(f"⚠️ Не удалось проверить права чата: {exc}")
+        return current_user(update) is None
 
 
 # ---------------------------------------------------------------------------
@@ -310,6 +316,19 @@ def show_users_menu(update, context):
     if not users:
         lines.append("_Реестр пуст._")
 
+    # Кто владеет текущим чатом — без этой строки непонятно, от чьего имени
+    # работают «Мои оповещения» и состав отчёта.
+    chat = getattr(update, "effective_chat", None)
+    owner = current_user(update)
+    lines.append("")
+    if owner is not None:
+        owner_role = " 👑" if owner["role"] == ROLE_ADMIN else ""
+        lines.append(f"📍 Этот чат: *{owner['display_name']}*{owner_role}")
+    else:
+        lines.append("📍 Этот чат ни к кому не привязан")
+    if chat is not None and str(chat.id) in legacy_chat_ids():
+        lines.append("_чат есть в общем списке CHAT_IDS — права администратора сохранены_")
+
     keyboard.append(
         [InlineKeyboardButton("➕ Привязать этот чат", callback_data="user_link_this_chat")]
     )
@@ -387,6 +406,17 @@ def show_user_card(update, context, user_id: int):
     _render(update, "\n".join(lines), keyboard)
 
 
+def _alert(update, text: str) -> None:
+    """Показывает пользователю всплывающее предупреждение на callback."""
+    query = getattr(update, "callback_query", None)
+    if query is None:
+        return
+    try:
+        query.answer(text, show_alert=True)
+    except Exception as exc:  # pragma: no cover - Telegram может ответить ошибкой
+        debug_log(f"⚠️ Не удалось показать предупреждение: {exc}")
+
+
 def toggle_user_enabled_handler(update, context, user_id: int):
     """Включает/выключает пользователя."""
     if not _is_admin(update):
@@ -394,7 +424,10 @@ def toggle_user_enabled_handler(update, context, user_id: int):
         return
     user = user_registry.get_user(user_id)
     if user:
-        user_registry.update_user(user_id, enabled=not user["enabled"])
+        try:
+            user_registry.update_user(user_id, enabled=not user["enabled"])
+        except UserRegistryError as exc:
+            _alert(update, f"❌ {exc}")
     show_user_card(update, context, user_id)
 
 
@@ -409,7 +442,7 @@ def toggle_user_role_handler(update, context, user_id: int):
         try:
             user_registry.update_user(user_id, role=new_role)
         except UserRegistryError as exc:
-            debug_log(f"⚠️ Роль не изменена: {exc}")
+            _alert(update, f"❌ {exc}")
     show_user_card(update, context, user_id)
 
 
@@ -418,15 +451,27 @@ def delete_user_handler(update, context, user_id: int):
     if not _is_admin(update):
         show_users_menu(update, context)
         return
-    user_registry.delete_user(user_id)
+    try:
+        user_registry.delete_user(user_id)
+    except UserRegistryError as exc:
+        _alert(update, f"❌ {exc}")
+        show_user_card(update, context, user_id)
+        return
     show_users_menu(update, context)
 
 
 def link_current_chat_handler(update, context, user_id=None):
     """Привязывает текущий Telegram-чат к пользователю.
 
-    Без ``user_id`` создаётся новый пользователь по данным чата — так
-    добавляется новый получатель за два нажатия, без ручного ввода id.
+    Без ``user_id`` (кнопка «➕ Привязать этот чат» в списке) чат
+    привязывается к НОВОМУ пользователю — это способ завести получателя
+    прямо из его чата. Если чат уже кому-то принадлежит, ничего не
+    переназначается: открывается карточка владельца. Раньше кнопка молча
+    уводила чат у прежнего владельца, и администратор, нажавший её в своём
+    чате, терял права на управление реестром.
+
+    С явным ``user_id`` (кнопка «🔗 Привязать этот чат» в карточке) перенос
+    выполняется — это осознанное действие администратора.
     """
     query = getattr(update, "callback_query", None)
     chat = getattr(update, "effective_chat", None)
@@ -437,14 +482,25 @@ def link_current_chat_handler(update, context, user_id=None):
     chat_id = str(chat.id)
     title = getattr(chat, "title", None) or getattr(chat, "username", None) or chat_id
 
+    if not _is_admin(update):
+        show_users_menu(update, context)
+        return
+
     if user_id is None:
-        if not _is_admin(update):
-            show_users_menu(update, context)
+        owner = user_registry.resolve_user(CHANNEL_TELEGRAM, chat_id)
+        if owner is not None:
+            if query is not None:
+                query.answer(f"Этот чат уже привязан к «{owner['display_name']}»", show_alert=True)
+            show_user_card(update, context, int(owner["id"]))
             return
+
         username = f"tg_{chat_id.lstrip('-')}"
         existing = user_registry.get_user_by_username(username)
+        # Чат из общего CHAT_IDS до многопользовательского режима имел полный
+        # доступ к настройкам — сохраняем за ним административные права.
+        role = ROLE_ADMIN if chat_id in legacy_chat_ids() else "user"
         try:
-            user = existing or user_registry.create_user(username, display_name=title)
+            user = existing or user_registry.create_user(username, display_name=title, role=role)
         except UserRegistryError as exc:
             if query is not None:
                 query.answer(f"❌ {exc}", show_alert=True)

@@ -1,11 +1,11 @@
 """
 /core/users.py
-Server Monitoring System v8.64.0
+Server Monitoring System v8.64.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Multi-user registry: users, their channels and personal preferences
 Система мониторинга серверов
-Версия: 8.64.0
+Версия: 8.64.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 
@@ -364,9 +364,29 @@ class UserRegistry:
         if role is not None:
             if role not in ROLES:
                 raise UserRegistryError(f"Неизвестная роль: {role}")
+            # Последнего администратора нельзя разжаловать — иначе реестром
+            # станет некому управлять.
+            if (
+                user["role"] == ROLE_ADMIN
+                and role != ROLE_ADMIN
+                and self.count_admins(exclude_user_id=user_id) == 0
+            ):
+                raise UserRegistryError(
+                    "Нельзя снять роль с последнего администратора: "
+                    "сначала назначьте администратором кого-то ещё"
+                )
             fields.append("role = ?")
             values.append(role)
         if enabled is not None:
+            if (
+                not enabled
+                and user["role"] == ROLE_ADMIN
+                and self.count_admins(exclude_user_id=user_id) == 0
+            ):
+                raise UserRegistryError(
+                    "Нельзя выключить последнего администратора: "
+                    "сначала назначьте администратором кого-то ещё"
+                )
             fields.append("enabled = ?")
             values.append(1 if enabled else 0)
 
@@ -382,9 +402,61 @@ class UserRegistry:
         conn.commit()
         return self.get_user(user_id)
 
+    def count_admins(self, exclude_user_id: Optional[int] = None) -> int:
+        """Сколько включённых администраторов в реестре (кроме указанного)."""
+        self.ensure_schema()
+        query = "SELECT COUNT(*) FROM users WHERE enabled = 1 AND role = ?"
+        params: List[Any] = [ROLE_ADMIN]
+        if exclude_user_id is not None:
+            query += " AND id != ?"
+            params.append(int(exclude_user_id))
+        try:
+            cursor = self._connection().cursor()
+            cursor.execute(query, params)
+            return int(cursor.fetchone()[0])
+        except Exception as exc:  # pragma: no cover
+            error_log(f"Ошибка подсчёта администраторов: {exc}")
+            return 0
+
+    def has_reachable_admin(self, channel_type: Optional[str] = None) -> bool:
+        """Есть ли администратор, до которого можно достучаться каналом.
+
+        Администратор без единого канала обмена ничем управлять не может —
+        для UI это равносильно его отсутствию, поэтому такие не считаются.
+        """
+        self.ensure_schema()
+        self.bootstrap_if_empty()
+        query = """
+            SELECT COUNT(*) FROM users u
+            JOIN user_channels c ON c.user_id = u.id AND c.enabled = 1
+            WHERE u.enabled = 1 AND u.role = ?
+        """
+        params: List[Any] = [ROLE_ADMIN]
+        if channel_type is not None:
+            query += " AND c.channel_type = ?"
+            params.append(channel_type)
+        try:
+            cursor = self._connection().cursor()
+            cursor.execute(query, params)
+            return int(cursor.fetchone()[0]) > 0
+        except Exception as exc:  # pragma: no cover
+            error_log(f"Ошибка поиска достижимого администратора: {exc}")
+            return False
+
     def delete_user(self, user_id: int) -> bool:
         """Удаляет пользователя вместе с каналами и персональными настройками."""
         self.ensure_schema()
+        user = self.get_user(user_id)
+        if (
+            user
+            and user["role"] == ROLE_ADMIN
+            and user["enabled"]
+            and self.count_admins(exclude_user_id=user_id) == 0
+        ):
+            raise UserRegistryError(
+                "Нельзя удалить последнего администратора: "
+                "сначала назначьте администратором кого-то ещё"
+            )
         conn = self._connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM user_channels WHERE user_id = ?", (int(user_id),))
@@ -900,6 +972,46 @@ def is_authorized_telegram_chat(chat_id: Any) -> bool:
     if user and user.get("enabled"):
         return True
     return chat_ref in legacy_chat_ids()
+
+
+def can_manage_users(user: Optional[Dict[str, Any]], channel_type: Optional[str] = None) -> bool:
+    """Может ли пользователь управлять реестром.
+
+    Управление доступно администратору, а также — как аварийный выход —
+    когда в реестре не осталось ни одного администратора с каналом связи.
+    Без этого правила реестр можно было бы «запереть» (например, отдав
+    последний чат администратора обычному пользователю) и чинить только
+    правкой БД руками.
+    """
+    if user is not None and user.get("role") == ROLE_ADMIN and user.get("enabled", True):
+        return True
+    try:
+        return not user_registry.has_reachable_admin(channel_type)
+    except Exception:  # pragma: no cover
+        return False
+
+
+def is_admin_telegram_chat(chat_id: Any) -> bool:
+    """Может ли этот Telegram-чат управлять пользователями.
+
+    Правила по убыванию приоритета:
+
+    1. чат принадлежит пользователю с ролью администратора;
+    2. чат перечислен в общем `CHAT_IDS` — до многопользовательского режима
+       такие чаты имели полный доступ к настройкам бота, и оставить их без
+       управления пользователями значило бы урезать права молча;
+    3. чат вообще не привязан к пользователю (однопользовательский режим);
+    4. в реестре не осталось достижимого администратора (аварийный выход).
+    """
+    chat_ref = str(chat_id)
+    user = resolve_telegram_user(chat_ref)
+    if user is not None and user.get("role") == ROLE_ADMIN and user.get("enabled", True):
+        return True
+    if chat_ref in legacy_chat_ids():
+        return True
+    if user is None:
+        return True
+    return can_manage_users(user, CHANNEL_TELEGRAM)
 
 
 def user_label(user: Optional[Dict[str, Any]]) -> str:

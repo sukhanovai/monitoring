@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.64.0
+Server Monitoring System v8.64.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.64.0
+Версия: 8.64.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -1363,9 +1363,11 @@ class MatrixCommandBot:
     def _handle_users(self, args: List[str], sender: str = "", room_id: str = "") -> str:
         """`!users` — просмотр реестра и привязка каналов (только админ)."""
         from core.users import (
+            CHANNEL_MATRIX,
             CHANNEL_TYPES,
             ROLE_ADMIN,
             UserRegistryError,
+            can_manage_users,
             resolve_matrix_user,
             user_registry,
         )
@@ -1373,9 +1375,11 @@ class MatrixCommandBot:
         actor = resolve_matrix_user(room_id, sender)
         action = args[0].strip().lower() if args else "list"
 
-        if action != "list":
-            if actor is not None and actor.get("role") != ROLE_ADMIN:
-                return "⛔ Управление пользователями доступно только администратору."
+        # can_manage_users пропускает администратора, а также любого, когда
+        # в реестре не осталось администратора с каналом связи — иначе
+        # реестр можно было бы запереть и чинить только правкой БД.
+        if action != "list" and not can_manage_users(actor, CHANNEL_MATRIX):
+            return "⛔ Управление пользователями доступно только администратору."
 
         try:
             if action == "add":

@@ -1,12 +1,12 @@
 """
 /core/monitor_state.py
-Server Monitoring System v8.64.0
+Server Monitoring System v8.64.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mutable runtime state of the monitoring core extracted from the
 monolithic core/monitor_core.py module-level globals.
 Система мониторинга серверов
-Версия: 8.64.0
+Версия: 8.64.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Изменяемое runtime-состояние ядра мониторинга, вынесенное из
