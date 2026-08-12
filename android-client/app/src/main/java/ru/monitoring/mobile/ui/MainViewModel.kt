@@ -1431,6 +1431,10 @@ class MainViewModel(
             val tlsCertSummary = buildTlsCertTileSummary(result[19] as? ControlActionResult)
             val configConsoleSummary = buildBackupTileSummary(result[20] as? ControlActionResult)
             val reportSettings = result[21] as? SettingsReportResponse
+            // Данные состава отчёта отдельной локальной переменной: null
+            // означает «запрос не прошёл», а settings.user == null —
+            // «состав снова общесистемный». Эти случаи надо различать.
+            val reportSettingsData = reportSettings?.settings
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -1497,9 +1501,17 @@ class MainViewModel(
                 windowsTypes = winTypes?.types ?: state.windowsTypes,
                 managedServers = servers?.items ?: state.managedServers,
                 extensions = extensions?.items ?: state.extensions,
-                reportExtensionOptions = reportSettings?.settings?.available ?: state.reportExtensionOptions,
-                reportSettingsScope = reportSettings?.settings?.scope ?: state.reportSettingsScope,
-                reportSettingsOwner = reportSettings?.settings?.user ?: state.reportSettingsOwner,
+                reportExtensionOptions = reportSettingsData?.available ?: state.reportExtensionOptions,
+                reportSettingsScope = reportSettingsData?.scope ?: state.reportSettingsScope,
+                // Владельца берём как есть, включая null: если админ отвязал
+                // устройство, состав снова общесистемный, и прежнее имя в
+                // подписи было бы враньём. Прежнее значение сохраняем только
+                // когда запрос не прошёл вовсе (settings == null).
+                reportSettingsOwner = if (reportSettingsData != null) {
+                    reportSettingsData.user
+                } else {
+                    state.reportSettingsOwner
+                },
                 backupProxmoxSummary = proxmoxBackupSummary?.ratioText ?: state.backupProxmoxSummary,
                 backupDatabasesSummary = dbBackupSummary?.ratioText ?: state.backupDatabasesSummary,
                 backupStockLoadsSummary = stockLoadSummary?.ratioText ?: state.backupStockLoadsSummary,
@@ -2461,11 +2473,18 @@ class MainViewModel(
             state = state.copy(isLoading = true)
             runCatching { currentApi().updateReportSettings(SettingsReportRequest(ordered)) }
                 .onSuccess { response ->
+                    // См. refreshSettingsFromServer: null владельца очищает
+                    // подпись, а не оставляет прежнего.
+                    val updatedSettings = response.settings
                     state = state.copy(
                         isLoading = false,
-                        reportExtensionOptions = response.settings?.available ?: state.reportExtensionOptions,
-                        reportSettingsScope = response.settings?.scope ?: state.reportSettingsScope,
-                        reportSettingsOwner = response.settings?.user ?: state.reportSettingsOwner,
+                        reportExtensionOptions = updatedSettings?.available ?: state.reportExtensionOptions,
+                        reportSettingsScope = updatedSettings?.scope ?: state.reportSettingsScope,
+                        reportSettingsOwner = if (updatedSettings != null) {
+                            updatedSettings.user
+                        } else {
+                            state.reportSettingsOwner
+                        },
                         message = "Состав отчёта обновлён",
                         messageSource = "report_settings"
                     )
