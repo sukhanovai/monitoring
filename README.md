@@ -164,7 +164,10 @@ Matrix-комната, устройство Android, логин веба) и л�
 - Telegram: `⚙️ Настройки` → `🔔 Мои оповещения`, `🗒️ Состав отчёта`,
   `👥 Пользователи` (админ, там же «➕ Привязать этот чат»).
 - Matrix: `!me`, `!report config`, `!users add|link|enable|disable|delete`.
-- API/Android: `GET /v1/me`, `PATCH /v1/me/notifications`,
+- Android: `⚙️ Настройки` → `🔔 Мои оповещения` (отчёт, уровни, категории,
+  тихие часы) и карточка «📱 Это устройство» для привязки телефона
+  к пользователю; `🗒️ Состав отчёта` подписан владельцем.
+- API: `GET /v1/me`, `PATCH /v1/me/notifications`,
   `GET|PATCH /v1/settings/report`, `GET|POST /v1/users`,
   `POST|DELETE /v1/users/<id>/channels`.
 
@@ -307,7 +310,7 @@ export MATRIX_ROOM_ID="\!rBnJoAPQKeovFClrhg:matrix.202020.ru"
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
 Актуальная ссылка на APK prerelease (скрипт обновляет её только при запуске с флагом `-UpdateDocsLinks`):
-<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.64.2-develop/monitoring-android-8.64.2-develop-compactOps-debug.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.65.0-develop/monitoring-android-8.65.0-develop-compactOps-debug.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 
 Требования:
 - либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;

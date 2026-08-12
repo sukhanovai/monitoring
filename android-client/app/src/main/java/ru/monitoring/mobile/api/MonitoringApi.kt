@@ -145,6 +145,28 @@ interface MonitoringApi {
         @Body request: SettingsReportRequest
     ): SettingsReportResponse
 
+    // --- Многопользовательский режим ---------------------------------------
+
+    @GET("v1/me")
+    suspend fun getMe(): MeResponse
+
+    @PATCH("v1/me/notifications")
+    suspend fun updateMyNotifications(
+        @Body request: MeNotificationsRequest
+    ): MeNotificationsResponse
+
+    @GET("v1/users")
+    suspend fun getUsers(): UsersListResponse
+
+    @POST("v1/users")
+    suspend fun createUser(@Body request: CreateUserRequest): UserResponse
+
+    @POST("v1/users/{userId}/channels")
+    suspend fun linkUserChannel(
+        @Path("userId") userId: Int,
+        @Body request: LinkChannelRequest
+    ): UserResponse
+
     @GET("v1/settings/extensions")
     suspend fun getExtensionsSettings(): ExtensionsSettingsResponse
 

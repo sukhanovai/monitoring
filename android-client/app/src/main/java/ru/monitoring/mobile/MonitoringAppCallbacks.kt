@@ -33,6 +33,17 @@ class MonitoringAppCallbacks(
     val onEnableAllExtensions: () -> Unit,
     val onDisableAllExtensions: () -> Unit,
     val onToggleReportExtension: (String, Boolean) -> Unit,
+    // Многопользовательский режим: личные настройки доставки и привязка
+    // этого устройства к пользователю реестра.
+    val onMyReportsEnabledChanged: (Boolean) -> Unit,
+    val onMyAlertsEnabledChanged: (Boolean) -> Unit,
+    val onMyQuietHoursEnabledChanged: (Boolean) -> Unit,
+    val onToggleMyAlertLevel: (String) -> Unit,
+    val onToggleMyAlertCategory: (String) -> Unit,
+    val onSelectAllMyAlertCategories: (Boolean) -> Unit,
+    val onLoadRegistryUsers: () -> Unit,
+    val onLinkThisDevice: (Int) -> Unit,
+    val onCreateUserForThisDevice: (String) -> Unit,
     val onOpenExtensionsSettingsMenu: () -> Unit,
     val onExtensionsSettingsAction: (String) -> Unit,
     val onAction: (String) -> Unit,

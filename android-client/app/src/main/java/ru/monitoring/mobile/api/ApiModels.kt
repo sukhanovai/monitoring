@@ -470,7 +470,11 @@ data class ReportExtensionOption(
 
 data class SettingsReportData(
     @Json(name = "report_extensions") val reportExtensions: List<String> = emptyList(),
-    val available: List<ReportExtensionOption> = emptyList()
+    val available: List<ReportExtensionOption> = emptyList(),
+    // "user" — состав личный для владельца токена, "global" — общесистемный
+    // (устройство не привязано ни к кому). Сервер отдаёт с 8.64.0.
+    val scope: String = "",
+    val user: RegistryUser? = null
 )
 
 data class SettingsReportResponse(
@@ -502,4 +506,97 @@ data class ExtensionsActionResponse(
     val action: String? = null,
     val message: String? = null,
     @Json(name = "menu_options") val menuOptions: List<MenuOption>? = null
+)
+
+// --- Многопользовательский режим (core/users.py) -----------------------------
+// Каждый пользователь имеет свои каналы обмена и персональные настройки
+// доставки. Устройство Android опознаётся по device_id токена, поэтому
+// администратор может привязать конкретный телефон к конкретному
+// пользователю — даже когда учётные данные веб-интерфейса общие.
+
+data class UserChannel(
+    val id: Int = 0,
+    val type: String = "",
+    val ref: String = "",
+    val title: String? = null,
+    val enabled: Boolean = true
+)
+
+data class UserPreferences(
+    @Json(name = "REPORTS_ENABLED") val reportsEnabled: Boolean = true,
+    @Json(name = "ALERTS_ENABLED") val alertsEnabled: Boolean = true,
+    @Json(name = "ALERT_LEVELS") val alertLevels: List<String> = emptyList(),
+    @Json(name = "ALERT_CATEGORIES") val alertCategories: List<String> = emptyList(),
+    @Json(name = "QUIET_HOURS_ENABLED") val quietHoursEnabled: Boolean = false,
+    @Json(name = "QUIET_START") val quietStart: Int = 22,
+    @Json(name = "QUIET_END") val quietEnd: Int = 8,
+    @Json(name = "REPORT_EXTENSIONS") val reportExtensions: List<String> = emptyList()
+)
+
+data class RegistryUser(
+    val id: Int = 0,
+    val username: String = "",
+    @Json(name = "display_name") val displayName: String = "",
+    val role: String = "user",
+    val enabled: Boolean = true,
+    val channels: List<UserChannel> = emptyList(),
+    val preferences: UserPreferences? = null
+)
+
+data class AlertCategoryOption(
+    val id: String = "",
+    val label: String = ""
+)
+
+data class MeCatalog(
+    @Json(name = "alert_levels") val alertLevels: List<String> = emptyList(),
+    @Json(name = "alert_categories") val alertCategories: List<AlertCategoryOption> = emptyList()
+)
+
+data class MeResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val user: RegistryUser? = null,
+    val catalog: MeCatalog? = null
+)
+
+// Частичное обновление: Moshi не сериализует null-поля, поэтому на сервер
+// уходят только реально изменённые ключи (остальные он бы отверг как
+// неподдерживаемые).
+data class MeNotificationsRequest(
+    @Json(name = "REPORTS_ENABLED") val reportsEnabled: Boolean? = null,
+    @Json(name = "ALERTS_ENABLED") val alertsEnabled: Boolean? = null,
+    @Json(name = "ALERT_LEVELS") val alertLevels: List<String>? = null,
+    @Json(name = "ALERT_CATEGORIES") val alertCategories: List<String>? = null,
+    @Json(name = "QUIET_HOURS_ENABLED") val quietHoursEnabled: Boolean? = null,
+    @Json(name = "QUIET_START") val quietStart: Int? = null,
+    @Json(name = "QUIET_END") val quietEnd: Int? = null
+)
+
+data class MeNotificationsResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val user: RegistryUser? = null,
+    val applied: List<String> = emptyList()
+)
+
+data class UsersListResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val users: List<RegistryUser> = emptyList(),
+    @Json(name = "channel_types") val channelTypes: List<String> = emptyList()
+)
+
+data class UserResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val user: RegistryUser? = null
+)
+
+data class CreateUserRequest(
+    val username: String,
+    @Json(name = "display_name") val displayName: String? = null,
+    val role: String = "user"
+)
+
+data class LinkChannelRequest(
+    val type: String,
+    val ref: String,
+    val title: String? = null
 )

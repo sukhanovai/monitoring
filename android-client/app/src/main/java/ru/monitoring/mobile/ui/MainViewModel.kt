@@ -46,11 +46,16 @@ import ru.monitoring.mobile.api.SettingsReportResponse
 import ru.monitoring.mobile.api.ExtensionUpdateRequest
 import ru.monitoring.mobile.api.ExtensionsActionRequest
 import ru.monitoring.mobile.api.ExtensionsActionResponse
+import ru.monitoring.mobile.api.AlertCategoryOption
+import ru.monitoring.mobile.api.CreateUserRequest
+import ru.monitoring.mobile.api.LinkChannelRequest
+import ru.monitoring.mobile.api.MeNotificationsRequest
 import ru.monitoring.mobile.api.MergeWindowsTypesRequest
 import ru.monitoring.mobile.api.MenuOption
 import ru.monitoring.mobile.api.MobileTokenRefresher
 import ru.monitoring.mobile.api.MorningReportPayload
 import ru.monitoring.mobile.api.ManagedServer
+import ru.monitoring.mobile.api.RegistryUser
 import ru.monitoring.mobile.api.RenameWindowsTypeRequest
 import ru.monitoring.mobile.api.ServerAvailability
 import ru.monitoring.mobile.api.SettingsAuthRequest
@@ -1330,6 +1335,10 @@ class MainViewModel(
             // Логин/пароль веб-интерфейса грузим отдельной задачей, чтобы не
             // трогать индексированный список результатов основного запроса.
             loadWebAuthSettings()
+            // Личные настройки доставки грузим отдельной задачей по той же
+            // причине, что и web-auth: индексированный список результатов
+            // основного запроса трогать нельзя.
+            loadMeSettings()
 
             val result = withContext(Dispatchers.IO) {
                 suspend fun <T> fetchOrLog(name: String, block: suspend () -> T): T? = try {
@@ -1489,6 +1498,8 @@ class MainViewModel(
                 managedServers = servers?.items ?: state.managedServers,
                 extensions = extensions?.items ?: state.extensions,
                 reportExtensionOptions = reportSettings?.settings?.available ?: state.reportExtensionOptions,
+                reportSettingsScope = reportSettings?.settings?.scope ?: state.reportSettingsScope,
+                reportSettingsOwner = reportSettings?.settings?.user ?: state.reportSettingsOwner,
                 backupProxmoxSummary = proxmoxBackupSummary?.ratioText ?: state.backupProxmoxSummary,
                 backupDatabasesSummary = dbBackupSummary?.ratioText ?: state.backupDatabasesSummary,
                 backupStockLoadsSummary = stockLoadSummary?.ratioText ?: state.backupStockLoadsSummary,
@@ -2453,6 +2464,8 @@ class MainViewModel(
                     state = state.copy(
                         isLoading = false,
                         reportExtensionOptions = response.settings?.available ?: state.reportExtensionOptions,
+                        reportSettingsScope = response.settings?.scope ?: state.reportSettingsScope,
+                        reportSettingsOwner = response.settings?.user ?: state.reportSettingsOwner,
                         message = "Состав отчёта обновлён",
                         messageSource = "report_settings"
                     )
@@ -3470,6 +3483,223 @@ class MainViewModel(
     }
 
     /** Подтягивает текущий логин веб-интерфейса и признак заданного пароля. */
+    // --- Многопользовательский режим ---------------------------------------
+    // Устройство опознаётся сервером по device_id токена: пока телефон не
+    // привязан к пользователю, действуют общесистемные настройки, и /v1/me
+    // возвращает user = null.
+
+    fun loadMeSettings() {
+        // device_id показываем всегда — он нужен администратору, чтобы
+        // привязать устройство, даже если запрос /v1/me не прошёл.
+        if (state.deviceId.isBlank()) {
+            state = state.copy(deviceId = preferences.deviceId)
+        }
+        val effectiveToken = normalizeToken(state.token.ifBlank { preferences.apiToken })
+        if (effectiveToken.isBlank()) return
+        viewModelScope.launch {
+            val response = withContext(Dispatchers.IO) {
+                runCatching { currentApi().getMe() }.getOrNull()
+            } ?: return@launch
+            state = state.copy(
+                currentUser = response.user,
+                deviceId = preferences.deviceId,
+                alertLevelOptions = response.catalog?.alertLevels ?: state.alertLevelOptions,
+                alertCategoryOptions = response.catalog?.alertCategories
+                    ?: state.alertCategoryOptions
+            )
+        }
+    }
+
+    private fun applyMyNotifications(request: MeNotificationsRequest, successMessage: String) {
+        if (state.currentUser == null) {
+            state = state.copy(
+                message = "Это устройство не привязано к пользователю — привяжите его ниже",
+                messageSource = "my_notifications"
+            )
+            return
+        }
+        viewModelScope.launch {
+            state = state.copy(isLoading = true, messageSource = "my_notifications")
+            runCatching { currentApi().updateMyNotifications(request) }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        currentUser = response.user ?: state.currentUser,
+                        message = successMessage,
+                        messageSource = "my_notifications"
+                    )
+                }
+                .onFailure { error ->
+                    state = state.copy(
+                        isLoading = false,
+                        message = formatNetworkError(error),
+                        messageSource = "my_notifications"
+                    )
+                }
+        }
+    }
+
+    fun setMyReportsEnabled(enabled: Boolean) {
+        applyMyNotifications(
+            MeNotificationsRequest(reportsEnabled = enabled),
+            if (enabled) "Отчёт будет приходить" else "Отчёт отключён"
+        )
+    }
+
+    fun setMyAlertsEnabled(enabled: Boolean) {
+        applyMyNotifications(
+            MeNotificationsRequest(alertsEnabled = enabled),
+            if (enabled) "Оповещения включены" else "Оповещения отключены"
+        )
+    }
+
+    fun setMyQuietHoursEnabled(enabled: Boolean) {
+        applyMyNotifications(
+            MeNotificationsRequest(quietHoursEnabled = enabled),
+            if (enabled) "Тихие часы включены" else "Тихие часы выключены"
+        )
+    }
+
+    fun setMyQuietHours(start: Int, end: Int) {
+        val normalizedStart = ((start % 24) + 24) % 24
+        val normalizedEnd = ((end % 24) + 24) % 24
+        applyMyNotifications(
+            MeNotificationsRequest(quietStart = normalizedStart, quietEnd = normalizedEnd),
+            "Тихие часы: %02d:00-%02d:00".format(normalizedStart, normalizedEnd)
+        )
+    }
+
+    fun toggleMyAlertLevel(level: String) {
+        val userPrefs = state.currentUser?.preferences ?: return
+        val selected = userPrefs.alertLevels.toMutableSet()
+        if (level in selected) selected.remove(level) else selected.add(level)
+        // Сохраняем порядок справочника сервера, а не порядок нажатий.
+        val ordered = state.alertLevelOptions.filter { it in selected }
+        applyMyNotifications(
+            MeNotificationsRequest(alertLevels = ordered),
+            "Уровни оповещений обновлены"
+        )
+    }
+
+    fun toggleMyAlertCategory(category: String) {
+        val userPrefs = state.currentUser?.preferences ?: return
+        val selected = userPrefs.alertCategories.toMutableSet()
+        if (category in selected) selected.remove(category) else selected.add(category)
+        val ordered = state.alertCategoryOptions.map { it.id }.filter { it in selected }
+        applyMyNotifications(
+            MeNotificationsRequest(alertCategories = ordered),
+            "Категории оповещений обновлены"
+        )
+    }
+
+    fun setAllMyAlertCategories(selectAll: Boolean) {
+        val ordered = if (selectAll) state.alertCategoryOptions.map { it.id } else emptyList()
+        applyMyNotifications(
+            MeNotificationsRequest(alertCategories = ordered),
+            if (selectAll) "Выбраны все категории" else "Категории очищены"
+        )
+    }
+
+    fun loadRegistryUsers() {
+        viewModelScope.launch {
+            state = state.copy(isLoading = true, messageSource = "my_notifications")
+            runCatching { currentApi().getUsers() }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        registryUsers = response.users,
+                        message = "Пользователей в реестре: ${response.users.size}",
+                        messageSource = "my_notifications"
+                    )
+                }
+                .onFailure { error ->
+                    state = state.copy(
+                        isLoading = false,
+                        registryUsers = emptyList(),
+                        message = formatNetworkError(error),
+                        messageSource = "my_notifications"
+                    )
+                }
+        }
+    }
+
+    // Привязка ЭТОГО устройства: ref — device_id, тот же, что уходит при
+    // обмене токена, поэтому сервер сразу начинает отдавать персональные
+    // настройки владельца.
+    fun linkThisDeviceTo(userId: Int) {
+        val deviceId = preferences.deviceId
+        viewModelScope.launch {
+            state = state.copy(isLoading = true, messageSource = "my_notifications")
+            runCatching {
+                currentApi().linkUserChannel(
+                    userId,
+                    LinkChannelRequest(
+                        type = "mobile",
+                        ref = deviceId,
+                        title = "Android ${android.os.Build.MODEL.orEmpty()}".trim()
+                    )
+                )
+            }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        currentUser = response.user ?: state.currentUser,
+                        message = "Устройство привязано к «${response.user?.displayName.orEmpty()}»",
+                        messageSource = "my_notifications"
+                    )
+                    loadMeSettings()
+                    refreshSettingsFromServer()
+                }
+                .onFailure { error ->
+                    state = state.copy(
+                        isLoading = false,
+                        message = formatNetworkError(error),
+                        messageSource = "my_notifications"
+                    )
+                }
+        }
+    }
+
+    // Заводит нового пользователя прямо с устройства и сразу привязывает его
+    // — симметрично кнопке «Привязать этот чат» в Telegram-боте.
+    fun createUserForThisDevice(displayName: String) {
+        val name = displayName.trim()
+        if (name.isBlank()) {
+            state = state.copy(
+                message = "Укажите имя пользователя",
+                messageSource = "my_notifications"
+            )
+            return
+        }
+        val username = "android_" + preferences.deviceId.take(8)
+        viewModelScope.launch {
+            state = state.copy(isLoading = true, messageSource = "my_notifications")
+            val created = runCatching {
+                currentApi().createUser(CreateUserRequest(username = username, displayName = name))
+            }
+            created
+                .onSuccess { response ->
+                    val userId = response.user?.id ?: 0
+                    state = state.copy(isLoading = false)
+                    if (userId > 0) {
+                        linkThisDeviceTo(userId)
+                    } else {
+                        state = state.copy(
+                            message = "Сервер не вернул созданного пользователя",
+                            messageSource = "my_notifications"
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    state = state.copy(
+                        isLoading = false,
+                        message = formatNetworkError(error),
+                        messageSource = "my_notifications"
+                    )
+                }
+        }
+    }
+
     fun loadWebAuthSettings() {
         val effectiveToken = normalizeToken(state.token.ifBlank { preferences.apiToken })
         if (effectiveToken.isBlank()) return
@@ -3664,6 +3894,17 @@ data class MainUiState(
     val managedServers: List<ManagedServer> = emptyList(),
     val extensions: List<ExtensionItem> = emptyList(),
     val reportExtensionOptions: List<ReportExtensionOption> = emptyList(),
+    // Многопользовательский режим: кто владеет этим устройством и его
+    // персональные настройки доставки (null — устройство ни к кому не
+    // привязано, работают общесистемные настройки).
+    val currentUser: RegistryUser? = null,
+    val alertLevelOptions: List<String> = emptyList(),
+    val alertCategoryOptions: List<AlertCategoryOption> = emptyList(),
+    val registryUsers: List<RegistryUser> = emptyList(),
+    // device_id этого устройства — по нему сервер опознаёт владельца токена.
+    val deviceId: String = "",
+    val reportSettingsScope: String = "",
+    val reportSettingsOwner: RegistryUser? = null,
     val serverEditIp: String = "",
     val serverIpInput: String = "",
     val serverNameInput: String = "",

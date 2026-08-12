@@ -2141,6 +2141,15 @@ class MainActivity : ComponentActivity() {
                         onEnableAllExtensions = vm::enableAllExtensions,
                         onDisableAllExtensions = vm::disableAllExtensions,
                         onToggleReportExtension = vm::toggleReportExtension,
+                        onMyReportsEnabledChanged = vm::setMyReportsEnabled,
+                        onMyAlertsEnabledChanged = vm::setMyAlertsEnabled,
+                        onMyQuietHoursEnabledChanged = vm::setMyQuietHoursEnabled,
+                        onToggleMyAlertLevel = vm::toggleMyAlertLevel,
+                        onToggleMyAlertCategory = vm::toggleMyAlertCategory,
+                        onSelectAllMyAlertCategories = vm::setAllMyAlertCategories,
+                        onLoadRegistryUsers = vm::loadRegistryUsers,
+                        onLinkThisDevice = vm::linkThisDeviceTo,
+                        onCreateUserForThisDevice = vm::createUserForThisDevice,
                         onOpenExtensionsSettingsMenu = vm::openExtensionsSettingsMenu,
                         onExtensionsSettingsAction = vm::runExtensionsSettingsAction,
                         onAction = vm::sendAction,
@@ -2489,6 +2498,15 @@ private fun MonitoringApp(
     val onEnableAllExtensions = callbacks.onEnableAllExtensions
     val onDisableAllExtensions = callbacks.onDisableAllExtensions
     val onToggleReportExtension = callbacks.onToggleReportExtension
+    val onMyReportsEnabledChanged = callbacks.onMyReportsEnabledChanged
+    val onMyAlertsEnabledChanged = callbacks.onMyAlertsEnabledChanged
+    val onMyQuietHoursEnabledChanged = callbacks.onMyQuietHoursEnabledChanged
+    val onToggleMyAlertLevel = callbacks.onToggleMyAlertLevel
+    val onToggleMyAlertCategory = callbacks.onToggleMyAlertCategory
+    val onSelectAllMyAlertCategories = callbacks.onSelectAllMyAlertCategories
+    val onLoadRegistryUsers = callbacks.onLoadRegistryUsers
+    val onLinkThisDevice = callbacks.onLinkThisDevice
+    val onCreateUserForThisDevice = callbacks.onCreateUserForThisDevice
     val onOpenExtensionsSettingsMenu = callbacks.onOpenExtensionsSettingsMenu
     val onExtensionsSettingsAction = callbacks.onExtensionsSettingsAction
     val onAction = callbacks.onAction
@@ -3442,7 +3460,8 @@ private fun MonitoringApp(
                                     "time" to "⏰ Время",
                                     "auth" to "🔐 Аутентификация",
                                     "extensions" to "🧩 Расширения",
-                                    "report" to "🗒️ Состав отчёта"
+                                    "report" to "🗒️ Состав отчёта",
+                                    "me" to "🔔 Мои оповещения"
                                 ).forEach { (sectionId, sectionLabel) ->
                                     SettingsSectionTile(
                                         label = sectionLabel,
@@ -3895,6 +3914,7 @@ private fun MonitoringApp(
                                             "auth" -> "🔐 Аутентификация"
                                             "extensions" -> "🧩 Расширения"
                                             "report" -> "🗒️ Состав отчёта"
+                                            "me" -> "🔔 Мои оповещения"
                                             "web" -> "🌐 Веб-интерфейс"
                                             else -> "⚙️ Настройки"
                                         }
@@ -4278,6 +4298,25 @@ private fun MonitoringApp(
 
                         if (settingsSection == "report") {
                             Text("🗒️ Состав отчёта", fontWeight = FontWeight.Bold)
+                            // Чей состав правится: личный владельца устройства
+                            // или общесистемный (устройство не привязано).
+                            val reportOwner = state.reportSettingsOwner
+                            if (reportOwner != null) {
+                                Text(
+                                    "👤 Настройка личная: " +
+                                        reportOwner.displayName.ifBlank { reportOwner.username } +
+                                        ". Другие пользователи получают отчёт по своему составу.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else if (state.reportSettingsScope == "global") {
+                                Text(
+                                    "👥 Устройство не привязано к пользователю — правится " +
+                                        "общий состав отчёта для всей системы.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             Text(
                                 "Базовые данные мониторинга доступности серверов входят в " +
                                     "утренний/ручной отчёт всегда. Отметьте расширения, " +
@@ -4291,6 +4330,35 @@ private fun MonitoringApp(
                             ReportExtensionsSection(
                                 options = state.reportExtensionOptions,
                                 onToggle = onToggleReportExtension
+                            )
+                        }
+
+                        if (settingsSection == "me") {
+                            Text("🔔 Мои оповещения", fontWeight = FontWeight.Bold)
+                            Text(
+                                "Личные настройки доставки: что и когда присылать именно вам. " +
+                                    "Настройки сбора данных общие для всех пользователей.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (state.message.isNotBlank() && state.messageSource == "my_notifications") {
+                                Text(state.message)
+                            }
+                            MyNotificationsSection(
+                                user = state.currentUser,
+                                levelOptions = state.alertLevelOptions,
+                                categoryOptions = state.alertCategoryOptions,
+                                deviceId = state.deviceId,
+                                users = state.registryUsers,
+                                onReportsEnabledChange = onMyReportsEnabledChanged,
+                                onAlertsEnabledChange = onMyAlertsEnabledChanged,
+                                onQuietHoursEnabledChange = onMyQuietHoursEnabledChanged,
+                                onToggleLevel = onToggleMyAlertLevel,
+                                onToggleCategory = onToggleMyAlertCategory,
+                                onSelectAllCategories = onSelectAllMyAlertCategories,
+                                onLoadUsers = onLoadRegistryUsers,
+                                onLinkTo = onLinkThisDevice,
+                                onCreateUser = onCreateUserForThisDevice
                             )
                         }
 
