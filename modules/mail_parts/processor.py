@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/processor.py
-Server Monitoring System v8.64.2
+Server Monitoring System v8.65.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 BackupProcessor extracted from modules/mail_monitor.py (PR6 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.64.2
+Версия: 8.65.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Координатор обработки писем с отчётами о резервных копиях: чтение Maildir

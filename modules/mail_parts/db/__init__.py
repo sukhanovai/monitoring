@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/db/__init__.py
-Server Monitoring System v8.64.2
+Server Monitoring System v8.65.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 DB-helpers подпакет mail_parts (PR6b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.64.2
+Версия: 8.65.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 DDL и SQL-хелперы, отделённые от логики BackupProcessor.
