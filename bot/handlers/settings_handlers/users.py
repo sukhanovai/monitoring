@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers/users.py
-Server Monitoring System v8.65.0
+Server Monitoring System v8.65.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Users and personal notification settings UI (Telegram)
 Система мониторинга серверов
-Версия: 8.65.0
+Версия: 8.65.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 

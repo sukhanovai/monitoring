@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/patterns.py
-Server Monitoring System v8.65.0
+Server Monitoring System v8.65.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Pattern helpers extracted from modules/mail_monitor.py (PR6 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.65.0
+Версия: 8.65.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Сборщики regex/glob-паттернов из конфигурации БД для разных типов писем
@@ -60,6 +60,15 @@ _NON_DATABASE_PATTERN_CATEGORIES = {
     "nas_transfer",
     "config_console",
     "stock_load",
+}
+
+# Алиасы «полных» ключей DATABASE_CONFIG к коротким именам категорий,
+# которые ожидает parse_database_backup (см. get_database_patterns_from_config).
+_DB_CATEGORY_ALIASES = {
+    "company_databases": "company",
+    "barnaul_backups": "barnaul",
+    "client_databases": "client",
+    "yandex_backups": "yandex",
 }
 
 
@@ -189,6 +198,29 @@ def get_database_patterns_from_config() -> dict[str, list[str]]:
         # Подмешиваем паттерны, добавленные через мастер бота (таблица
         # backup_patterns), иначе они не влияют на разбор писем.
         result = _merge_db_patterns_from_table(result)
+
+        # Мастер «Настройка паттернов» предлагает категории прямо из
+        # DATABASE_CONFIG (см. _get_database_categories в
+        # bot/handlers/settings_handlers/backups/db.py) — там ключи
+        # «полные» (barnaul_backups, client_databases, ...), а не короткие
+        # (barnaul, client, ...), которые парсер ищет в barnaul_patterns/
+        # client_patterns ниже. Схлопываем такие алиасы в канонические
+        # категории, иначе паттерн, добавленный под "barnaul_backups",
+        # никогда не попадёт в barnaul_patterns: письмо распознаётся через
+        # запасную ветку «пользовательских категорий» с backup_type =
+        # "barnaul_backups", и такой бэкап не совпадает ни с одной
+        # категорией сводки БД, хотя он успешен и найден вовремя.
+        for alias, canonical in _DB_CATEGORY_ALIASES.items():
+            alias_patterns = result.pop(alias, None)
+            if not isinstance(alias_patterns, list):
+                continue
+            canonical_patterns = result.setdefault(canonical, [])
+            if not isinstance(canonical_patterns, list):
+                canonical_patterns = []
+                result[canonical] = canonical_patterns
+            for pattern in alias_patterns:
+                if pattern not in canonical_patterns:
+                    canonical_patterns.append(pattern)
 
         return result
 

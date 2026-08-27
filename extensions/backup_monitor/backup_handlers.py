@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.65.0
+Server Monitoring System v8.65.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.65.0
+Версия: 8.65.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -23,6 +23,7 @@ from extensions.extension_manager import extension_manager
 
 from .backup_utils import (
     DisplayFormatters,
+    _canonical_backup_category,
     get_config_console_patterns_from_config,
     save_config_console_patterns,
 )
@@ -627,20 +628,11 @@ def _normalize_db_key(name: str) -> str:
 def _normalize_backup_type(backup_type: str, db_name: str) -> str:
     if _normalize_db_key(db_name) == "trade" and backup_type == "client":
         return "company_database"
-    return backup_type
+    return _canonical_backup_category(backup_type)
 
 
 def _normalize_config_backup_type(category: str) -> str:
-    normalized = _normalize_db_key(category)
-    if normalized in ("company", "company_database"):
-        return "company_database"
-    if normalized in ("barnaul", "barnaul_backups"):
-        return "barnaul"
-    if normalized in ("client", "client_databases"):
-        return "client"
-    if normalized in ("yandex", "yandex_backups"):
-        return "yandex"
-    return category
+    return _canonical_backup_category(category)
 
 
 def _get_disabled_db_monitors() -> set[tuple[str, str]]:
