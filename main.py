@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
 """
 
+import argparse
 import os
 import sys
-import argparse
 import threading
+import time
 from pathlib import Path
 
 from lib.logging import setup_logging
+
 PROJECT_ROOT = Path(__file__).resolve().parent
 BASE_DIR = Path(os.environ.get("MONITORING_BASE_DIR", PROJECT_ROOT)).resolve()
 BASE_DIR.mkdir(parents=True, exist_ok=True)
@@ -31,6 +33,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Server Monitoring System")
     try:
         from core.task_router import TASK_ROUTES
+
         parser.add_argument(
             "--check",
             choices=list(TASK_ROUTES.keys()),
@@ -66,6 +69,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Тестовый запуск без сетевых действий и опроса Telegram",
+    )
+    parser.add_argument(
+        "--silent-start",
+        action="store_true",
+        help=(
+            "Не отправлять стартовое уведомление в Telegram и Matrix "
+            "(тихий перезапуск). Эквивалент MONITOR_SILENT_START=1"
+        ),
     )
     return parser
 
@@ -135,11 +146,25 @@ def run_cli_checks(args: argparse.Namespace) -> tuple[bool, int]:
 
 
 def main(args: argparse.Namespace):
+    # CLI-ключ тихого старта пробрасываем в окружение, чтобы фоновые
+    # потоки мониторинга (core.monitor / monitor_core) тоже его видели.
+    if getattr(args, "silent_start", False):
+        os.environ["MONITOR_SILENT_START"] = "1"
+
     # ------------------------------------------------------------------
     # 1. Загрузка конфигурации
     # ------------------------------------------------------------------
     try:
-        from config.db_settings import TELEGRAM_TOKEN, DEBUG_MODE, CHAT_IDS, SILENT_START, SILENT_END
+        from config.db_settings import (
+            CHAT_IDS,
+            DEBUG_MODE,
+            MATRIX_ACCESS_TOKEN,
+            MATRIX_HOMESERVER,
+            MATRIX_ROOM_ID,
+            SILENT_END,
+            SILENT_START,
+            TELEGRAM_TOKEN,
+        )
     except ImportError as e:
         print(f"❌ Не удалось загрузить db_settings: {e}")
         sys.exit(1)
@@ -180,10 +205,33 @@ def main(args: argparse.Namespace):
 
     updater = Updater(token=bot_token, use_context=True)
     dispatcher = updater.dispatcher
+
+    def telegram_error_handler(update, context):
+        """Глобальный обработчик ошибок Telegram для стабильного polling."""
+        error = getattr(context, "error", None)
+        if error is None:
+            logger.error("❌ Неизвестная ошибка Telegram без контекста")
+            return
+
+        try:
+            from telegram.error import NetworkError, TimedOut
+
+            network_errors = (NetworkError, TimedOut, TimeoutError)
+        except Exception:
+            network_errors = (TimeoutError,)
+
+        if isinstance(error, network_errors):
+            logger.warning(f"⚠️ Сетевая ошибка Telegram API: {error}")
+            return
+
+        logger.exception("❌ Необработанная ошибка Telegram", exc_info=error)
+
+    dispatcher.add_error_handler(telegram_error_handler)
     try:
-        from lib.alerts import init_telegram_bot
+        from lib.alerts import init_matrix_bot, init_telegram_bot
 
         init_telegram_bot(updater.bot, CHAT_IDS)
+        init_matrix_bot(MATRIX_HOMESERVER, MATRIX_ACCESS_TOKEN, MATRIX_ROOM_ID)
     except Exception as e:
         logger.warning(f"⚠️ Не удалось инициализировать алерты: {e}")
 
@@ -228,18 +276,23 @@ def main(args: argparse.Namespace):
         try:
             from extensions.extension_manager import extension_manager
 
-            if extension_manager.is_extension_enabled('backup_monitor'):
+            if extension_manager.is_extension_enabled("backup_monitor"):
                 from extensions.backup_monitor.bot_handler import setup_backup_handlers
+
                 setup_backup_handlers(dispatcher)
                 logger.info("✅ Расширение backup_monitor подключено")
 
-            if extension_manager.is_extension_enabled('web_interface'):
+            if extension_manager.is_extension_enabled("web_interface"):
                 from extensions.web_interface import start_web_server
-                threading.Thread(
-                    target=start_web_server,
-                    daemon=True
-                ).start()
+
+                threading.Thread(target=start_web_server, daemon=True).start()
                 logger.info("✅ Веб-интерфейс запущен")
+
+            if extension_manager.is_extension_enabled("supplier_stock_files"):
+                from extensions.supplier_stock_files import start_supplier_stock_scheduler
+
+                start_supplier_stock_scheduler()
+                logger.info("✅ Планировщик остатков поставщиков запущен")
 
         except Exception as e:
             logger.warning(f"⚠️ Ошибка инициализации расширений: {e}")
@@ -252,10 +305,8 @@ def main(args: argparse.Namespace):
     if not args.dry_run:
         try:
             from core.monitor import monitor
-            threading.Thread(
-                target=monitor.start,
-                daemon=True
-            ).start()
+
+            threading.Thread(target=monitor.start, daemon=True).start()
             logger.info("✅ Основной мониторинг запущен")
         except Exception as e:
             logger.error(f"❌ Ошибка запуска мониторинга: {e}")
@@ -263,20 +314,53 @@ def main(args: argparse.Namespace):
         logger.info("🧪 Dry-run: запуск основного мониторинга пропущен")
 
     # ------------------------------------------------------------------
-    # 9. Стартовое уведомление
+    # 8.1 Matrix incoming commands (/sync)
     # ------------------------------------------------------------------
     if not args.dry_run:
         try:
-            from lib.alerts import send_alert
-            send_alert(
-                "🟢 *Мониторинг серверов запущен*\n\n"
-                "Система успешно инициализирована",
-                force=True
+            from config.db_settings import (
+                MATRIX_ACCESS_TOKEN,
+                MATRIX_ALLOWED_ROOM_IDS,
+                MATRIX_ALLOWED_USER_IDS,
+                MATRIX_BOT_PASSWORD,
+                MATRIX_BOT_USER_ID,
+                MATRIX_DEVICE_NAME,
+                MATRIX_HOMESERVER,
+                MATRIX_ROOM_ID,
+                MATRIX_STORE_PATH,
             )
+            from lib.matrix_commands import run_matrix_command_bot
+
+            def _parse_acl(raw_value):
+                return [item.strip() for item in str(raw_value or "").split(",") if item.strip()]
+
+            threading.Thread(
+                target=run_matrix_command_bot,
+                kwargs={
+                    "homeserver": MATRIX_HOMESERVER,
+                    "access_token": MATRIX_ACCESS_TOKEN,
+                    "room_id": MATRIX_ROOM_ID,
+                    "whitelist_user_ids": _parse_acl(MATRIX_ALLOWED_USER_IDS),
+                    "allowed_room_ids": _parse_acl(MATRIX_ALLOWED_ROOM_IDS)
+                    or ([MATRIX_ROOM_ID] if MATRIX_ROOM_ID else []),
+                    "bot_user_id": MATRIX_BOT_USER_ID,
+                    "bot_password": MATRIX_BOT_PASSWORD,
+                    "store_path": MATRIX_STORE_PATH,
+                    "device_name": MATRIX_DEVICE_NAME,
+                },
+                daemon=True,
+            ).start()
+            logger.info("✅ Matrix command sync запущен")
         except Exception as e:
-            logger.warning(f"⚠️ Не удалось отправить стартовое сообщение: {e}")
+            logger.warning(f"⚠️ Ошибка запуска Matrix command sync: {e}")
     else:
-        logger.info("🧪 Dry-run: стартовое уведомление не отправлялось")
+        logger.info("🧪 Dry-run: Matrix command sync пропущен")
+
+    # ------------------------------------------------------------------
+    # 9. Стартовое уведомление отправляется потоком мониторинга
+    #    (core.monitor.Monitor._send_startup_notification), чтобы
+    #    в Telegram/Matrix приходило одно объединённое сообщение.
+    # ------------------------------------------------------------------
 
     # ------------------------------------------------------------------
     # 10. Запуск
@@ -284,10 +368,40 @@ def main(args: argparse.Namespace):
     if args.dry_run:
         logger.info("🧪 Dry-run завершён: опрос Telegram не запускался")
         return
-    
-    updater.start_polling()
-    logger.info("✅ Бот запущен и готов к работе")
-    updater.idle()
+
+    retry_delay_sec = 5
+    max_retry_delay_sec = 60
+
+    while True:
+        try:
+            updater.start_polling(timeout=20, read_latency=2.0)
+            logger.info("✅ Бот запущен и готов к работе")
+            updater.idle()
+            break
+        except Exception as e:
+            try:
+                from telegram.error import NetworkError, TimedOut
+
+                network_errors = (NetworkError, TimedOut, TimeoutError, ConnectionError, OSError)
+            except Exception:
+                network_errors = (TimeoutError, ConnectionError, OSError)
+
+            if isinstance(e, network_errors):
+                logger.warning(
+                    "⚠️ Не удалось подключиться к Telegram API (%s). Повтор через %s сек.",
+                    e.__class__.__name__,
+                    retry_delay_sec,
+                )
+                try:
+                    updater.stop()
+                except Exception:
+                    pass
+                time.sleep(retry_delay_sec)
+                retry_delay_sec = min(retry_delay_sec * 2, max_retry_delay_sec)
+                continue
+
+            logger.exception("❌ Критическая ошибка запуска Telegram polling")
+            raise
 
 
 if __name__ == "__main__":

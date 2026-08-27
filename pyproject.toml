@@ -1,0 +1,148 @@
+[project]
+name = "monitoring"
+description = "Server monitoring system with Telegram bot"
+requires-python = ">=3.10"
+dynamic = ["version"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".venv",
+    "venv",
+    "android-client",
+]
+
+[tool.ruff.lint]
+# Мягкий стартовый набор. Расширяется по мере очистки кодовой базы.
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+# Правила, которые сейчас массово нарушаются по всему репо.
+# Снимать по одному в последующих PR (особенно PR3 после ruff --fix и black).
+extend-ignore = [
+    # Стилевое / контролируется black.
+    "E501",   # line-too-long
+    "E402",   # module-level-import-not-at-top
+    "E731",   # do-not-assign-lambda
+    "E741",   # ambiguous variable name
+    "E722",   # bare-except
+    # Bugbear, разбирается отдельно.
+    "B007",   # unused-loop-control-variable
+    "B008",   # function-call-in-default-argument
+    "B023",   # function-uses-loop-variable
+    "B904",   # raise-without-from-inside-except
+    "B905",   # zip-without-explicit-strict
+    # PyUpgrade — типы/синтаксис, частично применяется в PR3.
+    "UP006",  # use builtin generic types
+    "UP007",  # use X | Y for Union
+    "UP012",  # unnecessary-encode-utf8
+    "UP015",  # redundant-open-modes
+    "UP031",  # printf-string-formatting
+    "UP034",  # extraneous-parentheses
+    "UP035",  # deprecated-import
+    "UP037",  # quoted-annotation
+    "UP038",  # non-pep604-isinstance (ruff помечает фикс unsafe)
+    "UP041",  # timeout-error-alias
+    # Pyflakes — снимаются по мере декомпозиции монолитов.
+    "F401",   # unused-import (на уровне репо; локально снят в чистых модулях)
+    "F403",   # import-star
+    "F405",   # undefined-local-with-import-star-usage
+    "F811",   # redefined-while-unused
+    "F821",   # undefined-name (нужна проверка вручную)
+    "F823",   # undefined-local
+    "F841",   # unused-variable
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Монолитные модули — особо шумные правила игнорируются пока идёт декомпозиция.
+"bot/handlers/settings_handlers/_legacy.py" = ["F401", "F811", "F841", "B007"]
+"core/monitor_core.py" = ["F401", "F811", "F841", "B007"]
+"modules/mail_monitor.py" = ["F401", "F811", "F841", "B007"]
+# __init__ обычно реэкспортирует.
+"**/__init__.py" = ["F401", "F403"]
+# Скрипты часто пишут print/импорты из sys.path.
+"scripts/*.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["bot", "config", "core", "extensions", "lib", "modules"]
+combine-as-imports = true
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+extend-exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | build
+  | dist
+  | android-client
+)/
+'''
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+follow_imports = "silent"
+warn_redundant_casts = true
+warn_unused_ignores = false
+no_implicit_optional = false
+check_untyped_defs = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+exclude = [
+    "android-client/",
+    "build/",
+    "dist/",
+]
+
+# PR10: strict-режим для отобранных PURE-модулей нового кода. Список
+# намеренно мал — это «эталоны типизации», на которые нужно равняться
+# при дальнейшем расширении. Расширять только после того, как для
+# нового кандидата исправлены все `no-untyped-call` от легаси-окружения.
+[[tool.mypy.overrides]]
+module = [
+    "core.monitor_state",
+    "scripts.bump_version",
+    "modules.mail_parts.db.schema",
+    "modules.mail_parts.db",
+]
+strict = true
+# В strict-наборе остаётся ignore_missing_imports — без него
+# mypy упрётся в paramiko/telegram даже для модулей, которые их не
+# трогают (тянутся транзитивно через config/__init__.py).
+
+# Декларативный список модулей, которые ХОТЕЛОСЬ БЫ привести к strict.
+# Сейчас они вызывают untyped legacy-функции (extensions/server_checks,
+# core.monitor_core), поэтому strict включается без `disallow_untyped_calls`.
+[[tool.mypy.overrides]]
+module = [
+    "core.monitor_parts.alerts",
+    "core.monitor_parts.availability",
+    "core.monitor_parts.resource_checks",
+]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_reexport = true
+warn_unused_ignores = true
+# disallow_untyped_calls и warn_return_any явно false — иначе вызовы
+# в untyped legacy-API (extensions/server_checks, core.monitor_core)
+# валят весь CI. Будет включено, когда legacy получит аннотации.
+disallow_untyped_calls = false
+warn_return_any = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) => подкаталог
+         "Download" во внешнем app-specific каталоге. Через него отдаём
+         скачанный APK системному установщику. -->
+    <external-files-path
+        name="update_downloads"
+        path="Download/" />
+</paths>

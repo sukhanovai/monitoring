@@ -1,37 +1,39 @@
 """
 /core/__init__.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system package
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет ядра системы
 """
 
-from .config_manager import config_manager, ConfigManager
 from .checker import ServerChecker
+from .config_manager import ConfigManager, config_manager
 
 __all__ = [
-    'config_manager',
-    'ConfigManager',
-    'ServerChecker',
-    'monitor',
-    'Monitor',
-    'TASK_ROUTES',
-    'get_task_route',
-    'run_task',
-    'get_monitoring_servers',
-    'run_availability_task',
-    'run_resources_task',
-    'run_targeted_task',
+    "config_manager",
+    "ConfigManager",
+    "ServerChecker",
+    "monitor",
+    "Monitor",
+    "TASK_ROUTES",
+    "get_task_route",
+    "run_task",
+    "get_monitoring_servers",
+    "run_availability_task",
+    "run_resources_task",
+    "run_targeted_task",
 ]
+
 
 def __getattr__(name):
     if name in {"monitor", "Monitor"}:
-        from .monitor import monitor, Monitor
+        from .monitor import Monitor, monitor
+
         globals().update({"monitor": monitor, "Monitor": Monitor})
         return globals()[name]
 
@@ -48,13 +50,14 @@ def __getattr__(name):
     if name in task_router_exports:
         from .task_router import (
             TASK_ROUTES,
-            get_task_route,
-            run_task,
             get_monitoring_servers,
+            get_task_route,
             run_availability_task,
             run_resources_task,
             run_targeted_task,
+            run_task,
         )
+
         globals().update(
             {
                 "TASK_ROUTES": TASK_ROUTES,

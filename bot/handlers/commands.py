@@ -1,27 +1,28 @@
 """
 /bot/handlers/commands.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Only commands, no inline buttons.
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Только команды, никаких inline-кнопок
 """
 
-from bot.menu.handlers import show_main_menu
-from bot.handlers.base import check_access, deny_access
-from lib.common import debug_log
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+from bot.handlers.base import check_access, deny_access
+from bot.menu.handlers import show_main_menu
 from core.monitor_core import (
+    control_command,
     manual_check_handler,
     monitor_status,
-    silent_command,
-    control_command,
     send_morning_report_handler,
+    silent_command,
 )
+from lib.common import debug_log
 
 
 def start_command(update, context):
@@ -34,8 +35,7 @@ def help_command(update, context):
         return
 
     update.message.reply_text(
-        "ℹ️ Используйте меню для управления мониторингом",
-        parse_mode='Markdown'
+        "ℹ️ Используйте меню для управления мониторингом", parse_mode="Markdown"
     )
 
 
@@ -59,24 +59,20 @@ def report_command(update, context):
     send_morning_report_handler(update, context)
 
 
-def send_alert(message, force=False):
-    """Отправляет сообщение в Telegram"""
+def send_alert(message, force=False, category=None):
+    """Отправляет сообщение через единый канал оповещений.
+
+    Раньше здесь был прямой цикл по `CHAT_IDS`, который игнорировал реестр
+    пользователей: сообщение уходило во все чаты независимо от личных
+    подписок получателей. Теперь вызов делегируется
+    `core.monitor_core.send_alert` → `lib.alerts.send_alert`, который
+    раскладывает сообщение по личным каналам с учётом персональных
+    фильтров (уровень, категория, тихие часы).
+    """
     try:
-        from modules.availability import availability_monitor
-        from lib.alerts import is_silent_time
+        from core.monitor_core import send_alert as unified_send_alert
 
-        if force or not is_silent_time():
-            from core.monitor_core import bot
-            if bot:
-                from config.db_settings import CHAT_IDS
-                for chat_id in CHAT_IDS:
-                    bot.send_message(chat_id=chat_id, text=message)
-                debug_log("✅ Сообщение отправлено")
-                return True
-        else:
-            debug_log("⏸️ Сообщение не отправлено (тихий режим)")
-
-        return False
+        return unified_send_alert(message, force=force, category=category)
     except Exception as e:
         debug_log(f"❌ Ошибка отправки сообщения: {e}")
         return False
@@ -85,7 +81,7 @@ def send_alert(message, force=False):
 def handle_check_single_server(update, context, server_ip):
     """Обработка проверки одного сервера"""
     try:
-        from extensions.server_checks import get_server_by_ip, check_server_availability
+        from extensions.server_checks import check_server_availability, get_server_by_ip
 
         server = get_server_by_ip(server_ip)
         if not server:
@@ -106,7 +102,8 @@ def handle_check_server_resources(update, context, server_ip):
     """Обработка проверки ресурсов одного сервера"""
     try:
         from extensions.extension_manager import extension_manager
-        if not extension_manager.is_extension_enabled('resource_monitor'):
+
+        if not extension_manager.is_extension_enabled("resource_monitor"):
             return "📊 Мониторинг ресурсов отключён"
 
         from modules.resources import resource_monitor
@@ -117,6 +114,7 @@ def handle_check_server_resources(update, context, server_ip):
             return "❌ Не удалось получить ресурсы сервера"
 
         from extensions.server_checks import get_server_by_ip
+
         server = get_server_by_ip(server_ip)
 
         message = f"📊 **Ресурсы сервера {server['name']} ({server_ip})**\n\n"
@@ -127,11 +125,12 @@ def handle_check_server_resources(update, context, server_ip):
         message += f"• Время проверки: {resources.get('timestamp', 'N/A')}\n"
 
         from config.db_settings import RESOURCE_THRESHOLDS
+
         alerts = []
 
-        cpu = resources.get('cpu', 0)
-        ram = resources.get('ram', 0)
-        disk = resources.get('disk', 0)
+        cpu = resources.get("cpu", 0)
+        ram = resources.get("ram", 0)
+        disk = resources.get("disk", 0)
 
         if cpu >= RESOURCE_THRESHOLDS["cpu_critical"]:
             alerts.append(f"🚨 CPU: {cpu}% (критично)")
@@ -177,18 +176,18 @@ def create_server_selection_keyboard(server_type=None, action="check_single"):
             button_text = f"{server['name'][:15]}"
             callback_data = f"{action}_{server['ip']}"
 
-            current_row.append(
-                InlineKeyboardButton(button_text, callback_data=callback_data)
-            )
+            current_row.append(InlineKeyboardButton(button_text, callback_data=callback_data))
 
             if len(current_row) == 2 or i == len(servers) - 1:
                 keyboard.append(current_row)
                 current_row = []
 
-        keyboard.append([
-            InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ]
+        )
 
         return InlineKeyboardMarkup(keyboard)
 

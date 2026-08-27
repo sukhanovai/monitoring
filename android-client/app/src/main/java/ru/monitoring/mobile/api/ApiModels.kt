@@ -1,0 +1,602 @@
+package ru.monitoring.mobile.api
+
+import com.squareup.moshi.Json
+
+/**
+ * Модели сделаны толерантными к двум форматам API:
+ * 1) старый: envelope { data, error }
+ * 2) прямой ответ: request_id + payload поля в корне.
+ */
+data class ApiEnvelope<T>(
+    val data: T? = null,
+    val error: ApiError? = null
+)
+
+data class ApiError(
+    val code: String,
+    val message: String,
+    @Json(name = "request_id") val requestId: String? = null
+)
+
+data class ServerAvailability(
+    val id: String,
+    val name: String,
+    val status: String,
+    @Json(name = "last_checked_at") val lastCheckedAt: String?
+)
+
+data class AvailabilityItem(
+    @Json(name = "server_id") val serverId: String? = null,
+    @Json(name = "server_name") val serverName: String? = null,
+    val name: String? = null,
+    val ip: String? = null,
+    val status: String? = null,
+    @Json(name = "checked_at") val checkedAt: String? = null,
+    @Json(name = "error_message") val errorMessage: String? = null
+)
+
+data class AvailabilityResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    @Json(name = "generated_at") val generatedAt: String? = null,
+    val servers: List<ServerAvailability> = emptyList(),
+    val items: List<AvailabilityItem> = emptyList(),
+    val summary: Summary = Summary()
+)
+
+data class ResourceSnapshot(
+    val cpu: Int? = null,
+    val ram: Int? = null,
+    val disk: Int? = null,
+    @Json(name = "access_method") val accessMethod: String? = null,
+    val timestamp: String? = null
+)
+
+data class ServerResourcesResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    @Json(name = "server_id") val serverId: String? = null,
+    @Json(name = "server_name") val serverName: String? = null,
+    @Json(name = "server_ip") val serverIp: String? = null,
+    val resources: ResourceSnapshot? = null,
+    val message: String? = null
+)
+
+data class Summary(
+    val up: Int = 0,
+    val down: Int = 0,
+    val unknown: Int = 0
+)
+
+data class ControlActionRequest(
+    val action: String
+)
+
+data class AuthTokenExchangeRequest(
+    @Json(name = "device_id") val deviceId: String? = null,
+    @Json(name = "subject") val subject: String? = null,
+    @Json(name = "reissue") val reissue: Boolean? = true
+)
+
+data class AuthTokenExchangeResponse(
+    @Json(name = "access_token") val accessToken: String? = null,
+    @Json(name = "token_type") val tokenType: String? = null,
+    @Json(name = "expires_in") val expiresIn: Int? = null,
+    @Json(name = "expires_at") val expiresAt: String? = null,
+    @Json(name = "scope") val scope: String? = null,
+    @Json(name = "issued_at") val issuedAt: String? = null,
+    @Json(name = "subject") val subject: String? = null,
+    @Json(name = "auth_type") val authType: String? = null
+)
+
+
+
+data class MobileVersionResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val platform: String? = null,
+    @Json(name = "min_supported_version") val minSupportedVersion: String? = null,
+    @Json(name = "latest_version") val latestVersion: String? = null,
+    @Json(name = "apk_download_url") val apkDownloadUrl: String? = null,
+    @Json(name = "current_version") val currentVersion: String? = null,
+    @Json(name = "update_required") val updateRequired: Boolean? = null,
+    val branch: String? = null,
+)
+
+data class MobileBranch(
+    val name: String? = null,
+    val title: String? = null,
+    @Json(name = "latest_version") val latestVersion: String? = null,
+    @Json(name = "apk_download_url") val apkDownloadUrl: String? = null,
+    @Json(name = "is_default") val isDefault: Boolean? = null,
+)
+
+data class MobileBranchesResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val platform: String? = null,
+    @Json(name = "default_branch") val defaultBranch: String? = null,
+    val branches: List<MobileBranch>? = null,
+)
+
+data class TlsDiagnosticsRequest(
+    val outcome: String? = null,
+    @Json(name = "base_url") val baseUrl: String? = null,
+    val host: String? = null,
+    val port: Int? = null,
+    val protocol: String? = null,
+    @Json(name = "cipher_suite") val cipherSuite: String? = null,
+    @Json(name = "status_text") val statusText: String? = null,
+    @Json(name = "cert_subject") val certSubject: String? = null,
+    @Json(name = "cert_issuer") val certIssuer: String? = null,
+    @Json(name = "cert_not_before") val certNotBefore: String? = null,
+    @Json(name = "cert_not_after") val certNotAfter: String? = null,
+    @Json(name = "cert_sans") val certSans: String? = null,
+    @Json(name = "app_version") val appVersion: String? = null,
+    val device: String? = null,
+    @Json(name = "error_chain") val errorChain: String? = null,
+    val stacktrace: String? = null,
+)
+
+data class TlsDiagnosticsResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val received: Boolean? = null,
+)
+
+data class MenuOption(
+    val label: String? = null,
+    val action: String? = null,
+    @Json(name = "callback_data") val callbackData: String? = null,
+    @Json(name = "callbackData") val callbackDataCamel: String? = null,
+    @Json(name = "extension_id") val extensionId: String? = null
+)
+
+data class ControlActionResult(
+    @Json(name = "request_id") val requestId: String? = null,
+    val action: String? = null,
+    val result: String? = null,
+    val accepted: Boolean? = null,
+    val message: String? = null,
+    @Json(name = "text") val text: String? = null,
+    @Json(name = "queued_job_id") val queuedJobId: String? = null,
+    @Json(name = "menu_options") val menuOptions: List<MenuOption>? = null,
+    @Json(name = "menuOptions") val menuOptionsCamel: List<MenuOption>? = null,
+    // Заполнено только для action="send_morning_report" — структурированные
+    // секции отчёта, из которых Telegram/Matrix уже строят сворачиваемые
+    // blockquote/details. null у старых бэкендов и для прочих действий.
+    @Json(name = "morning_report") val morningReport: MorningReportPayload? = null
+)
+
+/** Секция утреннего/ручного отчёта: заголовок с флагом + скрытые до тапа подробности. */
+data class MorningReportSection(
+    val title: String? = null,
+    @Json(name = "has_issues") val hasIssues: Boolean? = null,
+    val lines: List<String>? = null
+)
+
+/** Структурированный утренний/ручной отчёт для рендера сворачиваемых секций. */
+data class MorningReportPayload(
+    @Json(name = "report_type") val reportType: String? = null,
+    @Json(name = "app_version") val appVersion: String? = null,
+    @Json(name = "generated_at") val generatedAt: String? = null,
+    @Json(name = "has_issues") val hasIssues: Boolean? = null,
+    @Json(name = "problem_areas") val problemAreas: List<String>? = null,
+    val composition: String? = null,
+    val sections: List<MorningReportSection>? = null
+)
+
+data class ControlStatusResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    @Json(name = "monitoring_active") val monitoringActive: Boolean? = null,
+    @Json(name = "monitoring_status") val monitoringStatus: String? = null,
+    @Json(name = "silent_active") val silentActive: Boolean? = null,
+    @Json(name = "silent_mode") val silentMode: String? = null,
+    @Json(name = "silent_override") val silentOverride: Boolean? = null
+)
+
+data class SettingsMonitoringRequest(
+    @Json(name = "check_interval_sec") val checkIntervalSec: Int? = null,
+    @Json(name = "timeout_sec") val timeoutSec: Int? = null,
+    @Json(name = "max_downtime_sec") val maxDowntimeSec: Int? = null,
+    @Json(name = "windows_2025_timeout_sec") val windows2025TimeoutSec: Int? = null,
+    @Json(name = "domain_servers_timeout_sec") val domainServersTimeoutSec: Int? = null,
+    @Json(name = "admin_servers_timeout_sec") val adminServersTimeoutSec: Int? = null,
+    @Json(name = "standard_windows_timeout_sec") val standardWindowsTimeoutSec: Int? = null,
+    @Json(name = "linux_timeout_sec") val linuxTimeoutSec: Int? = null,
+    @Json(name = "ping_timeout_sec") val pingTimeoutSec: Int? = null
+)
+
+data class SettingsMonitoringData(
+    @Json(name = "check_interval_sec") val checkIntervalSec: Int,
+    @Json(name = "timeout_sec") val timeoutSec: Int,
+    @Json(name = "max_downtime_sec") val maxDowntimeSec: Int,
+    @Json(name = "windows_2025_timeout_sec") val windows2025TimeoutSec: Int? = null,
+    @Json(name = "domain_servers_timeout_sec") val domainServersTimeoutSec: Int? = null,
+    @Json(name = "admin_servers_timeout_sec") val adminServersTimeoutSec: Int? = null,
+    @Json(name = "standard_windows_timeout_sec") val standardWindowsTimeoutSec: Int? = null,
+    @Json(name = "linux_timeout_sec") val linuxTimeoutSec: Int? = null,
+    @Json(name = "ping_timeout_sec") val pingTimeoutSec: Int? = null
+)
+
+data class SettingsMonitoringResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsMonitoringData? = null,
+    @Json(name = "check_interval_sec") val checkIntervalSec: Int? = null,
+    @Json(name = "timeout_sec") val timeoutSec: Int? = null,
+    @Json(name = "max_downtime_sec") val maxDowntimeSec: Int? = null,
+    @Json(name = "windows_2025_timeout_sec") val windows2025TimeoutSec: Int? = null,
+    @Json(name = "domain_servers_timeout_sec") val domainServersTimeoutSec: Int? = null,
+    @Json(name = "admin_servers_timeout_sec") val adminServersTimeoutSec: Int? = null,
+    @Json(name = "standard_windows_timeout_sec") val standardWindowsTimeoutSec: Int? = null,
+    @Json(name = "linux_timeout_sec") val linuxTimeoutSec: Int? = null,
+    @Json(name = "ping_timeout_sec") val pingTimeoutSec: Int? = null
+)
+
+data class SettingsBotRequest(
+    @Json(name = "telegram_bot_token") val telegramBotToken: String? = null,
+    @Json(name = "telegram_chat_id") val telegramChatId: String? = null,
+    @Json(name = "telegram_chat_ids") val telegramChatIds: List<String>? = null
+)
+
+data class SettingsBotData(
+    @Json(name = "telegram_chat_id") val telegramChatId: String? = null,
+    @Json(name = "telegram_chat_ids") val telegramChatIds: List<String>? = null,
+    @Json(name = "masked_token") val maskedToken: String? = null,
+    @Json(name = "telegram_bot_token") val telegramBotToken: String? = null
+)
+
+data class SettingsBotResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsBotData? = null
+)
+
+data class SettingsMatrixBotRequest(
+    @Json(name = "matrix_homeserver") val matrixHomeserver: String? = null,
+    @Json(name = "matrix_access_token") val matrixAccessToken: String? = null,
+    @Json(name = "matrix_room_id") val matrixRoomId: String? = null
+)
+
+data class SettingsMatrixBotData(
+    @Json(name = "matrix_homeserver") val matrixHomeserver: String? = null,
+    @Json(name = "matrix_room_id") val matrixRoomId: String? = null,
+    @Json(name = "masked_access_token") val maskedAccessToken: String? = null
+)
+
+data class SettingsMatrixBotResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsMatrixBotData? = null
+)
+
+data class BotConnectionTestResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val ok: Boolean = false,
+    val message: String? = null
+)
+
+data class SettingsTimeRequest(
+    @Json(name = "quiet_start") val quietStart: String? = null,
+    @Json(name = "quiet_end") val quietEnd: String? = null,
+    @Json(name = "metrics_collection_time") val metricsCollectionTime: String? = null
+)
+
+data class SettingsTimeData(
+    @Json(name = "quiet_start") val quietStart: String? = null,
+    @Json(name = "quiet_end") val quietEnd: String? = null,
+    @Json(name = "metrics_collection_time") val metricsCollectionTime: String? = null
+)
+
+data class SettingsTimeResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsTimeData? = null,
+    @Json(name = "quiet_start") val quietStart: String? = null,
+    @Json(name = "quiet_end") val quietEnd: String? = null,
+    @Json(name = "metrics_collection_time") val metricsCollectionTime: String? = null
+)
+
+data class SettingsAuthRequest(
+    @Json(name = "auth_mode") val authMode: String? = null,
+    @Json(name = "ssh_username") val sshUsername: String? = null,
+    @Json(name = "ssh_port") val sshPort: Int? = null,
+    @Json(name = "ssh_key_path") val sshKeyPath: String? = null,
+    @Json(name = "windows_username") val windowsUsername: String? = null,
+    @Json(name = "ssh_password") val sshPassword: String? = null,
+    @Json(name = "windows_password") val windowsPassword: String? = null
+)
+
+data class SettingsAuthData(
+    @Json(name = "auth_mode") val authMode: String? = null,
+    @Json(name = "ssh_username") val sshUsername: String? = null,
+    @Json(name = "ssh_port") val sshPort: Int? = null,
+    @Json(name = "ssh_key_path") val sshKeyPath: String? = null,
+    @Json(name = "windows_username") val windowsUsername: String? = null,
+    @Json(name = "masked_ssh_password") val maskedSshPassword: String? = null,
+    @Json(name = "masked_windows_password") val maskedWindowsPassword: String? = null,
+    @Json(name = "windows_credentials") val windowsCredentials: List<WindowsCredential> = emptyList(),
+    @Json(name = "windows_server_types") val windowsServerTypes: List<String> = emptyList()
+)
+
+data class SettingsAuthResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsAuthData? = null,
+    @Json(name = "auth_mode") val authMode: String? = null,
+    @Json(name = "ssh_username") val sshUsername: String? = null,
+    @Json(name = "ssh_port") val sshPort: Int? = null,
+    @Json(name = "ssh_key_path") val sshKeyPath: String? = null,
+    @Json(name = "windows_username") val windowsUsername: String? = null,
+    @Json(name = "ssh_password") val sshPassword: String? = null,
+    @Json(name = "windows_password") val windowsPassword: String? = null
+)
+
+data class BotChatRequest(
+    @Json(name = "chat_id") val chatId: String
+)
+
+data class SettingsWebAuthRequest(
+    val login: String? = null,
+    val password: String? = null
+)
+
+data class SettingsWebAuthData(
+    val login: String? = null,
+    @Json(name = "password_set") val passwordSet: Boolean? = null,
+    @Json(name = "auth_required") val authRequired: Boolean? = null
+)
+
+data class SettingsWebAuthResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsWebAuthData? = null,
+    val login: String? = null,
+    @Json(name = "password_set") val passwordSet: Boolean? = null,
+    @Json(name = "auth_required") val authRequired: Boolean? = null,
+    val message: String? = null
+)
+
+data class WindowsCredential(
+    val id: Int? = null,
+    val username: String? = null,
+    val password: String? = null,
+    @Json(name = "server_type") val serverType: String? = null,
+    val priority: Int? = null,
+    val enabled: Int? = null
+)
+
+data class WindowsCredentialsResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val items: List<WindowsCredential> = emptyList(),
+    @Json(name = "server_types") val serverTypes: List<String> = emptyList()
+)
+
+data class AddWindowsCredentialRequest(
+    val username: String,
+    val password: String,
+    @Json(name = "server_type") val serverType: String,
+    val priority: Int = 0
+)
+
+data class WindowsTypeItem(
+    val name: String,
+    val total: Int,
+    val active: Int,
+    val inactive: Int
+)
+
+data class WindowsTypesSummary(
+    @Json(name = "types_count") val typesCount: Int = 0,
+    @Json(name = "credentials_count") val credentialsCount: Int = 0
+)
+
+data class WindowsTypesResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val types: List<WindowsTypeItem> = emptyList(),
+    val summary: WindowsTypesSummary = WindowsTypesSummary()
+)
+
+data class CreateWindowsTypeRequest(
+    val name: String
+)
+
+data class RenameWindowsTypeRequest(
+    @Json(name = "new_name") val newName: String
+)
+
+data class MergeWindowsTypesRequest(
+    @Json(name = "source_type") val sourceType: String,
+    @Json(name = "target_type") val targetType: String
+)
+
+data class ManagedServer(
+    val ip: String,
+    val name: String,
+    @Json(name = "type") val type: String,
+    val timeout: Int? = null,
+    val enabled: Boolean? = true
+)
+
+data class ServersSummary(
+    val total: Int = 0,
+    val enabled: Int = 0,
+    val disabled: Int = 0
+)
+
+data class ServersSettingsResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val items: List<ManagedServer> = emptyList(),
+    val summary: ServersSummary = ServersSummary()
+)
+
+data class AddServerRequest(
+    val ip: String,
+    val name: String,
+    @Json(name = "type") val type: String,
+    val timeout: Int = 30,
+    val enabled: Boolean = true
+)
+
+data class UpdateServerRequest(
+    val name: String? = null,
+    @Json(name = "type") val type: String? = null,
+    val timeout: Int? = null,
+    val enabled: Boolean? = null
+)
+
+data class ToggleServerEnabledRequest(
+    val enabled: Boolean
+)
+
+data class ExtensionItem(
+    val id: String,
+    val name: String,
+    val description: String,
+    val enabled: Boolean
+)
+
+data class ExtensionsSummary(
+    val total: Int = 0,
+    val enabled: Int = 0,
+    val disabled: Int = 0
+)
+
+data class ExtensionsSettingsResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val items: List<ExtensionItem> = emptyList(),
+    val summary: ExtensionsSummary = ExtensionsSummary()
+)
+
+data class ReportExtensionOption(
+    val id: String,
+    val name: String = "",
+    val label: String = "",
+    val description: String = "",
+    @Json(name = "extension_enabled") val extensionEnabled: Boolean = true,
+    val included: Boolean = false,
+    val heavy: Boolean = false
+)
+
+data class SettingsReportData(
+    @Json(name = "report_extensions") val reportExtensions: List<String> = emptyList(),
+    val available: List<ReportExtensionOption> = emptyList(),
+    // "user" — состав личный для владельца токена, "global" — общесистемный
+    // (устройство не привязано ни к кому). Сервер отдаёт с 8.64.0.
+    val scope: String = "",
+    val user: RegistryUser? = null
+)
+
+data class SettingsReportResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsReportData? = null
+)
+
+data class SettingsReportRequest(
+    @Json(name = "report_extensions") val reportExtensions: List<String>
+)
+
+data class ExtensionUpdateRequest(
+    val enabled: Boolean
+)
+
+data class ExtensionUpdateResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    @Json(name = "extension_id") val extensionId: String? = null,
+    val enabled: Boolean? = null,
+    val message: String? = null
+)
+
+data class ExtensionsActionRequest(
+    val action: String
+)
+
+data class ExtensionsActionResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val action: String? = null,
+    val message: String? = null,
+    @Json(name = "menu_options") val menuOptions: List<MenuOption>? = null
+)
+
+// --- Многопользовательский режим (core/users.py) -----------------------------
+// Каждый пользователь имеет свои каналы обмена и персональные настройки
+// доставки. Устройство Android опознаётся по device_id токена, поэтому
+// администратор может привязать конкретный телефон к конкретному
+// пользователю — даже когда учётные данные веб-интерфейса общие.
+
+data class UserChannel(
+    val id: Int = 0,
+    val type: String = "",
+    val ref: String = "",
+    val title: String? = null,
+    val enabled: Boolean = true
+)
+
+data class UserPreferences(
+    @Json(name = "REPORTS_ENABLED") val reportsEnabled: Boolean = true,
+    @Json(name = "ALERTS_ENABLED") val alertsEnabled: Boolean = true,
+    @Json(name = "ALERT_LEVELS") val alertLevels: List<String> = emptyList(),
+    @Json(name = "ALERT_CATEGORIES") val alertCategories: List<String> = emptyList(),
+    @Json(name = "QUIET_HOURS_ENABLED") val quietHoursEnabled: Boolean = false,
+    @Json(name = "QUIET_START") val quietStart: Int = 22,
+    @Json(name = "QUIET_END") val quietEnd: Int = 8,
+    @Json(name = "REPORT_EXTENSIONS") val reportExtensions: List<String> = emptyList()
+)
+
+data class RegistryUser(
+    val id: Int = 0,
+    val username: String = "",
+    @Json(name = "display_name") val displayName: String = "",
+    val role: String = "user",
+    val enabled: Boolean = true,
+    val channels: List<UserChannel> = emptyList(),
+    val preferences: UserPreferences? = null
+)
+
+data class AlertCategoryOption(
+    val id: String = "",
+    val label: String = ""
+)
+
+data class MeCatalog(
+    @Json(name = "alert_levels") val alertLevels: List<String> = emptyList(),
+    @Json(name = "alert_categories") val alertCategories: List<AlertCategoryOption> = emptyList()
+)
+
+data class MeResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val user: RegistryUser? = null,
+    val catalog: MeCatalog? = null
+)
+
+// Частичное обновление: Moshi не сериализует null-поля, поэтому на сервер
+// уходят только реально изменённые ключи (остальные он бы отверг как
+// неподдерживаемые).
+data class MeNotificationsRequest(
+    @Json(name = "REPORTS_ENABLED") val reportsEnabled: Boolean? = null,
+    @Json(name = "ALERTS_ENABLED") val alertsEnabled: Boolean? = null,
+    @Json(name = "ALERT_LEVELS") val alertLevels: List<String>? = null,
+    @Json(name = "ALERT_CATEGORIES") val alertCategories: List<String>? = null,
+    @Json(name = "QUIET_HOURS_ENABLED") val quietHoursEnabled: Boolean? = null,
+    @Json(name = "QUIET_START") val quietStart: Int? = null,
+    @Json(name = "QUIET_END") val quietEnd: Int? = null
+)
+
+data class MeNotificationsResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val user: RegistryUser? = null,
+    val applied: List<String> = emptyList()
+)
+
+data class UsersListResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val users: List<RegistryUser> = emptyList(),
+    @Json(name = "channel_types") val channelTypes: List<String> = emptyList()
+)
+
+data class UserResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val user: RegistryUser? = null
+)
+
+data class CreateUserRequest(
+    val username: String,
+    @Json(name = "display_name") val displayName: String? = null,
+    val role: String = "user"
+)
+
+data class LinkChannelRequest(
+    val type: String,
+    val ref: String,
+    val title: String? = null
+)

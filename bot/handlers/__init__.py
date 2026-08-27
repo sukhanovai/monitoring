@@ -1,11 +1,11 @@
 """
 /bot/handlers/__init__.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers package exports
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Экспорт вспомогательных функций для регистрации обработчиков
@@ -56,7 +56,9 @@ def get_message_handlers():
 
     from bot.handlers.settings_handlers import handle_setting_value
 
-    return [MessageHandler(Filters.text & ~Filters.command, handle_setting_value)]
+    return [
+        MessageHandler(Filters.text & ~Filters.command, handle_setting_value),
+    ]
 
 
 __all__ = [

@@ -44,8 +44,10 @@ mail_monitor.log
 *.sqlite
 *.sqlite3
 
-# Backups
+# Backups (runtime data dumps; не путать с пакетом
+# bot/handlers/settings_handlers/backups/ — он tracked)
 backups/
+!bot/handlers/settings_handlers/backups/
 *.backup
 *.bak
 
@@ -91,6 +93,10 @@ extensions_config.json
 data/extensions/*
 !data/extensions/.gitkeep
 
+# Matrix E2EE crypto-store (ключи устройства, не коммитить)
+data/matrix_store/
+matrix_store/
+
 # Coverage reports
 .coverage
 coverage.xml
@@ -115,3 +121,13 @@ dmypy.json
 # VS Code
 .vscode/
 
+
+# Android
+android-client/.gradle/
+android-client/local.properties
+android-client/**/build/
+*.apk
+
+# Local GitHub token for release scripts
+.github_token
+.github-token

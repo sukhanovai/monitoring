@@ -1,42 +1,77 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
 """
 
+import ast
+import json
 import sys
+import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CommandHandler, CallbackQueryHandler
-import traceback
-from .settings_backup_monitor import BASE_DIR, DATA_DIR
+from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler
+
 from config.settings import BOT_DEBUG_LOG_FILE
-from lib.logging import debug_log, setup_logging
 from extensions.backup_monitor.backup_handlers import (
-    show_main_menu,
-    show_proxmox_menu,
-    show_today_status,
-    show_recent_backups,
-    show_failed_backups,
-    show_hosts_menu,
-    show_host_status,
-    show_stale_hosts,
+    _toggle_database_monitoring,
+    add_cc_pattern_value,
+    add_cc_server_value,
+    add_nas_ignore_base_value,
+    add_nas_pattern_value,
+    clear_cc_servers,
+    clear_nas_ignore_bases,
+    prompt_cc_pattern_add,
+    prompt_cc_server_add,
+    prompt_nas_ignore_add,
+    prompt_nas_pattern_add,
+    prompt_stock_expected_files,
+    remove_cc_pattern,
+    remove_cc_server,
+    remove_nas_ignore_base,
+    remove_nas_pattern,
+    set_cc_alert_hours,
+    set_nas_alert_hours,
+    set_stock_expected_files_value,
+    show_cc_patterns,
+    show_cc_server_detail,
+    show_cc_settings,
+    show_config_console_backups,
     show_database_backups_menu,
     show_database_backups_summary,
     show_database_details,
-    show_stale_databases,
+    show_failed_backups,
+    show_host_status,
+    show_hosts_management_menu,
+    show_hosts_menu,
     show_mail_backups,
+    show_main_menu,
+    show_nas_patterns,
+    show_nas_settings,
+    show_nas_transfers,
+    show_proxmox_menu,
+    show_proxmox_patterns_menu,
+    show_recent_backups,
+    show_stale_databases,
+    show_stale_hosts,
     show_stock_loads,
+    show_today_status,
+    toggle_database_monitoring,
 )
 from extensions.extension_manager import extension_manager
+from lib.logging import debug_log, setup_logging
+
+from .settings_backup_monitor import BASE_DIR, DATA_DIR
+
 
 def register_handlers(dispatcher):
     """
@@ -56,54 +91,110 @@ def register_handlers(dispatcher):
     except Exception as e:
         debug_log(f"❌ backup_monitor: ошибка регистрации handlers: {e}")
 
+
 # Настройка логирования
 logger = setup_logging("backup_monitor_bot", level="DEBUG", log_file=BOT_DEBUG_LOG_FILE)
 
 # Импортируем наши утилиты и обработчики
 try:
-    from .backup_utils import BackupBase, StatusCalculator, DisplayFormatters
     from .backup_handlers import (
-        create_main_menu, create_navigation_buttons,
-        show_main_menu, show_today_status, show_recent_backups, show_failed_backups,
-        show_hosts_menu, show_stale_hosts, show_host_status,
-        show_database_backups_menu, show_stale_databases,
-        show_database_backups_summary, show_database_details,
+        _toggle_database_monitoring,
+        create_main_menu,
+        create_navigation_buttons,
+        format_database_details,
+        show_database_backups_menu,
+        show_database_backups_summary,
+        show_database_details,
+        show_failed_backups,
+        show_host_status,
+        show_hosts_menu,
+        show_main_menu,
+        show_recent_backups,
+        show_stale_databases,
+        show_stale_hosts,
         show_stock_loads,
-        format_database_details
+        show_today_status,
+        toggle_database_monitoring,
     )
+    from .backup_utils import BackupBase, DisplayFormatters, StatusCalculator
+
     logger.info("✅ Модули backup_utils и backup_handlers успешно импортированы")
 except ImportError as e:
     logger.error(f"❌ Ошибка импорта модулей: {e}")
     # Альтернативный импорт для случаев, когда относительные импорты не работают
     try:
         import sys
-        sys.path.append(str(Path(BASE_DIR) / 'extensions' / 'backup_monitor'))
-        from .backup_utils import BackupBase, StatusCalculator, DisplayFormatters
+
+        sys.path.append(str(Path(BASE_DIR) / "extensions" / "backup_monitor"))
         from .backup_handlers import (
-            create_main_menu, create_navigation_buttons,
-            show_main_menu, show_today_status, show_recent_backups, show_failed_backups,
-            show_hosts_menu, show_stale_hosts, show_host_status,
-            show_database_backups_menu, show_stale_databases,
-            show_database_backups_summary, show_database_details,
+            _toggle_database_monitoring,
+            create_main_menu,
+            create_navigation_buttons,
+            format_database_details,
+            show_database_backups_menu,
+            show_database_backups_summary,
+            show_database_details,
+            show_failed_backups,
+            show_host_status,
+            show_hosts_menu,
+            show_main_menu,
+            show_recent_backups,
+            show_stale_databases,
+            show_stale_hosts,
             show_stock_loads,
-            format_database_details
+            show_today_status,
+            toggle_database_monitoring,
         )
+        from .backup_utils import BackupBase, DisplayFormatters, StatusCalculator
+
         logger.info("✅ Модули импортированы через абсолютный путь")
     except ImportError as e2:
         logger.error(f"❌ Критическая ошибка импорта: {e2}")
         raise
 
+
 class BackupMonitorBot(BackupBase):
     """Оптимизированный класс для мониторинга бэкапов"""
-    
+
     def __init__(self):
         from .db_settings_backup_monitor import BACKUP_DATABASE_CONFIG
-        super().__init__(BACKUP_DATABASE_CONFIG['backups_db'])
+
+        super().__init__(BACKUP_DATABASE_CONFIG["backups_db"])
         self.status_calc = StatusCalculator()
         self.formatters = DisplayFormatters()
+        self.backup_alert_hours, self.backup_stale_hours = self._get_backup_thresholds()
+
+    @staticmethod
+    def _get_backup_thresholds():
+        """Получает пороги свежести бэкапов из настроек."""
+        default_alert = 24
+        default_stale = 36
+        try:
+            from core.config_manager import config_manager
+
+            alert_hours = config_manager.get_setting("BACKUP_ALERT_HOURS", default_alert)
+            stale_hours = config_manager.get_setting("BACKUP_STALE_HOURS", default_stale)
+        except Exception:
+            alert_hours = default_alert
+            stale_hours = default_stale
+
+        try:
+            alert_hours = int(alert_hours)
+        except (TypeError, ValueError):
+            alert_hours = default_alert
+
+        try:
+            stale_hours = int(stale_hours)
+        except (TypeError, ValueError):
+            stale_hours = default_stale
+
+        if stale_hours <= alert_hours:
+            stale_hours = alert_hours + 1
+
+        return alert_hours, stale_hours
 
     # === БАЗОВЫЕ МЕТОДЫ ===
-    
+
     def get_database_display_names(self) -> dict:
         """
         Возвращает отображаемые имена БД (ключ -> display name),
@@ -145,105 +236,199 @@ class BackupMonitorBot(BackupBase):
             return {}
 
     # === МЕТОДЫ ДЛЯ ХОСТОВ ===
-    
+
     def get_today_status(self):
         """Статус бэкапов за сегодня"""
-        today = datetime.now().strftime('%Y-%m-%d')
-        query = '''
+        today = datetime.now().strftime("%Y-%m-%d")
+        query = """
             SELECT host_name, backup_status, COUNT(*) as report_count, MAX(received_at) as last_report
             FROM proxmox_backups
             WHERE date(received_at) = ?
             GROUP BY host_name, backup_status
             ORDER BY host_name, last_report DESC
-        '''
+        """
         return self.execute_query(query, (today,))
 
     def get_recent_backups(self, hours=24):
         """Последние бэкапы за указанный период"""
-        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
-        query = '''
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        query = """
             SELECT host_name, backup_status, duration, total_size, error_message, received_at
             FROM proxmox_backups
             WHERE received_at >= ?
             ORDER BY received_at DESC
             LIMIT 15
-        '''
+        """
         return self.execute_query(query, (since_time,))
 
     def get_host_status(self, host_name):
         """Статус конкретного хоста"""
-        query = '''
+        query = """
             SELECT backup_status, duration, total_size, error_message, received_at
             FROM proxmox_backups
             WHERE host_name = ?
             ORDER BY received_at DESC
             LIMIT 5
-        '''
+        """
         return self.execute_query(query, (host_name,))
 
     def get_failed_backups(self, days=1):
         """Неудачные бэкапы за период"""
-        since_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
-        query = '''
+        since_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        query = """
             SELECT host_name, backup_status, error_message, received_at
             FROM proxmox_backups
             WHERE backup_status = 'failed'
             AND date(received_at) >= ?
             ORDER BY received_at DESC
-        '''
+        """
         return self.execute_query(query, (since_date,))
 
-    def get_all_hosts(self):
-        """Получает список всех хостов из базы"""
-        query = 'SELECT DISTINCT host_name FROM proxmox_backups ORDER BY host_name'
+    def get_all_hosts(self, include_disabled=False):
+        """Получает список хостов Proxmox.
+
+        По умолчанию возвращает только включённые хосты (текущее поведение для
+        бота). Для мобильного клиента можно запросить include_disabled=True,
+        чтобы не скрывать отключённые хосты из списка.
+        """
+        query = "SELECT DISTINCT host_name FROM proxmox_backups ORDER BY host_name"
         results = self.execute_query(query)
-        db_hosts = [row[0] for row in results]
+        db_hosts = [row[0] for row in results if row and row[0]]
+
+        proxmox_hosts = self._get_proxmox_hosts_runtime()
+        if not isinstance(proxmox_hosts, dict):
+            return db_hosts
+
+        configured_hosts = {str(host).strip() for host in proxmox_hosts.keys() if str(host).strip()}
+        all_hosts = configured_hosts.union(db_hosts)
+
+        if include_disabled:
+            return sorted(all_hosts, key=lambda host: host.lower())
+
+        enabled_hosts = {
+            host
+            for host, value in proxmox_hosts.items()
+            if str(host).strip() and (not isinstance(value, dict) or value.get("enabled", True))
+        }
+
+        if enabled_hosts:
+            return sorted(enabled_hosts.union(db_hosts), key=lambda host: host.lower())
+
+        return db_hosts
+
+    def is_host_enabled(self, host_name):
+        """Возвращает флаг активности хоста из настроек Proxmox."""
+        normalized_host = str(host_name).strip()
+        if not normalized_host:
+            return True
+
+        proxmox_hosts = self._get_proxmox_hosts_runtime()
+        if not isinstance(proxmox_hosts, dict):
+            return True
+
+        host_value = proxmox_hosts.get(normalized_host)
+        if isinstance(host_value, dict):
+            return host_value.get("enabled", True)
+
+        return True
+
+    @staticmethod
+    def _normalize_proxmox_hosts(raw_hosts) -> dict:
+        if isinstance(raw_hosts, dict):
+            return raw_hosts
+        if isinstance(raw_hosts, str):
+            try:
+                parsed_hosts = json.loads(raw_hosts)
+            except Exception:
+                try:
+                    parsed_hosts = ast.literal_eval(raw_hosts)
+                except Exception:
+                    parsed_hosts = {}
+            return parsed_hosts if isinstance(parsed_hosts, dict) else {}
+        return {}
+
+    @classmethod
+    def _get_proxmox_hosts_runtime(cls) -> dict:
+        try:
+            from core.config_manager import config_manager
+
+            proxmox_hosts = cls._normalize_proxmox_hosts(
+                config_manager.get_setting("PROXMOX_HOSTS", {}, use_cache=False)
+            )
+            if proxmox_hosts:
+                return proxmox_hosts
+        except Exception:
+            pass
 
         try:
             from .db_settings_backup_monitor import PROXMOX_HOSTS
         except Exception:
             PROXMOX_HOSTS = {}
 
-        if not isinstance(PROXMOX_HOSTS, dict):
-            return db_hosts
+        return cls._normalize_proxmox_hosts(PROXMOX_HOSTS)
 
-        enabled_hosts = {
-            host for host, value in PROXMOX_HOSTS.items()
-            if not isinstance(value, dict) or value.get("enabled", True)
-        }
+    def get_proxmox_hosts_config(self) -> dict:
+        """Возвращает конфиг хостов Proxmox в формате {host: {enabled: bool}}."""
+        raw_hosts = self._get_proxmox_hosts_runtime()
+        normalized_hosts = {}
+        for host_name, host_value in raw_hosts.items():
+            normalized_host = str(host_name).strip()
+            if not normalized_host:
+                continue
+            if isinstance(host_value, dict):
+                normalized_hosts[normalized_host] = {
+                    "enabled": bool(host_value.get("enabled", True))
+                }
+            else:
+                normalized_hosts[normalized_host] = {"enabled": True}
+        return normalized_hosts
 
-        filtered_hosts = [host for host in db_hosts if host in enabled_hosts]
-        return filtered_hosts or list(enabled_hosts)
+    @staticmethod
+    def save_proxmox_hosts_config(proxmox_hosts: dict) -> bool:
+        """Сохраняет конфигурацию хостов Proxmox в settings."""
+        from core.config_manager import config_manager
+
+        return config_manager.set_setting(
+            "PROXMOX_HOSTS", proxmox_hosts, "backup", data_type="auto"
+        )
 
     def get_host_recent_status(self, host_name, hours=48):
         """Получает статус хоста за указанный период"""
-        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
-        query = '''
+        query = """
             SELECT backup_status, received_at
             FROM proxmox_backups
-            WHERE host_name = ? AND received_at >= ?
-            ORDER BY received_at DESC
-        '''
-        return self.execute_query(query, (host_name, since_time))
+            WHERE host_name = ?
+        """
+        params = [host_name]
+        if hours is not None:
+            since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+            query += " AND received_at >= ?"
+            params.append(since_time)
+        query += " ORDER BY received_at DESC"
+        return self.execute_query(query, tuple(params))
 
     def get_host_display_status(self, host_name):
         """Определяет отображаемый статус хоста"""
-        recent_backups = self.get_host_recent_status(host_name, 48)
-        return self.status_calc.calculate_host_status(recent_backups)
+        recent_backups = self.get_host_recent_status(host_name, None)
+        return self.status_calc.calculate_host_status(
+            recent_backups,
+            alert_hours=self.backup_alert_hours,
+            stale_hours=self.backup_stale_hours,
+        )
 
     # === МЕТОДЫ ДЛЯ БАЗ ДАННЫХ ===
-    
+
     def get_database_backups_stats(self, hours=24):
         """Получает статистику по бэкапам баз данных"""
-        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
-        query = '''
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        query = """
             SELECT backup_type, database_name, database_display_name, 
                    backup_status, COUNT(*) as backup_count, MAX(received_at) as last_backup
             FROM database_backups 
             WHERE received_at >= ?
             GROUP BY backup_type, database_name, database_display_name, backup_status
             ORDER BY backup_type, database_name, last_backup DESC
-        '''
+        """
         return self.execute_query(query, (since_time,))
 
     def get_database_backups_stats_fixed(self, hours=24):
@@ -252,25 +437,33 @@ class BackupMonitorBot(BackupBase):
 
     def get_database_details(self, backup_type, db_name, hours=168):
         """Получает детальную информацию по конкретной базе данных"""
-        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
-        query = '''
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        # database_name сравниваем нормализованно (регистр + '-'→'_'), т.к.
+        # парсер сохраняет имя из subject_lower (например 'buh2025'), а UI
+        # запрашивает по ключу из конфига ('Buh2025'). Та же нормализация, что
+        # и в _normalize_db_key для списка БД.
+        query = """
             SELECT backup_status, task_type, error_count, email_subject, received_at
-            FROM database_backups 
-            WHERE backup_type = ? AND database_name = ? AND received_at >= ?
+            FROM database_backups
+            WHERE backup_type = ?
+              AND REPLACE(LOWER(database_name), '-', '_') = REPLACE(LOWER(?), '-', '_')
+              AND received_at >= ?
             ORDER BY received_at DESC
             LIMIT 10
-        '''
+        """
         return self.execute_query(query, (backup_type, db_name, since_time))
 
     def get_database_recent_status(self, backup_type, db_name, hours=48):
         """Получает статус БД за указанный период"""
-        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
-        query = '''
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        query = """
             SELECT backup_status, received_at, error_count
             FROM database_backups
-            WHERE backup_type = ? AND database_name = ? AND received_at >= ?
+            WHERE backup_type = ?
+              AND REPLACE(LOWER(database_name), '-', '_') = REPLACE(LOWER(?), '-', '_')
+              AND received_at >= ?
             ORDER BY received_at DESC
-        '''
+        """
         return self.execute_query(query, (backup_type, db_name, since_time))
 
     def get_database_display_status(self, backup_type, db_name):
@@ -282,26 +475,65 @@ class BackupMonitorBot(BackupBase):
 
     def get_mail_backups(self, hours=72, limit=10):
         """Получает последние бэкапы почтового сервера"""
-        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
-        query = '''
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        query = """
             SELECT backup_status, total_size, backup_path, received_at
             FROM mail_server_backups
             WHERE received_at >= ?
             ORDER BY received_at DESC
             LIMIT ?
-        '''
+        """
         try:
             return self.execute_query(query, (since_time, limit))
         except Exception as exc:
             logger.error(f"Ошибка получения почтовых бэкапов: {exc}")
             return []
 
+    def get_nas_transfers(self, hours=48, limit=10):
+        """Получает последние итоги передачи бэкапов на NAS (с учётом игнор-списка)."""
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        query = """
+            SELECT host_name, status, nas_mounted, started_at_text, completed_at_text,
+                   bases_processed, error_count, problem_bases, received_at
+            FROM nas_transfers
+            WHERE received_at >= ?
+            ORDER BY received_at DESC
+            LIMIT ?
+        """
+        try:
+            rows = self.execute_query(query, (since_time, limit))
+            from extensions.backup_monitor.backup_utils import filter_nas_transfer_row
+
+            return [filter_nas_transfer_row(tuple(row)) for row in rows]
+        except Exception as exc:
+            logger.error(f"Ошибка получения передач на NAS: {exc}")
+            return []
+
+    def get_config_console_backups(self, hours=48, limit=50):
+        """Получает последние итоги бэкапа конфигов/историй консолей хостов."""
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        query = """
+            SELECT host_name, status, delivery_method, receiver, started_at_text,
+                   completed_at_text, vm_config_count, lxc_config_count,
+                   history_container_count, history_file_count, error_count,
+                   problem_items, received_at
+            FROM config_console_backups
+            WHERE received_at >= ?
+            ORDER BY received_at DESC
+            LIMIT ?
+        """
+        try:
+            return self.execute_query(query, (since_time, limit))
+        except Exception as exc:
+            logger.error(f"Ошибка получения бэкапов конфигов/историй: {exc}")
+            return []
+
     # === МЕТОДЫ ДЛЯ ЗАГРУЗКИ ОСТАТКОВ ===
 
     def get_stock_loads(self, hours=24):
         """Получает последние результаты загрузки остатков товаров по каждому поставщику."""
-        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
-        query = '''
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        query = """
             WITH normalized AS (
                 SELECT
                     id,
@@ -331,7 +563,7 @@ class BackupMonitorBot(BackupBase):
             FROM ranked
             WHERE row_num = 1
             ORDER BY source_name, supplier_name
-        '''
+        """
         try:
             return self.execute_query(query, (since_time,))
         except Exception as exc:
@@ -339,72 +571,80 @@ class BackupMonitorBot(BackupBase):
             return []
 
     # === МЕТОДЫ ДЛЯ ОТЧЕТОВ ===
-    
+
     def get_stale_proxmox_backups(self, hours_threshold=24):
         """Получает хосты без свежих бэкапов"""
-        threshold_time = (datetime.now() - timedelta(hours=hours_threshold)).strftime('%Y-%m-%d %H:%M:%S')
-        query = '''
+        threshold_time = (datetime.now() - timedelta(hours=hours_threshold)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        query = """
             SELECT host_name, MAX(received_at) as last_backup
             FROM proxmox_backups 
             GROUP BY host_name
             HAVING last_backup < ?
             ORDER BY last_backup ASC
-        '''
+        """
         return self.execute_query(query, (threshold_time,))
 
     def get_stale_database_backups(self, hours_threshold=24):
         """Получает БД без свежих бэкапов"""
-        threshold_time = (datetime.now() - timedelta(hours=hours_threshold)).strftime('%Y-%m-%d %H:%M:%S')
-        query = '''
+        threshold_time = (datetime.now() - timedelta(hours=hours_threshold)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        query = """
             SELECT backup_type, database_name, database_display_name, MAX(received_at) as last_backup
             FROM database_backups 
             GROUP BY backup_type, database_name, database_display_name
             HAVING last_backup < ?
             ORDER BY last_backup ASC
-        '''
+        """
         return self.execute_query(query, (threshold_time,))
 
     def get_backup_coverage_report(self, hours_threshold=24):
         """Получает полный отчет о покрытии бэкапов"""
         stale_hosts = self.get_stale_proxmox_backups(hours_threshold)
         stale_databases = self.get_stale_database_backups(hours_threshold)
-        
+
         # Получаем все известные хосты и БД из конфигурации
-        from .db_settings_backup_monitor import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG
-        
+        from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG, PROXMOX_HOSTS
+
         all_configured_hosts = [
-            host for host, value in PROXMOX_HOSTS.items()
+            host
+            for host, value in PROXMOX_HOSTS.items()
             if not isinstance(value, dict) or value.get("enabled", True)
         ]
         all_configured_databases = []
-        
+
         # Собираем все БД из конфигурации
         config_mapping = [
-            ('company_database', DATABASE_BACKUP_CONFIG["company_databases"]),
-            ('barnaul', DATABASE_BACKUP_CONFIG["barnaul_backups"]),
-            ('client', DATABASE_BACKUP_CONFIG["client_databases"]), 
-            ('yandex', DATABASE_BACKUP_CONFIG["yandex_backups"])
+            ("company_database", DATABASE_BACKUP_CONFIG["company_databases"]),
+            ("barnaul", DATABASE_BACKUP_CONFIG["barnaul_backups"]),
+            ("client", DATABASE_BACKUP_CONFIG["client_databases"]),
+            ("yandex", DATABASE_BACKUP_CONFIG["yandex_backups"]),
         ]
-        
+
         for backup_type, config_dict in config_mapping:
             for db_key in config_dict.keys():
                 all_configured_databases.append((backup_type, db_key))
-        
+
         return {
-            'stale_hosts': stale_hosts,
-            'stale_databases': stale_databases,
-            'all_configured_hosts': all_configured_hosts,
-            'all_configured_databases': all_configured_databases,
-            'hours_threshold': hours_threshold
+            "stale_hosts": stale_hosts,
+            "stale_databases": stale_databases,
+            "all_configured_hosts": all_configured_hosts,
+            "all_configured_databases": all_configured_databases,
+            "hours_threshold": hours_threshold,
         }
 
+
 # === КОМАНДЫ БОТА ===
+
 
 def backup_command(update, context):
     """Обработчик команды /backup"""
     try:
         from extensions.extension_manager import extension_manager
-        if not extension_manager.is_extension_enabled('backup_monitor'):
+
+        if not extension_manager.is_extension_enabled("backup_monitor"):
             update.message.reply_text(
                 "❌ Функционал мониторинга бэкапов отключен. "
                 "Включите расширение '📊 Мониторинг бэкапов Proxmox' в разделе управления расширениями."
@@ -413,19 +653,21 @@ def backup_command(update, context):
 
         update.message.reply_text(
             "💾 *Мониторинг бэкапов Proxmox*\n\nВыберите опцию:",
-            parse_mode='Markdown',
-            reply_markup=create_main_menu()
+            parse_mode="Markdown",
+            reply_markup=create_main_menu(),
         )
 
     except Exception as e:
         logger.error(f"Ошибка в backup_command: {e}")
         update.message.reply_text("❌ Ошибка при выполнении команды")
 
+
 def backup_search_command(update, context):
     """Обработчик команды /backup_search"""
     try:
         from extensions.extension_manager import extension_manager
-        if not extension_manager.is_extension_enabled('backup_monitor'):
+
+        if not extension_manager.is_extension_enabled("backup_monitor"):
             update.message.reply_text("❌ Функционал мониторинга бэкапов отключен.")
             return
 
@@ -435,11 +677,13 @@ def backup_search_command(update, context):
         logger.error(f"Ошибка в backup_search_command: {e}")
         update.message.reply_text("❌ Ошибка при выполнении команды")
 
+
 def backup_help_command(update, context):
     """Обработчик команды /backup_help"""
     try:
         from extensions.extension_manager import extension_manager
-        if not extension_manager.is_extension_enabled('backup_monitor'):
+
+        if not extension_manager.is_extension_enabled("backup_monitor"):
             update.message.reply_text("❌ Функционал мониторинга бэкапов отключен.")
             return
 
@@ -461,21 +705,21 @@ def backup_help_command(update, context):
             "*Данные обновляются автоматически при получении писем от Proxmox/почтового сервера*"
         )
 
-        update.message.reply_text(help_text, parse_mode='Markdown')
+        update.message.reply_text(help_text, parse_mode="Markdown")
 
     except Exception as e:
         logger.error(f"Ошибка в backup_help_command: {e}")
         update.message.reply_text("❌ Ошибка при выполнении команды")
 
+
 # === CALLBACK ОБРАБОТЧИКИ ===
+
 
 def backup_callback(update, context):
     """Обработчик callback'ов для бэкапов"""
     query = update.callback_query
     data = query.data
-    logger.info(
-        f"🧩 backup_callback: START | file={__file__} | data={data}"
-    )
+    logger.info(f"🧩 backup_callback: START | file={__file__} | data={data}")
 
     try:
         # ВАЖНО: все логи — внутри try
@@ -490,92 +734,319 @@ def backup_callback(update, context):
         data = query.data
         backup_bot = BackupMonitorBot()
 
-        if data == 'no_action':
+        if data == "no_action":
             return
 
-        if data == 'backup_today':
+        if data == "backup_today":
             show_today_status(query, backup_bot)
 
-        elif data == 'backup_24h':
+        elif data == "backup_24h":
             show_recent_backups(query, backup_bot)
 
-        elif data == 'backup_failed':
+        elif data == "backup_failed":
             show_failed_backups(query, backup_bot)
 
-        elif data == 'backup_hosts':
-            if not extension_manager.is_extension_enabled('backup_monitor'):
+        elif data == "backup_hosts":
+            if not extension_manager.is_extension_enabled("backup_monitor"):
                 query.edit_message_text("🖥️ Мониторинг бэкапов Proxmox отключён")
                 return
             show_hosts_menu(query, backup_bot)
 
-        elif data == 'backup_refresh':
+        elif data == "backup_refresh":
             show_main_menu(query, backup_bot)
 
-        elif data == 'backup_databases':
-            if not extension_manager.is_extension_enabled('database_backup_monitor'):
+        elif data == "backup_databases":
+            if not extension_manager.is_extension_enabled("database_backup_monitor"):
                 query.edit_message_text("🗃️ Мониторинг бэкапов БД отключён")
                 return
             logger.info("🧪 BACKUP DB: entering show_database_backups_menu")
             show_database_backups_menu(query, backup_bot)
 
-        elif data == 'backup_mail':
-            if not extension_manager.is_extension_enabled('mail_backup_monitor'):
+        elif data == "backup_mail":
+            if not extension_manager.is_extension_enabled("mail_backup_monitor"):
                 query.edit_message_text("📬 Мониторинг бэкапов почты отключён")
                 return
             show_mail_backups(query, backup_bot)
 
-        elif data == 'backup_stock_loads':
-            if not extension_manager.is_extension_enabled('stock_load_monitor'):
+        elif data == "backup_mail_patterns":
+            if not extension_manager.is_extension_enabled("mail_backup_monitor"):
+                query.edit_message_text("📬 Мониторинг бэкапов почты отключён")
+                return
+            from bot.handlers.settings_handlers import show_mail_patterns_menu
+
+            context.user_data["patterns_back_override"] = "backup_mail"
+            show_mail_patterns_menu(update, context)
+
+        elif data == "backup_stock_loads":
+            if not extension_manager.is_extension_enabled("stock_load_monitor"):
                 query.edit_message_text("📦 Мониторинг остатков 1С отключён")
                 return
             show_stock_loads(query, backup_bot)
 
-        elif data == 'backup_proxmox':
+        elif data == "backup_stock_expected":
+            if not extension_manager.is_extension_enabled("stock_load_monitor"):
+                query.edit_message_text("📦 Мониторинг остатков 1С отключён")
+                return
+            prompt_stock_expected_files(query, context)
+
+        elif data == "backup_nas_transfer":
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            show_nas_transfers(query, backup_bot)
+
+        elif data == "backup_nas_settings":
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            show_nas_settings(query)
+
+        elif data.startswith("backup_nas_hours|"):
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            set_nas_alert_hours(query, data.split("|", 1)[1])
+
+        elif data == "backup_nas_ignore_add":
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            prompt_nas_ignore_add(query, context)
+
+        elif data.startswith("backup_nas_unignore|"):
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            remove_nas_ignore_base(query, data.split("|", 1)[1])
+
+        elif data == "backup_nas_ignore_clear":
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            clear_nas_ignore_bases(query)
+
+        elif data == "backup_nas_patterns":
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            show_nas_patterns(query)
+
+        elif data == "backup_nas_pat_add":
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            prompt_nas_pattern_add(query, context)
+
+        elif data.startswith("backup_nas_pat_del|"):
+            if not extension_manager.is_extension_enabled("nas_transfer_monitor"):
+                query.edit_message_text("📤 Мониторинг передачи на NAS отключён")
+                return
+            remove_nas_pattern(query, data.split("|", 1)[1])
+
+        elif data == "backup_config_console":
+            if not extension_manager.is_extension_enabled("config_console_backup_monitor"):
+                query.edit_message_text("🗂️ Мониторинг бэкапа конфигов и историй отключён")
+                return
+            show_config_console_backups(query, backup_bot)
+
+        elif data.startswith("backup_cc_host|"):
+            if not extension_manager.is_extension_enabled("config_console_backup_monitor"):
+                query.edit_message_text("🗂️ Мониторинг бэкапа конфигов и историй отключён")
+                return
+            show_cc_server_detail(query, backup_bot, data.split("|", 1)[1])
+
+        elif data == "backup_cc_final":
+            if not extension_manager.is_extension_enabled("config_console_backup_monitor"):
+                query.edit_message_text("🗂️ Мониторинг бэкапа конфигов и историй отключён")
+                return
+            show_cc_server_detail(query, backup_bot, "__final__")
+
+        elif data == "backup_cc_settings":
+            if not extension_manager.is_extension_enabled("config_console_backup_monitor"):
+                query.edit_message_text("🗂️ Мониторинг бэкапа конфигов и историй отключён")
+                return
+            show_cc_settings(query)
+
+        elif data.startswith("backup_cc_hours|"):
+            set_cc_alert_hours(query, data.split("|", 1)[1])
+
+        elif data == "backup_cc_server_add":
+            prompt_cc_server_add(query, context)
+
+        elif data.startswith("backup_cc_unserver|"):
+            remove_cc_server(query, data.split("|", 1)[1])
+
+        elif data == "backup_cc_server_clear":
+            clear_cc_servers(query)
+
+        elif data == "backup_cc_patterns":
+            show_cc_patterns(query)
+
+        elif data == "backup_cc_pat_add":
+            prompt_cc_pattern_add(query, context)
+
+        elif data.startswith("backup_cc_pat_del|"):
+            remove_cc_pattern(query, data.split("|", 1)[1])
+
+        elif data == "backup_proxmox":
+            if not extension_manager.is_extension_enabled("backup_monitor"):
+                query.edit_message_text("🖥️ Мониторинг бэкапов Proxmox отключён")
+                return
+            show_hosts_menu(query, backup_bot)
+
+        elif data == "backup_proxmox_menu":
+            if not extension_manager.is_extension_enabled("backup_monitor"):
+                query.edit_message_text("🖥️ Мониторинг бэкапов Proxmox отключён")
+                return
             show_proxmox_menu(query, backup_bot)
 
-        elif data == 'backup_stale_hosts':
+        elif data == "backup_proxmox_patterns":
+            from bot.handlers.settings_handlers import (
+                show_proxmox_patterns_menu as show_settings_proxmox_patterns_menu,
+            )
+
+            context.user_data["patterns_back_override"] = "backup_proxmox"
+            show_settings_proxmox_patterns_menu(update, context)
+
+        elif data == "backup_stale_hosts":
             show_stale_hosts(query, backup_bot)
 
-        elif data.startswith('backup_host_'):
-            host_name = data.replace('backup_host_', '')
+        elif data == "backup_hosts_manage":
+            show_hosts_management_menu(query, backup_bot)
+
+        elif data == "backup_host_add_prompt":
+            context.user_data.pop("backup_edit_proxmox_host_name", None)
+            context.user_data["backup_add_proxmox_host"] = True
+            query.edit_message_text(
+                "➕ *Добавление Proxmox хоста*\n\n" "Введите имя нового хоста:",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [InlineKeyboardButton("↩️ Назад", callback_data="backup_hosts_manage")],
+                        [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+                    ]
+                ),
+            )
+
+        elif data.startswith("backup_host_edit_prompt_"):
+            host_name = data.replace("backup_host_edit_prompt_", "", 1).strip()
+            if not host_name:
+                query.edit_message_text("❌ Ошибка: не указано имя хоста")
+                return
+            context.user_data.pop("backup_add_proxmox_host", None)
+            context.user_data["backup_edit_proxmox_host_name"] = host_name
+            query.edit_message_text(
+                "✏️ *Редактирование Proxmox хоста*\n\n"
+                f"Текущее имя: `{host_name}`\n\n"
+                "Введите новое имя хоста:",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [InlineKeyboardButton("↩️ Назад", callback_data="backup_hosts_manage")],
+                        [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+                    ]
+                ),
+            )
+
+        elif data.startswith("backup_host_delete_"):
+            host_name = data.replace("backup_host_delete_", "", 1).strip()
+            proxmox_hosts = backup_bot.get_proxmox_hosts_config()
+            if host_name not in proxmox_hosts:
+                query.answer("Хост не найден", show_alert=True)
+                show_hosts_management_menu(query, backup_bot)
+                return
+            proxmox_hosts.pop(host_name, None)
+            backup_bot.save_proxmox_hosts_config(proxmox_hosts)
+            show_hosts_management_menu(query, backup_bot)
+
+        elif data.startswith("backup_host_toggle_"):
+            host_name = data.replace("backup_host_toggle_", "", 1).strip()
+            proxmox_hosts = backup_bot.get_proxmox_hosts_config()
+            if host_name not in proxmox_hosts:
+                query.answer("Хост не найден", show_alert=True)
+                show_hosts_management_menu(query, backup_bot)
+                return
+            current_enabled = bool(proxmox_hosts[host_name].get("enabled", True))
+            proxmox_hosts[host_name]["enabled"] = not current_enabled
+            backup_bot.save_proxmox_hosts_config(proxmox_hosts)
+            show_hosts_management_menu(query, backup_bot)
+
+        elif data.startswith("backup_host_"):
+            host_name = data.replace("backup_host_", "")
             show_host_status(query, backup_bot, host_name)
 
-        elif data == 'backup_main':
+        elif data == "backup_main":
             show_main_menu(query, backup_bot)
 
         # --- DB handlers ---
-        elif data.startswith('db_detail_'):
-            remaining = data.replace('db_detail_', '')
-            if '__' in remaining:
-                backup_type, db_name = remaining.split('__', 1)
+        elif data.startswith("db_detail_"):
+            remaining = data.replace("db_detail_", "")
+            if "__" in remaining:
+                backup_type, db_name = remaining.split("__", 1)
                 logger.info("🧪 DB detail")
                 show_database_details(query, backup_bot, backup_type, db_name)
             else:
-                last_underscore = remaining.rfind('_')
+                last_underscore = remaining.rfind("_")
                 if last_underscore != -1:
                     backup_type = remaining[:last_underscore]
-                    db_name = remaining[last_underscore + 1:]
+                    db_name = remaining[last_underscore + 1 :]
                     show_database_details(query, backup_bot, backup_type, db_name)
                 else:
                     query.edit_message_text("❌ Ошибка: неверный формат запроса")
 
-        elif data == 'db_backups_24h':
+        elif data.startswith("db_toggle_quick_"):
+            payload = data.replace("db_toggle_quick_", "", 1)
+            if "__" not in payload:
+                query.edit_message_text("❌ Ошибка: неверный формат переключения мониторинга")
+                return
+            backup_type, db_name = payload.split("__", 1)
+            backup_type = backup_type.strip()
+            db_name = db_name.strip()
+            if not backup_type or not db_name:
+                query.edit_message_text("❌ Ошибка: не указан тип или имя базы")
+                return
+            _ = _toggle_database_monitoring(backup_type, db_name)
+            show_database_backups_menu(query, backup_bot)
+
+        elif data.startswith("db_toggle_monitor_"):
+            payload = data.replace("db_toggle_monitor_", "", 1)
+            if "__" not in payload:
+                query.edit_message_text("❌ Ошибка: неверный формат переключения мониторинга")
+                return
+            backup_type, db_name = payload.split("__", 1)
+            backup_type = backup_type.strip()
+            db_name = db_name.strip()
+            if not backup_type or not db_name:
+                query.edit_message_text("❌ Ошибка: не указан тип или имя базы")
+                return
+            toggle_database_monitoring(query, backup_type, db_name)
+
+        elif data == "db_backups_24h":
             logger.info("🧪 db backups 24h")
             show_database_backups_summary(query, backup_bot, 24)
 
-        elif data == 'db_backups_48h':
+        elif data == "db_backups_48h":
             logger.info("🧪 db backups 48h")
             show_database_backups_summary(query, backup_bot, 48)
 
-        elif data in ('db_backups_today', 'db_backups_summary'):
+        elif data in ("db_backups_today", "db_backups_summary"):
             logger.info("🧪 db backups today")
             show_database_backups_summary(query, backup_bot, 24)
 
-        elif data == 'db_backups_list':
+        elif data == "db_backups_list":
             logger.info("🧪 db backups list")
             show_database_backups_menu(query, backup_bot)
 
-        elif data == 'db_stale_list':
+        elif data.startswith("db_backups_page_"):
+            raw_page = data.replace("db_backups_page_", "", 1).strip()
+            try:
+                page = int(raw_page)
+            except ValueError:
+                query.answer("❌ Ошибка страницы", show_alert=False)
+                page = 0
+            show_database_backups_menu(query, backup_bot, page=page)
+
+        elif data == "db_stale_list":
             logger.info("🧪 db state list")
             show_stale_databases(query, backup_bot)
 
@@ -591,41 +1062,149 @@ def backup_callback(update, context):
             try:
                 context.bot.send_message(
                     chat_id=update.effective_chat.id,
-                    text="❌ Ошибка в модуле бэкапов (не удалось обновить меню). Подробности в логах."
+                    text="❌ Ошибка в модуле бэкапов (не удалось обновить меню). Подробности в логах.",
                 )
             except Exception:
                 pass
 
+
+def backup_host_settings_input_handler(update, context):
+    """Обработка текстового ввода для управления хостами Proxmox из backup-меню."""
+    if not update.message:
+        return
+
+    backup_bot = BackupMonitorBot()
+    message_text = (update.message.text or "").strip()
+
+    # Добавление базы в игнор-список NAS (ввод инициирован prompt_nas_ignore_add)
+    if context.user_data.get("nas_add_ignore_base"):
+        context.user_data.pop("nas_add_ignore_base", None)
+        add_nas_ignore_base_value(update, message_text)
+        return
+
+    # Ожидаемое число файлов остатков 1С (ввод инициирован prompt_stock_expected_files)
+    if context.user_data.get("stock_set_expected_files"):
+        context.user_data.pop("stock_set_expected_files", None)
+        set_stock_expected_files_value(update, message_text)
+        return
+
+    # Добавление серверов в список config_console (prompt_cc_server_add)
+    if context.user_data.get("cc_add_server"):
+        context.user_data.pop("cc_add_server", None)
+        add_cc_server_value(update, message_text)
+        return
+
+    # Добавление паттерна темы письма config_console (prompt_cc_pattern_add)
+    if context.user_data.get("cc_add_pattern"):
+        context.user_data.pop("cc_add_pattern", None)
+        add_cc_pattern_value(update, message_text)
+        return
+
+    # Добавление паттерна темы письма передачи на NAS (prompt_nas_pattern_add)
+    if context.user_data.get("nas_add_pattern"):
+        context.user_data.pop("nas_add_pattern", None)
+        add_nas_pattern_value(update, message_text)
+        return
+
+    if not message_text:
+        update.message.reply_text("❌ Имя хоста не может быть пустым. Попробуйте снова.")
+        return
+
+    proxmox_hosts = backup_bot.get_proxmox_hosts_config()
+
+    if context.user_data.get("backup_add_proxmox_host"):
+        if message_text in proxmox_hosts:
+            update.message.reply_text("❌ Такой хост уже существует. Введите другое имя.")
+            return
+        proxmox_hosts[message_text] = {"enabled": True}
+        backup_bot.save_proxmox_hosts_config(proxmox_hosts)
+        context.user_data.pop("backup_add_proxmox_host", None)
+        update.message.reply_text(
+            f"✅ Хост `{message_text}` добавлен.",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "⚙️ Управление хостами", callback_data="backup_hosts_manage"
+                        )
+                    ],
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                ]
+            ),
+        )
+        return
+
+    old_host_name = context.user_data.get("backup_edit_proxmox_host_name")
+    if old_host_name:
+        if old_host_name not in proxmox_hosts:
+            context.user_data.pop("backup_edit_proxmox_host_name", None)
+            update.message.reply_text(
+                "❌ Исходный хост не найден. Откройте меню управления заново."
+            )
+            return
+        if message_text in proxmox_hosts and message_text != old_host_name:
+            update.message.reply_text("❌ Такой хост уже существует. Введите другое имя.")
+            return
+        host_config = proxmox_hosts.pop(old_host_name)
+        proxmox_hosts[message_text] = (
+            host_config if isinstance(host_config, dict) else {"enabled": True}
+        )
+        backup_bot.save_proxmox_hosts_config(proxmox_hosts)
+        context.user_data.pop("backup_edit_proxmox_host_name", None)
+        update.message.reply_text(
+            f"✅ Хост переименован: `{old_host_name}` → `{message_text}`.",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "⚙️ Управление хостами", callback_data="backup_hosts_manage"
+                        )
+                    ],
+                    [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                ]
+            ),
+        )
+        return
+
+
 def get_database_config(self):
     """Получает полную конфигурацию баз данных"""
     from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
-    
+
     return {
         "company_databases": DATABASE_BACKUP_CONFIG.get("company_databases", {}),
         "barnaul_backups": DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}),
         "client_databases": DATABASE_BACKUP_CONFIG.get("client_databases", {}),
-        "yandex_backups": DATABASE_BACKUP_CONFIG.get("yandex_backups", {})
+        "yandex_backups": DATABASE_BACKUP_CONFIG.get("yandex_backups", {}),
     }
+
 
 def get_database_config_for_report(self):
     """Получает конфигурацию баз данных для отчета"""
     from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
-    
+
     # Собираем все базы из конфигурации
     all_databases = {}
     all_databases.update(DATABASE_BACKUP_CONFIG.get("company_databases", {}))
     all_databases.update(DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}))
     all_databases.update(DATABASE_BACKUP_CONFIG.get("client_databases", {}))
     all_databases.update(DATABASE_BACKUP_CONFIG.get("yandex_backups", {}))
-    
+
     return all_databases
 
+
 # === НАСТРОЙКА ОБРАБОТЧИКОВ ===
+
 
 def setup_backup_handlers(dispatcher):
     """Настраивает обработчики для бэкапов"""
     dispatcher.add_handler(CommandHandler("backup", backup_command))
     dispatcher.add_handler(CommandHandler("backup_search", backup_search_command))
     dispatcher.add_handler(CommandHandler("backup_help", backup_help_command))
-    dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern='^backup_'))
-    dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern='^db_'))
+    dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern="^backup_"))
+    dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern="^db_"))
+    dispatcher.add_handler(
+        MessageHandler(Filters.text & ~Filters.command, backup_host_settings_input_handler)
+    )

@@ -1,22 +1,24 @@
 """
 /core/config_manager.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
 """
 
-import sqlite3
+import ast
 import json
+import sqlite3
 import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+
 from lib.logging import debug_log, error_log, setup_logging
 
 try:
@@ -27,13 +29,32 @@ except Exception:
 # Логгер для этого модуля
 _logger = setup_logging("config")
 
+
+def _parse_json_collection(value_str: str):
+    """Разбирает list/dict-настройку, восстанавливая «битые» значения.
+
+    Каноническое хранение — JSON, но в БД могли просочиться Python-repr
+    значения с одинарными кавычками (например, исторический REPORT_EXTENSIONS,
+    сохранённый через str(list)). Для них json.loads падает «Expecting value»,
+    поэтому пробуем ast.literal_eval как запасной разбор. Значение
+    самовосстановится при следующем сохранении (set_setting пишет JSON).
+    """
+    try:
+        return json.loads(value_str)
+    except (json.JSONDecodeError, ValueError):
+        parsed = ast.literal_eval(value_str)
+        if isinstance(parsed, (list, dict, tuple, set)):
+            return list(parsed) if isinstance(parsed, (tuple, set)) else parsed
+        raise
+
+
 class ConfigManager:
     """Менеджер конфигурации с поддержкой базы данных"""
-    
+
     def __init__(self, db_path: Optional[str] = None):
         """
         Инициализация менеджера конфигурации
-        
+
         Args:
             db_path: Путь к файлу базы данных
         """
@@ -43,7 +64,7 @@ class ConfigManager:
         self._connection = None
         self.init_database()
         debug_log(f"Менеджер конфигурации инициализирован: {db_path}")
-    
+
     def get_connection(self) -> sqlite3.Connection:
         """Получить соединение с БД (отдельное соединение на поток)"""
         conn = getattr(self._local, "connection", None)
@@ -63,12 +84,13 @@ class ConfigManager:
     def init_database(self) -> None:
         """Инициализация базы данных настроек"""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         # Таблица основных настроек
-        cursor.execute('''
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT,
@@ -78,10 +100,12 @@ class ConfigManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
-        
+        """
+        )
+
         # Таблица серверов
-        cursor.execute('''
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS servers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ip TEXT UNIQUE,
@@ -93,10 +117,12 @@ class ConfigManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
-        
+        """
+        )
+
         # Таблица Windows учетных данных
-        cursor.execute('''
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS windows_credentials (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT,
@@ -106,10 +132,12 @@ class ConfigManager:
                 enabled BOOLEAN DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
-        
+        """
+        )
+
         # Таблица паттернов бэкапов
-        cursor.execute('''
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS backup_patterns (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 pattern_type TEXT,
@@ -118,10 +146,12 @@ class ConfigManager:
                 enabled BOOLEAN DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
-        
+        """
+        )
+
         # Таблица категорий баз данных
-        cursor.execute('''
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS database_categories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE,
@@ -129,10 +159,12 @@ class ConfigManager:
                 enabled BOOLEAN DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
-        
+        """
+        )
+
         # Таблица баз данных
-        cursor.execute('''
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS databases (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 category_id INTEGER,
@@ -146,87 +178,270 @@ class ConfigManager:
                 enabled BOOLEAN DEFAULT 1,
                 FOREIGN KEY (category_id) REFERENCES database_categories(id)
             )
-        ''')
-        
+        """
+        )
+
         conn.commit()
         self.init_default_settings()
+        self._cleanup_legacy_settings()
+        self._migrate_setting_categories()
+        self._migrate_report_extensions()
         debug_log("База данных настроек инициализирована")
-    
+
+    def _migrate_report_extensions(self) -> None:
+        """Расширяет состав отчёта для установок со старым дефолтом.
+
+        Если сохранённый REPORT_EXTENSIONS совпадает один-в-один с прежним
+        дефолтом (5 расширений), заменяем его на новый расширенный дефолт.
+        Пользовательские наборы (любой иной состав) не трогаем.
+        """
+        try:
+            from lib.report_settings import (
+                DEFAULT_REPORT_EXTENSIONS,
+                LEGACY_DEFAULT_REPORT_EXTENSIONS,
+            )
+
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT value FROM settings WHERE key = 'REPORT_EXTENSIONS'"
+            )
+            row = cursor.fetchone()
+            if not row or not row[0]:
+                return
+            raw = row[0]
+            try:
+                stored = _parse_json_collection(raw)
+            except (ValueError, SyntaxError, TypeError):
+                return
+            if not isinstance(stored, list):
+                return
+            # Самовосстановление «битого» значения: если в БД лежал Python-repr
+            # (одинарные кавычки из str(list)), json.loads на чтении падал и
+            # выбор пользователя терялся. Переписываем как валидный JSON.
+            if raw != json.dumps(stored, ensure_ascii=False):
+                cursor.execute(
+                    "UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP "
+                    "WHERE key = 'REPORT_EXTENSIONS'",
+                    (json.dumps(stored, ensure_ascii=False),),
+                )
+                conn.commit()
+                self._cache.pop("REPORT_EXTENSIONS", None)
+                debug_log("REPORT_EXTENSIONS перезаписан в валидный JSON")
+            if set(stored) == set(LEGACY_DEFAULT_REPORT_EXTENSIONS):
+                cursor.execute(
+                    "UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP "
+                    "WHERE key = 'REPORT_EXTENSIONS'",
+                    (json.dumps(DEFAULT_REPORT_EXTENSIONS, ensure_ascii=False),),
+                )
+                conn.commit()
+                self._cache.pop("REPORT_EXTENSIONS", None)
+                debug_log("REPORT_EXTENSIONS мигрирован со старого дефолта на новый")
+        except Exception as exc:  # pragma: no cover - миграция не критична
+            debug_log(f"⚠️ Миграция REPORT_EXTENSIONS пропущена: {exc}")
+
+    # Канонический владелец параметра-расширения: ровно одна категория на ключ.
+    # Используется и для починки уже сохранённых БД (раньше set_setting без
+    # category затирал её в 'general', из-за чего параметры независимых
+    # расширений путались в !settings и в меню паттернов).
+    _CANONICAL_SETTING_CATEGORY: Dict[str, str] = {
+        "BACKUP_ALERT_HOURS": "backup",
+        "BACKUP_STALE_HOURS": "backup",
+        "BACKUP_PATTERNS": "backup",
+        "PROXMOX_HOSTS": "backup",
+        "DUPLICATE_IP_HOSTS": "backup",
+        "HOSTNAME_ALIASES": "backup",
+        "DATABASE_CONFIG": "database",
+        "ZFS_SERVERS": "zfs",
+        "ZFS_POOL_FREE_SPACE_HOSTS": "zfs_pool_free_space",
+        "SNAPSHOT_TRANSFER_HOSTS": "snapshot_transfer",
+    }
+
+    # Канонические описания параметров, у которых в БД могло не оказаться
+    # description (раньше set_setting сохранял ключ без него — параметр
+    # уходил в !settings как «без описания»). Бэкфилл идемпотентен:
+    # перезаписывается только пустое/NULL-описание.
+    _CANONICAL_SETTING_DESCRIPTION: Dict[str, str] = {
+        "BACKUP_PATTERNS": (
+            "Регэкспы распознавания писем/логов бэкапов "
+            "(Proxmox/PBS/Zimbra, БД, ZFS-снэпшоты, остатки 1С); "
+            "правится через меню паттернов расширений"
+        ),
+    }
+
+    def _migrate_setting_categories(self) -> None:
+        """Приводит категории и описания параметров расширений к каноническим.
+
+        Идемпотентно: категория трогается только если отличается от
+        канонической, описание — только если оно пустое/NULL.
+        """
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            fixed = 0
+            for key, category in self._CANONICAL_SETTING_CATEGORY.items():
+                cursor.execute(
+                    "UPDATE settings SET category = ? "
+                    'WHERE key = ? AND IFNULL(category, "") != ?',
+                    (category, key, category),
+                )
+                fixed += cursor.rowcount
+            for key, description in self._CANONICAL_SETTING_DESCRIPTION.items():
+                cursor.execute(
+                    "UPDATE settings SET description = ? "
+                    'WHERE key = ? AND IFNULL(description, "") = ""',
+                    (description, key),
+                )
+                fixed += cursor.rowcount
+            conn.commit()
+            if fixed:
+                debug_log(f"Категории/описания параметров расширений приведены к норме: {fixed}")
+        except Exception as e:
+            error_log(f"Ошибка миграции категорий настроек: {e}")
+
+    def _cleanup_legacy_settings(self) -> None:
+        """Удаляет устаревшие настройки (интеграция TamTam выведена из проекта)."""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM settings WHERE key LIKE 'TAMTAM%' OR category = 'tamtam'")
+            removed = cursor.rowcount
+            conn.commit()
+            if removed:
+                for cached_key in list(self._cache):
+                    if cached_key.upper().startswith("TAMTAM"):
+                        self._cache.pop(cached_key, None)
+                debug_log(f"Удалены устаревшие настройки TamTam: {removed}")
+        except Exception as e:
+            error_log(f"Ошибка очистки устаревших настроек: {e}")
+
     def init_default_settings(self) -> None:
         """Инициализация настроек по умолчанию"""
         default_settings = [
             # Telegram
-            ('TELEGRAM_TOKEN', '', 'telegram', 'Токен Telegram бота', 'string'),
-            ('CHAT_IDS', '[]', 'telegram', 'ID чатов для уведомлений', 'list'),
-            
+            ("TELEGRAM_TOKEN", "", "telegram", "Токен Telegram бота", "string"),
+            ("CHAT_IDS", "[]", "telegram", "ID чатов для уведомлений", "list"),
             # Интервалы проверок
-            ('CHECK_INTERVAL', '60', 'monitoring', 'Интервал проверки серверов (секунды)', 'int'),
-            ('MAX_FAIL_TIME', '900', 'monitoring', 'Максимальное время простоя до алерта (секунды)', 'int'),
-            
+            ("CHECK_INTERVAL", "60", "monitoring", "Интервал проверки серверов (секунды)", "int"),
+            (
+                "MAX_FAIL_TIME",
+                "900",
+                "monitoring",
+                "Максимальное время простоя до алерта (секунды)",
+                "int",
+            ),
             # Временные настройки
-            ('SILENT_START', '20', 'time', 'Начало тихого режима (час)', 'int'),
-            ('SILENT_END', '9', 'time', 'Конец тихого режима (час)', 'int'),
-            ('DATA_COLLECTION_TIME', '08:30', 'time', 'Время сбора данных для отчета', 'time'),
-            
+            ("SILENT_START", "20", "time", "Начало тихого режима (час)", "int"),
+            ("SILENT_END", "9", "time", "Конец тихого режима (час)", "int"),
+            ("DATA_COLLECTION_TIME", "08:30", "time", "Время сбора данных для отчета", "time"),
+            (
+                "DATA_COLLECTION_TIMES",
+                "08:30",
+                "time",
+                "Время(а) сбора данных для отчета (HH:MM,HH:MM)",
+                "string",
+            ),
+            # Состав утреннего/ручного отчёта — какие расширения включать
+            # помимо базовых данных мониторинга доступности серверов.
+            (
+                "REPORT_EXTENSIONS",
+                '["backup_monitor", "database_backup_monitor", "mail_backup_monitor", '
+                '"config_console_backup_monitor", "nas_transfer_monitor", '
+                '"stock_load_monitor", "supplier_stock_files", "zfs_monitor", '
+                '"zfs_pool_free_space_monitor", "snapshot_transfer_monitor"]',
+                "report",
+                "Расширения, сведения которых включаются в утренний/ручной отчёт "
+                "(JSON-список ID расширений)",
+                "list",
+            ),
             # Настройки ресурсов
-            ('RESOURCE_CHECK_INTERVAL', '1800', 'resources', 'Интервал проверки ресурсов (секунды)', 'int'),
-            ('RESOURCE_ALERT_INTERVAL', '1800', 'resources', 'Интервал повторных алертов ресурсов (секунды)', 'int'),
-            
+            (
+                "RESOURCE_CHECK_INTERVAL",
+                "1800",
+                "resources",
+                "Интервал проверки ресурсов (секунды)",
+                "int",
+            ),
+            (
+                "RESOURCE_ALERT_INTERVAL",
+                "1800",
+                "resources",
+                "Интервал повторных алертов ресурсов (секунды)",
+                "int",
+            ),
             # Пороги ресурсов
-            ('CPU_WARNING', '80', 'resources', 'Порог предупреждения CPU (%)', 'int'),
-            ('CPU_CRITICAL', '90', 'resources', 'Порог критического CPU (%)', 'int'),
-            ('RAM_WARNING', '85', 'resources', 'Порог предупреждения RAM (%)', 'int'),
-            ('RAM_CRITICAL', '95', 'resources', 'Порог критического RAM (%)', 'int'),
-            ('DISK_WARNING', '80', 'resources', 'Порог предупреждения Disk (%)', 'int'),
-            ('DISK_CRITICAL', '90', 'resources', 'Порог критического Disk (%)', 'int'),
-            
+            ("CPU_WARNING", "80", "resources", "Порог предупреждения CPU (%)", "int"),
+            ("CPU_CRITICAL", "90", "resources", "Порог критического CPU (%)", "int"),
+            ("RAM_WARNING", "85", "resources", "Порог предупреждения RAM (%)", "int"),
+            ("RAM_CRITICAL", "95", "resources", "Порог критического RAM (%)", "int"),
+            ("DISK_WARNING", "80", "resources", "Порог предупреждения Disk (%)", "int"),
+            ("DISK_CRITICAL", "90", "resources", "Порог критического Disk (%)", "int"),
             # Аутентификация
-            ('SSH_USERNAME', 'root', 'auth', 'Имя пользователя SSH', 'string'),
-            ('SSH_KEY_PATH', '/root/.ssh/id_rsa', 'auth', 'Путь к SSH ключу', 'string'),
-            
-            # Бэкапы
-            ('BACKUP_ALERT_HOURS', '24', 'backup', 'Часы для алертов о бэкапах', 'int'),
-            ('BACKUP_STALE_HOURS', '36', 'backup', 'Часы для устаревших бэкапов', 'int'),
-            ('ZFS_SERVERS', '{}', 'backup', 'Список ZFS серверов и массивов', 'dict'),
-            
+            ("SSH_USERNAME", "root", "auth", "Имя пользователя SSH", "string"),
+            ("SSH_KEY_PATH", "/root/.ssh/id_rsa", "auth", "Путь к SSH ключу", "string"),
+            # Бэкапы Proxmox (расширение backup_monitor)
+            ("BACKUP_ALERT_HOURS", "24", "backup", "Часы для алертов о бэкапах", "int"),
+            ("BACKUP_STALE_HOURS", "36", "backup", "Часы для устаревших бэкапов", "int"),
+            # Исправность ZFS-массивов (расширение zfs_monitor)
+            ("ZFS_SERVERS", "{}", "zfs", "Список ZFS серверов и массивов", "dict"),
+            # Свободное место ZFS-пулов (расширение zfs_pool_free_space_monitor)
+            (
+                "ZFS_POOL_FREE_SPACE_HOSTS",
+                "{}",
+                "zfs_pool_free_space",
+                "Хосты для мониторинга свободного места ZFS-пулов",
+                "dict",
+            ),
+            # Передачи ZFS-снэпшотов (расширение snapshot_transfer_monitor)
+            (
+                "SNAPSHOT_TRANSFER_HOSTS",
+                "{}",
+                "snapshot_transfer",
+                "Хосты/пулы/время старта для мониторинга передачи снэпшотов",
+                "dict",
+            ),
+            # Загрузка остатков 1С (расширение stock_load_monitor)
+            (
+                "STOCK_LOAD_EXPECTED_FILES",
+                "0",
+                "stock_load",
+                "Ожидаемое число файлов загрузки остатков 1С за сутки (0 — не задано)",
+                "int",
+            ),
             # Веб-интерфейс
-            ('WEB_PORT', '5000', 'web', 'Порт веб-интерфейса', 'int'),
-            ('WEB_HOST', '0.0.0.0', 'web', 'Хост веб-интерфейса', 'string'),
-            
+            ("WEB_PORT", "5000", "web", "Порт веб-интерфейса", "int"),
+            ("WEB_HOST", "0.0.0.0", "web", "Хост веб-интерфейса", "string"),
             # Отладка
-            ('DEBUG_MODE', 'False', 'debug', 'Режим отладки', 'bool'),
-            ('LOG_LEVEL', 'INFO', 'debug', 'Уровень логирования', 'string'),
-            
+            ("DEBUG_MODE", "False", "debug", "Режим отладки", "bool"),
+            ("LOG_LEVEL", "INFO", "debug", "Уровень логирования", "string"),
             # Таймауты серверов
-            ('SERVER_TIMEOUTS', '{}', 'timeouts', 'Таймауты серверов по типам', 'dict'),
+            ("SERVER_TIMEOUTS", "{}", "timeouts", "Таймауты серверов по типам", "dict"),
         ]
-        
+
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         for key, value, category, description, data_type in default_settings:
-            cursor.execute('''
+            cursor.execute(
+                """
                 INSERT OR IGNORE INTO settings (key, value, category, description, data_type)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (key, value, category, description, data_type))
-        
+            """,
+                (key, value, category, description, data_type),
+            )
+
         conn.commit()
         debug_log(f"Загружено {len(default_settings)} настроек по умолчанию")
-    
-    def get_setting(
-        self, 
-        key: str, 
-        default: Any = None,
-        use_cache: bool = True
-    ) -> Any:
+
+    def get_setting(self, key: str, default: Any = None, use_cache: bool = True) -> Any:
         """
         Получить значение настройки
-        
+
         Args:
             key: Ключ настройки
             default: Значение по умолчанию
             use_cache: Использовать кэш
-            
+
         Returns:
             Значение настройки
         """
@@ -235,205 +450,323 @@ class ConfigManager:
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
-            
-            cursor.execute('SELECT value, data_type FROM settings WHERE key = ?', (key,))
+
+            cursor.execute("SELECT value, data_type FROM settings WHERE key = ?", (key,))
             result = cursor.fetchone()
         except Exception as e:
             error_log(f"Ошибка чтения настройки {key}: {e}")
             self._cache[key] = default
             return default
-                
+
         if not result:
             self._cache[key] = default
             return default
-        
+
         value_str, data_type = result
-        
+
         # Преобразование типов
         try:
-            if data_type == 'int':
+            if data_type == "int":
                 value = int(value_str) if value_str else default
-            elif data_type == 'float':
+            elif data_type == "float":
                 value = float(value_str) if value_str else default
-            elif data_type == 'bool':
-                value = value_str.lower() == 'true' if value_str else default
-            elif data_type == 'list':
-                value = json.loads(value_str) if value_str else default
-            elif data_type == 'dict':
-                value = json.loads(value_str) if value_str else default
-            elif data_type == 'time':
+            elif data_type == "bool":
+                value = value_str.lower() == "true" if value_str else default
+            elif data_type == "list":
+                value = _parse_json_collection(value_str) if value_str else default
+            elif data_type == "dict":
+                value = _parse_json_collection(value_str) if value_str else default
+            elif data_type == "time":
                 value = value_str if value_str else default
             else:  # string
                 value = value_str if value_str else default
-        except (json.JSONDecodeError, ValueError) as e:
+        except (json.JSONDecodeError, ValueError, SyntaxError) as e:
             error_log(f"Ошибка преобразования настройки {key}: {e}, значение: {value_str}")
             value = default
-        
+
         self._cache[key] = value
         return value
-    
+
     def set_setting(
-        self, 
-        key: str, 
-        value: Any, 
-        category: str = 'general', 
-        description: str = '', 
-        data_type: str = 'auto'
+        self,
+        key: str,
+        value: Any,
+        category: Optional[str] = None,
+        description: Optional[str] = None,
+        data_type: str = "auto",
     ) -> bool:
         """
         Установить значение настройки
-        
+
         Args:
             key: Ключ настройки
             value: Значение
-            category: Категория
-            description: Описание
+            category: Категория. None — сохранить существующую категорию
+                (или 'general' для нового ключа), не затирая её.
+            description: Описание. None — сохранить существующее описание.
             data_type: Тип данных (auto/int/float/bool/list/dict/string/time)
-            
+
         Returns:
             True если успешно
         """
         # Определяем тип данных если auto
-        if data_type == 'auto':
+        if data_type == "auto":
             if isinstance(value, int):
-                data_type = 'int'
+                data_type = "int"
                 value_str = str(value)
             elif isinstance(value, float):
-                data_type = 'float'
+                data_type = "float"
                 value_str = str(value)
             elif isinstance(value, bool):
-                data_type = 'bool'
+                data_type = "bool"
                 value_str = str(value).lower()
             elif isinstance(value, list):
-                data_type = 'list'
+                data_type = "list"
                 value_str = json.dumps(value, ensure_ascii=False)
             elif isinstance(value, dict):
-                data_type = 'dict'
+                data_type = "dict"
                 value_str = json.dumps(value, ensure_ascii=False)
             else:
-                data_type = 'string'
+                data_type = "string"
                 value_str = str(value)
         else:
-            value_str = str(value)
-        
+            # Тип задан явно — сериализуем сообразно типу. Для list/dict это
+            # ОБЯЗАТЕЛЬНО JSON: str(list) даёт Python-repr с одинарными
+            # кавычками, который потом не парсится json.loads в get_setting
+            # (ошибка «Expecting value» при чтении, например, REPORT_EXTENSIONS).
+            if data_type in ("list", "dict"):
+                value_str = json.dumps(value, ensure_ascii=False)
+            elif data_type == "bool":
+                value_str = str(value).lower()
+            else:
+                value_str = str(value)
+
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
+        # INSERT OR REPLACE удаляет и пересоздаёт строку, поэтому отсутствие
+        # category/description в вызове не должно затирать уже сохранённые
+        # метаданные настройки (иначе category «съезжает» в 'general' при
+        # каждом сохранении из бота и привязка параметра к расширению ломается).
+        if category is None or description is None:
+            try:
+                cursor.execute("SELECT category, description FROM settings WHERE key = ?", (key,))
+                existing = cursor.fetchone()
+            except Exception:
+                existing = None
+            if existing is not None:
+                if category is None:
+                    category = existing[0]
+                if description is None:
+                    description = existing[1]
+        if category is None:
+            category = "general"
+        if description is None:
+            description = ""
+
         try:
-            cursor.execute('''
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO settings (key, value, category, description, data_type, updated_at)
                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ''', (key, value_str, category, description, data_type))
-            
+            """,
+                (key, value_str, category, description, data_type),
+            )
+
             conn.commit()
-            
+
             # Обновляем кэш
             self._cache[key] = value
-            
-            debug_log(f"Настройка обновлена: {key} = {value_str[:50]}{'...' if len(value_str) > 50 else ''}")
+
+            debug_log(
+                f"Настройка обновлена: {key} = {value_str[:50]}{'...' if len(value_str) > 50 else ''}"
+            )
             return True
-            
+
         except Exception as e:
             error_log(f"Ошибка сохранения настройки {key}: {e}")
             return False
-    
+
     def get_all_settings(self, category: Optional[str] = None) -> Dict[str, Any]:
         """
         Получить все настройки
-        
+
         Args:
             category: Фильтр по категории
-            
+
         Returns:
             Словарь всех настроек
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         if category:
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT key, value, data_type 
                 FROM settings 
                 WHERE category = ? 
                 ORDER BY key
-            ''', (category,))
+            """,
+                (category,),
+            )
         else:
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT key, value, data_type 
                 FROM settings 
                 ORDER BY category, key
-            ''')
-        
+            """
+            )
+
         settings = {}
         for key, value_str, data_type in cursor.fetchall():
             try:
-                if data_type == 'int':
+                if data_type == "int":
                     settings[key] = int(value_str) if value_str else 0
-                elif data_type == 'float':
+                elif data_type == "float":
                     settings[key] = float(value_str) if value_str else 0.0
-                elif data_type == 'bool':
-                    settings[key] = value_str.lower() == 'true'
-                elif data_type == 'list':
+                elif data_type == "bool":
+                    settings[key] = value_str.lower() == "true"
+                elif data_type == "list":
                     settings[key] = json.loads(value_str) if value_str else []
-                elif data_type == 'dict':
+                elif data_type == "dict":
                     settings[key] = json.loads(value_str) if value_str else {}
-                elif data_type == 'time':
-                    settings[key] = value_str if value_str else ''
+                elif data_type == "time":
+                    settings[key] = value_str if value_str else ""
                 else:
-                    settings[key] = value_str if value_str else ''
+                    settings[key] = value_str if value_str else ""
             except (json.JSONDecodeError, ValueError) as e:
                 error_log(f"Ошибка преобразования настройки {key}: {e}")
                 settings[key] = None
-        
+
         return settings
-    
+
+    def get_setting_meta(self, key: str) -> Optional[Dict[str, Any]]:
+        """
+        Получить метаданные настройки (значение + категория/описание/тип).
+
+        Args:
+            key: Ключ настройки
+
+        Returns:
+            Словарь {key, value, category, description, data_type} или None
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                "SELECT key, value, category, description, data_type "
+                "FROM settings WHERE key = ?",
+                (key,),
+            )
+            row = cursor.fetchone()
+        except Exception as e:
+            error_log(f"Ошибка чтения метаданных настройки {key}: {e}")
+            return None
+
+        if not row:
+            return None
+
+        return {
+            "key": row[0],
+            "value": row[1] if row[1] is not None else "",
+            "category": row[2] or "general",
+            "description": row[3] or "",
+            "data_type": row[4] or "string",
+        }
+
+    def get_all_settings_meta(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Получить все настройки вместе с метаданными.
+
+        Args:
+            category: Фильтр по категории
+
+        Returns:
+            Список словарей {key, value, category, description, data_type}
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        if category:
+            cursor.execute(
+                "SELECT key, value, category, description, data_type "
+                "FROM settings WHERE category = ? ORDER BY key",
+                (category,),
+            )
+        else:
+            cursor.execute(
+                "SELECT key, value, category, description, data_type "
+                "FROM settings ORDER BY category, key"
+            )
+
+        rows = []
+        for row in cursor.fetchall():
+            rows.append(
+                {
+                    "key": row[0],
+                    "value": row[1] if row[1] is not None else "",
+                    "category": row[2] or "general",
+                    "description": row[3] or "",
+                    "data_type": row[4] or "string",
+                }
+            )
+        return rows
+
     def get_categories(self) -> List[str]:
         """
         Получить список категорий настроек
-        
+
         Returns:
             Список категорий
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
-        cursor.execute('SELECT DISTINCT category FROM settings ORDER BY category')
+
+        cursor.execute("SELECT DISTINCT category FROM settings ORDER BY category")
         categories = [row[0] for row in cursor.fetchall()]
-        
+
         return categories
-    
+
     def get_servers_by_type(self, server_type: str) -> List[Dict[str, Any]]:
         """
         Получить серверы по типу
-        
+
         Args:
             server_type: Тип сервера (rdp, ssh, ping)
-            
+
         Returns:
             Список серверов
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
-        cursor.execute('''
+
+        cursor.execute(
+            """
             SELECT ip, name, type, credentials, timeout 
             FROM servers 
             WHERE type = ? AND enabled = 1
             ORDER BY name
-        ''', (server_type,))
-        
+        """,
+            (server_type,),
+        )
+
         servers = []
         for row in cursor.fetchall():
-            servers.append({
-                'ip': row[0],
-                'name': row[1],
-                'type': row[2],
-                'credentials': json.loads(row[3]) if row[3] else [],
-                'timeout': row[4]
-            })
-        
+            servers.append(
+                {
+                    "ip": row[0],
+                    "name": row[1],
+                    "type": row[2],
+                    "credentials": json.loads(row[3]) if row[3] else [],
+                    "timeout": row[4],
+                }
+            )
+
         return servers
-    
+
     def get_all_servers(self, include_disabled: bool = False) -> List[Dict[str, Any]]:
         """
         Получить список серверов
@@ -448,29 +781,35 @@ class ConfigManager:
         cursor = conn.cursor()
 
         if include_disabled:
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT ip, name, type, credentials, timeout, enabled
                 FROM servers
                 ORDER BY type, name
-            ''')
+            """
+            )
         else:
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT ip, name, type, credentials, timeout, enabled
                 FROM servers
                 WHERE enabled = 1
                 ORDER BY type, name
-            ''')
+            """
+            )
 
         servers: List[Dict[str, Any]] = []
         for row in cursor.fetchall():
-            servers.append({
-                'ip': row[0],
-                'name': row[1],
-                'type': row[2],
-                'credentials': json.loads(row[3]) if row[3] else [],
-                'timeout': row[4],
-                'enabled': bool(row[5])
-            })
+            servers.append(
+                {
+                    "ip": row[0],
+                    "name": row[1],
+                    "type": row[2],
+                    "credentials": json.loads(row[3]) if row[3] else [],
+                    "timeout": row[4],
+                    "enabled": bool(row[5]),
+                }
+            )
 
         return servers
 
@@ -490,8 +829,8 @@ class ConfigManager:
 
         try:
             cursor.execute(
-                'UPDATE servers SET enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE ip = ?',
-                (1 if enabled else 0, ip)
+                "UPDATE servers SET enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE ip = ?",
+                (1 if enabled else 0, ip),
             )
             conn.commit()
 
@@ -518,7 +857,7 @@ class ConfigManager:
         cursor = conn.cursor()
 
         try:
-            cursor.execute('SELECT enabled FROM servers WHERE ip = ?', (ip,))
+            cursor.execute("SELECT enabled FROM servers WHERE ip = ?", (ip,))
             row = cursor.fetchone()
             if row is None:
                 return True
@@ -526,7 +865,6 @@ class ConfigManager:
         except Exception as e:
             error_log(f"Ошибка получения статуса сервера {ip}: {e}")
             return True
-
 
     # ------------------------------------------------------------
     # Backward-compatible API (тонкий адаптер)
@@ -538,19 +876,20 @@ class ConfigManager:
         """
         return self.get_all_servers()
 
-
         servers = []
         for row in cursor.fetchall():
-            servers.append({
-                'ip': row[0],
-                'name': row[1],
-                'type': row[2],
-                'credentials': json.loads(row[3]) if row[3] else [],
-                'timeout': row[4]
-            })
-        
+            servers.append(
+                {
+                    "ip": row[0],
+                    "name": row[1],
+                    "type": row[2],
+                    "credentials": json.loads(row[3]) if row[3] else [],
+                    "timeout": row[4],
+                }
+            )
+
         return servers
-    
+
     def add_server(
         self,
         ip: str,
@@ -558,139 +897,148 @@ class ConfigManager:
         server_type: str,
         credentials: Optional[List[Dict]] = None,
         timeout: int = 30,
-        enabled: bool = True
+        enabled: bool = True,
     ) -> bool:
         """
         Добавить сервер
-        
+
         Args:
             ip: IP адрес
             name: Имя сервера
             server_type: Тип сервера
             credentials: Учетные данные
             timeout: Таймаут
-            
+
         Returns:
             True если успешно
         """
-        credentials_json = json.dumps(credentials) if credentials else '[]'
+        credentials_json = json.dumps(credentials) if credentials else "[]"
         enabled_value = 1 if enabled else 0
-        
+
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         try:
-            cursor.execute('''
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO servers (ip, name, type, credentials, timeout, enabled)
                 VALUES (?, ?, ?, ?, ?, ?)
-            ''', (ip, name, server_type, credentials_json, timeout, enabled_value))
-            
+            """,
+                (ip, name, server_type, credentials_json, timeout, enabled_value),
+            )
+
             conn.commit()
-            
+
             # Очищаем кэш
             self._cache = {}
-            
+
             debug_log(f"Сервер добавлен: {name} ({ip}) тип: {server_type}")
             return True
-            
+
         except Exception as e:
             error_log(f"Ошибка добавления сервера {ip}: {e}")
             return False
-    
+
     def delete_server(self, ip: str) -> bool:
         """
         Удалить сервер
-        
+
         Args:
             ip: IP адрес сервера
-            
+
         Returns:
             True если успешно
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         try:
-            cursor.execute('DELETE FROM servers WHERE ip = ?', (ip,))
+            cursor.execute("DELETE FROM servers WHERE ip = ?", (ip,))
             conn.commit()
-            
+
             # Очищаем кэш
             self._cache = {}
-            
+
             debug_log(f"Сервер удален: {ip}")
             return True
-            
+
         except Exception as e:
             error_log(f"Ошибка удаления сервера {ip}: {e}")
             return False
-    
+
     def get_windows_credentials_db(self) -> Dict[str, List[Dict[str, str]]]:
         """
         Получить учетные данные Windows из БД
-        
+
         Returns:
             Словарь учетных данных по типам серверов
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
-        cursor.execute('''
+
+        cursor.execute(
+            """
             SELECT username, password, server_type 
             FROM windows_credentials 
             WHERE enabled = 1 
             ORDER BY server_type, priority
-        ''')
-        
+        """
+        )
+
         credentials = {}
         for username, password, server_type in cursor.fetchall():
             if server_type not in credentials:
                 credentials[server_type] = []
-            credentials[server_type].append({
-                "username": username,
-                "password": password
-            })
-        
+            credentials[server_type].append({"username": username, "password": password})
+
         return credentials
-    
+
     def get_windows_credentials(self, server_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Получить учетные данные Windows
-        
+
         Args:
             server_type: Фильтр по типу сервера
-            
+
         Returns:
             Список учетных данных
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         if server_type:
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT id, username, password, server_type, priority, enabled 
                 FROM windows_credentials 
                 WHERE server_type = ? AND enabled = 1 
                 ORDER BY priority
-            ''', (server_type,))
+            """,
+                (server_type,),
+            )
         else:
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT id, username, password, server_type, priority, enabled 
                 FROM windows_credentials 
                 WHERE enabled = 1 
                 ORDER BY server_type, priority
-            ''')
-        
+            """
+            )
+
         credentials = []
         for row in cursor.fetchall():
-            credentials.append({
-                'id': row[0],
-                'username': row[1],
-                'password': row[2],
-                'server_type': row[3],
-                'priority': row[4],
-                'enabled': row[5]
-            })
-        
+            credentials.append(
+                {
+                    "id": row[0],
+                    "username": row[1],
+                    "password": row[2],
+                    "server_type": row[3],
+                    "priority": row[4],
+                    "enabled": row[5],
+                }
+            )
+
         return credentials
 
     def get_windows_server_types(self) -> List[str]:
@@ -703,141 +1051,143 @@ class ConfigManager:
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT DISTINCT server_type
             FROM windows_credentials
             WHERE enabled = 1
             ORDER BY server_type
-        ''')
+        """
+        )
 
         return [row[0] for row in cursor.fetchall()]
-        
+
     def add_windows_credential(
-        self, 
-        username: str, 
-        password: str, 
-        server_type: str = 'default', 
-        priority: int = 0
+        self, username: str, password: str, server_type: str = "default", priority: int = 0
     ) -> bool:
         """
         Добавить учетные данные Windows
-        
+
         Args:
             username: Имя пользователя
             password: Пароль
             server_type: Тип сервера
             priority: Приоритет
-            
+
         Returns:
             True если успешно
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         try:
-            cursor.execute('''
+            cursor.execute(
+                """
                 INSERT INTO windows_credentials (username, password, server_type, priority)
                 VALUES (?, ?, ?, ?)
-            ''', (username, password, server_type, priority))
-            
+            """,
+                (username, password, server_type, priority),
+            )
+
             conn.commit()
-            
+
             debug_log(f"Учетные данные добавлены: {username} для {server_type}")
             return True
-            
+
         except Exception as e:
             error_log(f"Ошибка добавления учетных данных: {e}")
             return False
-    
-    def update_windows_credential(
-        self, 
-        cred_id: int, 
-        **kwargs
-    ) -> bool:
+
+    def update_windows_credential(self, cred_id: int, **kwargs) -> bool:
         """
         Обновить учетные данные Windows
-        
+
         Args:
             cred_id: ID учетных данных
             **kwargs: Поля для обновления
-            
+
         Returns:
             True если успешно
         """
-        allowed_fields = ['username', 'password', 'server_type', 'priority', 'enabled']
+        allowed_fields = ["username", "password", "server_type", "priority", "enabled"]
         update_fields = []
         params = []
-        
+
         for field, value in kwargs.items():
             if field in allowed_fields:
                 update_fields.append(f"{field} = ?")
                 params.append(value)
-        
+
         if not update_fields:
             return False
-        
+
         params.append(cred_id)
-        
+
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         try:
-            cursor.execute(f'''
+            cursor.execute(
+                f"""
                 UPDATE windows_credentials 
                 SET {', '.join(update_fields)} 
                 WHERE id = ?
-            ''', params)
-            
+            """,
+                params,
+            )
+
             conn.commit()
-            
+
             debug_log(f"Учетные данные обновлены: ID {cred_id}")
             return True
-            
+
         except Exception as e:
             error_log(f"Ошибка обновления учетных данных ID {cred_id}: {e}")
             return False
-    
+
     def delete_windows_credential(self, cred_id: int) -> bool:
         """
         Удалить учетные данные Windows
-        
+
         Args:
             cred_id: ID учетных данных
-            
+
         Returns:
             True если успешно
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         try:
-            cursor.execute('DELETE FROM windows_credentials WHERE id = ?', (cred_id,))
+            cursor.execute("DELETE FROM windows_credentials WHERE id = ?", (cred_id,))
             conn.commit()
-            
+
             debug_log(f"Учетные данные удалены: ID {cred_id}")
             return True
-            
+
         except Exception as e:
             error_log(f"Ошибка удаления учетных данных ID {cred_id}: {e}")
             return False
-    
+
     def get_backup_patterns(self) -> Dict[str, Dict[str, List[str]]]:
         """
         Получить паттерны бэкапов
-        
+
         Returns:
             Словарь паттернов
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
-        cursor.execute('''
+
+        cursor.execute(
+            """
             SELECT pattern_type, pattern, category 
             FROM backup_patterns 
             WHERE enabled = 1
             ORDER BY category, pattern_type
-        ''')
-        
+        """
+        )
+
         patterns = {}
         for pattern_type, pattern, category in cursor.fetchall():
             if category not in patterns:
@@ -845,13 +1195,14 @@ class ConfigManager:
             if pattern_type not in patterns[category]:
                 patterns[category][pattern_type] = []
             patterns[category][pattern_type].append(pattern)
-        
+
         return patterns
-    
+
     def clear_cache(self) -> None:
         """Очистить кэш настроек"""
         self._cache = {}
         debug_log("Кэш настроек очищен")
+
 
 # Глобальный экземпляр менеджера конфигурации
 config_manager = ConfigManager()

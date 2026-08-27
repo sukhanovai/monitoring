@@ -1,17 +1,17 @@
 """
 /modules/targeted_resources.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A placeholder for address verification of resources.
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Заглушка для адресных проверок ресурсов.
 """
 
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 
 def get_targeted_resource_checks() -> List[Dict[str, Any]]:

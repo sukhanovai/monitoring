@@ -1,0 +1,201 @@
+package ru.monitoring.mobile.api
+
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.PATCH
+import retrofit2.http.Path
+import retrofit2.http.POST
+import retrofit2.http.Query
+
+interface MonitoringApi {
+    @POST("v1/auth/token")
+    suspend fun exchangeAuthToken(@Body request: AuthTokenExchangeRequest): AuthTokenExchangeResponse
+
+    @POST("v1/auth/token/reissue")
+    suspend fun reissueAuthToken(@Body request: AuthTokenExchangeRequest): AuthTokenExchangeResponse
+
+    @GET("v1/monitoring/availability?scope=all")
+    suspend fun getAvailability(): AvailabilityResponse
+
+    @GET("v1/monitoring/availability/{serverId}")
+    suspend fun getAvailabilitySingle(@Path("serverId") serverId: String): AvailabilityResponse
+
+    @GET("v1/monitoring/resources/{serverId}")
+    suspend fun getServerResources(@Path("serverId") serverId: String): ServerResourcesResponse
+
+    @GET("v1/mobile/version")
+    suspend fun getMobileVersionInfo(
+        @Query("current_version") currentVersion: String,
+        @Query("branch") branch: String? = null,
+    ): MobileVersionResponse
+
+    @GET("v1/mobile/branches")
+    suspend fun getMobileBranches(): MobileBranchesResponse
+
+    @POST("v1/mobile/diagnostics/tls")
+    suspend fun postTlsDiagnostics(@Body request: TlsDiagnosticsRequest): TlsDiagnosticsResponse
+
+    @POST("v1/control/actions")
+    suspend fun runControlAction(@Body request: ControlActionRequest): ControlActionResult
+
+    @GET("v1/control/status")
+    suspend fun getControlStatus(): ControlStatusResponse
+
+    @GET("v1/settings/monitoring")
+    suspend fun getMonitoringSettings(): SettingsMonitoringResponse
+
+    @PATCH("v1/settings/monitoring")
+    suspend fun updateMonitoringSettings(
+        @Body request: SettingsMonitoringRequest
+    ): SettingsMonitoringResponse
+
+    @GET("v1/settings/bot")
+    suspend fun getBotSettings(): SettingsBotResponse
+
+    @PATCH("v1/settings/bot")
+    suspend fun updateBotSettings(
+        @Body request: SettingsBotRequest
+    ): SettingsBotResponse
+
+    @POST("v1/settings/bot/chats")
+    suspend fun addBotChat(@Body request: BotChatRequest): SettingsBotResponse
+
+    @DELETE("v1/settings/bot/chats/{chatId}")
+    suspend fun removeBotChat(@Path("chatId") chatId: String): SettingsBotResponse
+
+    @POST("v1/settings/bot/test")
+    suspend fun testTelegramBotConnection(): BotConnectionTestResponse
+
+    @GET("v1/settings/bot/matrix")
+    suspend fun getMatrixBotSettings(): SettingsMatrixBotResponse
+
+    @PATCH("v1/settings/bot/matrix")
+    suspend fun updateMatrixBotSettings(
+        @Body request: SettingsMatrixBotRequest
+    ): SettingsMatrixBotResponse
+
+    @POST("v1/settings/bot/matrix/test")
+    suspend fun testMatrixBotConnection(): BotConnectionTestResponse
+
+    @GET("v1/settings/time")
+    suspend fun getTimeSettings(): SettingsTimeResponse
+
+    @PATCH("v1/settings/time")
+    suspend fun updateTimeSettings(
+        @Body request: SettingsTimeRequest
+    ): SettingsTimeResponse
+
+    @GET("v1/settings/web-auth")
+    suspend fun getWebAuthSettings(): SettingsWebAuthResponse
+
+    @PATCH("v1/settings/web-auth")
+    suspend fun updateWebAuthSettings(
+        @Body request: SettingsWebAuthRequest
+    ): SettingsWebAuthResponse
+
+    @GET("v1/settings/auth")
+    suspend fun getAuthSettings(): SettingsAuthResponse
+
+    @PATCH("v1/settings/auth")
+    suspend fun updateAuthSettings(
+        @Body request: SettingsAuthRequest
+    ): SettingsAuthResponse
+
+    @GET("v1/settings/auth/windows-credentials")
+    suspend fun getWindowsCredentials(): WindowsCredentialsResponse
+
+    @POST("v1/settings/auth/windows-credentials")
+    suspend fun addWindowsCredential(
+        @Body request: AddWindowsCredentialRequest
+    ): WindowsCredentialsResponse
+
+    @DELETE("v1/settings/auth/windows-credentials/{credId}")
+    suspend fun deleteWindowsCredential(@Path("credId") credId: Int): WindowsCredentialsResponse
+
+    @GET("v1/settings/auth/windows-types")
+    suspend fun getWindowsTypes(): WindowsTypesResponse
+
+    @POST("v1/settings/auth/windows-types")
+    suspend fun createWindowsType(@Body request: CreateWindowsTypeRequest): WindowsTypesResponse
+
+    @PATCH("v1/settings/auth/windows-types/{typeName}")
+    suspend fun renameWindowsType(
+        @Path("typeName") typeName: String,
+        @Body request: RenameWindowsTypeRequest
+    ): WindowsTypesResponse
+
+    @POST("v1/settings/auth/windows-types/merge")
+    suspend fun mergeWindowsTypes(@Body request: MergeWindowsTypesRequest): WindowsTypesResponse
+
+    @DELETE("v1/settings/auth/windows-types/{typeName}")
+    suspend fun deleteWindowsType(
+        @Path("typeName") typeName: String,
+        @Query("target_type") targetType: String = "default"
+    ): WindowsTypesResponse
+
+    @GET("v1/settings/servers")
+    suspend fun getServersSettings(): ServersSettingsResponse
+
+    @GET("v1/settings/report")
+    suspend fun getReportSettings(): SettingsReportResponse
+
+    @PATCH("v1/settings/report")
+    suspend fun updateReportSettings(
+        @Body request: SettingsReportRequest
+    ): SettingsReportResponse
+
+    // --- Многопользовательский режим ---------------------------------------
+
+    @GET("v1/me")
+    suspend fun getMe(): MeResponse
+
+    @PATCH("v1/me/notifications")
+    suspend fun updateMyNotifications(
+        @Body request: MeNotificationsRequest
+    ): MeNotificationsResponse
+
+    @GET("v1/users")
+    suspend fun getUsers(): UsersListResponse
+
+    @POST("v1/users")
+    suspend fun createUser(@Body request: CreateUserRequest): UserResponse
+
+    @POST("v1/users/{userId}/channels")
+    suspend fun linkUserChannel(
+        @Path("userId") userId: Int,
+        @Body request: LinkChannelRequest
+    ): UserResponse
+
+    @GET("v1/settings/extensions")
+    suspend fun getExtensionsSettings(): ExtensionsSettingsResponse
+
+    @PATCH("v1/settings/extensions/{extensionId}")
+    suspend fun updateExtensionSettings(
+        @Path("extensionId") extensionId: String,
+        @Body request: ExtensionUpdateRequest
+    ): ExtensionUpdateResponse
+
+    @POST("v1/settings/extensions/actions")
+    suspend fun runExtensionsAction(
+        @Body request: ExtensionsActionRequest
+    ): ExtensionsActionResponse
+
+    @POST("v1/settings/servers")
+    suspend fun addServer(@Body request: AddServerRequest): ServersSettingsResponse
+
+    @PATCH("v1/settings/servers/{ip}")
+    suspend fun updateServer(
+        @Path("ip") ip: String,
+        @Body request: UpdateServerRequest
+    ): ServersSettingsResponse
+
+    @PATCH("v1/settings/servers/{ip}/enabled")
+    suspend fun setServerEnabled(
+        @Path("ip") ip: String,
+        @Body request: ToggleServerEnabledRequest
+    ): ServersSettingsResponse
+
+    @DELETE("v1/settings/servers/{ip}")
+    suspend fun deleteServer(@Path("ip") ip: String): ServersSettingsResponse
+}

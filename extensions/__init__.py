@@ -1,11 +1,11 @@
 """
 /extensions/__init__.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extensions interface
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Интерфейс расширений
@@ -14,4 +14,3 @@ Extensions interface
 from .base import Extension
 
 __all__ = ["Extension"]
-

@@ -1,11 +1,11 @@
 """
 /app/modules/__init__.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring system modules
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модули системы мониторинга
@@ -13,4 +13,4 @@ Monitoring system modules
 
 from .targeted_checks import targeted_checks
 
-__all__ = ['targeted_checks']
+__all__ = ["targeted_checks"]
