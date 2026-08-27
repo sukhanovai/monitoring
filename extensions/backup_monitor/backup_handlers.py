@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.65.1
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.65.1
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -23,6 +23,7 @@ from extensions.extension_manager import extension_manager
 
 from .backup_utils import (
     DisplayFormatters,
+    _canonical_backup_category,
     get_config_console_patterns_from_config,
     normalize_config_backup_type,
     save_config_console_patterns,
@@ -628,7 +629,7 @@ def _normalize_db_key(name: str) -> str:
 def _normalize_backup_type(backup_type: str, db_name: str) -> str:
     if _normalize_db_key(db_name) == "trade" and backup_type == "client":
         return "company_database"
-    return backup_type
+    return _canonical_backup_category(backup_type)
 
 
 def _normalize_config_backup_type(category: str) -> str:

@@ -184,3 +184,83 @@ def test_backup_summary_matches_db_names_case_insensitively(backups_db) -> None:
     assert "Клиенты: 2/2" in message
     assert "Нет бэкапов за последние" not in message
     assert has_issues is False
+
+
+@pytest.fixture()
+def barnaul_alias_backups_db(monkeypatch, tmp_path):
+    """Барнаульские бэкапы, записанные с backup_type='barnaul_backups'.
+
+    Регрессия: мастер бота «Настройка паттернов» показывает пользователю
+    категории прямо из DATABASE_CONFIG (см. _get_database_categories в
+    bot/handlers/settings_handlers/backups/db.py) — там ключи «полные»
+    (barnaul_backups), а не короткие (barnaul). Паттерн, добавленный под
+    таким ключом, распознавал письма через запасную ветку «пользовательских
+    категорий» parse_database_backup и сохранял backup_type='barnaul_backups'
+    вместо 'barnaul'. Отчёт («Бэкапы БД (за 24ч)») сравнивал по литералу
+    'barnaul' и считал все такие (успешные, свежие) бэкапы отсутствующими,
+    хотя интерактивные детали (get_database_details с фолбэком через
+    _get_latest_backup_type) их находили — отчёт и детали противоречили
+    друг другу.
+    """
+    import config.db_settings as db_settings
+
+    monkeypatch.setattr(db_settings, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(
+        db_settings,
+        "DATABASE_BACKUP_CONFIG",
+        {
+            "barnaul_backups": {
+                "7.7": "7.7",
+                "bases": "bases",
+                "DOC": "DOC",
+            },
+        },
+    )
+
+    conn = sqlite3.connect(str(tmp_path / "backups.db"))
+    conn.execute(
+        """
+        CREATE TABLE database_backups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            host_name TEXT NOT NULL,
+            database_name TEXT NOT NULL,
+            database_display_name TEXT,
+            backup_status TEXT NOT NULL,
+            backup_type TEXT,
+            task_type TEXT,
+            error_count INTEGER DEFAULT 0,
+            email_subject TEXT,
+            received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    now = datetime.now()
+    rows = [
+        ("7.7", now - timedelta(hours=14, minutes=21)),
+        ("bases", now - timedelta(hours=14, minutes=39)),
+        ("doc", now - timedelta(hours=12, minutes=55)),
+    ]
+    for db_name, received_at in rows:
+        conn.execute(
+            """
+            INSERT INTO database_backups
+            (host_name, database_name, backup_status, backup_type, task_type, received_at)
+            VALUES ('brn-backup', ?, 'success', 'barnaul_backups', 'database_dump', ?)
+            """,
+            (db_name, received_at.strftime("%Y-%m-%d %H:%M:%S")),
+        )
+    conn.commit()
+    conn.close()
+    return tmp_path
+
+
+def test_database_backup_stats_collapses_barnaul_backups_alias(
+    barnaul_alias_backups_db,
+) -> None:
+    from extensions.backup_monitor.backup_utils import get_database_backup_stats
+
+    stats = get_database_backup_stats(period_hours=24)
+    assert stats["error"] is None
+    barnaul = next(c for c in stats["categories"] if c["key"] == "barnaul")
+    assert barnaul["missing"] == [], barnaul["missing"]
+    assert barnaul["ok"] == 3, barnaul

@@ -1,13 +1,13 @@
 """
 /modules/mail_parts/__init__.py
-Server Monitoring System v8.65.1
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Decomposed mail monitor package. Старый modules/mail_monitor.py
 остаётся тонким фасадом и реэкспортирует BackupProcessor / pattern-
 хелперы / run_mail_monitor / main отсюда — внешние импортёры не правятся.
 Система мониторинга серверов
-Версия: 8.65.1
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет декомпозиции modules/mail_monitor.py (PR6 серии оптимизации).

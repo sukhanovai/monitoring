@@ -1,11 +1,11 @@
 """
 /lib/report_settings.py
-Server Monitoring System v8.65.1
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Report composition settings helper
 Система мониторинга серверов
-Версия: 8.65.1
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Хелпер настройки состава утреннего/ручного отчёта.

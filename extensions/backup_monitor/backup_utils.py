@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.65.1
+Server Monitoring System v8.65.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.65.1
+Версия: 8.65.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -32,15 +32,17 @@ def _norm_db_pair(backup_type: str, db_name: str) -> tuple[str, str]:
     return (backup_type, _normalize_db_key(db_name))
 
 
-def _normalize_backup_type(backup_type: str, db_name: str) -> str:
-    if _normalize_db_key(db_name) == "trade" and backup_type == "client":
-        return "company_database"
-    return backup_type
-
-
-# Встроенные категории БД: как категория называется в конфиге → с каким
-# backup_type бэкап этой категории лежит в backups.db.
-_BUILTIN_CATEGORY_ALIASES = {
+# Алиасы категории БД: DATABASE_CONFIG хранит секции под «полными» ключами
+# (barnaul_backups, client_databases, ...), а мастер бота «Настройка
+# паттернов» (см. _get_database_categories в
+# bot/handlers/settings_handlers/backups/db.py) предлагает эти же полные
+# ключи и сохраняет паттерн под ними в таблицу backup_patterns. Без
+# схлопывания к короткому имени бэкапы, найденные таким паттерном,
+# попадают в database_backups с backup_type='barnaul_backups' и не
+# совпадают ни с одной категорией сводки (get_database_backup_stats
+# сравнивает по литералам "company_database"/"barnaul"/"client"/"yandex"),
+# хотя сам бэкап успешен и найден в срок.
+_BACKUP_TYPE_ALIASES = {
     "company": "company_database",
     "company_database": "company_database",
     "company_databases": "company_database",
@@ -52,6 +54,18 @@ _BUILTIN_CATEGORY_ALIASES = {
     "yandex": "yandex",
     "yandex_backups": "yandex",
 }
+
+
+def _canonical_backup_category(category: str) -> str:
+    """Схлопывает алиас категории БД к каноническому имени (см. выше)."""
+    return _BACKUP_TYPE_ALIASES.get(_normalize_db_key(category), category)
+
+
+def _normalize_backup_type(backup_type: str, db_name: str) -> str:
+    if _normalize_db_key(db_name) == "trade" and backup_type == "client":
+        return "company_database"
+    return _canonical_backup_category(backup_type)
+
 
 BUILTIN_CATEGORY_ORDER = ("company_database", "barnaul", "client", "yandex")
 
@@ -71,7 +85,7 @@ def normalize_config_backup_type(category: str) -> str:
     остаётся как есть: парсер писем кладёт его в backup_type без изменений
     (parse_database_backup, ветка пользовательских категорий).
     """
-    return _BUILTIN_CATEGORY_ALIASES.get(_normalize_db_key(category), str(category))
+    return str(_canonical_backup_category(category))
 
 
 def get_category_display_name(backup_type: str) -> str:
