@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.65.0
+Server Monitoring System v8.65.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.65.0
+Версия: 8.65.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -36,6 +36,88 @@ def _normalize_backup_type(backup_type: str, db_name: str) -> str:
     if _normalize_db_key(db_name) == "trade" and backup_type == "client":
         return "company_database"
     return backup_type
+
+
+# Встроенные категории БД: как категория называется в конфиге → с каким
+# backup_type бэкап этой категории лежит в backups.db.
+_BUILTIN_CATEGORY_ALIASES = {
+    "company": "company_database",
+    "company_database": "company_database",
+    "company_databases": "company_database",
+    "barnaul": "barnaul",
+    "barnaul_backups": "barnaul",
+    "client": "client",
+    "clients": "client",
+    "client_databases": "client",
+    "yandex": "yandex",
+    "yandex_backups": "yandex",
+}
+
+BUILTIN_CATEGORY_ORDER = ("company_database", "barnaul", "client", "yandex")
+
+CATEGORY_DISPLAY_NAMES = {
+    "company_database": "Основные",
+    "barnaul": "Барнаул",
+    "client": "Клиенты",
+    "yandex": "Yandex",
+}
+
+
+def normalize_config_backup_type(category: str) -> str:
+    """Категория из конфига → backup_type, с которым бэкап пишется в БД.
+
+    Встроенные категории приводятся к каноническому ключу, а имя
+    пользовательской категории (создана через «Управление категориями»)
+    остаётся как есть: парсер писем кладёт его в backup_type без изменений
+    (parse_database_backup, ветка пользовательских категорий).
+    """
+    return _BUILTIN_CATEGORY_ALIASES.get(_normalize_db_key(category), str(category))
+
+
+def get_category_display_name(backup_type: str) -> str:
+    """Название категории для отчёта: встроенное или имя самой категории."""
+    return CATEGORY_DISPLAY_NAMES.get(backup_type, str(backup_type))
+
+
+def build_config_databases(database_backup_config: object) -> dict[str, dict]:
+    """{backup_type: {db_key: подпись}} по ВСЕМ категориям конфигурации.
+
+    Пользовательские категории попадают в сводки наравне со встроенными —
+    так же, как их показывает меню бота (get_database_monitor_snapshot).
+    Раньше сводки знали только четыре встроенные категории, а словарь
+    пользовательской категории подставлялся в 'barnaul' — её бэкапы лежат
+    в БД со своим backup_type, не совпадали ни с одной записью и попадали
+    в отчёт как «нет бэкапов за 24ч».
+    """
+    config_databases: dict[str, dict] = {}
+    if not isinstance(database_backup_config, dict):
+        return config_databases
+
+    for category, databases in database_backup_config.items():
+        if not isinstance(databases, dict) or not databases:
+            continue
+        backup_type = normalize_config_backup_type(category)
+        bucket = config_databases.setdefault(backup_type, {})
+        for db_key, label in databases.items():
+            bucket.setdefault(db_key, label)
+
+    # 'trade' заводят и как основную, и как клиентскую базу — считаем один раз.
+    company_databases = config_databases.get("company_database") or {}
+    client_databases = config_databases.get("client") or {}
+    if "trade" in client_databases and "trade" in company_databases:
+        config_databases["client"] = {
+            key: value for key, value in client_databases.items() if key != "trade"
+        }
+
+    return config_databases
+
+
+def order_categories(categories) -> list[str]:
+    """Встроенные категории в привычном порядке, пользовательские — следом."""
+    present = list(categories)
+    known = [category for category in BUILTIN_CATEGORY_ORDER if category in present]
+    custom = sorted(str(category) for category in present if category not in BUILTIN_CATEGORY_ORDER)
+    return known + custom
 
 
 def _normalize_host_key(value: object) -> str:
@@ -241,41 +323,7 @@ def get_backup_summary(
             ]
         )
 
-        def _get_db_config(config: dict, *keys: str) -> dict:
-            for key in keys:
-                value = config.get(key)
-                if isinstance(value, dict):
-                    return value
-            return {}
-
-        company_databases = _get_db_config(
-            database_backup_config,
-            "company_databases",
-            "company_database",
-            "company",
-        )
-        client_databases = _get_db_config(
-            database_backup_config,
-            "client_databases",
-            "client",
-            "clients",
-        )
-        if "trade" in client_databases and "trade" in company_databases:
-            client_databases = {
-                key: value for key, value in client_databases.items() if key != "trade"
-            }
-
-        config_databases = {
-            "company_database": company_databases,
-            "barnaul": _get_db_config(
-                database_backup_config,
-                "barnaul_backups",
-                "barnaul",
-                "Филиалы",
-            ),
-            "client": client_databases,
-            "yandex": _get_db_config(database_backup_config, "yandex_backups", "yandex"),
-        }
+        config_databases = build_config_databases(database_backup_config)
 
         db_stats = {}
         configured_databases = {
@@ -381,13 +429,6 @@ def get_backup_summary(
             message += "• Базы данных:\n"
 
         if include_databases:
-            category_names = {
-                "company_database": "Основные",
-                "barnaul": "Барнаул",
-                "client": "Клиенты",
-                "yandex": "Yandex",
-            }
-
             total_configured = sum(
                 len(databases)
                 for databases in config_databases.values()
@@ -407,14 +448,12 @@ def get_backup_summary(
                         if status == "success":
                             stats["successful"] += 1
 
-                    for backup_type in ["company_database", "barnaul", "client", "yandex"]:
-                        if backup_type not in fallback_stats:
-                            continue
+                    for backup_type in order_categories(fallback_stats):
                         stats = fallback_stats[backup_type]
                         if stats["total"] <= 0:
                             continue
 
-                        type_name = category_names.get(backup_type, backup_type)
+                        type_name = get_category_display_name(backup_type)
                         success_rate = (stats["successful"] / stats["total"]) * 100
                         stale_count = len([db for db in stale_databases if db[0] == backup_type])
                         is_ok = stats["successful"] == stats["total"] and stale_count == 0
@@ -428,14 +467,12 @@ def get_backup_summary(
                             message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
                         message += "\n"
             else:
-                for category in ["company_database", "barnaul", "client", "yandex"]:
-                    if category not in db_stats:
-                        continue
+                for category in order_categories(db_stats):
                     stats = db_stats[category]
                     if stats["total"] <= 0:
                         continue
 
-                    type_name = category_names[category]
+                    type_name = get_category_display_name(category)
                     success_rate = (stats["successful"] / stats["total"]) * 100
                     stale_count = len([db for db in stale_databases if db[0] == category])
                     missing_recent = stats.get("missing_recent", 0)
@@ -500,20 +537,16 @@ def get_backup_summary(
 
             if include_databases and stale_by_category:
                 message += "• Проблемные БД (>24ч):\n"
-                for category in ["company_database", "barnaul", "client", "yandex"]:
-                    if category not in stale_by_category:
-                        continue
+                for category in order_categories(stale_by_category):
                     db_list = ", ".join(sorted(stale_by_category[category]))
-                    type_name = category_names.get(category, category)
+                    type_name = get_category_display_name(category)
                     message += f"  - {type_name}: {db_list}\n"
 
             if include_databases and missing_recent_by_category:
                 message += f"• Нет бэкапов за последние {period_hours}ч:\n"
-                for category in ["company_database", "barnaul", "client", "yandex"]:
-                    if category not in missing_recent_by_category:
-                        continue
+                for category in order_categories(missing_recent_by_category):
                     db_list = ", ".join(sorted(missing_recent_by_category[category]))
-                    type_name = category_names.get(category, category)
+                    type_name = get_category_display_name(category)
                     message += f"  - {type_name}: {db_list}\n"
 
         if include_mail:
@@ -689,12 +722,6 @@ def get_database_backup_stats(period_hours=24) -> dict:
        "no_data": bool, "error": str|None}
     """
     stats = {"categories": [], "no_data": False, "error": None}
-    category_names = {
-        "company_database": "Основные",
-        "barnaul": "Барнаул",
-        "client": "Клиенты",
-        "yandex": "Yandex",
-    }
     try:
         from config.db_settings import DATA_DIR, DATABASE_BACKUP_CONFIG
 
@@ -747,32 +774,7 @@ def get_database_backup_stats(period_hours=24) -> dict:
         finally:
             conn.close()
 
-        def _get_db_config(config: dict, *keys: str) -> dict:
-            for key in keys:
-                value = config.get(key)
-                if isinstance(value, dict):
-                    return value
-            return {}
-
-        company_databases = _get_db_config(
-            database_backup_config, "company_databases", "company_database", "company"
-        )
-        client_databases = _get_db_config(
-            database_backup_config, "client_databases", "client", "clients"
-        )
-        if "trade" in client_databases and "trade" in company_databases:
-            client_databases = {
-                key: value for key, value in client_databases.items() if key != "trade"
-            }
-
-        config_databases = {
-            "company_database": company_databases,
-            "barnaul": _get_db_config(
-                database_backup_config, "barnaul_backups", "barnaul", "Филиалы"
-            ),
-            "client": client_databases,
-            "yandex": _get_db_config(database_backup_config, "yandex_backups", "yandex"),
-        }
+        config_databases = build_config_databases(database_backup_config)
 
         recent_keys = {
             _norm_db_pair(backup_type, db_name) for backup_type, db_name, _ in db_results
@@ -799,14 +801,12 @@ def get_database_backup_stats(period_hours=24) -> dict:
                 entry["total"] += 1
                 if status == "success":
                     entry["ok"] += 1
-            for category in ("company_database", "barnaul", "client", "yandex"):
-                if category not in fallback:
-                    continue
+            for category in order_categories(fallback):
                 entry = fallback[category]
                 stats["categories"].append(
                     {
                         "key": category,
-                        "name": category_names.get(category, category),
+                        "name": get_category_display_name(category),
                         "total": entry["total"],
                         "ok": entry["ok"],
                         "stale": sorted(db for cat, db in stale_keys if cat == category),
@@ -817,7 +817,7 @@ def get_database_backup_stats(period_hours=24) -> dict:
                 stats["no_data"] = True
             return stats
 
-        for category in ("company_database", "barnaul", "client", "yandex"):
+        for category in order_categories(config_databases):
             databases = config_databases.get(category) or {}
             if not databases:
                 continue
@@ -835,7 +835,7 @@ def get_database_backup_stats(period_hours=24) -> dict:
             stats["categories"].append(
                 {
                     "key": category,
-                    "name": category_names.get(category, category),
+                    "name": get_category_display_name(category),
                     "total": len(databases),
                     "ok": ok_count,
                     "stale": stale,

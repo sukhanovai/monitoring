@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/alerts.py
-Server Monitoring System v8.65.0
+Server Monitoring System v8.65.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Automatic resource monitoring + alert pipeline, extracted from
 core/monitor_core.py (PR5) and unified across modules/resources.py (PR8).
 Система мониторинга серверов
-Версия: 8.65.0
+Версия: 8.65.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Автоматическая проверка ресурсов всех серверов, дедупликация алертов

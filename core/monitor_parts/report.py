@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/report.py
-Server Monitoring System v8.65.0
+Server Monitoring System v8.65.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning report assembly extracted from core/monitor_core.py
 (PR5 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.65.0
+Версия: 8.65.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Сборка ежеутреннего сводного отчёта о доступности серверов и состоянии
@@ -303,17 +303,26 @@ def get_backup_summary_for_report(period_hours=16, include_mail=False):
 
         db_results = cursor.fetchall()
 
-        # Получаем конфигурацию
+        # Получаем конфигурацию: все категории, включая пользовательские
         from config.db_settings import DATABASE_BACKUP_CONFIG
+        from extensions.backup_monitor.backup_utils import (
+            build_config_databases,
+            get_category_display_name,
+            order_categories,
+        )
 
-        config_databases = {
-            "company_database": DATABASE_BACKUP_CONFIG.get("company_databases", {}),
-            "barnaul": DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}),
-            "client": DATABASE_BACKUP_CONFIG.get("client_databases", {}),
-            "yandex": DATABASE_BACKUP_CONFIG.get("yandex_backups", {}),
-        }
+        config_databases = build_config_databases(DATABASE_BACKUP_CONFIG)
+
+        def _norm_db_name(name: str) -> str:
+            return str(name or "").replace("-", "_").lower()
 
         # Считаем статистику - КАЖДАЯ база считается успешной если у нее есть успешный бэкап за период
+        successful_db_keys = {
+            (backup_type, _norm_db_name(db_name))
+            for backup_type, db_name, status, _ in db_results
+            if status == "success"
+        }
+
         db_stats = {}
         for category, databases in config_databases.items():
             total_in_config = len(databases)
@@ -322,13 +331,7 @@ def get_backup_summary_for_report(period_hours=16, include_mail=False):
 
                 # Для каждой базы в категории проверяем есть ли успешный бэкап
                 for db_key in databases.keys():
-                    found_success = False
-                    for backup_type, db_name, status, last_backup in db_results:
-                        if backup_type == category and db_name == db_key and status == "success":
-                            found_success = True
-                            break
-
-                    if found_success:
+                    if (category, _norm_db_name(db_key)) in successful_db_keys:
                         successful_count += 1
 
                 db_stats[category] = {"total": total_in_config, "successful": successful_count}
@@ -410,17 +413,10 @@ def get_backup_summary_for_report(period_hours=16, include_mail=False):
         # Базы данных
         message += "• Базы данных:\n"
 
-        category_names = {
-            "company_database": "Основные",
-            "barnaul": "Барнаул",
-            "client": "Клиенты",
-            "yandex": "Yandex",
-        }
-
-        for category in ["company_database", "barnaul", "client", "yandex"]:
-            if category in db_stats and db_stats[category]["total"] > 0:
+        for category in order_categories(db_stats):
+            if db_stats[category]["total"] > 0:
                 stats = db_stats[category]
-                type_name = category_names[category]
+                type_name = get_category_display_name(category)
 
                 success_rate = (stats["successful"] / stats["total"]) * 100
                 message += f"  - {type_name}: {stats['successful']}/{stats['total']} успешно ({success_rate:.1f}%)"
