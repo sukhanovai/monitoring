@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.65.2
+Server Monitoring System v8.66.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 8.66.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -228,6 +228,13 @@ EXTENSION_MENU_ITEMS: List[ExtensionMenuItem] = [
         "!tls",
         "TLS-сертификаты доменов",
         "_handle_ext_tls_cert",
+    ),
+    ExtensionMenuItem(
+        "mail_cert_monitor",
+        "📨",
+        "!mailcert",
+        "сертификат почтового сервера (Zimbra)",
+        "_handle_ext_mail_cert",
     ),
 ]
 _EXT_ITEM_BY_COMMAND: Dict[str, ExtensionMenuItem] = {
@@ -484,6 +491,7 @@ _BACKUP_PATTERN_SECTION_OWNER: Dict[str, str] = {
     "zfs": "zfs_monitor",
     "snapshot_transfer": "snapshot_transfer_monitor",
     "nas_transfer": "nas_transfer_monitor",
+    "mail_cert": "mail_cert_monitor",
     "stock_load": "stock_load_monitor",
     "database": "database_backup_monitor",
     "proxmox": "backup_monitor",
@@ -495,6 +503,7 @@ _BACKUP_PATTERN_SECTION_DESC: Dict[str, str] = {
     "zfs": "Регэкспы писем статуса ZFS-массивов",
     "snapshot_transfer": "Регэкспы писем передачи ZFS-снэпшотов",
     "nas_transfer": "Регэкспы писем передачи бэкапов на NAS",
+    "mail_cert": "Регэкспы писем CERT о сертификате почтового сервера",
     "stock_load": "Регэкспы логов загрузки остатков 1С",
     "database": "Регэкспы писем бэкапов баз данных",
     "proxmox": "Регэкспы писем бэкапов Proxmox/PBS",
@@ -515,6 +524,7 @@ _PATTERN_OWNER_PRIMARY_SECTION: Dict[str, str] = {
     "zfs_monitor": "zfs",
     "snapshot_transfer_monitor": "snapshot_transfer",
     "nas_transfer_monitor": "nas_transfer",
+    "mail_cert_monitor": "mail_cert",
     "stock_load_monitor": "stock_load",
 }
 
@@ -2243,6 +2253,11 @@ class MatrixCommandBot:
 
         results, errors = collect_certificates()
         return "\n".join(build_status_lines(results, errors))
+
+    async def _handle_ext_mail_cert(self) -> str:
+        from extensions.mail_cert_monitor import build_status_lines as mail_cert_status_lines
+
+        return "\n".join(mail_cert_status_lines())
 
     def _extensions_menu_text(self, enabled: Optional[Set[str]] = None) -> str:
         if enabled is None:

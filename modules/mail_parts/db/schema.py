@@ -1,17 +1,17 @@
 """
 /modules/mail_parts/db/schema.py
-Server Monitoring System v8.65.2
+Server Monitoring System v8.66.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 SQL DDL for backups.db extracted from BackupProcessor.init_database
 (PR6b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 8.66.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 DDL таблиц backups.db (`proxmox_backups`, `zfs_pool_status`,
 `snapshot_transfers`, `mail_server_backups`, `stock_load_results`,
-`nas_transfers`), их индексов и однократной миграции колонки
+`nas_transfers`, `mail_cert_events`), их индексов и однократной миграции колонки
 `source_name` для старых инсталляций. Отделено от логики `BackupProcessor`, чтобы:
 1. SQL можно было читать целиком в одном месте;
 2. unit-тесты могли поднимать схему в in-memory sqlite без побочек.
@@ -134,6 +134,25 @@ CREATE TABLE IF NOT EXISTS config_console_backups (
 )
 """
 
+MAIL_CERT_EVENTS_DDL = """
+CREATE TABLE IF NOT EXISTS mail_cert_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    host_name TEXT NOT NULL,
+    ct_id TEXT NOT NULL,
+    level TEXT NOT NULL,
+    event TEXT NOT NULL,
+    params TEXT,
+    until_date TEXT,
+    days_left INTEGER,
+    details TEXT,
+    email_subject TEXT,
+    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP,
+    notified INTEGER DEFAULT 0,
+    UNIQUE(email_subject, received_at)
+)
+"""
+
 INDEX_STATEMENTS = (
     "CREATE INDEX IF NOT EXISTS idx_backups_host_date ON proxmox_backups(host_name, received_at)",
     "CREATE INDEX IF NOT EXISTS idx_zfs_server_date ON zfs_pool_status(server_name, received_at)",
@@ -145,6 +164,9 @@ INDEX_STATEMENTS = (
     "ON nas_transfers(host_name, received_at)",
     "CREATE INDEX IF NOT EXISTS idx_config_console_host_date "
     "ON config_console_backups(host_name, received_at)",
+    "CREATE INDEX IF NOT EXISTS idx_mail_cert_events_target_date "
+    "ON mail_cert_events(host_name, ct_id, received_at)",
+    "CREATE INDEX IF NOT EXISTS idx_mail_cert_events_notified ON mail_cert_events(notified)",
 )
 
 TABLE_DDLS = (
@@ -155,6 +177,7 @@ TABLE_DDLS = (
     STOCK_LOAD_RESULTS_DDL,
     NAS_TRANSFERS_DDL,
     CONFIG_CONSOLE_BACKUPS_DDL,
+    MAIL_CERT_EVENTS_DDL,
 )
 
 
@@ -184,6 +207,7 @@ def create_schema(conn: sqlite3.Connection) -> None:
 __all__ = [
     "CONFIG_CONSOLE_BACKUPS_DDL",
     "INDEX_STATEMENTS",
+    "MAIL_CERT_EVENTS_DDL",
     "MAIL_SERVER_BACKUPS_DDL",
     "NAS_TRANSFERS_DDL",
     "PROXMOX_BACKUPS_DDL",

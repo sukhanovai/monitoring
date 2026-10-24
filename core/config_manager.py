@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v8.65.2
+Server Monitoring System v8.66.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 8.66.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -348,7 +348,8 @@ class ConfigManager:
                 '["backup_monitor", "database_backup_monitor", "mail_backup_monitor", '
                 '"config_console_backup_monitor", "nas_transfer_monitor", '
                 '"stock_load_monitor", "supplier_stock_files", "zfs_monitor", '
-                '"zfs_pool_free_space_monitor", "snapshot_transfer_monitor"]',
+                '"zfs_pool_free_space_monitor", "snapshot_transfer_monitor", '
+                '"mail_cert_monitor"]',
                 "report",
                 "Расширения, сведения которых включаются в утренний/ручной отчёт "
                 "(JSON-список ID расширений)",

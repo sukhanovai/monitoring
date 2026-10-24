@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.65.2
+Server Monitoring System v8.66.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 8.66.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -377,6 +377,13 @@ def callback_router(update, context):
         from bot.handlers.tls_cert_handlers import handle_callbacks as tls_handle_callbacks
 
         tls_handle_callbacks(update, context, data)
+    elif data.startswith("mail_cert_"):
+        if not extension_manager.is_extension_enabled("mail_cert_monitor"):
+            query.edit_message_text("📨 Мониторинг сертификата почтового сервера отключён")
+            return
+        from bot.handlers.mail_cert_handlers import handle_callbacks as mail_cert_handle_callbacks
+
+        mail_cert_handle_callbacks(update, context, data)
     elif data == "snapshot_transfer_menu":
         if not extension_manager.is_extension_enabled("snapshot_transfer_monitor"):
             query.edit_message_text("📸 Мониторинг передачи снэпшотов отключён")

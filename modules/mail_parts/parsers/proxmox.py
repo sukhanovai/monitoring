@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/proxmox.py
-Server Monitoring System v8.65.2
+Server Monitoring System v8.66.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ProxmoxBackupParserMixin — часть BackupProcessor (PR6c серии оптимизации).
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 8.66.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Mixin ProxmoxBackupParserMixin; объединяется с другими mixin'ами в BackupProcessor.
@@ -110,6 +110,13 @@ class ProxmoxBackupParserMixin:
             # (например «Backup (\w+) OK» матчит «Config backup pve3 OK»),
             # тогда как паттерн config_console заанкорен и чужие письма
             # не перехватывает.
+            # Письма CERT о сертификате почтового сервера: заанкоренный паттерн,
+            # разбираются первыми, чтобы их не перехватили паттерны БД.
+            mail_cert = self.parse_mail_cert(subject)
+            if mail_cert:
+                self.save_mail_cert(mail_cert, subject, self.get_email_body(msg), email_date)
+                return {"mail_cert": mail_cert}
+
             config_console = self.parse_config_console_backup(subject, self.get_email_body(msg))
             if config_console:
                 self.save_config_console_backup(config_console, subject, email_date)
@@ -154,7 +161,7 @@ class ProxmoxBackupParserMixin:
 
             if not self.is_proxmox_backup_email(subject):
                 logger.info(
-                    "Пропускаем не-Proxmox/БД/ZFS/передачи снэпшотов/NAS/конфиги/"
+                    "Пропускаем не-Proxmox/БД/ZFS/передачи снэпшотов/NAS/конфиги/CERT/"
                     "почта/остатки письмо: %s...",
                     subject[:50],
                 )

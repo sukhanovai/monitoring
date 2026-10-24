@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.65.2
+Server Monitoring System v8.66.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 8.66.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -959,6 +959,7 @@ var EXT_ICONS={
   mail_backup_monitor:'📬 ',zfs_monitor:'🧊 ',zfs_pool_free_space_monitor:'💽 ',
   snapshot_transfer_monitor:'📸 ',stock_load_monitor:'📦 ',nas_transfer_monitor:'📤 ',
   config_console_backup_monitor:'🗂️ ',supplier_stock_files:'📦 ',tls_cert_monitor:'🔐 ',
+  mail_cert_monitor:'📨 ',
   web_interface:'🌐 ',email_processor:'📧 '
 };
 function extIcon(id){ return EXT_ICONS[id]||'🧩 '; }
@@ -1012,6 +1013,7 @@ var OPS=[
   {a:'zfs_pool_free_space_menu',e:'💽',t:'Свободное место ZFS',d:'Пулы ZFS'},
   {a:'snapshot_transfer_menu',e:'📸',t:'ZFS снэпшоты',d:'Передачи снэпшотов'},
   {a:'tls_cert_monitor_status',e:'🔐',t:'TLS-сертификаты',d:'Сроки сертификатов'},
+  {a:'mail_cert_monitor_status',e:'📨',t:'Сертификат почты',d:'Развёртывание на Zimbra'},
   {a:'supplier_stock_reports',e:'📦',t:'Остатки поставщиков',d:'Отчёты по остаткам'},
 ];
 function renderOperations(){
@@ -1586,6 +1588,7 @@ def _execute_mobile_control_action(action: str, user_id=None):
         "zfs_pool_free_space_menu",
         "snapshot_transfer_menu",
         "tls_cert_monitor_status",
+        "mail_cert_monitor_status",
     }
     resource_threshold_settings = {
         "set_cpu_warning": ("CPU_WARNING", "CPU предупреждение"),
@@ -1696,6 +1699,10 @@ def _execute_mobile_control_action(action: str, user_id=None):
                 "tls_cert_monitor",
                 "🔐 Мониторинг TLS-сертификатов отключён",
             ),
+            "mail_cert_monitor_status": (
+                "mail_cert_monitor",
+                "📨 Мониторинг сертификата почтового сервера отключён",
+            ),
         }
 
         extension_requirement = extension_requirements.get(action)
@@ -1778,6 +1785,21 @@ def _execute_mobile_control_action(action: str, user_id=None):
                 "accepted",
                 [
                     {"label": "🔄 Обновить", "action": "tls_cert_monitor_status"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            )
+
+        if action == "mail_cert_monitor_status":
+            from extensions.mail_cert_monitor import (
+                build_status_lines as mail_cert_status_lines,
+            )
+
+            return (
+                True,
+                "\n".join(mail_cert_status_lines()),
+                "accepted",
+                [
+                    {"label": "🔄 Обновить", "action": "mail_cert_monitor_status"},
                     {"label": "✖️ Закрыть", "action": "close"},
                 ],
             )

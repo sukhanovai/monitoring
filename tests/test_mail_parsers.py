@@ -170,6 +170,7 @@ def test_create_schema_creates_all_tables() -> None:
             "stock_load_results",
             "nas_transfers",
             "config_console_backups",
+            "mail_cert_events",
         }
 
         cursor.execute("SELECT name FROM sqlite_master WHERE type='index'")
@@ -182,6 +183,7 @@ def test_create_schema_creates_all_tables() -> None:
             "idx_stock_load_date",
             "idx_nas_transfers_host_date",
             "idx_config_console_host_date",
+            "idx_mail_cert_events_target_date",
         ):
             assert expected_idx in indexes, expected_idx
     finally:
@@ -203,7 +205,7 @@ def test_create_schema_is_idempotent() -> None:
             "SELECT COUNT(*) FROM sqlite_master " "WHERE type='table' AND name NOT LIKE 'sqlite_%'"
         )
         # количество таблиц остаётся стабильным (плюс sqlite_sequence фильтруем)
-        assert cursor.fetchone()[0] == 7
+        assert cursor.fetchone()[0] == 8
     finally:
         conn.close()
 

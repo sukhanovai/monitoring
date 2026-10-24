@@ -1,11 +1,11 @@
 """
 /lib/report_settings.py
-Server Monitoring System v8.65.2
+Server Monitoring System v8.66.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Report composition settings helper
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 8.66.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Хелпер настройки состава утреннего/ручного отчёта.
@@ -50,6 +50,7 @@ REPORT_CAPABLE_EXTENSIONS = [
     "zfs_pool_free_space_monitor",
     "snapshot_transfer_monitor",
     "tls_cert_monitor",
+    "mail_cert_monitor",
     "resource_monitor",
 ]
 
@@ -68,6 +69,7 @@ REPORT_EXTENSION_LABELS = {
     "zfs_pool_free_space_monitor": "💽 Свободное место ZFS",
     "snapshot_transfer_monitor": "📸 Передачи снэпшотов",
     "tls_cert_monitor": "🔐 TLS-сертификаты",
+    "mail_cert_monitor": "📨 Сертификат почты",
     "resource_monitor": "💻 Ресурсы серверов",
 }
 
