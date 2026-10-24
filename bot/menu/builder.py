@@ -1,11 +1,11 @@
 """
 /bot/menu/builder.py
-Server Monitoring System v8.66.0
+Server Monitoring System v8.67.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 The place where keyboards are made.
 Система мониторинга серверов
-Версия: 8.66.0
+Версия: 8.67.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Место, где строятся клавиатуры
@@ -81,9 +81,9 @@ def main_menu(extension_manager):
         )
     if extension_manager.is_extension_enabled("tls_cert_monitor"):
         keyboard.append([InlineKeyboardButton("🔐 TLS-сертификаты", callback_data="tls_cert_menu")])
-    if extension_manager.is_extension_enabled("mail_cert_monitor"):
+    if extension_manager.is_extension_enabled("ids_cert_monitor"):
         keyboard.append(
-            [InlineKeyboardButton("📨 Сертификат почты", callback_data="mail_cert_menu")]
+            [InlineKeyboardButton("🛡️ IDS и сертификат почты", callback_data="ids_menu")]
         )
 
     keyboard.extend(

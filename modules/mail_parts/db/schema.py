@@ -1,17 +1,17 @@
 """
 /modules/mail_parts/db/schema.py
-Server Monitoring System v8.66.0
+Server Monitoring System v8.67.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 SQL DDL for backups.db extracted from BackupProcessor.init_database
 (PR6b серии оптимизации).
 Система мониторинга серверов
-Версия: 8.66.0
+Версия: 8.67.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 DDL таблиц backups.db (`proxmox_backups`, `zfs_pool_status`,
 `snapshot_transfers`, `mail_server_backups`, `stock_load_results`,
-`nas_transfers`, `mail_cert_events`), их индексов и однократной миграции колонки
+`nas_transfers`, `ids_*` расширения ids_cert_monitor), их индексов и однократной миграции колонки
 `source_name` для старых инсталляций. Отделено от логики `BackupProcessor`, чтобы:
 1. SQL можно было читать целиком в одном месте;
 2. unit-тесты могли поднимать схему в in-memory sqlite без побочек.
@@ -134,22 +134,82 @@ CREATE TABLE IF NOT EXISTS config_console_backups (
 )
 """
 
-MAIL_CERT_EVENTS_DDL = """
-CREATE TABLE IF NOT EXISTS mail_cert_events (
+# IDS/CERT (расширение ids_cert_monitor): журнал писем, текущее состояние
+# проблем, сигналы жизни IDS, сроки сертификатов и очередь оповещений.
+# Письма разбирает mail-monitor, а рассылает основной цикл — очередь
+# `ids_outbox` связывает два процесса и переживает перезапуск.
+IDS_EVENTS_DDL = """
+CREATE TABLE IF NOT EXISTS ids_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    host_name TEXT NOT NULL,
-    ct_id TEXT NOT NULL,
-    level TEXT NOT NULL,
-    event TEXT NOT NULL,
-    params TEXT,
-    until_date TEXT,
-    days_left INTEGER,
+    message_id TEXT NOT NULL UNIQUE,
+    source TEXT,
+    level TEXT,
+    node TEXT,
+    ct TEXT,
+    event TEXT,
+    family TEXT,
+    problem_key TEXT,
+    fields TEXT,
     details TEXT,
-    email_subject TEXT,
-    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    processed_at TIMESTAMP,
-    notified INTEGER DEFAULT 0,
-    UNIQUE(email_subject, received_at)
+    subject TEXT,
+    event_time TIMESTAMP,
+    received_at TIMESTAMP,
+    outcome TEXT
+)
+"""
+
+IDS_STATE_DDL = """
+CREATE TABLE IF NOT EXISTS ids_state (
+    problem_key TEXT PRIMARY KEY,
+    source TEXT NOT NULL,
+    node TEXT NOT NULL,
+    ct TEXT NOT NULL,
+    family TEXT NOT NULL,
+    state TEXT NOT NULL DEFAULT 'OK',
+    since TIMESTAMP,
+    last_event_at TIMESTAMP,
+    last_event TEXT,
+    last_subject TEXT,
+    last_fields TEXT,
+    last_details TEXT,
+    last_notified_at TIMESTAMP,
+    acknowledged INTEGER DEFAULT 0,
+    ack_by TEXT,
+    ack_at TIMESTAMP
+)
+"""
+
+IDS_HEARTBEAT_DDL = """
+CREATE TABLE IF NOT EXISTS ids_heartbeat (
+    source_key TEXT PRIMARY KEY,
+    node TEXT NOT NULL,
+    ct TEXT NOT NULL,
+    last_at TIMESTAMP NOT NULL,
+    level TEXT,
+    fields TEXT
+)
+"""
+
+IDS_CERT_UNTIL_DDL = """
+CREATE TABLE IF NOT EXISTS ids_cert_until (
+    source_key TEXT PRIMARY KEY,
+    node TEXT NOT NULL,
+    ct TEXT NOT NULL,
+    until_date TEXT NOT NULL,
+    updated_at TIMESTAMP
+)
+"""
+
+IDS_OUTBOX_DDL = """
+CREATE TABLE IF NOT EXISTS ids_outbox (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TIMESTAMP NOT NULL,
+    level TEXT NOT NULL,
+    kind TEXT,
+    problem_key TEXT,
+    message TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    sent_at TIMESTAMP
 )
 """
 
@@ -164,9 +224,9 @@ INDEX_STATEMENTS = (
     "ON nas_transfers(host_name, received_at)",
     "CREATE INDEX IF NOT EXISTS idx_config_console_host_date "
     "ON config_console_backups(host_name, received_at)",
-    "CREATE INDEX IF NOT EXISTS idx_mail_cert_events_target_date "
-    "ON mail_cert_events(host_name, ct_id, received_at)",
-    "CREATE INDEX IF NOT EXISTS idx_mail_cert_events_notified ON mail_cert_events(notified)",
+    "CREATE INDEX IF NOT EXISTS idx_ids_events_time ON ids_events(event_time)",
+    "CREATE INDEX IF NOT EXISTS idx_ids_events_key ON ids_events(problem_key, event_time)",
+    "CREATE INDEX IF NOT EXISTS idx_ids_outbox_status ON ids_outbox(status, id)",
 )
 
 TABLE_DDLS = (
@@ -177,7 +237,11 @@ TABLE_DDLS = (
     STOCK_LOAD_RESULTS_DDL,
     NAS_TRANSFERS_DDL,
     CONFIG_CONSOLE_BACKUPS_DDL,
-    MAIL_CERT_EVENTS_DDL,
+    IDS_EVENTS_DDL,
+    IDS_STATE_DDL,
+    IDS_HEARTBEAT_DDL,
+    IDS_CERT_UNTIL_DDL,
+    IDS_OUTBOX_DDL,
 )
 
 
@@ -207,7 +271,11 @@ def create_schema(conn: sqlite3.Connection) -> None:
 __all__ = [
     "CONFIG_CONSOLE_BACKUPS_DDL",
     "INDEX_STATEMENTS",
-    "MAIL_CERT_EVENTS_DDL",
+    "IDS_CERT_UNTIL_DDL",
+    "IDS_EVENTS_DDL",
+    "IDS_HEARTBEAT_DDL",
+    "IDS_OUTBOX_DDL",
+    "IDS_STATE_DDL",
     "MAIL_SERVER_BACKUPS_DDL",
     "NAS_TRANSFERS_DDL",
     "PROXMOX_BACKUPS_DDL",

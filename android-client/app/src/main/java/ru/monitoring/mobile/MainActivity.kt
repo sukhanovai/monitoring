@@ -3073,6 +3073,15 @@ private fun MonitoringApp(
                 )
             )
         }
+        extensionsById["ids_cert_monitor"]?.takeIf { it.enabled }?.let { extension ->
+            add(
+                buildExtensionDataTile(
+                    extension = extension.copy(name = "🛡️ IDS"),
+                    summaryOverride = state.idsCertSummary,
+                    hasProblemOverride = state.idsCertHasProblemItems
+                )
+            )
+        }
         extensionsById["web_interface"]?.takeIf { it.enabled }?.let { extension ->
             add(buildToggleDataTile(label = "🌐 web", enabled = extension.enabled, id = "web"))
         }
@@ -3134,6 +3143,11 @@ private fun MonitoringApp(
                 {
                     showTlsCertDialog = true
                     onAction("tls_cert_monitor_status")
+                }
+            } else if (extension.id == "ids_cert_monitor") {
+                {
+                    showIdsCertDialog = true
+                    onAction("ids_cert_monitor_status")
                 }
             } else if (extension.id == "zfs_monitor") {
                 {
@@ -7917,6 +7931,78 @@ private fun MonitoringApp(
                         Text(state.message)
                     } else {
                         Text("Пока нет данных о TLS-сертификатах. Нажми «Обновить» сверху.")
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showIdsCertDialog) {
+        // Все действия расширения начинаются с ids_ (статус, журнал, справка,
+        // ids_ack|<ключ> — подтверждение проблемы). Ответ сервера — текст +
+        // кнопки menu_options, как в веб-интерфейсе.
+        val idsIsCurrent = state.extensionMenuAction.startsWith("ids_")
+        val idsOptions = if (idsIsCurrent) {
+            state.extensionMenuOptions.mapNotNull { option ->
+                val action = resolveMenuOptionAction(option)
+                val label = option.label?.trim().orEmpty()
+                if (label.isBlank() || action.isBlank() || action == "close") return@mapNotNull null
+                if (action == "ids_cert_monitor_status") return@mapNotNull null
+                label to action
+            }
+        } else {
+            emptyList()
+        }
+        AlertDialog(
+            onDismissRequest = { showIdsCertDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🛡️ IDS и сертификат почты",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { onAction("ids_cert_monitor_status") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Обновить статус IDS и сертификата почты"
+                        )
+                    }
+                    IconButton(onClick = { showIdsCertDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть сведения IDS и сертификата почты"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 520.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.isLoading && !idsIsCurrent) {
+                        Text("Загружаем данные IDS и сертификата почты…")
+                    } else if (idsIsCurrent && state.message.isNotBlank() && state.messageSource == "global") {
+                        Text(state.message)
+                        idsOptions.forEach { (label, action) ->
+                            OutlinedButton(
+                                onClick = { onAction(action) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(label)
+                            }
+                        }
+                    } else {
+                        Text("Пока нет данных IDS и сертификата почты. Нажми «Обновить» сверху.")
                     }
                 }
             },

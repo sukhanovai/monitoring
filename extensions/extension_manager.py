@@ -1,11 +1,11 @@
 """
 /extensions/extension_manager.py
-Server Monitoring System v8.66.0
+Server Monitoring System v8.67.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extension Manager for Monitoring
 Система мониторинга серверов
-Версия: 8.66.0
+Версия: 8.67.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер расширений для мониторинга
@@ -90,14 +90,14 @@ AVAILABLE_EXTENSIONS = {
         "handlers": ["tls_"],
         "enabled_by_default": True,
     },
-    "mail_cert_monitor": {
-        "name": "📨 Сертификат почтового сервера",
+    "ids_cert_monitor": {
+        "name": "🛡️ IDS и сертификат почты",
         "description": (
-            "Развёртывание TLS-сертификата Zimbra по письмам CERT от скрипта "
-            "(DEPLOYED / EXPIRING / DEPLOY_FAILED / …), оповещения сразу по письму"
+            "Взлом контейнеров Proxmox (IDS) и замена TLS-сертификата Zimbra (CERT) "
+            "по письмам скриптов с хоста PVE: состояния, напоминания, сторож heartbeat"
         ),
         "commands": [],
-        "handlers": ["mail_cert_"],
+        "handlers": ["ids_"],
         "enabled_by_default": True,
     },
     "mail_backup_monitor": {

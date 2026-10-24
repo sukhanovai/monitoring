@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.66.0
+Server Monitoring System v8.67.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.66.0
+Версия: 8.67.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -959,7 +959,7 @@ var EXT_ICONS={
   mail_backup_monitor:'📬 ',zfs_monitor:'🧊 ',zfs_pool_free_space_monitor:'💽 ',
   snapshot_transfer_monitor:'📸 ',stock_load_monitor:'📦 ',nas_transfer_monitor:'📤 ',
   config_console_backup_monitor:'🗂️ ',supplier_stock_files:'📦 ',tls_cert_monitor:'🔐 ',
-  mail_cert_monitor:'📨 ',
+  ids_cert_monitor:'🛡️ ',
   web_interface:'🌐 ',email_processor:'📧 '
 };
 function extIcon(id){ return EXT_ICONS[id]||'🧩 '; }
@@ -1013,7 +1013,7 @@ var OPS=[
   {a:'zfs_pool_free_space_menu',e:'💽',t:'Свободное место ZFS',d:'Пулы ZFS'},
   {a:'snapshot_transfer_menu',e:'📸',t:'ZFS снэпшоты',d:'Передачи снэпшотов'},
   {a:'tls_cert_monitor_status',e:'🔐',t:'TLS-сертификаты',d:'Сроки сертификатов'},
-  {a:'mail_cert_monitor_status',e:'📨',t:'Сертификат почты',d:'Развёртывание на Zimbra'},
+  {a:'ids_cert_monitor_status',e:'🛡️',t:'IDS и сертификат почты',d:'Взлом контейнеров, сертификат Zimbra'},
   {a:'supplier_stock_reports',e:'📦',t:'Остатки поставщиков',d:'Отчёты по остаткам'},
 ];
 function renderOperations(){
@@ -1588,7 +1588,7 @@ def _execute_mobile_control_action(action: str, user_id=None):
         "zfs_pool_free_space_menu",
         "snapshot_transfer_menu",
         "tls_cert_monitor_status",
-        "mail_cert_monitor_status",
+        "ids_cert_monitor_status",
     }
     resource_threshold_settings = {
         "set_cpu_warning": ("CPU_WARNING", "CPU предупреждение"),
@@ -1668,6 +1668,7 @@ def _execute_mobile_control_action(action: str, user_id=None):
         or action.startswith("snapshot_transfer_host_")
         or action.startswith("supplier_stock_reports_")
         or action.startswith("supplier_stock_report_source_day|")
+        or action.startswith("ids_")
     ):
         from extensions.extension_manager import extension_manager
 
@@ -1699,13 +1700,18 @@ def _execute_mobile_control_action(action: str, user_id=None):
                 "tls_cert_monitor",
                 "🔐 Мониторинг TLS-сертификатов отключён",
             ),
-            "mail_cert_monitor_status": (
-                "mail_cert_monitor",
-                "📨 Мониторинг сертификата почтового сервера отключён",
+            "ids_cert_monitor_status": (
+                "ids_cert_monitor",
+                "🛡️ Мониторинг IDS и сертификата почты отключён",
             ),
         }
 
         extension_requirement = extension_requirements.get(action)
+        if extension_requirement is None and action.startswith("ids_"):
+            extension_requirement = (
+                "ids_cert_monitor",
+                "🛡️ Мониторинг IDS и сертификата почты отключён",
+            )
         if extension_requirement is None and action.startswith("zfsp_"):
             extension_requirement = (
                 "zfs_pool_free_space_monitor",
@@ -1789,20 +1795,45 @@ def _execute_mobile_control_action(action: str, user_id=None):
                 ],
             )
 
-        if action == "mail_cert_monitor_status":
-            from extensions.mail_cert_monitor import (
-                build_status_lines as mail_cert_status_lines,
+        if action == "ids_cert_monitor_status" or action.startswith("ids_"):
+            from extensions.ids_cert_monitor import (
+                acknowledge as ids_acknowledge,
+                build_help_lines as ids_help_lines,
+                build_history_lines as ids_history_lines,
+                build_status_lines as ids_status_lines,
+                get_open_problems as ids_open_problems,
             )
 
-            return (
-                True,
-                "\n".join(mail_cert_status_lines()),
-                "accepted",
-                [
-                    {"label": "🔄 Обновить", "action": "mail_cert_monitor_status"},
-                    {"label": "✖️ Закрыть", "action": "close"},
-                ],
-            )
+            back_options = [
+                {"label": "↩️ К статусу", "action": "ids_cert_monitor_status"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
+            if action == "ids_history":
+                return True, "\n".join(ids_history_lines()), "accepted", back_options
+            if action == "ids_help":
+                return True, "\n".join(ids_help_lines()), "accepted", back_options
+            prefix = ""
+            if action.startswith("ids_ack|"):
+                ack_key = action.split("|", 1)[1]
+                if ids_acknowledge(ack_key, by="web/mobile"):
+                    prefix = f"✋ Подтверждено: {ack_key} — напоминания остановлены\n\n"
+                else:
+                    prefix = f"ℹ️ {ack_key}: открытой проблемы нет\n\n"
+            options = [
+                {
+                    "label": f"✋ Подтвердить: {row['node']}/CT{row['ct']} {row['family']}",
+                    "action": f"ids_ack|{row['problem_key']}",
+                }
+                for row in ids_open_problems()
+                if not row.get("acknowledged")
+            ]
+            options += [
+                {"label": "🔄 Обновить", "action": "ids_cert_monitor_status"},
+                {"label": "🕘 Журнал 30 дней", "action": "ids_history"},
+                {"label": "📖 Справка", "action": "ids_help"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
+            return True, prefix + "\n".join(ids_status_lines()), "accepted", options
 
         if action == "snapshot_transfer_menu":
             from config.settings import BACKUP_DB_FILE

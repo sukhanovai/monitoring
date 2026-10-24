@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v8.66.0
+Server Monitoring System v8.67.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 8.66.0
+Версия: 8.67.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -349,7 +349,7 @@ class ConfigManager:
                 '"config_console_backup_monitor", "nas_transfer_monitor", '
                 '"stock_load_monitor", "supplier_stock_files", "zfs_monitor", '
                 '"zfs_pool_free_space_monitor", "snapshot_transfer_monitor", '
-                '"mail_cert_monitor"]',
+                '"ids_cert_monitor"]',
                 "report",
                 "Расширения, сведения которых включаются в утренний/ручной отчёт "
                 "(JSON-список ID расширений)",
@@ -408,6 +408,21 @@ class ConfigManager:
                 "stock_load",
                 "Ожидаемое число файлов загрузки остатков 1С за сутки (0 — не задано)",
                 "int",
+            ),
+            # IDS и сертификат почты (расширение ids_cert_monitor)
+            (
+                "IDS_CT_NAMES",
+                '{"101": "почтовый сервер Zimbra"}',
+                "ids_cert",
+                "Названия контейнеров в оповещениях IDS/CERT ({\"<CT id>\": \"название\"})",
+                "dict",
+            ),
+            (
+                "IDS_EXPECTED_SOURCES",
+                '["sr-pve2/CT101"]',
+                "ids_cert",
+                "Источники IDS, от которых обязан приходить HEARTBEAT (<узел>/CT<id>)",
+                "list",
             ),
             # Веб-интерфейс
             ("WEB_PORT", "5000", "web", "Порт веб-интерфейса", "int"),

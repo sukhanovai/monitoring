@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.66.0
+Server Monitoring System v8.67.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.66.0
+Версия: 8.67.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -238,9 +238,9 @@ class MorningReport:
             ),
             ("tls_cert_monitor", "🔐 TLS-сертификаты", self.get_tls_cert_summary_for_report),
             (
-                "mail_cert_monitor",
-                "📨 Сертификат почтового сервера",
-                self.get_mail_cert_summary_for_report,
+                "ids_cert_monitor",
+                "🛡️ IDS и сертификат почты",
+                self.get_ids_cert_summary_for_report,
             ),
             ("resource_monitor", "💻 Ресурсы серверов", self.get_resources_summary_for_report),
         ]
@@ -1174,27 +1174,15 @@ class MorningReport:
             debug_log(f"❌ Ошибка сводки TLS: {exc}")
             return ["❌ Данные о TLS-сертификатах недоступны"], True
 
-    def get_mail_cert_summary_for_report(self):
-        """Секция сертификата почты: «Почтовых серверов: 1/1 (100%)»."""
+    def get_ids_cert_summary_for_report(self):
+        """Секция IDS/CERT: «Контейнеров в норме: 1/1» и открытые проблемы."""
         try:
-            from extensions.mail_cert_monitor import describe_event, get_summary
+            from extensions.ids_cert_monitor import get_report_summary
 
-            summary = get_summary()
-            if summary["total"] == 0:
-                return ["⚪ Писем CERT ещё не было"], False
-            lines = [self._status_line("Почтовых серверов", summary["ok"], summary["total"])]
-            if summary["min_days_left"] is not None:
-                lines.append(f"• До конца срока: {summary['min_days_left']} дн.")
-            for target in summary["problems"]:
-                last = target["last"]
-                lines.append(
-                    f"• {target['host_name']} CT{target['ct_id']}: {last.get('event')} — "
-                    f"{describe_event(str(last.get('event')))}"
-                )
-            return lines, bool(summary["problems"])
+            return get_report_summary()
         except Exception as exc:
-            debug_log(f"❌ Ошибка сводки сертификата почты: {exc}")
-            return ["❌ Данные о сертификате почты недоступны"], True
+            debug_log(f"❌ Ошибка сводки IDS/CERT: {exc}")
+            return ["❌ Данные IDS/CERT недоступны"], True
 
     def get_resources_summary_for_report(self):
         """Секция ресурсов серверов: «Серверов: N/N (%)» (live-проверка)."""

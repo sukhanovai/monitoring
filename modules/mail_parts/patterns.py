@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/patterns.py
-Server Monitoring System v8.66.0
+Server Monitoring System v8.67.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Pattern helpers extracted from modules/mail_monitor.py (PR6 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.66.0
+Версия: 8.67.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Сборщики regex/glob-паттернов из конфигурации БД для разных типов писем
@@ -59,7 +59,6 @@ _NON_DATABASE_PATTERN_CATEGORIES = {
     "snapshot_transfer",
     "nas_transfer",
     "config_console",
-    "mail_cert",
     "stock_load",
 }
 
@@ -287,16 +286,6 @@ def get_nas_transfer_patterns_from_config() -> list[str]:
 
     except Exception as exc:
         logger.error(f"❌ Ошибка извлечения паттернов передачи на NAS: {exc}")
-        return []
-
-
-def get_mail_cert_patterns_from_config() -> list[str]:
-    """Извлекает паттерны для писем о сертификате почтового сервера (CERT …)."""
-    try:
-        return _get_subject_patterns("mail_cert")
-
-    except Exception as exc:
-        logger.error(f"❌ Ошибка извлечения паттернов сертификата почты: {exc}")
         return []
 
 

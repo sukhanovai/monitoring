@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/lifecycle.py
-Server Monitoring System v8.66.0
+Server Monitoring System v8.67.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main monitoring loop entry-point extracted from core/monitor_core.py
 (PR5 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.66.0
+Версия: 8.67.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Жизненный цикл монитора: однократная инициализация бота/state, затем
@@ -48,7 +48,7 @@ def start_monitoring() -> None:
     from core.monitor_parts.alerts import check_resources_automatically
     from core.monitor_parts.availability import handle_server_down, handle_server_up
     from core.monitor_parts.report import send_morning_report
-    from extensions.mail_cert_monitor import check_mail_cert_alerts
+    from extensions.ids_cert_monitor import tick as ids_cert_tick
     from extensions.server_checks import (
         check_server_availability,
         initialize_servers,
@@ -261,15 +261,16 @@ def start_monitoring() -> None:
             except Exception as exc:
                 debug_log(f"⚠️ Ошибка плановой проверки TLS-сертификатов: {exc}")
 
-            try:
-                # Письма CERT складывает в БД mail-monitor; здесь рассылаем
-                # оповещения по новым событиям (каждое — ровно один раз).
-                check_mail_cert_alerts(
-                    send_alert_func=partial(send_alert, category="mail_cert_monitor"),
-                    is_silent_func=is_silent_time,
-                )
-            except Exception as exc:
-                debug_log(f"⚠️ Ошибка рассылки оповещений о сертификате почты: {exc}")
+        try:
+            # IDS/CERT: сторожевые проверки, напоминания и рассылка очереди,
+            # которую наполняет mail-monitor. Вне monitoring_active — пауза
+            # мониторинга серверов не должна глушить оповещения о взломе.
+            ids_cert_tick(
+                send_alert_func=partial(send_alert, category="ids_cert_monitor"),
+                is_silent_func=is_silent_time,
+            )
+        except Exception as exc:
+            debug_log(f"⚠️ Ошибка обработки IDS/CERT: {exc}")
 
         time.sleep(config.CHECK_INTERVAL)
 

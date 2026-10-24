@@ -220,6 +220,7 @@ class MonitoringAppState {
     var ccServerInput by mutableStateOf("")
     var ccPatternInput by mutableStateOf("")
     var showTlsCertDialog by mutableStateOf(false)
+    var showIdsCertDialog by mutableStateOf(false)
     var showTlsSettingsDialog by mutableStateOf(false)
     var tlsCertNameInput by mutableStateOf("")
     var tlsCertHostInput by mutableStateOf("")
