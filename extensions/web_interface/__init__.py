@@ -3517,11 +3517,32 @@ def _resolve_branch_apk_url(branch_cfg, repo, version, fallback_url):
     return url or fallback_url
 
 
+def _resolve_github_channel_releases():
+    """Сборки каналов stable/beta по GitHub Releases ({} — недоступно/выключено)."""
+    from config.settings import (
+        ANDROID_RELEASE_REPO,
+        ANDROID_RELEASES_FROM_GITHUB,
+        ANDROID_RELEASES_GITHUB_TOKEN,
+    )
+
+    if not ANDROID_RELEASES_FROM_GITHUB:
+        return {}
+    from core.android_release_channels import default_resolver
+
+    return default_resolver.resolve(
+        str(ANDROID_RELEASE_REPO), str(ANDROID_RELEASES_GITHUB_TOKEN or "")
+    )
+
+
 def _build_android_update_branches():
-    """Список веток обновления Android-клиента с готовыми ссылками на APK.
+    """Список каналов обновления Android-клиента с готовыми ссылками на APK.
+
+    Версия и ссылка канала берутся из GitHub Releases (не зависят от ветки,
+    на которой развёрнут сервер); при недоступности GitHub — статический
+    fallback: ANDROID_LATEST_VERSION + `apk_url_template`.
 
     Возвращает (branches: list[dict], default_branch: str). Каждый элемент:
-    {name, title, latest_version, apk_download_url, is_default}.
+    {name, title, channel, latest_version, apk_download_url, is_default}.
     """
     from config.settings import (
         ANDROID_APK_DOWNLOAD_URL,
@@ -3535,6 +3556,7 @@ def _build_android_update_branches():
     repo = str(ANDROID_RELEASE_REPO)
     default_branch = str(ANDROID_DEFAULT_UPDATE_BRANCH or "").strip()
     configured = list(ANDROID_UPDATE_BRANCHES or [])
+    releases = _resolve_github_channel_releases()
 
     if default_branch and not any(
         str(b.get("name") or "").strip() == default_branch for b in configured
@@ -3548,14 +3570,23 @@ def _build_android_update_branches():
         name = str(branch_cfg.get("name") or "").strip()
         if not name:
             continue
+        channel = str(branch_cfg.get("channel") or "").strip()
+        release = releases.get(channel)
+        if release is not None:
+            latest_version = release.version
+            apk_download_url = release.apk_download_url
+        else:
+            latest_version = version
+            apk_download_url = _resolve_branch_apk_url(
+                branch_cfg, repo, version, str(ANDROID_APK_DOWNLOAD_URL)
+            )
         branches.append(
             {
                 "name": name,
                 "title": str(branch_cfg.get("title") or name),
-                "latest_version": version,
-                "apk_download_url": _resolve_branch_apk_url(
-                    branch_cfg, repo, version, str(ANDROID_APK_DOWNLOAD_URL)
-                ),
+                "channel": channel,
+                "latest_version": latest_version,
+                "apk_download_url": apk_download_url,
                 "is_default": name == default_branch,
             }
         )
@@ -3622,7 +3653,9 @@ def v1_mobile_version():
         ANDROID_APK_DOWNLOAD_URL,
         ANDROID_LATEST_VERSION,
         ANDROID_MIN_SUPPORTED_VERSION,
+        APP_VERSION,
     )
+    from core.api_capabilities import API_BASELINE, API_CAPABILITIES
 
     current_version = (request.args.get("current_version") or "").strip()
     current_semver = _parse_semver(current_version)
@@ -3634,18 +3667,21 @@ def v1_mobile_version():
     elif current_version:
         update_required = True
 
-    # Если клиент просит APK конкретной ветки (`?branch=develop`) — отдаём
-    # ссылку из настроенного списка веток, иначе общий ANDROID_APK_DOWNLOAD_URL.
+    # Версия и ссылка — для запрошенного канала (`?branch=develop`), иначе
+    # для канала по умолчанию. Старые клиенты без `branch` получают канал
+    # по умолчанию (стабильный), а не версию сервера.
     requested_branch = (request.args.get("branch") or "").strip()
+    latest_version = str(ANDROID_LATEST_VERSION)
     apk_download_url = str(ANDROID_APK_DOWNLOAD_URL)
     resolved_branch = ""
-    if requested_branch:
-        branches, _default_branch = _build_android_update_branches()
-        for branch in branches:
-            if branch.get("name") == requested_branch:
-                apk_download_url = str(branch.get("apk_download_url") or apk_download_url)
-                resolved_branch = requested_branch
-                break
+    branches, default_branch = _build_android_update_branches()
+    wanted = requested_branch or default_branch
+    for branch in branches:
+        if branch.get("name") == wanted:
+            latest_version = str(branch.get("latest_version") or latest_version)
+            apk_download_url = str(branch.get("apk_download_url") or apk_download_url)
+            resolved_branch = wanted if requested_branch else ""
+            break
 
     return (
         jsonify(
@@ -3653,11 +3689,14 @@ def v1_mobile_version():
                 "request_id": request_id,
                 "platform": "android",
                 "min_supported_version": str(ANDROID_MIN_SUPPORTED_VERSION),
-                "latest_version": str(ANDROID_LATEST_VERSION),
+                "latest_version": latest_version,
                 "apk_download_url": apk_download_url,
                 "current_version": current_version,
                 "update_required": update_required,
                 "branch": resolved_branch,
+                "server_version": str(APP_VERSION),
+                "api_baseline": API_BASELINE,
+                "capabilities": list(API_CAPABILITIES),
             }
         ),
         200,
