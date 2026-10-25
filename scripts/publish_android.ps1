@@ -851,6 +851,29 @@ EN: ComDone $projectVersion stable release. Install/upgrade guide: docs/deployme
 "@
     }
 
+    # Тег создаём сами на текущем коммите: gh/API при существующем релизе
+    # не двигают тег, и он мог остаться на чужой ветке (так случилось с
+    # v9.0.0-beta, указывавшим на main).
+    $headSha = (git rev-parse HEAD).Trim()
+    $remoteTag = (git ls-remote --tags origin "refs/tags/$releaseTag" | Select-Object -First 1)
+    if (-not $remoteTag) {
+        Write-Host "[5/7] Creating tag $releaseTag at $headSha..."
+        git push origin "HEAD:refs/tags/$releaseTag" | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to push tag $releaseTag. Check push rights to origin."
+        }
+    }
+    else {
+        $tagSha = ($remoteTag -split "\s+")[0]
+        if ($tagSha -ne $headSha) {
+            Write-Warning @"
+Tag $releaseTag points to $tagSha, but current HEAD is $headSha.
+The APK is built from HEAD; to move the tag run:
+  git push origin +HEAD:refs/tags/$releaseTag
+"@
+        }
+    }
+
     if ($ghAvailable) {
         Write-Host "[5/7] Checking GitHub release $releaseTag via gh..."
         Publish-WithGh -ReleaseTag $releaseTag -ReleaseTitle $releaseTitle -ApkTargets $apkTargets -Notes $notes -TargetBranch $targetBranch -IsPrerelease $isPrerelease
