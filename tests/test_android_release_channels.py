@@ -23,8 +23,7 @@ def _release(tag, *assets, prerelease=False, draft=False):
         "prerelease": prerelease,
         "draft": draft,
         "assets": [
-            {"name": name, "browser_download_url": f"https://dl/{tag}/{name}"}
-            for name in assets
+            {"name": name, "browser_download_url": f"https://dl/{tag}/{name}"} for name in assets
         ],
     }
 
@@ -41,8 +40,11 @@ def test_stable_and_beta_are_selected_independently():
     releases = [
         _release("v9.0.2-beta", "ComDone-9.0.2-beta.apk", prerelease=True),
         _release("v9.0.0", "ComDone-9.0.0.apk", "ComDone.apk"),
-        _release("v8.67.1-develop", "monitoring-android-8.67.1-develop-compactOps-debug.apk",
-                 prerelease=True),
+        _release(
+            "v8.67.1-develop",
+            "monitoring-android-8.67.1-develop-compactOps-debug.apk",
+            prerelease=True,
+        ),
     ]
     result = select_channel_releases(releases)
     assert result[CHANNEL_STABLE].version == "9.0.0"

@@ -63,9 +63,7 @@ def test_version_falls_back_to_settings_without_github(web, monkeypatch):
     from config.settings import ANDROID_LATEST_VERSION
 
     payload = (
-        web.app.test_client()
-        .get("/v1/mobile/version?branch=develop", headers=_AUTH)
-        .get_json()
+        web.app.test_client().get("/v1/mobile/version?branch=develop", headers=_AUTH).get_json()
     )
     assert payload["latest_version"] == ANDROID_LATEST_VERSION
     assert payload["apk_download_url"].endswith(f"ComDone-{ANDROID_LATEST_VERSION}-beta.apk")
