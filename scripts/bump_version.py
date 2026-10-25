@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
 /scripts/bump_version.py
-Server Monitoring System v8.65.2
+Server Monitoring System v9.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Version bump helper extracted from the manual procedure in CLAUDE.md
 (PR9 серии оптимизации).
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 9.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Скрипт автоматизирует ручную процедуру синхронизации версии,
 описанную в CLAUDE.md. Канонический источник — `config/settings.py`:
 `APP_VERSION` и `ANDROID_LATEST_VERSION`. Все остальные места
 (заголовки `*.py`, `android-client/gradle.properties`, ссылки на
-prerelease APK в `README.md` / `docs/android_mobile_app.md`,
+бета-APK в `docs/development.md`,
 верхняя запись `CHANGELOG.md`) должны совпадать.
 
 Использование:
@@ -78,14 +78,9 @@ EXPLICIT_SITES: tuple[VersionSite, ...] = (
         "android-client/gradle.properties:ANDROID_VERSION_NAME",
     ),
     _site(
-        "README.md",
-        r"releases/download/v(\d+\.\d+\.\d+)-develop/monitoring-android-\d+\.\d+\.\d+-develop-compactOps-debug\.apk",
-        "README.md:ANDROID_PRERELEASE_APK_LINK",
-    ),
-    _site(
-        "docs/android_mobile_app.md",
-        r"releases/download/v(\d+\.\d+\.\d+)-develop/monitoring-android-\d+\.\d+\.\d+-develop-compactOps-debug\.apk",
-        "docs/android_mobile_app.md:ANDROID_PRERELEASE_APK_LINK",
+        "docs/development.md",
+        r"releases/download/v(\d+\.\d+\.\d+)-beta/ComDone-\d+\.\d+\.\d+-beta\.apk",
+        "docs/development.md:ANDROID_PRERELEASE_APK_LINK",
     ),
 )
 
@@ -238,7 +233,7 @@ def check_consistency() -> int:
 
 def _replace_explicit_sites(new_version: str) -> int:
     """Обновляет EXPLICIT_SITES (config/settings.py, gradle.properties,
-    README.md, docs/android_mobile_app.md) до new_version."""
+    docs/development.md) до new_version."""
 
     def _replace(match: re.Match[str]) -> str:
         return match.group(0).replace(match.group(1), new_version)

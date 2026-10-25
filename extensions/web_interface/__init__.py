@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.65.2
+Server Monitoring System v9.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 9.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -959,6 +959,7 @@ var EXT_ICONS={
   mail_backup_monitor:'📬 ',zfs_monitor:'🧊 ',zfs_pool_free_space_monitor:'💽 ',
   snapshot_transfer_monitor:'📸 ',stock_load_monitor:'📦 ',nas_transfer_monitor:'📤 ',
   config_console_backup_monitor:'🗂️ ',supplier_stock_files:'📦 ',tls_cert_monitor:'🔐 ',
+  ids_cert_monitor:'🛡️ ',
   web_interface:'🌐 ',email_processor:'📧 '
 };
 function extIcon(id){ return EXT_ICONS[id]||'🧩 '; }
@@ -1012,6 +1013,7 @@ var OPS=[
   {a:'zfs_pool_free_space_menu',e:'💽',t:'Свободное место ZFS',d:'Пулы ZFS'},
   {a:'snapshot_transfer_menu',e:'📸',t:'ZFS снэпшоты',d:'Передачи снэпшотов'},
   {a:'tls_cert_monitor_status',e:'🔐',t:'TLS-сертификаты',d:'Сроки сертификатов'},
+  {a:'ids_cert_monitor_status',e:'🛡️',t:'IDS и сертификат почты',d:'Взлом контейнеров, сертификат Zimbra'},
   {a:'supplier_stock_reports',e:'📦',t:'Остатки поставщиков',d:'Отчёты по остаткам'},
 ];
 function renderOperations(){
@@ -1586,6 +1588,7 @@ def _execute_mobile_control_action(action: str, user_id=None):
         "zfs_pool_free_space_menu",
         "snapshot_transfer_menu",
         "tls_cert_monitor_status",
+        "ids_cert_monitor_status",
     }
     resource_threshold_settings = {
         "set_cpu_warning": ("CPU_WARNING", "CPU предупреждение"),
@@ -1665,6 +1668,7 @@ def _execute_mobile_control_action(action: str, user_id=None):
         or action.startswith("snapshot_transfer_host_")
         or action.startswith("supplier_stock_reports_")
         or action.startswith("supplier_stock_report_source_day|")
+        or action.startswith("ids_")
     ):
         from extensions.extension_manager import extension_manager
 
@@ -1696,9 +1700,18 @@ def _execute_mobile_control_action(action: str, user_id=None):
                 "tls_cert_monitor",
                 "🔐 Мониторинг TLS-сертификатов отключён",
             ),
+            "ids_cert_monitor_status": (
+                "ids_cert_monitor",
+                "🛡️ Мониторинг IDS и сертификата почты отключён",
+            ),
         }
 
         extension_requirement = extension_requirements.get(action)
+        if extension_requirement is None and action.startswith("ids_"):
+            extension_requirement = (
+                "ids_cert_monitor",
+                "🛡️ Мониторинг IDS и сертификата почты отключён",
+            )
         if extension_requirement is None and action.startswith("zfsp_"):
             extension_requirement = (
                 "zfs_pool_free_space_monitor",
@@ -1781,6 +1794,46 @@ def _execute_mobile_control_action(action: str, user_id=None):
                     {"label": "✖️ Закрыть", "action": "close"},
                 ],
             )
+
+        if action == "ids_cert_monitor_status" or action.startswith("ids_"):
+            from extensions.ids_cert_monitor import (
+                acknowledge as ids_acknowledge,
+                build_help_lines as ids_help_lines,
+                build_history_lines as ids_history_lines,
+                build_status_lines as ids_status_lines,
+                get_open_problems as ids_open_problems,
+            )
+
+            back_options = [
+                {"label": "↩️ К статусу", "action": "ids_cert_monitor_status"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
+            if action == "ids_history":
+                return True, "\n".join(ids_history_lines()), "accepted", back_options
+            if action == "ids_help":
+                return True, "\n".join(ids_help_lines()), "accepted", back_options
+            prefix = ""
+            if action.startswith("ids_ack|"):
+                ack_key = action.split("|", 1)[1]
+                if ids_acknowledge(ack_key, by="web/mobile"):
+                    prefix = f"✋ Подтверждено: {ack_key} — напоминания остановлены\n\n"
+                else:
+                    prefix = f"ℹ️ {ack_key}: открытой проблемы нет\n\n"
+            options = [
+                {
+                    "label": f"✋ Подтвердить: {row['node']}/CT{row['ct']} {row['family']}",
+                    "action": f"ids_ack|{row['problem_key']}",
+                }
+                for row in ids_open_problems()
+                if not row.get("acknowledged")
+            ]
+            options += [
+                {"label": "🔄 Обновить", "action": "ids_cert_monitor_status"},
+                {"label": "🕘 Журнал 30 дней", "action": "ids_history"},
+                {"label": "📖 Справка", "action": "ids_help"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
+            return True, prefix + "\n".join(ids_status_lines()), "accepted", options
 
         if action == "snapshot_transfer_menu":
             from config.settings import BACKUP_DB_FILE
@@ -3464,11 +3517,36 @@ def _resolve_branch_apk_url(branch_cfg, repo, version, fallback_url):
     return url or fallback_url
 
 
+def _resolve_github_channel_releases():
+    """Сборки каналов stable/beta по GitHub Releases.
+
+    None — GitHub выключен или недоступен (используется статический fallback);
+    словарь без канала — сборки этого канала в релизах нет.
+    """
+    from config.settings import (
+        ANDROID_RELEASE_REPO,
+        ANDROID_RELEASES_FROM_GITHUB,
+        ANDROID_RELEASES_GITHUB_TOKEN,
+    )
+
+    if not ANDROID_RELEASES_FROM_GITHUB:
+        return None
+    from core.android_release_channels import default_resolver
+
+    return default_resolver.resolve(
+        str(ANDROID_RELEASE_REPO), str(ANDROID_RELEASES_GITHUB_TOKEN or "")
+    )
+
+
 def _build_android_update_branches():
-    """Список веток обновления Android-клиента с готовыми ссылками на APK.
+    """Список каналов обновления Android-клиента с готовыми ссылками на APK.
+
+    Версия и ссылка канала берутся из GitHub Releases (не зависят от ветки,
+    на которой развёрнут сервер); при недоступности GitHub — статический
+    fallback: ANDROID_LATEST_VERSION + `apk_url_template`.
 
     Возвращает (branches: list[dict], default_branch: str). Каждый элемент:
-    {name, title, latest_version, apk_download_url, is_default}.
+    {name, title, channel, latest_version, apk_download_url, is_default}.
     """
     from config.settings import (
         ANDROID_APK_DOWNLOAD_URL,
@@ -3482,6 +3560,7 @@ def _build_android_update_branches():
     repo = str(ANDROID_RELEASE_REPO)
     default_branch = str(ANDROID_DEFAULT_UPDATE_BRANCH or "").strip()
     configured = list(ANDROID_UPDATE_BRANCHES or [])
+    releases = _resolve_github_channel_releases()
 
     if default_branch and not any(
         str(b.get("name") or "").strip() == default_branch for b in configured
@@ -3495,14 +3574,28 @@ def _build_android_update_branches():
         name = str(branch_cfg.get("name") or "").strip()
         if not name:
             continue
+        channel = str(branch_cfg.get("channel") or "").strip()
+        release = releases.get(channel) if releases is not None else None
+        if release is not None:
+            latest_version = release.version
+            apk_download_url = release.apk_download_url
+        elif releases is not None:
+            # GitHub ответил, но сборки канала нет (например, стабильный 9.x
+            # ещё не выпущен) — не анонсируем версию, которой нет в релизах.
+            latest_version = ""
+            apk_download_url = ""
+        else:
+            latest_version = version
+            apk_download_url = _resolve_branch_apk_url(
+                branch_cfg, repo, version, str(ANDROID_APK_DOWNLOAD_URL)
+            )
         branches.append(
             {
                 "name": name,
                 "title": str(branch_cfg.get("title") or name),
-                "latest_version": version,
-                "apk_download_url": _resolve_branch_apk_url(
-                    branch_cfg, repo, version, str(ANDROID_APK_DOWNLOAD_URL)
-                ),
+                "channel": channel,
+                "latest_version": latest_version,
+                "apk_download_url": apk_download_url,
                 "is_default": name == default_branch,
             }
         )
@@ -3569,7 +3662,9 @@ def v1_mobile_version():
         ANDROID_APK_DOWNLOAD_URL,
         ANDROID_LATEST_VERSION,
         ANDROID_MIN_SUPPORTED_VERSION,
+        APP_VERSION,
     )
+    from core.api_capabilities import API_BASELINE, API_CAPABILITIES
 
     current_version = (request.args.get("current_version") or "").strip()
     current_semver = _parse_semver(current_version)
@@ -3581,18 +3676,27 @@ def v1_mobile_version():
     elif current_version:
         update_required = True
 
-    # Если клиент просит APK конкретной ветки (`?branch=develop`) — отдаём
-    # ссылку из настроенного списка веток, иначе общий ANDROID_APK_DOWNLOAD_URL.
+    # Версия и ссылка — для запрошенного канала (`?branch=develop`), иначе
+    # для канала по умолчанию. Старые клиенты без `branch` получают канал
+    # по умолчанию (стабильный), а не версию сервера.
     requested_branch = (request.args.get("branch") or "").strip()
+    latest_version = str(ANDROID_LATEST_VERSION)
     apk_download_url = str(ANDROID_APK_DOWNLOAD_URL)
     resolved_branch = ""
-    if requested_branch:
-        branches, _default_branch = _build_android_update_branches()
-        for branch in branches:
-            if branch.get("name") == requested_branch:
+    branches, default_branch = _build_android_update_branches()
+    wanted = requested_branch or default_branch
+    for branch in branches:
+        if branch.get("name") == wanted:
+            if branch.get("latest_version"):
+                latest_version = str(branch["latest_version"])
                 apk_download_url = str(branch.get("apk_download_url") or apk_download_url)
-                resolved_branch = requested_branch
-                break
+            else:
+                # Сборки канала в релизах нет: обновления нет — отвечаем
+                # версией клиента («установлена актуальная версия»).
+                latest_version = current_version
+                apk_download_url = ""
+            resolved_branch = wanted if requested_branch else ""
+            break
 
     return (
         jsonify(
@@ -3600,11 +3704,14 @@ def v1_mobile_version():
                 "request_id": request_id,
                 "platform": "android",
                 "min_supported_version": str(ANDROID_MIN_SUPPORTED_VERSION),
-                "latest_version": str(ANDROID_LATEST_VERSION),
+                "latest_version": latest_version,
                 "apk_download_url": apk_download_url,
                 "current_version": current_version,
                 "update_required": update_required,
                 "branch": resolved_branch,
+                "server_version": str(APP_VERSION),
+                "api_baseline": API_BASELINE,
+                "capabilities": list(API_CAPABILITIES),
             }
         ),
         200,
@@ -9480,6 +9587,132 @@ def v1_get_settings_time():
     }
     app.logger.info("GET /v1/settings/time request_id=%s", request_id)
     return jsonify(response), 200
+
+
+def _parse_quiet_hour(value):
+    """'HH:MM' или час → int 0..23 (тихий режим хранится по часам, как в боте)."""
+    raw = str(value).strip()
+    hour_part, _, minute_part = raw.partition(":")
+    if minute_part and not (minute_part.isdigit() and len(minute_part) == 2):
+        raise ValueError(raw)
+    hour = int(hour_part)
+    if not 0 <= hour <= 23 or (minute_part and not 0 <= int(minute_part) <= 59):
+        raise ValueError(raw)
+    return hour
+
+
+@app.route("/v1/settings/time", methods=["PATCH"])
+def v1_patch_settings_time():
+    """Сохраняет тихие часы и время сбора данных утреннего отчёта.
+
+    Клиенты (Android, веб-панель) вызывали этот метод давно, но сервер его
+    не обслуживал (405) — найдено контрактным тестом совместимости API.
+    """
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
+
+    payload = request.get_json(silent=True) or {}
+    quiet_start = payload.get("quiet_start")
+    quiet_end = payload.get("quiet_end")
+    collection_time = payload.get("metrics_collection_time")
+
+    def _invalid(message):
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": message,
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
+
+    if quiet_start is None and quiet_end is None and collection_time is None:
+        return _invalid("At least one field is required")
+
+    try:
+        start_hour = None if quiet_start is None else _parse_quiet_hour(quiet_start)
+        end_hour = None if quiet_end is None else _parse_quiet_hour(quiet_end)
+    except ValueError:
+        return _invalid("quiet_start/quiet_end must be HH:MM (00:00-23:59)")
+
+    normalized_collection = None
+    if collection_time is not None:
+        match = re.match(r"^(\d{1,2}):(\d{2})$", str(collection_time).strip())
+        if not match or int(match.group(1)) > 23 or int(match.group(2)) > 59:
+            return _invalid("metrics_collection_time must be HH:MM")
+        normalized_collection = f"{int(match.group(1)):02d}:{match.group(2)}"
+
+    from config.db_settings import load_all_settings
+    from config.db_settings_app import settings_manager
+
+    if start_hour is not None:
+        settings_manager.set_setting(
+            "SILENT_START", start_hour, "time", "Начало тихого режима (час)", "int"
+        )
+    if end_hour is not None:
+        settings_manager.set_setting(
+            "SILENT_END", end_hour, "time", "Конец тихого режима (час)", "int"
+        )
+    if normalized_collection is not None:
+        # Расписание сбора — список DATA_COLLECTION_TIMES; клиент правит только
+        # первое время, остальные точки (если заданы в боте) сохраняются.
+        times_raw = str(settings_manager.get_setting("DATA_COLLECTION_TIMES", "") or "")
+        times = [t.strip() for t in times_raw.split(",") if t.strip()]
+        times = [normalized_collection] + times[1:]
+        settings_manager.set_setting(
+            "DATA_COLLECTION_TIMES",
+            ",".join(times),
+            "time",
+            "Время(а) сбора данных для отчета (HH:MM,HH:MM)",
+            "string",
+        )
+        settings_manager.set_setting(
+            "DATA_COLLECTION_TIME",
+            normalized_collection,
+            "time",
+            "Время сбора данных для отчета",
+            "time",
+        )
+    load_all_settings()
+
+    app.logger.info("PATCH /v1/settings/time request_id=%s", request_id)
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "settings": {
+                    "quiet_start": _hour_to_hhmm(
+                        settings_manager.get_setting("SILENT_START", 23), "23:00"
+                    ),
+                    "quiet_end": _hour_to_hhmm(
+                        settings_manager.get_setting("SILENT_END", 8), "08:00"
+                    ),
+                    "metrics_collection_time": str(
+                        settings_manager.get_setting("DATA_COLLECTION_TIME", "07:30")
+                    ),
+                },
+            }
+        ),
+        200,
+    )
 
 
 @app.route("/v1/settings/web-auth", methods=["GET"])

@@ -113,6 +113,7 @@ class MainViewModel(
         "backup_nas_transfer",
         "backup_config_console",
         "tls_cert_monitor_status",
+        "ids_cert_monitor_status",
         "supplier_stock_reports",
         "settings_patterns_proxmox"
     )
@@ -126,6 +127,7 @@ class MainViewModel(
         "backup_nas_transfer",
         "backup_config_console",
         "tls_cert_monitor_status",
+        "ids_cert_monitor_status",
         "supplier_stock_reports",
     )
     private val extensionSettingsControlActions = extensionControlActions + setOf("open_extensions_settings")
@@ -141,6 +143,7 @@ class MainViewModel(
         Pair({ action -> action == "backup_nas_transfer" }, "nas_transfer_monitor"),
         Pair({ action -> action == "backup_config_console" || action.startsWith("backup_cc_host|") || action == "backup_cc_final" }, "config_console_backup_monitor"),
         Pair({ action -> action == "tls_cert_monitor_status" }, "tls_cert_monitor"),
+        Pair({ action -> action == "ids_cert_monitor_status" || action.startsWith("ids_") }, "ids_cert_monitor"),
         Pair({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files")
     )
     private val extensionSettingsFallbackActions = listOf(
@@ -406,6 +409,26 @@ class MainViewModel(
             }
         }
         return null
+    }
+
+    private fun buildIdsCertTileSummary(response: ControlActionResult?): BackupTileSummary? {
+        if (response == null) return null
+
+        // build_status_lines() из extensions/ids_cert_monitor.py выдаёт строку
+        // "Контейнеров в норме: X/Y · 🔴 N · 🟡 M". Журнал и справка этой
+        // строки не содержат — тогда плашку не трогаем (null).
+        val message = resolveControlActionMessage(response)
+        val match = Regex("""Контейнеров в норме:\s*(\d+)/(\d+)""").find(message) ?: return null
+        val ok = match.groupValues.getOrNull(1)?.toIntOrNull() ?: return null
+        val total = match.groupValues.getOrNull(2)?.toIntOrNull() ?: return null
+        val crit = Regex("""🔴\s*(\d+)""").find(message.substring(match.range.first))
+            ?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+        val warn = Regex("""🟡\s*(\d+)""").find(message.substring(match.range.first))
+            ?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+        return BackupTileSummary(
+            ratioText = "$ok/$total",
+            hasProblem = ok < total || crit > 0 || warn > 0
+        )
     }
 
     private fun buildBackupTileSummary(response: ControlActionResult?): BackupTileSummary? {
@@ -732,6 +755,16 @@ class MainViewModel(
                         zfsPoolFreeSpaceHasProblemItems = summary?.hasProblem ?: state.zfsPoolFreeSpaceHasProblemItems
                     )
                 }
+                "extension_ids_cert_monitor" -> {
+                    val response = withContext(Dispatchers.IO) {
+                        runCatching { currentApi().runControlAction(ControlActionRequest("ids_cert_monitor_status")) }.getOrNull()
+                    }
+                    val summary = buildIdsCertTileSummary(response)
+                    state = state.copy(
+                        idsCertSummary = summary?.ratioText ?: state.idsCertSummary,
+                        idsCertHasProblemItems = summary?.hasProblem ?: state.idsCertHasProblemItems
+                    )
+                }
                 "extension_snapshot_transfer_monitor" -> {
                     val response = withContext(Dispatchers.IO) {
                         runCatching { currentApi().runControlAction(ControlActionRequest("snapshot_transfer_menu")) }.getOrNull()
@@ -806,7 +839,12 @@ class MainViewModel(
 
         viewModelScope.launch {
             runCatching {
-                currentApi().getMobileVersionInfo(projectVersion)
+                // Канал обновления — тот, что выбран в приложении: иначе бета-
+                // пользователю показывалась бы версия стабильного канала.
+                currentApi().getMobileVersionInfo(
+                    projectVersion,
+                    preferences.updateBranch.ifBlank { null }
+                )
             }.onSuccess { response ->
                 val minVersion = response.minSupportedVersion.orEmpty()
                 val latestVersion = response.latestVersion.orEmpty()
@@ -822,6 +860,8 @@ class MainViewModel(
                     latestVersion = latestVersion,
                     apkDownloadUrl = updateUrl,
                     isUpdateRequired = needUpdate,
+                    serverVersion = response.serverVersion?.trim().orEmpty(),
+                    serverCapabilities = response.capabilities.orEmpty().toSet(),
                     updateMessage = if (needUpdate) {
                         "Требуется обновление приложения до версии ${latestVersion.ifBlank { minVersion }}"
                     } else {
@@ -1215,6 +1255,11 @@ class MainViewModel(
         is HttpException -> when (error.code()) {
             401 -> "HTTP 401: токен недействителен или нет доступа"
             403 -> "HTTP 403: у токена нет прав"
+            // Чаще всего — функция новее, чем сервер (бета-клиент на стабильном
+            // сервере). См. api/ServerCapabilities.kt.
+            404 -> "Функция недоступна на этом сервере" +
+                (state.serverVersion.takeIf { it.isNotBlank() }?.let { " (версия сервера $it)" } ?: "") +
+                ". Обновите сервер ComDone"
             else -> "HTTP ${error.code()}: ${error.message()}"
         }
         else -> error.message ?: "Ошибка сети"
@@ -1373,6 +1418,7 @@ class MainViewModel(
                 val nasTransferSummary = fetchOrLog("runControlAction(backup_nas_transfer)") { currentApi().runControlAction(ControlActionRequest("backup_nas_transfer")) }
                 val tlsCertSummary = fetchOrLog("runControlAction(tls_cert_monitor_status)") { currentApi().runControlAction(ControlActionRequest("tls_cert_monitor_status")) }
                 val configConsoleSummary = fetchOrLog("runControlAction(backup_config_console)") { currentApi().runControlAction(ControlActionRequest("backup_config_console")) }
+                val idsCertSummary = fetchOrLog("runControlAction(ids_cert_monitor_status)") { currentApi().runControlAction(ControlActionRequest("ids_cert_monitor_status")) }
                 listOf(
                     monitoring,
                     bot,
@@ -1395,7 +1441,8 @@ class MainViewModel(
                     nasTransferSummary,
                     tlsCertSummary,
                     configConsoleSummary,
-                    reportSettings
+                    reportSettings,
+                    idsCertSummary
                 )
             }
 
@@ -1431,6 +1478,7 @@ class MainViewModel(
             val tlsCertSummary = buildTlsCertTileSummary(result[19] as? ControlActionResult)
             val configConsoleSummary = buildBackupTileSummary(result[20] as? ControlActionResult)
             val reportSettings = result[21] as? SettingsReportResponse
+            val idsCertSummary = buildIdsCertTileSummary(result[22] as? ControlActionResult)
             // Данные состава отчёта отдельной локальной переменной: null
             // означает «запрос не прошёл», а settings.user == null —
             // «состав снова общесистемный». Эти случаи надо различать.
@@ -1524,6 +1572,7 @@ class MainViewModel(
                 backupNasTransferSummary = nasTransferSummary?.ratioText ?: state.backupNasTransferSummary,
                 backupConfigConsoleSummary = configConsoleSummary?.ratioText ?: state.backupConfigConsoleSummary,
                 tlsCertSummary = tlsCertSummary?.ratioText ?: state.tlsCertSummary,
+                idsCertSummary = idsCertSummary?.ratioText ?: state.idsCertSummary,
                 backupProxmoxHasProblemItems = proxmoxBackupSummary?.hasProblem ?: state.backupProxmoxHasProblemItems,
                 backupDatabasesHasProblemItems = dbBackupSummary?.hasProblem ?: state.backupDatabasesHasProblemItems,
                 backupStockLoadsHasProblemItems = stockLoadSummary?.hasProblem ?: state.backupStockLoadsHasProblemItems,
@@ -1535,6 +1584,7 @@ class MainViewModel(
                 backupNasTransferHasProblemItems = nasTransferSummary?.hasProblem ?: state.backupNasTransferHasProblemItems,
                 backupConfigConsoleHasProblemItems = configConsoleSummary?.hasProblem ?: state.backupConfigConsoleHasProblemItems,
                 tlsCertHasProblemItems = tlsCertSummary?.hasProblem ?: state.tlsCertHasProblemItems,
+                idsCertHasProblemItems = idsCertSummary?.hasProblem ?: state.idsCertHasProblemItems,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -2556,7 +2606,8 @@ class MainViewModel(
             normalizedAction.startsWith("backup_mail") ||
             normalizedAction.startsWith("supplier_stock_reports_") ||
             normalizedAction.startsWith("supplier_stock_report_source_day|") ||
-            normalizedAction.startsWith("snapshot_transfer_host_")
+            normalizedAction.startsWith("snapshot_transfer_host_") ||
+            normalizedAction.startsWith("ids_")
         ) {
             viewModelScope.launch {
                 state = state.copy(isLoading = true)
@@ -2572,7 +2623,8 @@ class MainViewModel(
                     normalizedAction.startsWith("backup_mail") ||
                     normalizedAction.startsWith("supplier_stock_reports_") ||
                     normalizedAction.startsWith("supplier_stock_report_source_day|") ||
-                    normalizedAction.startsWith("snapshot_transfer_host_")
+                    normalizedAction.startsWith("snapshot_transfer_host_") ||
+                    normalizedAction.startsWith("ids_")
                 ) {
                     runCatching { currentApi().runControlAction(ControlActionRequest(normalizedAction)) }
                         .onSuccess { response ->
@@ -2635,6 +2687,11 @@ class MainViewModel(
                             } else {
                                 null
                             }
+                            val idsCertSummary = if (normalizedAction.startsWith("ids_")) {
+                                buildIdsCertTileSummary(response)
+                            } else {
+                                null
+                            }
                             val supplierStockSummary = if (normalizedAction == "supplier_stock_reports") {
                                 buildSupplierStockTileSummary(response)
                             } else {
@@ -2676,6 +2733,9 @@ class MainViewModel(
                                 tlsCertSummary = tlsCertSummary?.ratioText ?: state.tlsCertSummary,
                                 tlsCertHasProblemItems = tlsCertSummary?.hasProblem
                                     ?: state.tlsCertHasProblemItems,
+                                idsCertSummary = idsCertSummary?.ratioText ?: state.idsCertSummary,
+                                idsCertHasProblemItems = idsCertSummary?.hasProblem
+                                    ?: state.idsCertHasProblemItems,
                                 supplierStockSummary = supplierStockSummary?.ratioText ?: state.supplierStockSummary,
                                 supplierStockHasProblemItems = supplierStockSummary?.hasProblem
                                     ?: state.supplierStockHasProblemItems,
@@ -3851,6 +3911,7 @@ data class MainUiState(
     val backupNasTransferSummary: String = "",
     val backupConfigConsoleSummary: String = "",
     val tlsCertSummary: String = "",
+    val idsCertSummary: String = "",
     val backupProxmoxHasProblemItems: Boolean = false,
     val backupDatabasesHasProblemItems: Boolean = false,
     val backupStockLoadsHasProblemItems: Boolean = false,
@@ -3862,6 +3923,7 @@ data class MainUiState(
     val backupNasTransferHasProblemItems: Boolean = false,
     val backupConfigConsoleHasProblemItems: Boolean = false,
     val tlsCertHasProblemItems: Boolean = false,
+    val idsCertHasProblemItems: Boolean = false,
     val mailBackupHistoryTitle: String = "",
     val mailBackupHistoryItems: List<MailBackupHistoryItem> = emptyList(),
     val zfsStatusMessage: String = "",
@@ -3938,6 +4000,8 @@ data class MainUiState(
     val projectVersion: String = "",
     val installedVersion: String = "",
     val isUpdateRequired: Boolean = false,
+    val serverVersion: String = "",
+    val serverCapabilities: Set<String> = emptySet(),
     val minSupportedVersion: String = "",
     val latestVersion: String = "",
     val apkDownloadUrl: String = "",

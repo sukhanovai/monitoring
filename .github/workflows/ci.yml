@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
 
 jobs:
@@ -54,3 +54,37 @@ jobs:
         # core.monitor_core / bot.handlers / modules.mail_monitor добавится
         # в отдельном PR вместе с настройкой apt/pip установки runtime.
         run: pytest
+
+  android-build:
+    # Сборка ComDone APK: ловит ошибки Kotlin/Gradle до публикации релиза.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Assemble release APK
+        # Временный ключ только для проверки сборки: настоящий ключ подписи
+        # хранится у разработчика (см. docs/development.md), в CI его нет.
+        working-directory: android-client
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/ci.keystore" -storepass android \
+            -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
+            -validity 3650 -dname "CN=ComDone CI"
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:assembleRelease -PCOMDONE_KEYSTORE_FILE="$RUNNER_TEMP/ci.keystore"
+
+      - name: Check APK file name
+        run: ls android-client/app/build/outputs/apk/release/ComDone-*.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ComDone-apk
+          path: android-client/app/build/outputs/apk/release/ComDone-*.apk
+          retention-days: 7

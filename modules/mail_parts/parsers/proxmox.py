@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/proxmox.py
-Server Monitoring System v8.65.2
+Server Monitoring System v9.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ProxmoxBackupParserMixin — часть BackupProcessor (PR6c серии оптимизации).
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 9.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Mixin ProxmoxBackupParserMixin; объединяется с другими mixin'ами в BackupProcessor.
@@ -75,6 +75,12 @@ class ProxmoxBackupParserMixin:
             email_date_str = msg.get("date", "")
             logger.info(f"Тема письма: {subject}")
             logger.info(f"Дата письма: {email_date_str}")
+
+            # IDS/CERT (безопасность контейнеров и сертификат почты) — раньше
+            # всех: такие письма не должны попасть в фильтры «не бэкап».
+            ids_cert = self.process_ids_cert_email(subject, msg)
+            if ids_cert:
+                return ids_cert
 
             email_date = None
             if email_date_str:

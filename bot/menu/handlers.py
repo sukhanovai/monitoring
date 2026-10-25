@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v8.65.2
+Server Monitoring System v9.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu handlers
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 9.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота
@@ -219,6 +219,10 @@ def start_command(update, context):
         )
     if extension_manager.is_extension_enabled("tls_cert_monitor"):
         keyboard.append([InlineKeyboardButton("🔐 TLS-сертификаты", callback_data="tls_cert_menu")])
+    if extension_manager.is_extension_enabled("ids_cert_monitor"):
+        keyboard.append(
+            [InlineKeyboardButton("🛡️ IDS и сертификат почты", callback_data="ids_menu")]
+        )
 
     keyboard.extend(
         [

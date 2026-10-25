@@ -1,11 +1,11 @@
 """
 /lib/report_settings.py
-Server Monitoring System v8.65.2
+Server Monitoring System v9.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Report composition settings helper
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 9.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Хелпер настройки состава утреннего/ручного отчёта.
@@ -50,6 +50,7 @@ REPORT_CAPABLE_EXTENSIONS = [
     "zfs_pool_free_space_monitor",
     "snapshot_transfer_monitor",
     "tls_cert_monitor",
+    "ids_cert_monitor",
     "resource_monitor",
 ]
 
@@ -68,6 +69,7 @@ REPORT_EXTENSION_LABELS = {
     "zfs_pool_free_space_monitor": "💽 Свободное место ZFS",
     "snapshot_transfer_monitor": "📸 Передачи снэпшотов",
     "tls_cert_monitor": "🔐 TLS-сертификаты",
+    "ids_cert_monitor": "🛡️ IDS и сертификат почты",
     "resource_monitor": "💻 Ресурсы серверов",
 }
 
@@ -97,6 +99,27 @@ LEGACY_DEFAULT_REPORT_EXTENSIONS = [
     "stock_load_monitor",
     "zfs_monitor",
 ]
+
+# Составы по умолчанию прежних версий. Сохранённое значение, совпадающее с
+# одним из них, пользователь не настраивал — при обновлении его переводят на
+# текущий дефолт (иначе новые расширения, например ids_cert_monitor из 8.67,
+# молча не попадают в отчёт). Миграция одноразовая, см.
+# core/config_manager.py:_migrate_report_extensions.
+PREVIOUS_DEFAULT_REPORT_EXTENSIONS = [
+    LEGACY_DEFAULT_REPORT_EXTENSIONS,
+    # 8.0–8.66: без ids_cert_monitor (в 8.66.0 вместо него был
+    # mail_cert_monitor, удалённый в 8.67.0 — он игнорируется при сравнении).
+    [ext for ext in DEFAULT_REPORT_EXTENSIONS if ext != "ids_cert_monitor"],
+]
+_RETIRED_REPORT_EXTENSIONS = {"mail_cert_monitor"}
+
+
+def is_previous_default_report_extensions(values) -> bool:
+    """True, если набор совпадает с составом по умолчанию прежней версии."""
+    if not isinstance(values, (list, tuple, set)):
+        return False
+    selected = {str(item).strip() for item in values} - _RETIRED_REPORT_EXTENSIONS
+    return any(selected == set(previous) for previous in PREVIOUS_DEFAULT_REPORT_EXTENSIONS)
 
 
 def _normalize(raw_value):

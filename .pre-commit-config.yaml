@@ -36,8 +36,6 @@ repos:
           (?x)^(
             config/settings\.py |
             android-client/gradle\.properties |
-            README\.md |
-            docs/android_mobile_app\.md |
             scripts/bump_version\.py |
             main\.py |
             (bot|core|lib|modules|extensions|config|scripts)/.+\.py |

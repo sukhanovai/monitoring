@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.65.2
+Server Monitoring System v9.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.65.2
+Версия: 9.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -229,6 +229,13 @@ EXTENSION_MENU_ITEMS: List[ExtensionMenuItem] = [
         "TLS-сертификаты доменов",
         "_handle_ext_tls_cert",
     ),
+    ExtensionMenuItem(
+        "ids_cert_monitor",
+        "🛡️",
+        "!ids",
+        "IDS (взлом контейнеров) и сертификат почты",
+        "_handle_ext_ids_cert",
+    ),
 ]
 _EXT_ITEM_BY_COMMAND: Dict[str, ExtensionMenuItem] = {
     item.command: item for item in EXTENSION_MENU_ITEMS
@@ -422,6 +429,14 @@ _EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict(
                 "label": "🔐 TLS-сертификаты",
                 "keys": ["TLS_CERT_DOMAINS", "TLS_CERT_SETTINGS"],
                 "categories": ["tls_cert"],
+            },
+        ),
+        (
+            "ids_cert_monitor",
+            {
+                "label": "🛡️ IDS и сертификат почты",
+                "keys": ["IDS_CT_NAMES", "IDS_EXPECTED_SOURCES"],
+                "categories": ["ids_cert"],
             },
         ),
         (
@@ -2244,6 +2259,45 @@ class MatrixCommandBot:
         results, errors = collect_certificates()
         return "\n".join(build_status_lines(results, errors))
 
+    async def _handle_ext_ids_cert(self) -> str:
+        from extensions.ids_cert_monitor import build_status_lines as ids_status_lines
+
+        return "\n".join(ids_status_lines())
+
+    def _handle_ids_command(self, arg: str, sender: str = "") -> str:
+        """`!ids history` / `!ids help` / `!ids ack <номер>`."""
+        from extensions.ids_cert_monitor import (
+            acknowledge,
+            build_help_lines,
+            build_history_lines,
+            get_open_problems,
+        )
+
+        parts = arg.split()
+        sub = parts[0].lower() if parts else ""
+        if sub in ("history", "журнал"):
+            return "\n".join(build_history_lines())
+        if sub in ("help", "справка"):
+            return "\n".join(build_help_lines())
+        if sub == "ack":
+            problems = get_open_problems()
+            if len(parts) < 2:
+                if not problems:
+                    return "🟢 Открытых проблем нет."
+                lines = ["Открытые проблемы (подтвердить: !ids ack <номер>):"]
+                for index, row in enumerate(problems, 1):
+                    ack = " ✋" if row.get("acknowledged") else ""
+                    lines.append(f"{index}. {row['state']} {row['problem_key']}{ack}")
+                return "\n".join(lines)
+            try:
+                row = problems[int(parts[1]) - 1]
+            except (ValueError, IndexError):
+                return "❌ Нет проблемы с таким номером. Список: !ids ack"
+            acknowledge(row["problem_key"], by=f"matrix:{sender}")
+            self._audit("ids", "ids", f"ack {row['problem_key']}", "applied")
+            return f"✋ Подтверждено: {row['problem_key']} — напоминания остановлены."
+        return "Команды: !ids · !ids history · !ids ack [номер] · !ids help"
+
     def _extensions_menu_text(self, enabled: Optional[Set[str]] = None) -> str:
         if enabled is None:
             enabled = self._enabled_extensions()
@@ -2275,6 +2329,11 @@ class MatrixCommandBot:
             arg_commands.append(
                 "• !nas patterns [add <regex> | del <номер>] — "
                 "паттерны темы письма передачи бэкапов на NAS"
+            )
+        if "ids_cert_monitor" in enabled:
+            arg_commands.append(
+                "• !ids history | !ids ack [номер] | !ids help — журнал, "
+                "подтверждение проблемы, справка"
             )
         if arg_commands:
             lines.append("")
@@ -2968,6 +3027,16 @@ class MatrixCommandBot:
             if arg:
                 return command, self._handle_nas_patterns(arg)
             return command, await self._handle_ext_nas_transfer()
+        if command == "!ids":
+            if "ids_cert_monitor" not in self._enabled_extensions():
+                return command, (
+                    "❌ Команда !ids недоступна: расширение «ids_cert_monitor» выключено."
+                )
+            parts = normalized.split(maxsplit=1)
+            arg = parts[1].strip() if len(parts) > 1 else ""
+            if arg:
+                return command, self._handle_ids_command(arg, sender=sender)
+            return command, await self._handle_ext_ids_cert()
         ext_item = _EXT_ITEM_BY_COMMAND.get(command)
         if ext_item is not None:
             return command, await self._run_extension_command(ext_item)

@@ -1,9 +1,15 @@
+# Публикация APK ComDone в GitHub Releases.
+#   -Channel beta   (по умолчанию) — из ветки develop: prerelease v<версия>-beta,
+#                   файл ComDone-<версия>-beta.apk (канал «Бета» в приложении).
+#   -Channel stable — из ветки main: обычный релиз v<версия>, файлы
+#                   ComDone-<версия>.apk и ComDone.apk (постоянная ссылка
+#                   releases/latest/download/ComDone.apk, канал «Стабильная»).
 param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")),
+    [ValidateSet("beta", "stable")]
+    [string]$Channel = "beta",
     [ValidateSet("debug", "release")]
-    [string]$BuildType = "debug",
-    [ValidateSet("legacy", "compactOps")]
-    [string]$Flavor = "compactOps",
+    [string]$BuildType = "release",
     [switch]$SkipBuild,
     [switch]$AllowDirty,
     [switch]$AutoStashDirty,
@@ -20,20 +26,6 @@ function Require-Command {
     }
 }
 
-function Get-AndroidFlavorVariant {
-    param(
-        [ValidateSet("legacy", "compactOps")]
-        [string]$Flavor
-    )
-
-    switch ($Flavor) {
-        "legacy" { return "Legacy" }
-        "compactOps" { return "CompactOps" }
-        default { throw "Unsupported flavor: $Flavor" }
-    }
-}
-
-
 function Ensure-CleanWorkingTree {
     $dirty = (git status --porcelain)
     if ($dirty) {
@@ -42,14 +34,14 @@ function Ensure-CleanWorkingTree {
 Working tree is not clean. Commit or stash changes before running script.
 
 Quick fix:
-  ./scripts/publish_android_prerelease.ps1 -AutoStashDirty
+  ./scripts/publish_android.ps1 -AutoStashDirty
 
 Manual stash:
   git stash push -u -m prerelease-temp
-  ./scripts/publish_android_prerelease.ps1
+  ./scripts/publish_android.ps1
 
 Advanced mode (unsafe, use only if you really know what you are doing):
-  ./scripts/publish_android_prerelease.ps1 -AllowDirty
+  ./scripts/publish_android.ps1 -AllowDirty
 
 Dirty files preview (first 15):
 $dirtyPreview
@@ -333,7 +325,7 @@ PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
 setx GH_TOKEN "ghp_xxx"                          # persist for next sessions
 "ghp_xxx" | Set-Content -NoNewline $HOME/.monitoring/github_token # secure user-local token file
-./scripts/publish_android_prerelease.ps1
+./scripts/publish_android.ps1
 
 How to create PAT quickly:
 1) Open https://github.com/settings/tokens (classic) or https://github.com/settings/personal-access-tokens/new
@@ -431,7 +423,7 @@ PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
 setx GH_TOKEN "ghp_xxx"                          # persist for next sessions
 "ghp_xxx" | Set-Content -NoNewline $HOME/.monitoring/github_token # secure user-local token file
-./scripts/publish_android_prerelease.ps1
+./scripts/publish_android.ps1
 
 How to create PAT quickly:
 1) Open https://github.com/settings/tokens (classic) or https://github.com/settings/personal-access-tokens/new
@@ -449,59 +441,28 @@ or run script with `$env:GH_TOKEN in current terminal session.
 function Resolve-ApkSource {
     param(
         [string]$AndroidDir,
-        [ValidateSet("legacy", "compactOps")]
-        [string]$Flavor,
         [ValidateSet("debug", "release")]
-        [string]$BuildType
+        [string]$BuildType,
+        [string]$Version
     )
 
-    $apkDirs = @(
-        (Join-Path $AndroidDir "app/build/outputs/apk/$Flavor/$BuildType"),
-        (Join-Path $AndroidDir "app/build/outputs/apk/$BuildType")
-    )
-
-    $apkDir = $apkDirs | Where-Object { Test-Path $_ } | Select-Object -First 1
-    if (-not $apkDir) {
-        throw "APK output directory was not found for flavor '$Flavor' and build type '$BuildType'. Checked: $($apkDirs -join ', ')"
+    $apkDir = Join-Path $AndroidDir "app/build/outputs/apk/$BuildType"
+    if (-not (Test-Path $apkDir)) {
+        throw "APK output directory was not found: $apkDir"
     }
 
-    $preferred = @(
-        (Join-Path $apkDir "app-$Flavor-$BuildType.apk")
-        (Join-Path $apkDir "app-$BuildType.apk")
-        (Join-Path $apkDir "app-universal-$BuildType.apk")
-    )
-
-    foreach ($candidate in $preferred) {
-        if (Test-Path $candidate) {
-            return $candidate
-        }
+    $suffix = if ($BuildType -eq "release") { "" } else { "-$BuildType" }
+    $expected = Join-Path $apkDir "ComDone-$Version$suffix.apk"
+    if (Test-Path $expected) {
+        return $expected
     }
 
-    $candidateApks = Get-ChildItem -Path $apkDir -Filter "*.apk" -File
-
-    $signedCandidates = $candidateApks |
-        Where-Object {
-            $_.Name -notmatch "unsigned" -and
-            $_.Name -notmatch "-x86|-x86_64|-arm64-v8a|-armeabi-v7a|-universal-debug" -and
-            $_.Name -match $Flavor
-        } |
-        Sort-Object LastWriteTime -Descending
-
-    if ($signedCandidates) {
-        return $signedCandidates[0].FullName
-    }
-
-    $unsigned = $candidateApks | Where-Object { $_.Name -match "unsigned" }
-    if ($unsigned) {
-        throw @"
-Only unsigned APK was found in $BuildType outputs. Such file is not installable for prerelease distribution.
-Configure signing for selected build type and rebuild.
-Found files:
-$($candidateApks.Name -join "`n")
+    $found = (Get-ChildItem -Path $apkDir -Filter "*.apk" -File).Name -join ", "
+    throw @"
+APK '$expected' was not found. The build version must match APP_VERSION ($Version).
+Run: python scripts/bump_version.py --check
+Found files: $found
 "@
-    }
-
-    throw "APK file was not found in: $apkDir"
 }
 
 function Find-ReleaseByTagViaApi {
@@ -561,10 +522,13 @@ function Publish-WithGh {
     param(
         [string]$ReleaseTag,
         [string]$ReleaseTitle,
-        [string]$ApkTarget,
-        [string]$Notes
+        [string[]]$ApkTargets,
+        [string]$Notes,
+        [string]$TargetBranch,
+        [bool]$IsPrerelease
     )
 
+    $prereleaseArgs = if ($IsPrerelease) { @("--prerelease") } else { @("--latest") }
     $releaseExists = $true
     Invoke-Gh release view $ReleaseTag | Out-Null 2>$null
     if ($LASTEXITCODE -ne 0) {
@@ -572,13 +536,13 @@ function Publish-WithGh {
     }
 
     if (-not $releaseExists) {
-        Write-Host "[6/7] Creating prerelease $ReleaseTag via gh..."
-        Invoke-Gh release create $ReleaseTag $ApkTarget --title $ReleaseTitle --target develop --prerelease --notes $Notes
+        Write-Host "[6/7] Creating release $ReleaseTag via gh..."
+        Invoke-Gh release create $ReleaseTag @ApkTargets --title $ReleaseTitle --target $TargetBranch @prereleaseArgs --notes $Notes
     }
     else {
-        Write-Host "[6/7] Updating prerelease $ReleaseTag via gh..."
-        Invoke-Gh release edit $ReleaseTag --title $ReleaseTitle --target develop --prerelease --notes $Notes
-        Invoke-Gh release upload $ReleaseTag $ApkTarget --clobber
+        Write-Host "[6/7] Updating release $ReleaseTag via gh..."
+        Invoke-Gh release edit $ReleaseTag --title $ReleaseTitle --target $TargetBranch @prereleaseArgs --notes $Notes
+        Invoke-Gh release upload $ReleaseTag @ApkTargets --clobber
     }
 }
 
@@ -586,9 +550,10 @@ function Publish-WithApi {
     param(
         [string]$ReleaseTag,
         [string]$ReleaseTitle,
-        [string]$ApkTarget,
-        [string]$ApkName,
-        [string]$Notes
+        [string[]]$ApkTargets,
+        [string]$Notes,
+        [string]$TargetBranch,
+        [bool]$IsPrerelease
     )
 
     $repo = Get-GitHubRepo
@@ -615,14 +580,14 @@ function Publish-WithApi {
     }
 
     if (-not $release) {
-        Write-Host "[6/7] Creating prerelease $ReleaseTag via API..."
+        Write-Host "[6/7] Creating release $ReleaseTag via API..."
         $body = @{
             tag_name         = $ReleaseTag
-            target_commitish = "develop"
+            target_commitish = $TargetBranch
             name             = $ReleaseTitle
             body             = $Notes
             draft            = $false
-            prerelease       = $true
+            prerelease       = $IsPrerelease
         }
         $release = Try-CreateReleaseViaApi -Owner $owner -Repo $name -Body $body -ReleaseTag $ReleaseTag
 
@@ -652,7 +617,7 @@ function Publish-WithApi {
                     tag_name   = $ReleaseTag
                     name       = $ReleaseTitle
                     draft      = $false
-                    prerelease = $true
+                    prerelease = $IsPrerelease
                 }
                 $release = Try-CreateReleaseViaApi -Owner $owner -Repo $name -Body $minimalBody -ReleaseTag $ReleaseTag
                 if ($release -and $release.__create_failed) {
@@ -679,13 +644,13 @@ function Publish-WithApi {
         }
     }
     else {
-        Write-Host "[6/7] Updating prerelease $ReleaseTag via API..."
+        Write-Host "[6/7] Updating release $ReleaseTag via API..."
         $editBody = @{
-            target_commitish = "develop"
+            target_commitish = $TargetBranch
             name             = $ReleaseTitle
             body             = $Notes
             draft            = $false
-            prerelease       = $true
+            prerelease       = $IsPrerelease
         }
         try {
             $release = Invoke-GitHubApi -Method PATCH -Url "https://api.github.com/repos/$owner/$name/releases/$($release.id)" -Body $editBody
@@ -710,7 +675,7 @@ function Publish-WithApi {
                 $minimalEditBody = @{
                     name       = $ReleaseTitle
                     draft      = $false
-                    prerelease = $true
+                    prerelease = $IsPrerelease
                 }
                 $release = Invoke-GitHubApi -Method PATCH -Url "https://api.github.com/repos/$owner/$name/releases/$($release.id)" -Body $minimalEditBody
             }
@@ -718,80 +683,22 @@ function Publish-WithApi {
     }
 
     $assets = Invoke-GitHubApi -Method GET -Url "https://api.github.com/repos/$owner/$name/releases/$($release.id)/assets"
-    foreach ($asset in $assets) {
-        if ($asset.name -eq $ApkName) {
-            Write-Host "[6/7] Removing existing asset $ApkName via API..."
-            Invoke-GitHubApi -Method DELETE -Url "https://api.github.com/repos/$owner/$name/releases/assets/$($asset.id)" | Out-Null
+    foreach ($apkTarget in $ApkTargets) {
+        $apkName = Split-Path $apkTarget -Leaf
+        foreach ($asset in $assets) {
+            if ($asset.name -eq $apkName) {
+                Write-Host "[6/7] Removing existing asset $apkName via API..."
+                Invoke-GitHubApi -Method DELETE -Url "https://api.github.com/repos/$owner/$name/releases/assets/$($asset.id)" | Out-Null
+            }
         }
-    }
 
-    $bytes = [System.IO.File]::ReadAllBytes($ApkTarget)
-    $encodedApkName = [uri]::EscapeDataString($ApkName)
-    $uploadUrl = "https://uploads.github.com/repos/$owner/$name/releases/$($release.id)/assets?name=$encodedApkName"
-    Write-Host "[6/7] Uploading APK asset via API..."
-    Invoke-GitHubApi -Method POST -Url $uploadUrl -Binary $bytes -ContentType "application/vnd.android.package-archive" | Out-Null
-}
-
-function Update-PrereleaseApkLinkInFile {
-    param(
-        [string]$FilePath,
-        [string]$DownloadUrl
-    )
-
-    if (-not (Test-Path $FilePath)) {
-        return
-    }
-
-    $content = Get-Content -Path $FilePath -Raw
-    $updated = [regex]::Replace(
-        $content,
-        '(<!-- ANDROID_PRERELEASE_APK_LINK_START -->)(.*?)(<!-- ANDROID_PRERELEASE_APK_LINK_END -->)',
-        "`$1$DownloadUrl`$3"
-    )
-
-    if ($updated -ne $content) {
-        Set-Content -Path $FilePath -Value $updated -Encoding UTF8
+        $bytes = [System.IO.File]::ReadAllBytes($apkTarget)
+        $encodedApkName = [uri]::EscapeDataString($apkName)
+        $uploadUrl = "https://uploads.github.com/repos/$owner/$name/releases/$($release.id)/assets?name=$encodedApkName"
+        Write-Host "[6/7] Uploading APK asset $apkName via API..."
+        Invoke-GitHubApi -Method POST -Url $uploadUrl -Binary $bytes -ContentType "application/vnd.android.package-archive" | Out-Null
     }
 }
-
-function Update-PrereleaseApkLinks {
-    param(
-        [string]$RepoRoot,
-        [string]$ReleaseTag,
-        [string]$ApkName
-    )
-
-    $defaultOwner = "sukhanovai"
-    $defaultRepo = "monitoring"
-
-    try {
-        $repo = Get-GitHubRepo
-    }
-    catch {
-        Write-Host "[4/7] Warning: failed to resolve origin repo. Fallback to $defaultOwner/$defaultRepo"
-        $repo = @{ Owner = $defaultOwner; Repo = $defaultRepo }
-    }
-
-    if (-not $repo.Owner -or -not $repo.Repo) {
-        Write-Host "[4/7] Warning: empty owner/repo from git remote. Fallback to $defaultOwner/$defaultRepo"
-        $repo = @{ Owner = $defaultOwner; Repo = $defaultRepo }
-    }
-
-    $downloadUrl = "https://github.com/$($repo.Owner)/$($repo.Repo)/releases/download/$ReleaseTag/$ApkName"
-
-    $filesToUpdate = @(
-        (Join-Path $RepoRoot "README.md"),
-        (Join-Path $RepoRoot "docs/android_mobile_app.md")
-    )
-
-    foreach ($path in $filesToUpdate) {
-        Update-PrereleaseApkLinkInFile -FilePath $path -DownloadUrl $downloadUrl
-    }
-
-    return $downloadUrl
-}
-
-
 
 try {
     Write-Host "[1/7] Checking required commands..."
@@ -810,9 +717,11 @@ try {
     Push-Location $RepoRoot
     $tempStashRef = $null
     try {
+    $targetBranch = if ($Channel -eq "stable") { "main" } else { "develop" }
+    $isPrerelease = $Channel -eq "beta"
     $branch = (git rev-parse --abbrev-ref HEAD).Trim()
-    if ($branch -ne "develop") {
-        throw "This script must be run from 'develop'. Current branch: '$branch'."
+    if ($branch -ne $targetBranch) {
+        throw "Channel '$Channel' is published from '$targetBranch'. Current branch: '$branch'."
     }
 
     if ($AllowDirty -and $AutoStashDirty) {
@@ -854,8 +763,14 @@ try {
     }
 
     $projectVersion = $versionMatch.Groups["version"].Value
-    $releaseTag = "v$projectVersion-develop"
-    $releaseTitle = "Android develop prerelease $projectVersion"
+    if ($isPrerelease) {
+        $releaseTag = "v$projectVersion-beta"
+        $releaseTitle = "ComDone $projectVersion beta"
+    }
+    else {
+        $releaseTag = "v$projectVersion"
+        $releaseTitle = "ComDone $projectVersion"
+    }
 
     $androidDir = Join-Path $RepoRoot "android-client"
     if (-not (Test-Path $androidDir)) {
@@ -863,12 +778,11 @@ try {
     }
 
     if (-not $SkipBuild) {
-        Write-Host "[3/7] Building $Flavor/$BuildType APK..."
+        Write-Host "[3/7] Building $BuildType APK..."
         Push-Location $androidDir
         try {
-            $variantName = Get-AndroidFlavorVariant -Flavor $Flavor
             $buildTypeName = (Get-Culture).TextInfo.ToTitleCase($BuildType)
-            $gradleTask = ":app:assemble{0}{1}" -f $variantName, $buildTypeName
+            $gradleTask = ":app:assemble{0}" -f $buildTypeName
             if (Test-Path (Join-Path $androidDir "gradlew.bat")) {
                 & .\gradlew.bat $gradleTask
             }
@@ -888,15 +802,22 @@ try {
     }
 
     Write-Host "[4/7] Checking APK output..."
-    $apkSource = Resolve-ApkSource -AndroidDir $androidDir -Flavor $Flavor -BuildType $BuildType
+    $apkSource = Resolve-ApkSource -AndroidDir $androidDir -BuildType $BuildType -Version $projectVersion
     Write-Host "[4/7] Using APK: $apkSource"
 
     $artifactDir = Join-Path $RepoRoot "artifacts"
     New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
 
-    $apkName = "monitoring-android-$projectVersion-develop-$Flavor-$BuildType.apk"
+    $apkName = if ($isPrerelease) { "ComDone-$projectVersion-beta.apk" } else { "ComDone-$projectVersion.apk" }
     $apkTarget = Join-Path $artifactDir $apkName
     Copy-Item -Path $apkSource -Destination $apkTarget -Force
+    $apkTargets = @($apkTarget)
+    if (-not $isPrerelease) {
+        # Постоянное имя для ссылки releases/latest/download/ComDone.apk.
+        $stableAlias = Join-Path $artifactDir "ComDone.apk"
+        Copy-Item -Path $apkSource -Destination $stableAlias -Force
+        $apkTargets += $stableAlias
+    }
 
     $repoOwner = "sukhanovai"
     $repoName = "monitoring"
@@ -914,29 +835,51 @@ try {
     $downloadUrl = "https://github.com/$repoOwner/$repoName/releases/download/$releaseTag/$apkName"
 
     if ($UpdateDocsLinks) {
-        Write-Host "[4/7] Warning: -UpdateDocsLinks is deprecated and ignored to avoid local README/docs edits and pull conflicts."
-        Write-Host "[4/7] Docs were NOT modified. Copy URL manually if needed: $downloadUrl"
+        Write-Host "[4/7] -UpdateDocsLinks is deprecated and ignored: links are maintained by scripts/bump_version.py."
+    }
+
+    if ($isPrerelease) {
+        $notes = @"
+RU: Бета-версия ComDone $projectVersion (ветка develop). Канал «Бета» в приложении.
+EN: ComDone $projectVersion beta (develop branch). "Beta" update channel in the app.
+"@
     }
     else {
-        Write-Host "[4/7] Docs link update skipped (default). README/docs are not edited by this script."
+        $notes = @"
+RU: ComDone $projectVersion — стабильный релиз. Установка и обновление: docs/deployment.md.
+EN: ComDone $projectVersion stable release. Install/upgrade guide: docs/deployment.md.
+"@
     }
 
-    $notes = @"
-EN: Android prerelease for develop branch.
-EN: Built from branch develop, version $projectVersion, flavor $Flavor, buildType $BuildType.
-EN: Stable release in main remains unchanged.
-
-RU: Пререлиз Android для ветки develop.
-RU: Собрано из ветки develop, версия $projectVersion, flavor $Flavor, buildType $BuildType.
-RU: Стабильный релиз в main не изменяется.
+    # Тег создаём сами на текущем коммите: gh/API при существующем релизе
+    # не двигают тег, и он мог остаться на чужой ветке (так случилось с
+    # v9.0.0-beta, указывавшим на main).
+    $headSha = (git rev-parse HEAD).Trim()
+    $remoteTag = (git ls-remote --tags origin "refs/tags/$releaseTag" | Select-Object -First 1)
+    if (-not $remoteTag) {
+        Write-Host "[5/7] Creating tag $releaseTag at $headSha..."
+        git push origin "HEAD:refs/tags/$releaseTag" | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to push tag $releaseTag. Check push rights to origin."
+        }
+    }
+    else {
+        $tagSha = ($remoteTag -split "\s+")[0]
+        if ($tagSha -ne $headSha) {
+            Write-Warning @"
+Tag $releaseTag points to $tagSha, but current HEAD is $headSha.
+The APK is built from HEAD; to move the tag run:
+  git push origin +HEAD:refs/tags/$releaseTag
 "@
+        }
+    }
 
     if ($ghAvailable) {
         Write-Host "[5/7] Checking GitHub release $releaseTag via gh..."
-        Publish-WithGh -ReleaseTag $releaseTag -ReleaseTitle $releaseTitle -ApkTarget $apkTarget -Notes $notes
+        Publish-WithGh -ReleaseTag $releaseTag -ReleaseTitle $releaseTitle -ApkTargets $apkTargets -Notes $notes -TargetBranch $targetBranch -IsPrerelease $isPrerelease
     }
     else {
-        Publish-WithApi -ReleaseTag $releaseTag -ReleaseTitle $releaseTitle -ApkTarget $apkTarget -ApkName $apkName -Notes $notes
+        Publish-WithApi -ReleaseTag $releaseTag -ReleaseTitle $releaseTitle -ApkTargets $apkTargets -Notes $notes -TargetBranch $targetBranch -IsPrerelease $isPrerelease
     }
 
     if ($NoWorkingTreeSideEffects) {
@@ -953,7 +896,7 @@ $($postDirty -join "`n")
         }
     }
 
-    Write-Host "[7/7] Done. Prerelease published: $releaseTag"
+    Write-Host "[7/7] Done. Release published: $releaseTag ($Channel)"
     Write-Host "APK: $apkTarget"
     Write-Host "APK download URL: $downloadUrl"
     }
