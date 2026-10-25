@@ -188,55 +188,101 @@ class ConfigManager:
         self._migrate_report_extensions()
         debug_log("База данных настроек инициализирована")
 
-    def _migrate_report_extensions(self) -> None:
-        """Расширяет состав отчёта для установок со старым дефолтом.
+    # Отметка одноразовой миграции состава отчёта к дефолту 9.0.0. Без неё
+    # пользователь, сознательно убравший новое расширение (и получивший ровно
+    # прежний дефолт), получал бы его обратно при каждом перезапуске.
+    _REPORT_DEFAULTS_MIGRATION_KEY = "REPORT_EXTENSIONS_DEFAULTS_MIGRATED"
+    _REPORT_DEFAULTS_MIGRATION_VERSION = "9.0.0"
 
-        Если сохранённый REPORT_EXTENSIONS совпадает один-в-один с прежним
-        дефолтом (5 расширений), заменяем его на новый расширенный дефолт.
-        Пользовательские наборы (любой иной состав) не трогаем.
+    def _migrate_report_extensions(self) -> None:
+        """Переводит состав отчёта со старых дефолтов на текущий.
+
+        Затрагивает общесистемный REPORT_EXTENSIONS и личные составы
+        пользователей (user_preferences), если они совпадают один-в-один с
+        дефолтом прежней версии (`is_previous_default_report_extensions`).
+        Наборы, настроенные вручную, не трогаются. Выполняется один раз.
         """
         try:
             from lib.report_settings import (
                 DEFAULT_REPORT_EXTENSIONS,
-                LEGACY_DEFAULT_REPORT_EXTENSIONS,
+                is_previous_default_report_extensions,
             )
 
             conn = self.get_connection()
             cursor = conn.cursor()
-            cursor.execute(
-                "SELECT value FROM settings WHERE key = 'REPORT_EXTENSIONS'"
-            )
+            new_default = json.dumps(DEFAULT_REPORT_EXTENSIONS, ensure_ascii=False)
+            cursor.execute("SELECT value FROM settings WHERE key = 'REPORT_EXTENSIONS'")
             row = cursor.fetchone()
-            if not row or not row[0]:
+            stored = None
+            if row and row[0]:
+                raw = row[0]
+                try:
+                    stored = _parse_json_collection(raw)
+                except (ValueError, SyntaxError, TypeError):
+                    stored = None
+                # Самовосстановление «битого» значения: если в БД лежал
+                # Python-repr (одинарные кавычки из str(list)), json.loads на
+                # чтении падал и выбор пользователя терялся.
+                if isinstance(stored, list) and raw != json.dumps(stored, ensure_ascii=False):
+                    cursor.execute(
+                        "UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP "
+                        "WHERE key = 'REPORT_EXTENSIONS'",
+                        (json.dumps(stored, ensure_ascii=False),),
+                    )
+                    conn.commit()
+                    self._cache.pop("REPORT_EXTENSIONS", None)
+                    debug_log("REPORT_EXTENSIONS перезаписан в валидный JSON")
+
+            cursor.execute(
+                "SELECT value FROM settings WHERE key = ?",
+                (self._REPORT_DEFAULTS_MIGRATION_KEY,),
+            )
+            if cursor.fetchone():
                 return
-            raw = row[0]
-            try:
-                stored = _parse_json_collection(raw)
-            except (ValueError, SyntaxError, TypeError):
-                return
-            if not isinstance(stored, list):
-                return
-            # Самовосстановление «битого» значения: если в БД лежал Python-repr
-            # (одинарные кавычки из str(list)), json.loads на чтении падал и
-            # выбор пользователя терялся. Переписываем как валидный JSON.
-            if raw != json.dumps(stored, ensure_ascii=False):
+
+            if is_previous_default_report_extensions(stored):
                 cursor.execute(
                     "UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP "
                     "WHERE key = 'REPORT_EXTENSIONS'",
-                    (json.dumps(stored, ensure_ascii=False),),
+                    (new_default,),
                 )
-                conn.commit()
-                self._cache.pop("REPORT_EXTENSIONS", None)
-                debug_log("REPORT_EXTENSIONS перезаписан в валидный JSON")
-            if set(stored) == set(LEGACY_DEFAULT_REPORT_EXTENSIONS):
-                cursor.execute(
-                    "UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP "
-                    "WHERE key = 'REPORT_EXTENSIONS'",
-                    (json.dumps(DEFAULT_REPORT_EXTENSIONS, ensure_ascii=False),),
-                )
-                conn.commit()
                 self._cache.pop("REPORT_EXTENSIONS", None)
                 debug_log("REPORT_EXTENSIONS мигрирован со старого дефолта на новый")
+
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user_preferences'"
+            )
+            if cursor.fetchone():
+                cursor.execute(
+                    "SELECT user_id, value FROM user_preferences WHERE key = 'REPORT_EXTENSIONS'"
+                )
+                for user_id, value in cursor.fetchall():
+                    try:
+                        personal = json.loads(value) if value else None
+                    except ValueError:
+                        continue
+                    if is_previous_default_report_extensions(personal):
+                        cursor.execute(
+                            "UPDATE user_preferences SET value = ?, "
+                            "updated_at = CURRENT_TIMESTAMP "
+                            "WHERE user_id = ? AND key = 'REPORT_EXTENSIONS'",
+                            (new_default, user_id),
+                        )
+                        debug_log(
+                            f"Состав отчёта пользователя {user_id} мигрирован на новый дефолт"
+                        )
+
+            cursor.execute(
+                "INSERT OR REPLACE INTO settings "
+                "(key, value, category, description, data_type, updated_at) "
+                "VALUES (?, ?, 'report', ?, 'string', CURRENT_TIMESTAMP)",
+                (
+                    self._REPORT_DEFAULTS_MIGRATION_KEY,
+                    self._REPORT_DEFAULTS_MIGRATION_VERSION,
+                    "Служебная отметка: состав отчёта переведён на дефолт 9.0.0",
+                ),
+            )
+            conn.commit()
         except Exception as exc:  # pragma: no cover - миграция не критична
             debug_log(f"⚠️ Миграция REPORT_EXTENSIONS пропущена: {exc}")
 

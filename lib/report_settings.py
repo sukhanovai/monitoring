@@ -100,6 +100,27 @@ LEGACY_DEFAULT_REPORT_EXTENSIONS = [
     "zfs_monitor",
 ]
 
+# Составы по умолчанию прежних версий. Сохранённое значение, совпадающее с
+# одним из них, пользователь не настраивал — при обновлении его переводят на
+# текущий дефолт (иначе новые расширения, например ids_cert_monitor из 8.67,
+# молча не попадают в отчёт). Миграция одноразовая, см.
+# core/config_manager.py:_migrate_report_extensions.
+PREVIOUS_DEFAULT_REPORT_EXTENSIONS = [
+    LEGACY_DEFAULT_REPORT_EXTENSIONS,
+    # 8.0–8.66: без ids_cert_monitor (в 8.66.0 вместо него был
+    # mail_cert_monitor, удалённый в 8.67.0 — он игнорируется при сравнении).
+    [ext for ext in DEFAULT_REPORT_EXTENSIONS if ext != "ids_cert_monitor"],
+]
+_RETIRED_REPORT_EXTENSIONS = {"mail_cert_monitor"}
+
+
+def is_previous_default_report_extensions(values) -> bool:
+    """True, если набор совпадает с составом по умолчанию прежней версии."""
+    if not isinstance(values, (list, tuple, set)):
+        return False
+    selected = {str(item).strip() for item in values} - _RETIRED_REPORT_EXTENSIONS
+    return any(selected == set(previous) for previous in PREVIOUS_DEFAULT_REPORT_EXTENSIONS)
+
 
 def _normalize(raw_value):
     """Приводит произвольное хранимое значение к списку известных ID."""
