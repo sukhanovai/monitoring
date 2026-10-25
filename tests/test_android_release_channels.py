@@ -88,11 +88,25 @@ def test_resolver_caches_success_and_survives_failures():
     assert resolver.resolve("o/r")[CHANNEL_STABLE].version == "9.0.0"
     assert len(calls) == 1  # из кэша
 
-    now[0] += 3601  # кэш истёк, GitHub недоступен → пусто, вызывающий берёт fallback
-    assert resolver.resolve("o/r") == {}
+    now[0] += 601  # кэш истёк, GitHub недоступен → None, вызывающий берёт fallback
+    assert resolver.resolve("o/r") is None
     now[0] += 60
-    assert resolver.resolve("o/r") == {}
+    assert resolver.resolve("o/r") is None
     assert len(calls) == 2  # ошибка тоже кэшируется, без шторма запросов
 
     now[0] += 301
     assert resolver.resolve("o/r")[CHANNEL_STABLE].version == "9.0.0"
+
+
+def test_resolver_reports_reachable_github_without_channel_build():
+    """GitHub ответил, но стабильной сборки нет — {} (а не None): fallback не нужен."""
+    resolver = ReleaseChannelResolver(
+        fetcher=lambda repo, token: [
+            _release("v9.0.0-beta", "ComDone-9.0.0-beta.apk", prerelease=True),
+            _release("v8.0.0", "source.zip"),
+        ]
+    )
+    result = resolver.resolve("o/r")
+    assert result is not None
+    assert CHANNEL_STABLE not in result
+    assert result[CHANNEL_BETA].version == "9.0.0"

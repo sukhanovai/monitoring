@@ -3518,7 +3518,11 @@ def _resolve_branch_apk_url(branch_cfg, repo, version, fallback_url):
 
 
 def _resolve_github_channel_releases():
-    """Сборки каналов stable/beta по GitHub Releases ({} — недоступно/выключено)."""
+    """Сборки каналов stable/beta по GitHub Releases.
+
+    None — GitHub выключен или недоступен (используется статический fallback);
+    словарь без канала — сборки этого канала в релизах нет.
+    """
     from config.settings import (
         ANDROID_RELEASE_REPO,
         ANDROID_RELEASES_FROM_GITHUB,
@@ -3526,7 +3530,7 @@ def _resolve_github_channel_releases():
     )
 
     if not ANDROID_RELEASES_FROM_GITHUB:
-        return {}
+        return None
     from core.android_release_channels import default_resolver
 
     return default_resolver.resolve(
@@ -3571,10 +3575,15 @@ def _build_android_update_branches():
         if not name:
             continue
         channel = str(branch_cfg.get("channel") or "").strip()
-        release = releases.get(channel)
+        release = releases.get(channel) if releases is not None else None
         if release is not None:
             latest_version = release.version
             apk_download_url = release.apk_download_url
+        elif releases is not None:
+            # GitHub ответил, но сборки канала нет (например, стабильный 9.x
+            # ещё не выпущен) — не анонсируем версию, которой нет в релизах.
+            latest_version = ""
+            apk_download_url = ""
         else:
             latest_version = version
             apk_download_url = _resolve_branch_apk_url(
@@ -3678,8 +3687,14 @@ def v1_mobile_version():
     wanted = requested_branch or default_branch
     for branch in branches:
         if branch.get("name") == wanted:
-            latest_version = str(branch.get("latest_version") or latest_version)
-            apk_download_url = str(branch.get("apk_download_url") or apk_download_url)
+            if branch.get("latest_version"):
+                latest_version = str(branch["latest_version"])
+                apk_download_url = str(branch.get("apk_download_url") or apk_download_url)
+            else:
+                # Сборки канала в релизах нет: обновления нет — отвечаем
+                # версией клиента («установлена актуальная версия»).
+                latest_version = current_version
+                apk_download_url = ""
             resolved_branch = wanted if requested_branch else ""
             break
 

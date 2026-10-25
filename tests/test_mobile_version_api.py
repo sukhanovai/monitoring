@@ -58,8 +58,29 @@ def test_version_reports_channel_release_and_capabilities(web, monkeypatch):
     assert default["apk_download_url"].endswith("ComDone-9.0.0.apk")
 
 
+def test_missing_stable_release_is_not_announced(web, monkeypatch):
+    """Стабильного APK в релизах ещё нет — не обещаем версию с битой ссылкой."""
+    _github(
+        monkeypatch,
+        web,
+        {"beta": ChannelRelease("9.0.0", "https://dl/ComDone-9.0.0-beta.apk")},
+    )
+    client = web.app.test_client()
+
+    stable = client.get(
+        "/v1/mobile/version?current_version=8.67.1&branch=main", headers=_AUTH
+    ).get_json()
+    assert stable["latest_version"] == "8.67.1"  # «установлена актуальная версия»
+    assert stable["apk_download_url"] == ""
+
+    beta = client.get(
+        "/v1/mobile/version?current_version=8.67.1&branch=develop", headers=_AUTH
+    ).get_json()
+    assert beta["latest_version"] == "9.0.0"
+
+
 def test_version_falls_back_to_settings_without_github(web, monkeypatch):
-    _github(monkeypatch, web, {})
+    _github(monkeypatch, web, None)
     from config.settings import ANDROID_LATEST_VERSION
 
     payload = (
@@ -70,7 +91,7 @@ def test_version_falls_back_to_settings_without_github(web, monkeypatch):
 
 
 def test_branches_keep_stable_ids_and_default_to_stable(web, monkeypatch):
-    _github(monkeypatch, web, {})
+    _github(monkeypatch, web, None)
     payload = web.app.test_client().get("/v1/mobile/branches", headers=_AUTH).get_json()
 
     names = [b["name"] for b in payload["branches"]]

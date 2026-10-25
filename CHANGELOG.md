@@ -25,6 +25,8 @@
 ### Fixed
 - RU: Сохранение тихих часов и времени сбора данных из Android и веб-панели: клиенты вызывали `PATCH /v1/settings/time`, которого не было на сервере (405). Найдено контрактным тестом; дополнительные точки `DATA_COLLECTION_TIMES`, заданные в боте, сохраняются.
 - EN: Saving quiet hours and data collection time from Android and the web panel: clients called `PATCH /v1/settings/time`, which the server did not serve (405). Found by the contract test; extra `DATA_COLLECTION_TIMES` points set in the bot are preserved.
+- RU: Каналы обновления: если GitHub доступен, но сборки канала в релизах нет (стабильный 9.x ещё не выпущен), сервер больше не анонсирует запасную версию из `settings.py` с несуществующей ссылкой на `ComDone.apk` — приложение видит «установлена актуальная версия». Кэш релизов сокращён с часа до 10 минут, чтобы только что опубликованная бета была видна сразу.
+- EN: Update channels: when GitHub is reachable but has no build for a channel (stable 9.x not released yet), the server no longer announces the fallback version from `settings.py` with a non-existent `ComDone.apk` link — the app shows "up to date". The releases cache is reduced from one hour to 10 minutes so a freshly published beta shows up quickly.
 
 ## [8.67.1] - 2026-10-25
 

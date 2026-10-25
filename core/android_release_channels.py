@@ -45,7 +45,7 @@ _TAG_VERSION_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$")
 # — они тоже принимаются, чтобы канал работал и до первой сборки 9.x.
 _PREFERRED_APK_PREFIX = "ComDone-"
 
-_SUCCESS_TTL_SECONDS = 3600
+_SUCCESS_TTL_SECONDS = 600
 _FAILURE_TTL_SECONDS = 300
 _HTTP_TIMEOUT_SECONDS = 5
 
@@ -123,9 +123,15 @@ def _fetch_releases_from_github(repo: str, token: str = "") -> Any:
 class ReleaseChannelResolver:
     """Кэширующий резолвер каналов. Потокобезопасен.
 
-    Успешный ответ кэшируется на час (лимит GitHub без токена — 60 запросов
-    в час с IP), ошибка — на 5 минут, чтобы не тормозить каждый запрос
-    клиента таймаутом при недоступном GitHub.
+    Успешный ответ кэшируется на 10 минут (свежая публикация видна быстро,
+    а лимит GitHub без токена — 60 запросов в час с IP — не тратится),
+    ошибка — на 5 минут, чтобы не тормозить каждый запрос клиента таймаутом
+    при недоступном GitHub.
+
+    `resolve` возвращает `None`, если GitHub недоступен (вызывающий берёт
+    статический fallback), и словарь каналов, если ответ получен. Канала нет
+    в словаре — значит, в репозитории нет такой сборки, и анонсировать
+    fallback-версию нельзя: ссылка на APK вела бы в никуда.
     """
 
     def __init__(
@@ -136,19 +142,20 @@ class ReleaseChannelResolver:
         self._fetcher = fetcher
         self._clock = clock
         self._lock = threading.Lock()
-        self._cache: dict[str, tuple[float, dict[str, ChannelRelease]]] = {}
+        self._cache: dict[str, tuple[float, dict[str, ChannelRelease] | None]] = {}
 
-    def resolve(self, repo: str, token: str = "") -> dict[str, ChannelRelease]:
+    def resolve(self, repo: str, token: str = "") -> dict[str, ChannelRelease] | None:
         now = self._clock()
         with self._lock:
             cached = self._cache.get(repo)
             if cached and cached[0] > now:
                 return cached[1]
+            result: dict[str, ChannelRelease] | None
             try:
                 result = select_channel_releases(self._fetcher(repo, token))
-                ttl = _SUCCESS_TTL_SECONDS if result else _FAILURE_TTL_SECONDS
+                ttl = _SUCCESS_TTL_SECONDS
             except Exception:  # noqa: BLE001 — сеть/JSON/HTTP: работаем на fallback
-                result = {}
+                result = None
                 ttl = _FAILURE_TTL_SECONDS
             self._cache[repo] = (now + ttl, result)
             return result
