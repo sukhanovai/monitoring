@@ -1,6 +1,6 @@
-Status: Draft
+Status: Архив разработки (рабочие заметки). Актуальная установка — docs/deployment.md,
+процесс разработки и выпуска — docs/development.md.
 Owner: Александр Суханов
-Last updated: 2026-02-11
 
 # Android-приложение для Monitoring (без отказа от Telegram)
 
@@ -708,21 +708,19 @@ android-client/app/build/outputs/apk/debug/app-debug.apk
 Рабочая схема без ебли с LFS:
 
 1. **В git-репозиторий не коммитить бинарник APK напрямую** (история раздувается).
-2. Публиковать APK как **GitHub Release Asset** (например, `monitoring-android.apk`).
-   - Актуальный prerelease APK: <!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.67.1-develop/monitoring-android-8.67.1-develop-compactOps-debug.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
-3. В backend держать ссылку `ANDROID_APK_DOWNLOAD_URL` на этот release asset.
-4. Android при старте ходит в `GET /v1/mobile/version` и, если нужно обновление, ведёт пользователя по этой ссылке.
-   - Скрипт prerelease по умолчанию публикует `debug` APK (для максимальной installability); `release` можно выбрать через `-BuildType release`.
+2. APK публикуется как **GitHub Release Asset** скриптом `scripts/publish_android.ps1`
+   (каналы «Бета» / «Стабильная», имена `ComDone-<версия>[-beta].apk`) — см. `docs/development.md`.
+3. Сервер определяет версии каналов по GitHub Releases и отдаёт их в `GET /v1/mobile/version`.
 
 Если при `git pull` получаешь ошибку `would be overwritten by merge` для `README.md` или этого файла, значит у тебя локально незафиксированные правки документации. Быстрые варианты:
 ```powershell
 # Сохранить изменения
-git add README.md docs/android_mobile_app.md
+git add README.md docs/dev/android_development.md
 git commit -m "Сохранить локальные правки документации"
 git pull --rebase origin develop
 
 # Или отбросить локальные изменения
-git restore --staged --worktree -- README.md docs/android_mobile_app.md
+git restore --staged --worktree -- README.md docs/dev/android_development.md
 git pull --rebase origin develop
 
 # Или временно убрать локальные правки, подтянуть remote и вернуть правки

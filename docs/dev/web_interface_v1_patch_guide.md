@@ -8,7 +8,7 @@
 
 ## Новый файл с инструкцией (этот файл)
 
-- `/opt/monitoring/docs/web_interface_v1_patch_guide.md`
+- `/opt/monitoring/docs/dev/web_interface_v1_patch_guide.md`
 
 ---
 

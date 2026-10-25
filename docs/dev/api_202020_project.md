@@ -1,4 +1,4 @@
-/docs/api_202020_project.md
+/docs/dev/api_202020_project.md
 Server Monitoring System v8.67.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
@@ -70,12 +70,12 @@ License: MIT
 1. Создай/проверь файлы:
    - `docs/contracts/external_bff_api.md`;
    - `docs/contracts/error_mapping.md`;
-   - `docs/backlog/stage2_vertical_slice.md`.
+   - `docs/dev/backlog/stage2_vertical_slice.md`.
 2. В каждый файл добавь шапку:
    - `Status: Draft`;
    - `Owner: <твоё имя/ник>`;
    - `Last updated: YYYY-MM-DD`.
-3. В этом документе (`docs/api_202020_project.md`) оставь ссылки на эти артефакты.
+3. В этом документе (`docs/dev/api_202020_project.md`) оставь ссылки на эти артефакты.
 
 
 Ссылки на артефакты Шага 0:
@@ -442,7 +442,7 @@ HTTP-маппинг по умолчанию:
 2. Зафиксировать единый `error envelope` и окончательный HTTP-маппинг в `docs/contracts/error_mapping.md`.
 3. Синхронизировать naming и поля `settings/*` endpoint в едином стиле (snake_case vs camelCase — выбрать один).
 4. Подготовить первый вертикальный срез: `availability(all)` + `control/actions` + трассировка `X-Request-ID`.
-5. Обновить backlog `docs/backlog/stage2_vertical_slice.md` конкретными задачами с оценкой по времени.
+5. Обновить backlog `docs/dev/backlog/stage2_vertical_slice.md` конкретными задачами с оценкой по времени.
 
 **Готово, если:** утром следующего дня ты открываешь документ и сразу понимаешь, что делать дальше.
 
@@ -503,7 +503,7 @@ HTTP-маппинг по умолчанию:
 2. `docs/contracts/internal_grpc_contracts.md` — соответствие endpoint -> rpc.
 3. `docs/contracts/error_mapping.md` — карта ошибок (downstream -> BFF).
 4. `docs/contracts/slo_timeout_budget.md` — SLO и таймауты.
-5. `docs/backlog/stage2_vertical_slice.md` — задачи на следующий этап.
+5. `docs/dev/backlog/stage2_vertical_slice.md` — задачи на следующий этап.
 
 Если форматы уже есть в репозитории, используем существующие шаблоны и просто дополняем.
 

@@ -138,8 +138,8 @@ git branch -a
 ```bash
 git checkout develop
 git pull origin develop
-git checkout work -- docs/server_backend_android_settings_get_instructions.md
-git add docs/server_backend_android_settings_get_instructions.md
+git checkout work -- docs/dev/server_backend_android_settings_get_instructions.md
+git add docs/dev/server_backend_android_settings_get_instructions.md
 git commit -m "Добавить инструкцию для backend по GET settings"
 git push origin develop
 ```
@@ -149,7 +149,7 @@ git push origin develop
 ```bash
 git checkout develop
 git pull origin develop
-git checkout origin/work -- docs/server_backend_android_settings_get_instructions.md
+git checkout origin/work -- docs/dev/server_backend_android_settings_get_instructions.md
 ```
 
 Если хотите перенести не только файл, а целиком конкретный коммит:
