@@ -1,8 +1,7 @@
 param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")),
-    [ValidateSet("legacy", "compactOps")]
-    [string]$Flavor = "compactOps",
-    [string]$AppId = "",
+    # Пакет установленного ComDone (бывший flavor compactOps) — см. app/build.gradle.kts.
+    [string]$AppId = "ru.monitoring.mobile.compactops",
     [string]$MainActivity = ".MainActivity",
     [switch]$SkipInstall,
     [switch]$SkipRun
@@ -10,31 +9,6 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-
-function Get-FlavorConfig {
-    param(
-        [ValidateSet("legacy", "compactOps")]
-        [string]$Flavor
-    )
-
-    switch ($Flavor) {
-        "legacy" {
-            return @{
-                Variant = "Legacy"
-                AppId = "ru.monitoring.mobile.legacy"
-            }
-        }
-        "compactOps" {
-            return @{
-                Variant = "CompactOps"
-                AppId = "ru.monitoring.mobile.compactops"
-            }
-        }
-        default {
-            throw "Unsupported flavor: $Flavor"
-        }
-    }
-}
 
 function Resolve-AdbPath {
     $adbCommand = Get-Command adb -ErrorAction SilentlyContinue
@@ -150,13 +124,6 @@ function Test-AppIsForeground {
 
 $androidDir = Join-Path $RepoRoot "android-client"
 $gradlew = Join-Path $androidDir "gradlew.bat"
-$flavorConfig = Get-FlavorConfig -Flavor $Flavor
-$variantName = $flavorConfig.Variant
-
-if (-not $AppId) {
-    $AppId = $flavorConfig.AppId
-}
-
 if (-not (Test-Path $gradlew)) {
     throw "gradlew.bat was not found at: $gradlew"
 }
@@ -331,8 +298,8 @@ Write-Host "[2/5] Clean project..."
 Invoke-GradleStep -Description "Clean project" -Tasks @("clean")
 
 Write-Host "[3/5] Assemble project..."
-$assembleTask = ":app:assemble{0}Debug" -f $variantName
-Invoke-GradleStep -Description "Assemble $Flavor debug" -Tasks @($assembleTask)
+$assembleTask = ":app:assembleDebug"
+Invoke-GradleStep -Description "Assemble debug" -Tasks @($assembleTask)
 
 if (-not $SkipInstall) {
     $adbPath = Resolve-AdbPath
@@ -346,9 +313,11 @@ if (-not $SkipInstall) {
 
 if (-not $SkipInstall) {
     Write-Host "[4/5] Install app on connected device/emulator..."
-    $installTask = ":app:install{0}Debug" -f $variantName
-    $apkPath = Join-Path $androidDir ("app\build\outputs\apk\{0}\debug\app-{0}-debug.apk" -f $Flavor)
-    Invoke-RobustInstall -AdbPath $adbPath -Description "Install $Flavor debug APK" -InstallTask $installTask -ApkPath $apkPath
+    $installTask = ":app:installDebug"
+    $apkFile = Get-ChildItem -Path (Join-Path $androidDir "app\build\outputs\apk\debug") -Filter "ComDone-*-debug.apk" -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $apkPath = if ($apkFile) { $apkFile.FullName } else { Join-Path $androidDir "app\build\outputs\apk\debug\ComDone-debug.apk" }
+    Invoke-RobustInstall -AdbPath $adbPath -Description "Install debug APK" -InstallTask $installTask -ApkPath $apkPath
 }
 else {
     Write-Host "[4/5] Install skipped (-SkipInstall)."
@@ -356,7 +325,7 @@ else {
 
 if ($SkipRun) {
     Write-Host "[5/5] App launch skipped (-SkipRun)."
-    Write-Host "[OK] Done: sync + clean + assemble ($Flavor)"
+    Write-Host "[OK] Done: sync + clean + assemble"
     exit 0
 }
 
@@ -400,9 +369,9 @@ if (-not $SkipInstall) {
         }
     }
 
-    Write-Host "[OK] Done: sync + clean + assemble + install + run ($Flavor)"
+    Write-Host "[OK] Done: sync + clean + assemble + install + run"
 }
 else {
     Write-Host "[5/5] Launch skipped because install was skipped."
-    Write-Host "[OK] Done: sync + clean + assemble ($Flavor)"
+    Write-Host "[OK] Done: sync + clean + assemble"
 }

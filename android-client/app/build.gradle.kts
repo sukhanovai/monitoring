@@ -1,8 +1,20 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+// Свойства подписи (см. signingConfigs ниже): gradle.properties или local.properties.
+val localProps = Properties().apply {
+    val propsFile = rootProject.file("local.properties")
+    if (propsFile.exists()) propsFile.inputStream().use { stream -> load(stream) }
+}
+
+fun signingProp(name: String): String? =
+    (providers.gradleProperty(name).orNull ?: localProps.getProperty(name))
+        ?.takeIf { it.isNotBlank() }
 
 
 android {
@@ -37,14 +49,6 @@ android {
     //   COMDONE_KEY_ALIAS=androiddebugkey
     //   COMDONE_KEY_PASSWORD=android
     // Без этих свойств используется стандартный ~/.android/debug.keystore.
-    val localProps = java.util.Properties().apply {
-        val file = rootProject.file("local.properties")
-        if (file.exists()) file.inputStream().use { load(it) }
-    }
-    fun signingProp(name: String): String? =
-        (providers.gradleProperty(name).orNull ?: localProps.getProperty(name))
-            ?.takeIf { it.isNotBlank() }
-
     signingConfigs {
         create("release") {
             val keystore = signingProp("COMDONE_KEYSTORE_FILE")
