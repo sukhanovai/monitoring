@@ -1,0 +1,53 @@
+# Baseline мобильного API ComDone 9.0.0 — эндпоинты, которые поддерживает любой сервер 9.x.
+# Формат: <METHOD> <путь из MonitoringApi.kt>. Файл только дополняется при новом baseline;
+# эндпоинты после 9.0.0 сюда НЕ добавляются — им нужна метка capability
+# (core/api_capabilities.py + ServerCapabilities.kt). См. docs/contracts/api_compatibility.md.
+DELETE v1/settings/auth/windows-credentials/{credId}
+DELETE v1/settings/auth/windows-types/{typeName}
+DELETE v1/settings/bot/chats/{chatId}
+DELETE v1/settings/servers/{ip}
+GET v1/control/status
+GET v1/me
+GET v1/mobile/branches
+GET v1/mobile/version
+GET v1/monitoring/availability
+GET v1/monitoring/availability/{serverId}
+GET v1/monitoring/resources/{serverId}
+GET v1/settings/auth
+GET v1/settings/auth/windows-credentials
+GET v1/settings/auth/windows-types
+GET v1/settings/bot
+GET v1/settings/bot/matrix
+GET v1/settings/extensions
+GET v1/settings/monitoring
+GET v1/settings/report
+GET v1/settings/servers
+GET v1/settings/time
+GET v1/settings/web-auth
+GET v1/users
+PATCH v1/me/notifications
+PATCH v1/settings/auth
+PATCH v1/settings/auth/windows-types/{typeName}
+PATCH v1/settings/bot
+PATCH v1/settings/bot/matrix
+PATCH v1/settings/extensions/{extensionId}
+PATCH v1/settings/monitoring
+PATCH v1/settings/report
+PATCH v1/settings/servers/{ip}
+PATCH v1/settings/servers/{ip}/enabled
+PATCH v1/settings/time
+PATCH v1/settings/web-auth
+POST v1/auth/token
+POST v1/auth/token/reissue
+POST v1/control/actions
+POST v1/mobile/diagnostics/tls
+POST v1/settings/auth/windows-credentials
+POST v1/settings/auth/windows-types
+POST v1/settings/auth/windows-types/merge
+POST v1/settings/bot/chats
+POST v1/settings/bot/matrix/test
+POST v1/settings/bot/test
+POST v1/settings/extensions/actions
+POST v1/settings/servers
+POST v1/users
+POST v1/users/{userId}/channels

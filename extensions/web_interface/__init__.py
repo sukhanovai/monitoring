@@ -9574,6 +9574,116 @@ def v1_get_settings_time():
     return jsonify(response), 200
 
 
+def _parse_quiet_hour(value):
+    """'HH:MM' или час → int 0..23 (тихий режим хранится по часам, как в боте)."""
+    raw = str(value).strip()
+    hour_part, _, minute_part = raw.partition(":")
+    if minute_part and not (minute_part.isdigit() and len(minute_part) == 2):
+        raise ValueError(raw)
+    hour = int(hour_part)
+    if not 0 <= hour <= 23 or (minute_part and not 0 <= int(minute_part) <= 59):
+        raise ValueError(raw)
+    return hour
+
+
+@app.route("/v1/settings/time", methods=["PATCH"])
+def v1_patch_settings_time():
+    """Сохраняет тихие часы и время сбора данных утреннего отчёта.
+
+    Клиенты (Android, веб-панель) вызывали этот метод давно, но сервер его
+    не обслуживал (405) — найдено контрактным тестом совместимости API.
+    """
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get("Authorization"))
+    if not is_ok:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Invalid or expired token",
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            401,
+        )
+
+    payload = request.get_json(silent=True) or {}
+    quiet_start = payload.get("quiet_start")
+    quiet_end = payload.get("quiet_end")
+    collection_time = payload.get("metrics_collection_time")
+
+    def _invalid(message):
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": message,
+                        "request_id": request_id,
+                    }
+                }
+            ),
+            400,
+        )
+
+    if quiet_start is None and quiet_end is None and collection_time is None:
+        return _invalid("At least one field is required")
+
+    try:
+        start_hour = None if quiet_start is None else _parse_quiet_hour(quiet_start)
+        end_hour = None if quiet_end is None else _parse_quiet_hour(quiet_end)
+    except ValueError:
+        return _invalid("quiet_start/quiet_end must be HH:MM (00:00-23:59)")
+
+    normalized_collection = None
+    if collection_time is not None:
+        match = re.match(r"^(\d{1,2}):(\d{2})$", str(collection_time).strip())
+        if not match or int(match.group(1)) > 23 or int(match.group(2)) > 59:
+            return _invalid("metrics_collection_time must be HH:MM")
+        normalized_collection = f"{int(match.group(1)):02d}:{match.group(2)}"
+
+    from config.db_settings import load_all_settings
+    from config.db_settings_app import settings_manager
+
+    if start_hour is not None:
+        settings_manager.set_setting("SILENT_START", start_hour, "time")
+    if end_hour is not None:
+        settings_manager.set_setting("SILENT_END", end_hour, "time")
+    if normalized_collection is not None:
+        # Расписание сбора — список DATA_COLLECTION_TIMES; клиент правит только
+        # первое время, остальные точки (если заданы в боте) сохраняются.
+        times_raw = str(settings_manager.get_setting("DATA_COLLECTION_TIMES", "") or "")
+        times = [t.strip() for t in times_raw.split(",") if t.strip()]
+        times = [normalized_collection] + times[1:]
+        settings_manager.set_setting("DATA_COLLECTION_TIMES", ",".join(times), "time")
+        settings_manager.set_setting("DATA_COLLECTION_TIME", normalized_collection, "time")
+    load_all_settings()
+
+    app.logger.info("PATCH /v1/settings/time request_id=%s", request_id)
+    return (
+        jsonify(
+            {
+                "request_id": request_id,
+                "settings": {
+                    "quiet_start": _hour_to_hhmm(
+                        settings_manager.get_setting("SILENT_START", 23), "23:00"
+                    ),
+                    "quiet_end": _hour_to_hhmm(
+                        settings_manager.get_setting("SILENT_END", 8), "08:00"
+                    ),
+                    "metrics_collection_time": str(
+                        settings_manager.get_setting("DATA_COLLECTION_TIME", "07:30")
+                    ),
+                },
+            }
+        ),
+        200,
+    )
+
+
 @app.route("/v1/settings/web-auth", methods=["GET"])
 def v1_get_settings_web_auth():
     """Текущие учётные данные веб-интерфейса (логин + признак заданного пароля)."""

@@ -81,3 +81,40 @@ def test_branches_keep_stable_ids_and_default_to_stable(web, monkeypatch):
     assert payload["default_branch"] == "main"
     for branch in payload["branches"]:
         assert {"name", "title", "latest_version", "apk_download_url", "is_default"} <= set(branch)
+
+
+def test_patch_settings_time_saves_quiet_hours_and_collection_time(web, monkeypatch):
+    """PATCH /v1/settings/time вызывали клиенты, но сервер его не обслуживал (405)."""
+    from config import db_settings_app
+
+    store = {"DATA_COLLECTION_TIMES": "07:30,19:00"}
+
+    class _FakeSettings:
+        def get_setting(self, key, default=None, **_kwargs):
+            return store.get(key, default)
+
+        def set_setting(self, key, value, *_args, **_kwargs):
+            store[key] = value
+
+    monkeypatch.setattr(db_settings_app, "settings_manager", _FakeSettings())
+    import config.db_settings as db_settings
+
+    monkeypatch.setattr(db_settings, "load_all_settings", lambda: None)
+    client = web.app.test_client()
+
+    response = client.patch(
+        "/v1/settings/time",
+        json={"quiet_start": "22:00", "quiet_end": "7", "metrics_collection_time": "6:45"},
+        headers=_AUTH,
+    )
+    assert response.status_code == 200
+    assert response.get_json()["settings"] == {
+        "quiet_start": "22:00",
+        "quiet_end": "07:00",
+        "metrics_collection_time": "06:45",
+    }
+    # Дополнительные точки расписания, заданные в боте, не теряются.
+    assert store["DATA_COLLECTION_TIMES"] == "06:45,19:00"
+
+    bad = client.patch("/v1/settings/time", json={"quiet_start": "25:00"}, headers=_AUTH)
+    assert bad.status_code == 400
