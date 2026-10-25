@@ -10,7 +10,11 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "ru.monitoring.mobile"
+        // Идентификатор пакета зафиксирован в том виде, в каком приложение уже
+        // установлено у пользователей (бывший flavor `compactOps`). Менять нельзя:
+        // другой applicationId — это другое приложение, обновление поверх и
+        // сохранённые токен/настройки потеряются.
+        applicationId = "ru.monitoring.mobile.compactops"
         minSdk = 26
         targetSdk = 34
         versionCode = providers.gradleProperty("ANDROID_VERSION_CODE").get().toInt()
@@ -20,32 +24,49 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        // Единственный интерфейс — Compact Ops Hub (flavor `legacy` удалён в 9.0.0).
+        buildConfigField("boolean", "IS_COMPACT_OPS_HUB", "true")
+    }
+
+    // Подпись release-сборки. Все выпущенные APK подписаны debug-ключом ПК
+    // разработчика, поэтому для бесшовного обновления у пользователей тем же
+    // ключом подписывается и release. Путь/пароли задаются вне репозитория
+    // (~/.gradle/gradle.properties или android-client/local.properties):
+    //   COMDONE_KEYSTORE_FILE=C:/keys/comdone.keystore
+    //   COMDONE_KEYSTORE_PASSWORD=android
+    //   COMDONE_KEY_ALIAS=androiddebugkey
+    //   COMDONE_KEY_PASSWORD=android
+    // Без этих свойств используется стандартный ~/.android/debug.keystore.
+    val localProps = java.util.Properties().apply {
+        val file = rootProject.file("local.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }
+    fun signingProp(name: String): String? =
+        (providers.gradleProperty(name).orNull ?: localProps.getProperty(name))
+            ?.takeIf { it.isNotBlank() }
+
+    signingConfigs {
+        create("release") {
+            val keystore = signingProp("COMDONE_KEYSTORE_FILE")
+            if (keystore != null) {
+                storeFile = file(keystore)
+                storePassword = signingProp("COMDONE_KEYSTORE_PASSWORD") ?: "android"
+                keyAlias = signingProp("COMDONE_KEY_ALIAS") ?: "androiddebugkey"
+                keyPassword = signingProp("COMDONE_KEY_PASSWORD") ?: "android"
+            } else {
+                initWith(getByName("debug"))
+            }
+        }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-        }
-    }
-
-    flavorDimensions += "ui"
-    productFlavors {
-        create("legacy") {
-            dimension = "ui"
-            applicationIdSuffix = ".legacy"
-            versionNameSuffix = "-legacy"
-            buildConfigField("boolean", "IS_COMPACT_OPS_HUB", "false")
-        }
-        create("compactOps") {
-            dimension = "ui"
-            applicationIdSuffix = ".compactops"
-            versionNameSuffix = "-compactops"
-            buildConfigField("boolean", "IS_COMPACT_OPS_HUB", "true")
         }
     }
 
@@ -61,6 +82,16 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    // Имя APK: ComDone-<версия>.apk (release) / ComDone-<версия>-debug.apk.
+    applicationVariants.all {
+        val variant = this
+        outputs.all {
+            val suffix = if (variant.buildType.name == "release") "" else "-${variant.buildType.name}"
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
+                "ComDone-${variant.versionName}$suffix.apk"
+        }
     }
 
     packaging {

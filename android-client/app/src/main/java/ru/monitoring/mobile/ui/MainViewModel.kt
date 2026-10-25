@@ -839,7 +839,12 @@ class MainViewModel(
 
         viewModelScope.launch {
             runCatching {
-                currentApi().getMobileVersionInfo(projectVersion)
+                // Канал обновления — тот, что выбран в приложении: иначе бета-
+                // пользователю показывалась бы версия стабильного канала.
+                currentApi().getMobileVersionInfo(
+                    projectVersion,
+                    preferences.updateBranch.ifBlank { null }
+                )
             }.onSuccess { response ->
                 val minVersion = response.minSupportedVersion.orEmpty()
                 val latestVersion = response.latestVersion.orEmpty()
@@ -855,6 +860,8 @@ class MainViewModel(
                     latestVersion = latestVersion,
                     apkDownloadUrl = updateUrl,
                     isUpdateRequired = needUpdate,
+                    serverVersion = response.serverVersion?.trim().orEmpty(),
+                    serverCapabilities = response.capabilities.orEmpty().toSet(),
                     updateMessage = if (needUpdate) {
                         "Требуется обновление приложения до версии ${latestVersion.ifBlank { minVersion }}"
                     } else {
@@ -1248,6 +1255,11 @@ class MainViewModel(
         is HttpException -> when (error.code()) {
             401 -> "HTTP 401: токен недействителен или нет доступа"
             403 -> "HTTP 403: у токена нет прав"
+            // Чаще всего — функция новее, чем сервер (бета-клиент на стабильном
+            // сервере). См. api/ServerCapabilities.kt.
+            404 -> "Функция недоступна на этом сервере" +
+                (state.serverVersion.takeIf { it.isNotBlank() }?.let { " (версия сервера $it)" } ?: "") +
+                ". Обновите сервер ComDone"
             else -> "HTTP ${error.code()}: ${error.message()}"
         }
         else -> error.message ?: "Ошибка сети"
@@ -3988,6 +4000,8 @@ data class MainUiState(
     val projectVersion: String = "",
     val installedVersion: String = "",
     val isUpdateRequired: Boolean = false,
+    val serverVersion: String = "",
+    val serverCapabilities: Set<String> = emptySet(),
     val minSupportedVersion: String = "",
     val latestVersion: String = "",
     val apkDownloadUrl: String = "",

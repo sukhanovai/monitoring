@@ -67,7 +67,7 @@ object CrashReporter {
             appendLine("ComDone — отчёт о сбое")
             appendLine("Время: $timestamp")
             appendLine("Версия: ${BuildConfig.VERSION_NAME} (code ${BuildConfig.VERSION_CODE})")
-            appendLine("Сборка: ${BuildConfig.FLAVOR} / ${BuildConfig.BUILD_TYPE}")
+            appendLine("Сборка: ${BuildConfig.BUILD_TYPE}")
             appendLine("Устройство: ${Build.MANUFACTURER} ${Build.MODEL}")
             appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
             appendLine("Поток: ${thread.name}")

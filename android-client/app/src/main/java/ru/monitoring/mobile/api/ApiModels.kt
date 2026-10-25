@@ -98,6 +98,11 @@ data class MobileVersionResponse(
     @Json(name = "current_version") val currentVersion: String? = null,
     @Json(name = "update_required") val updateRequired: Boolean? = null,
     val branch: String? = null,
+    // Совместимость с сервером (см. api/ServerCapabilities.kt). Сервер до 9.0.0
+    // этих полей не отдаёт — тогда считается, что он умеет baseline 9.0.0.
+    @Json(name = "server_version") val serverVersion: String? = null,
+    @Json(name = "api_baseline") val apiBaseline: String? = null,
+    val capabilities: List<String>? = null,
 )
 
 data class MobileBranch(
