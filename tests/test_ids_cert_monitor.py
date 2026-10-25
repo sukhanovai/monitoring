@@ -426,6 +426,33 @@ def test_dispatch_crit_forced_others_wait_for_silence(db) -> None:
     assert pending(db) == []
 
 
+def test_dispatch_warn_intrusion_bypasses_silence(db) -> None:
+    mail(db, "IDS WARN sr-pve2 CT101 INTRUSION n=1 types=FILE_CHANGED", T0)
+    mail(db, "IDS WARN sr-pve2 CT101 MONITOR_ERROR what=ldap", T0)
+    calls: list[tuple[str, str, bool]] = []
+
+    def send(message, alert_type="info", force=False):
+        calls.append((message, alert_type, force))
+        return True
+
+    sent = mod.tick(send, is_silent_func=lambda: True, db_path=db, now=T0 + timedelta(minutes=1))
+    assert sent == 1
+    assert calls[0][1:] == ("warning", True)
+    assert "Вторжение" in calls[0][0]
+    assert len(pending(db)) == 1  # MONITOR_ERROR ждёт конца тихих часов
+
+
+def test_is_immediate_rules() -> None:
+    key = "IDS/sr-pve2/CT101/intrusion"
+    assert mod.is_immediate("CRIT", "reminder", "IDS/sr-pve2/CT101/monitor")
+    assert mod.is_immediate("WARN", "new", key)
+    assert mod.is_immediate("WARN", "update", "IDS/sr-pve2/CT101/config")
+    assert not mod.is_immediate("WARN", "reminder", key)
+    assert not mod.is_immediate("OK", "recovery", key)
+    assert not mod.is_immediate("WARN", "new", "IDS/sr-pve2/CT101/monitor")
+    assert not mod.is_immediate("WARN", "new", None)
+
+
 def test_outbox_expires_old_items(db) -> None:
     mail(db, "IDS WARN sr-pve2 CT101 MONITOR_ERROR what=ldap", T0)
     calls: list[str] = []

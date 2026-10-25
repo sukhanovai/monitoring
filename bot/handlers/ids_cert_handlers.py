@@ -1,11 +1,11 @@
 """
 /bot/handlers/ids_cert_handlers.py
-Server Monitoring System v8.67.0
+Server Monitoring System v8.67.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram handlers for the IDS / mail certificate monitor extension
 Система мониторинга серверов
-Версия: 8.67.0
+Версия: 8.67.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Telegram-обработчики расширения IDS и сертификата почты: статус, журнал,

@@ -1,3 +1,9 @@
+## [8.67.1] - 2026-10-25
+
+### Fixed
+- RU: IDS — WARN-оповещение о признаке взлома (`intrusion`: например `FILE_CHANGED` «изменились системные файлы»; `config`: изменения админов/пересылок Zimbra) ждало конца тихих часов (по умолчанию 20:00–09:00), то есть событие в 20:10 приходило только утром. Теперь новая проблема и обновление по семействам `intrusion` и `config` уходят сразу и мимо тихих часов при любом уровне; напоминания, `MONITOR_ERROR` и прочие WARN по-прежнему ждут конца тихих часов. Справка IDS уточняет, что «Подтвердить» лишь прекращает напоминания, а закрывает проблему событие `RESOLVED` от IDS.
+- EN: IDS — a WARN alert about an intrusion indicator (`intrusion`, e.g. `FILE_CHANGED` "system files changed"; `config`, Zimbra admin/forwarding changes) waited for quiet hours to end (20:00–09:00 by default), so an event at 20:10 arrived only in the morning. New problems and updates in the `intrusion` and `config` families are now sent immediately, through quiet hours, at any level; reminders, `MONITOR_ERROR` and other WARNs still wait for quiet hours to end. The IDS reference now states that "Acknowledge" only stops reminders, and the problem is closed by a `RESOLVED` event from IDS.
+
 ## [8.67.0] - 2026-10-24
 
 ### Changed

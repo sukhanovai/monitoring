@@ -1,11 +1,11 @@
 """
 /extensions/ids_cert_monitor.py
-Server Monitoring System v8.67.0
+Server Monitoring System v8.67.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 IDS (container intrusion detection) and CERT (mail TLS certificate) monitor.
 Система мониторинга серверов
-Версия: 8.67.0
+Версия: 8.67.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг взлома контейнеров Proxmox (IDS) и замены TLS-сертификата
@@ -61,6 +61,11 @@ CERT_WATCHDOG_DAYS = 10
 WATCHDOG_INTERVAL = timedelta(minutes=5)
 REMINDER_INTERVALS = {"CRIT": timedelta(hours=2), "WARN": timedelta(hours=12)}
 OUTBOX_MAX_AGE = timedelta(hours=48)
+# Признаки взлома (семейства intrusion/config) — оповещаем сразу при любом
+# уровне, мимо тихих часов: WARN «изменились системные файлы» в 20:10 не
+# должен ждать 09:00. Напоминания по ним подчиняются тихим часам как обычно.
+IMMEDIATE_FAMILIES = ("intrusion", "config")
+IMMEDIATE_KINDS = ("new", "escalate", "update")
 ALERT_DETAILS_MAX_LINES = 25
 ALERT_DETAILS_MAX_CHARS = 3000
 JOURNAL_DETAILS_MAX_CHARS = 20000
@@ -987,30 +992,44 @@ def run_reminders(conn: sqlite3.Connection, now: datetime, ct_names: dict[str, s
     return count
 
 
+def is_immediate(level: str, kind: str | None, key: str | None) -> bool:
+    """Оповещение уходит сразу, мимо тихих часов."""
+    if level == "CRIT":
+        return True
+    family = (key or "").rsplit("/", 1)[-1]
+    return family in IMMEDIATE_FAMILIES and kind in IMMEDIATE_KINDS
+
+
 def dispatch_outbox(
     conn: sqlite3.Connection,
     send_alert_func: Callable[..., Any],
     now: datetime,
     silent: bool = False,
 ) -> int:
-    """Рассылает очередь. CRIT — немедленно (force, мимо тихих часов)."""
+    """Рассылает очередь.
+
+    CRIT и новые признаки взлома (см. `is_immediate`) — немедленно (force,
+    мимо тихих часов), остальное в тихие часы ждёт их окончания.
+    """
     sent = 0
     threshold = _ts(now - OUTBOX_MAX_AGE)
     rows = conn.execute(
-        "SELECT id, created_at, level, message FROM ids_outbox WHERE status = 'pending' ORDER BY id"
+        "SELECT id, created_at, level, kind, problem_key, message FROM ids_outbox "
+        "WHERE status = 'pending' ORDER BY id"
     ).fetchall()
     for row in rows:
         if str(row["created_at"]) < threshold:
             conn.execute("UPDATE ids_outbox SET status = 'expired' WHERE id = ?", (row["id"],))
             continue
         level = str(row["level"])
-        if silent and level != "CRIT":
+        force = is_immediate(level, row["kind"], row["problem_key"])
+        if silent and not force:
             continue
         try:
             result = send_alert_func(
                 row["message"],
                 alert_type=ALERT_TYPES.get(level, "info"),
-                force=level == "CRIT",
+                force=force,
             )
         except Exception as exc:  # noqa: BLE001
             debug_log(f"⚠️ ids_cert: ошибка отправки оповещения #{row['id']}: {exc}")
@@ -1268,8 +1287,10 @@ def build_help_lines() -> list[str]:
     lines += [f"• {k} — {v}" for k, v in CERT_EVENT_DESCRIPTIONS.items()]
     lines += [
         "",
-        "CRIT — сразу, мимо тихих часов, напоминание каждые 2 ч; WARN — раз в 12 ч. "
-        "«Подтвердить» прекращает напоминания по проблеме.",
+        "CRIT, а также новое «Вторжение» или «Конфигурация Zimbra» любого уровня — "
+        "сразу, мимо тихих часов. Напоминания: CRIT каждые 2 ч, WARN раз в 12 ч.",
+        "«Подтвердить» только прекращает напоминания; проблема закрывается, когда IDS "
+        "пришлёт RESOLVED (или OK-событие своего семейства).",
         "Сторож: нет HEARTBEAT 2 ч → CRIT; до конца срока сертификата < 10 дней → CRIT.",
     ]
     return lines

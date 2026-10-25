@@ -1,11 +1,11 @@
 """
 /modules/mail_parts/parsers/ids_cert.py
-Server Monitoring System v8.67.0
+Server Monitoring System v8.67.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 IdsCertParserMixin — часть BackupProcessor.
 Система мониторинга серверов
-Версия: 8.67.0
+Версия: 8.67.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Mixin IdsCertParserMixin; объединяется с другими mixin'ами в BackupProcessor.
