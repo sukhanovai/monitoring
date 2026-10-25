@@ -1,6 +1,6 @@
 # ComDone — разработка и выпуск релизов
 
-Server Monitoring System v8.67.1
+Server Monitoring System v9.0.0
 
 Документ для разработчика. Пользовательская установка описана в
 [deployment.md](deployment.md).
@@ -22,7 +22,7 @@ Server Monitoring System v8.67.1
   «Бета» и «Стабильная».
 
 Текущая бета-сборка:
-<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.67.1-beta/ComDone-8.67.1-beta.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v9.0.0-beta/ComDone-9.0.0-beta.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 
 ## Совместимость: бета-приложение ↔ стабильный сервер
 

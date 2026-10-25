@@ -1,3 +1,31 @@
+## [9.0.0] - 2026-10-25
+
+Первый стабильный релиз ComDone после 8.0.0: всё накопленное в `develop`
+(8.0.x–8.67.1) переносится в `main`. Обновление сервера и Android-приложения
+проходит без потери подключений — см. `docs/deployment.md`, раздел 10.2.
+
+### Changed
+- RU: Android-приложение — один пакет без вариантов сборки: flavor `legacy` («ComDone Legacy») удалён, интерфейс Compact Ops Hub — единственный. Идентификатор пакета сохранён (`ru.monitoring.mobile.compactops`), подпись — прежним ключом, поэтому 9.0.0 ставится поверх 8.x без переустановки, токен и настройки сохраняются.
+- EN: Android app — a single package without build variants: the `legacy` flavor ("ComDone Legacy") is removed, Compact Ops Hub is the only UI. The package id (`ru.monitoring.mobile.compactops`) and signing key are kept, so 9.0.0 installs over 8.x without reinstalling; the token and settings are preserved.
+- RU: APK называется `ComDone-<версия>.apk` (бета — `ComDone-<версия>-beta.apk`) вместо `monitoring-android-<версия>-develop-compactOps-debug.apk`; постоянная ссылка на стабильную версию — `releases/latest/download/ComDone.apk`. Скрипт публикации — `scripts/publish_android.ps1 [-Channel beta|stable]`, по умолчанию собирается release.
+- EN: The APK is named `ComDone-<version>.apk` (beta: `ComDone-<version>-beta.apk`) instead of `monitoring-android-<version>-develop-compactOps-debug.apk`; the permanent stable link is `releases/latest/download/ComDone.apk`. Publishing script: `scripts/publish_android.ps1 [-Channel beta|stable]`, release build by default.
+- RU: Каналы обновления в приложении — «Стабильная» (по умолчанию) и «Бета». Версия и ссылка каждого канала определяются по GitHub Releases (кэш 1 ч), поэтому ответ не зависит от ветки, на которой развёрнут сервер; без доступа к GitHub — запасные значения из `config/settings.py`. Проверка при запуске учитывает выбранный канал.
+- EN: In-app update channels — "Stable" (default) and "Beta". Each channel's version and link are resolved from GitHub Releases (1 h cache), so the answer no longer depends on the server's branch; without GitHub access the fallback from `config/settings.py` is used. The startup check honours the selected channel.
+- RU: Зависимости: `wmi` ставится только на Windows, `requests` указан явно, Matrix вынесен в `requirements-matrix.txt` — раньше `pip install -r requirements.txt` на чистом Linux падал (pywin32 и конфликт `cachetools` между python-telegram-bot 13.15 и matrix-nio). Поддерживаемый Python — 3.10–3.12.
+- EN: Dependencies: `wmi` is Windows-only, `requests` is listed explicitly, Matrix moved to `requirements-matrix.txt` — previously `pip install -r requirements.txt` failed on a clean Linux (pywin32 and a `cachetools` conflict between python-telegram-bot 13.15 and matrix-nio). Supported Python: 3.10–3.12.
+- RU: Документация: новая пользовательская инструкция `docs/deployment.md` (установка, systemd, обратный прокси и TLS, Android, Matrix, обновление, бэкап и откат, диагностика), процесс разработки и выпуска — `docs/development.md`; рабочие планы перенесены в `docs/dev/`, README переписан для пользователей.
+- EN: Docs: new user guide `docs/deployment.md` (install, systemd, reverse proxy and TLS, Android, Matrix, upgrade, backup and rollback, troubleshooting), development and release process in `docs/development.md`; working plans moved to `docs/dev/`, README rewritten for users.
+
+### Added
+- RU: Контракт совместимости API: `GET /v1/mobile/version` отдаёт `server_version`, `api_baseline` и `capabilities`; новые эндпоинты после baseline 9.0.0 помечаются меткой, приложение скрывает функции, которых сервер не объявил, а HTTP 404 показывает как «функция недоступна на этом сервере». Тест `tests/test_api_compatibility_contract.py` следит, чтобы бета-приложение из `develop` работало со стабильным сервером из `main`.
+- EN: API compatibility contract: `GET /v1/mobile/version` returns `server_version`, `api_baseline` and `capabilities`; endpoints added after baseline 9.0.0 carry a capability tag, the app hides features the server does not declare and shows HTTP 404 as "feature not available on this server". `tests/test_api_compatibility_contract.py` keeps the `develop` beta app working against the stable `main` server.
+- RU: CI запускается и на `develop` и собирает APK (`android-build`).
+- EN: CI also runs on `develop` and builds the APK (`android-build`).
+
+### Fixed
+- RU: Сохранение тихих часов и времени сбора данных из Android и веб-панели: клиенты вызывали `PATCH /v1/settings/time`, которого не было на сервере (405). Найдено контрактным тестом; дополнительные точки `DATA_COLLECTION_TIMES`, заданные в боте, сохраняются.
+- EN: Saving quiet hours and data collection time from Android and the web panel: clients called `PATCH /v1/settings/time`, which the server did not serve (405). Found by the contract test; extra `DATA_COLLECTION_TIMES` points set in the bot are preserved.
+
 ## [8.67.1] - 2026-10-25
 
 ### Fixed
