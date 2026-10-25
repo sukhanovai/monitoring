@@ -9649,17 +9649,33 @@ def v1_patch_settings_time():
     from config.db_settings_app import settings_manager
 
     if start_hour is not None:
-        settings_manager.set_setting("SILENT_START", start_hour, "time")
+        settings_manager.set_setting(
+            "SILENT_START", start_hour, "time", "Начало тихого режима (час)", "int"
+        )
     if end_hour is not None:
-        settings_manager.set_setting("SILENT_END", end_hour, "time")
+        settings_manager.set_setting(
+            "SILENT_END", end_hour, "time", "Конец тихого режима (час)", "int"
+        )
     if normalized_collection is not None:
         # Расписание сбора — список DATA_COLLECTION_TIMES; клиент правит только
         # первое время, остальные точки (если заданы в боте) сохраняются.
         times_raw = str(settings_manager.get_setting("DATA_COLLECTION_TIMES", "") or "")
         times = [t.strip() for t in times_raw.split(",") if t.strip()]
         times = [normalized_collection] + times[1:]
-        settings_manager.set_setting("DATA_COLLECTION_TIMES", ",".join(times), "time")
-        settings_manager.set_setting("DATA_COLLECTION_TIME", normalized_collection, "time")
+        settings_manager.set_setting(
+            "DATA_COLLECTION_TIMES",
+            ",".join(times),
+            "time",
+            "Время(а) сбора данных для отчета (HH:MM,HH:MM)",
+            "string",
+        )
+        settings_manager.set_setting(
+            "DATA_COLLECTION_TIME",
+            normalized_collection,
+            "time",
+            "Время сбора данных для отчета",
+            "time",
+        )
     load_all_settings()
 
     app.logger.info("PATCH /v1/settings/time request_id=%s", request_id)

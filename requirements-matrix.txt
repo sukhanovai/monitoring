@@ -1,0 +1,6 @@
+# Matrix-бот и уведомления (опционально). Ставится ПОСЛЕ requirements.txt:
+#   pip install -r requirements.txt
+#   pip install -r requirements-matrix.txt
+# pip предупредит «python-telegram-bot 13.15 requires cachetools==4.2.2» —
+# это ожидаемо: бот работает и с новым cachetools (проверено на Python 3.11).
+matrix-nio[e2e]>=0.25.0

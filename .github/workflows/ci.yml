@@ -69,10 +69,15 @@ jobs:
           cache: gradle
 
       - name: Assemble release APK
+        # Временный ключ только для проверки сборки: настоящий ключ подписи
+        # хранится у разработчика (см. docs/development.md), в CI его нет.
         working-directory: android-client
         run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/ci.keystore" -storepass android \
+            -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
+            -validity 3650 -dname "CN=ComDone CI"
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleRelease
+          ./gradlew --no-daemon :app:assembleRelease -PCOMDONE_KEYSTORE_FILE="$RUNNER_TEMP/ci.keystore"
 
       - name: Check APK file name
         run: ls android-client/app/build/outputs/apk/release/ComDone-*.apk
