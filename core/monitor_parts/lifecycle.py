@@ -1,12 +1,12 @@
 """
 /core/monitor_parts/lifecycle.py
-Server Monitoring System v9.0.0
+Server Monitoring System v9.0.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main monitoring loop entry-point extracted from core/monitor_core.py
 (PR5 серии оптимизации).
 Система мониторинга серверов
-Версия: 9.0.0
+Версия: 9.0.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Жизненный цикл монитора: однократная инициализация бота/state, затем

@@ -1,6 +1,6 @@
 # ComDone — установка, настройка и обновление
 
-Server Monitoring System v9.0.0
+Server Monitoring System v9.0.1
 
 Пошаговая инструкция для развёртывания ComDone на своём сервере: от чистой
 системы до работающих Telegram-бота, Matrix-бота, веб-панели и

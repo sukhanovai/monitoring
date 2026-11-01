@@ -1,11 +1,11 @@
 """
 /core/android_release_channels.py
-Server Monitoring System v9.0.0
+Server Monitoring System v9.0.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Android update channels (stable / beta) resolved from GitHub Releases.
 Система мониторинга серверов
-Версия: 9.0.0
+Версия: 9.0.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Каналы обновления Android-клиента ComDone, вычисляемые по GitHub Releases.

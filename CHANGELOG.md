@@ -1,3 +1,9 @@
+## [9.0.1] - 2026-11-01
+
+### Fixed
+- RU: IDS — `HEARTBEAT` в WARN разбирается по полям. `ldap=fail` (не читается LDAP Zimbra) открывает проблему «Ошибка проверки» (`monitor`) с текстом «не читается LDAP Zimbra, проверка настроек не работает», а не «Вторжение»; heartbeat без `ldap=fail` её закрывает. `findings>0` и `zimbra>0` открывают `intrusion` и `config` в WARN, только если они закрыты; `OK` или `findings=0`/`zimbra=0` закрывают их, только если их открыл сам heartbeat. Проблемы, открытые письмами `INTRUSION` и `ZIMBRA_CONFIG`, по-прежнему закрываются только `RESOLVED` и `ZIMBRA_CONFIG_RESOLVED`. У проблемы хранится, каким письмом она открыта (`ids_state.opened_by`, колонка добавляется автоматически).
+- EN: IDS — a WARN `HEARTBEAT` is parsed field by field. `ldap=fail` (Zimbra LDAP unreadable) opens the "Check error" problem (`monitor`) with "Zimbra LDAP unreadable, settings check not working" instead of "Intrusion"; a heartbeat without `ldap=fail` closes it. `findings>0` and `zimbra>0` open `intrusion` and `config` in WARN only if they are closed; `OK` or `findings=0`/`zimbra=0` close them only if the heartbeat itself opened them. Problems opened by `INTRUSION` and `ZIMBRA_CONFIG` mails are still closed only by `RESOLVED` and `ZIMBRA_CONFIG_RESOLVED`. Each problem records which mail opened it (`ids_state.opened_by`, the column is added automatically).
+
 ## [9.0.0] - 2026-10-25
 
 Первый стабильный релиз ComDone после 8.0.0: всё накопленное в `develop`
