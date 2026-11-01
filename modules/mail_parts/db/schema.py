@@ -175,7 +175,8 @@ CREATE TABLE IF NOT EXISTS ids_state (
     last_notified_at TIMESTAMP,
     acknowledged INTEGER DEFAULT 0,
     ack_by TEXT,
-    ack_at TIMESTAMP
+    ack_at TIMESTAMP,
+    opened_by TEXT
 )
 """
 
@@ -249,7 +250,8 @@ def create_schema(conn: sqlite3.Connection) -> None:
     """Создаёт таблицы и индексы backups.db, если их ещё нет.
 
     Также мигрирует старые инсталляции `stock_load_results` без колонки
-    `source_name` — добавляет её через `ALTER TABLE`. Безопасно вызывать
+    `source_name` и `ids_state` без `opened_by` — добавляет их через
+    `ALTER TABLE`. Безопасно вызывать
     повторно: всё через `IF NOT EXISTS` и проверку `PRAGMA table_info`.
     """
     cursor = conn.cursor()
@@ -261,6 +263,12 @@ def create_schema(conn: sqlite3.Connection) -> None:
     existing_columns = {row[1] for row in cursor.fetchall()}
     if "source_name" not in existing_columns:
         cursor.execute("ALTER TABLE stock_load_results ADD COLUMN source_name TEXT")
+
+    # ids_state.opened_by — каким письмом открыта проблема (HEARTBEAT закрывает
+    # только «свои»). Старые инсталляции получают колонку через ALTER TABLE.
+    cursor.execute("PRAGMA table_info(ids_state)")
+    if "opened_by" not in {row[1] for row in cursor.fetchall()}:
+        cursor.execute("ALTER TABLE ids_state ADD COLUMN opened_by TEXT")
 
     for index_sql in INDEX_STATEMENTS:
         cursor.execute(index_sql)

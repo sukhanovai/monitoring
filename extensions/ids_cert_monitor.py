@@ -390,10 +390,16 @@ def headline_lines(
         lines += [f"• {CONFIG_KINDS.get(k, k)}" for k in kinds]
         return lines
     if event == "HEARTBEAT":
-        return [
-            "Heartbeat сообщает о незакрытых находках "
-            f"(findings={fields.get('findings', '?')}, zimbra={fields.get('zimbra', '?')})"
-        ]
+        # Поля heartbeat-события отфильтрованы по семейству (_heartbeat_event).
+        if str(fields.get("ldap") or "").lower() == "fail":
+            return ["IDS: не читается LDAP Zimbra, проверка настроек не работает"]
+        if "zimbra" in fields and "findings" not in fields:
+            return [
+                "Heartbeat сообщает о незакрытых изменениях конфигурации Zimbra "
+                f"(zimbra={fields['zimbra']})"
+            ]
+        counts = ", ".join(f"{k}={fields[k]}" for k in ("findings", "zimbra") if k in fields)
+        return ["Heartbeat сообщает о незакрытых находках" + (f" ({counts})" if counts else "")]
     if event == "DOWN":
         return ["IDS: контейнер не работает"]
     if event == "STALE":
@@ -553,14 +559,15 @@ def _write_state(
     since: datetime | None,
     notified_at: str | None,
     acknowledged: int,
+    opened_by: str | None = None,
 ) -> None:
     conn.execute(
         """
         INSERT INTO ids_state
             (problem_key, source, node, ct, family, state, since, last_event_at,
              last_event, last_subject, last_fields, last_details, last_notified_at,
-             acknowledged)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             acknowledged, opened_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(problem_key) DO UPDATE SET
             state = excluded.state,
             since = excluded.since,
@@ -570,7 +577,8 @@ def _write_state(
             last_fields = excluded.last_fields,
             last_details = excluded.last_details,
             last_notified_at = excluded.last_notified_at,
-            acknowledged = excluded.acknowledged
+            acknowledged = excluded.acknowledged,
+            opened_by = excluded.opened_by
         """,
         (
             key,
@@ -587,6 +595,7 @@ def _write_state(
             ev.get("details") or "",
             notified_at,
             acknowledged,
+            opened_by,
         ),
     )
 
@@ -621,14 +630,17 @@ def _open_problem(
         _enqueue(
             conn, now, level, "new", key, format_problem_alert("new", level, ev, ct_names, now=now)
         )
-        _write_state(conn, key, ev, family, level, ev["time"], _ts(now), 0)
+        _write_state(conn, key, ev, family, level, ev["time"], _ts(now), 0, ev["event"])
         return f"{key} OK→{level} notified"
 
+    # Письмо-первоисточник (INTRUSION, ZIMBRA_CONFIG…) забирает проблему у
+    # heartbeat: дальше её закрывает только парное *_RESOLVED.
+    opened_by = _opened_by(row) if ev["event"] == "HEARTBEAT" else ev["event"]
     since = _dt(row["since"]) if row else None
     if LEVEL_RANK[level] > LEVEL_RANK[current]:
         message = format_problem_alert("escalate", level, ev, ct_names, now=now)
         _enqueue(conn, now, level, "escalate", key, message)
-        _write_state(conn, key, ev, family, level, since, _ts(now), 0)
+        _write_state(conn, key, ev, family, level, since, _ts(now), 0, opened_by)
         return f"{key} {current}→{level} notified"
 
     # Тот же или более низкий уровень: CRIT не понижаем до закрывающего события.
@@ -636,11 +648,11 @@ def _open_problem(
     if changed:
         message = format_problem_alert("update", current, ev, ct_names, now=now)
         _enqueue(conn, now, current, "update", key, message)
-        _write_state(conn, key, ev, family, current, since, _ts(now), acknowledged)
+        _write_state(conn, key, ev, family, current, since, _ts(now), acknowledged, opened_by)
         return f"{key} {current} updated notified"
 
     notified = row["last_notified_at"] if row else None
-    _write_state(conn, key, ev, family, current, since, notified, acknowledged)
+    _write_state(conn, key, ev, family, current, since, notified, acknowledged, opened_by)
     return f"{key} {current} duplicate"
 
 
@@ -651,11 +663,14 @@ def _close_problem(
     now: datetime,
     ct_names: dict[str, str],
     check_order: bool = True,
+    only_opened_by: str | None = None,
 ) -> str:
     key = problem_key(ev["source"], ev["node"], ev["ct"], family)
     row = _get_state(conn, key)
     if row is None:
         return f"{key} OK (нечего закрывать)"
+    if only_opened_by and row["state"] != "OK" and _opened_by(row) != only_opened_by:
+        return f"{key} {row['state']} открыта {_opened_by(row) or '—'}, {ev['event']} не закрывает"
     last_at = _dt(row["last_event_at"])
     if check_order and last_at and ev["time"] < last_at:
         return f"{key} out-of-order (письмо старше последнего), состояние не меняется"
@@ -675,6 +690,26 @@ def _close_problem(
 def _is_open(conn: sqlite3.Connection, key: str) -> bool:
     row = _get_state(conn, key)
     return bool(row and row["state"] != "OK")
+
+
+def _opened_by(row: Any) -> str | None:
+    """Каким письмом открыта проблема. Строки до появления колонки opened_by:
+    heartbeat открывает только закрытую проблему и дальше её не трогает, поэтому
+    `last_event == HEARTBEAT` у открытой проблемы означает «открыта heartbeat»."""
+    keys = row.keys()
+    value = row["opened_by"] if "opened_by" in keys else None
+    if value:
+        return str(value)
+    if row["state"] != "OK" and row["last_event"] == "HEARTBEAT":
+        return "HEARTBEAT"
+    return None
+
+
+def _heartbeat_event(ev: dict[str, Any], *names: str) -> dict[str, Any]:
+    """Копия heartbeat-события только с полями своего семейства: от `lastrun`
+    и чужих счётчиков не должно приходить «обновление» каждый heartbeat."""
+    fields = ev.get("fields") or {}
+    return {**ev, "fields": {k: fields[k] for k in names if k in fields}}
 
 
 def _apply_heartbeat(
@@ -707,17 +742,36 @@ def _apply_heartbeat(
     # Сигнал жизни закрывает watchdog независимо от порядка: следующая
     # сторожевая проверка переоткроет его, если и этот heartbeat старый.
     outcomes.append(_close_problem(conn, ev, "watchdog", now, ct_names, check_order=False))
-    if ev["level"] == "OK":
-        outcomes.append(_close_problem(conn, ev, "availability", now, ct_names))
-        outcomes.append(_close_problem(conn, ev, "monitor", now, ct_names))
-        return outcomes
 
-    intrusion_key = problem_key(ev["source"], ev["node"], ev["ct"], "intrusion")
-    config_key = problem_key(ev["source"], ev["node"], ev["ct"], "config")
-    if _is_open(conn, intrusion_key) or _is_open(conn, config_key):
-        outcomes.append(f"{hb_key} heartbeat WARN: проблемы уже открыты")
-        return outcomes
-    outcomes.append(_open_problem(conn, ev, "intrusion", "WARN", now, ct_names))
+    fields = ev.get("fields") or {}
+    ok = ev["level"] == "OK"
+    ldap_fail = str(fields.get("ldap") or "").lower() == "fail"
+    findings = _int(fields.get("findings"))
+    zimbra = _int(fields.get("zimbra"))
+    if ok:
+        outcomes.append(_close_problem(conn, ev, "availability", now, ct_names))
+
+    # ldap=fail — не работает сама проверка настроек: семейство monitor.
+    if ldap_fail and not ok:
+        mon_ev = _heartbeat_event(ev, "ldap")
+        outcomes.append(_open_problem(conn, mon_ev, "monitor", "WARN", now, ct_names))
+    elif not ldap_fail:
+        outcomes.append(_close_problem(conn, ev, "monitor", now, ct_names))
+
+    # Находки: heartbeat открывает только закрытую проблему и закрывает только
+    # открытую им самим; открытые INTRUSION/ZIMBRA_CONFIG ждут *_RESOLVED.
+    for family, count, field in (("intrusion", findings, "findings"), ("config", zimbra, "zimbra")):
+        key = problem_key(ev["source"], ev["node"], ev["ct"], family)
+        if ok or count == 0:
+            outcomes.append(
+                _close_problem(conn, ev, family, now, ct_names, only_opened_by="HEARTBEAT")
+            )
+        elif count and count > 0:
+            if _is_open(conn, key):
+                outcomes.append(f"{key} уже открыта, heartbeat не трогает")
+            else:
+                fam_ev = _heartbeat_event(ev, field)
+                outcomes.append(_open_problem(conn, fam_ev, family, "WARN", now, ct_names))
     return outcomes
 
 
