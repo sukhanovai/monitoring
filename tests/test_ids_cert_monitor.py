@@ -89,6 +89,7 @@ KEY_INTRUSION = "IDS/sr-pve2/CT101/intrusion"
 KEY_CONFIG = "IDS/sr-pve2/CT101/config"
 KEY_AVAIL = "IDS/sr-pve2/CT101/availability"
 KEY_WATCHDOG = "IDS/sr-pve2/CT101/watchdog"
+KEY_MONITOR = "IDS/sr-pve2/CT101/monitor"
 KEY_CERT = "CERT/sr-pve2/CT101/cert"
 KEY_CERT_WD = "CERT/sr-pve2/CT101/cert_watchdog"
 
@@ -363,6 +364,106 @@ def test_heartbeat_warn_opens_intrusion_only_when_closed(db) -> None:
         T0 + timedelta(hours=1),
     )
     assert pending(db) == []
+
+
+def test_heartbeat_ldap_fail_opens_monitor_not_intrusion(db) -> None:
+    mail(db, "IDS WARN sr-pve2 CT101 HEARTBEAT findings=0 zimbra=0 ldap=fail lastrun=3m", T0)
+    mon = state(db, KEY_MONITOR)
+    assert mon["state"] == "WARN"
+    assert mon["opened_by"] == "HEARTBEAT"
+    assert state(db, KEY_INTRUSION) is None
+    msgs = pending(db)
+    assert len(msgs) == 1
+    assert "не читается LDAP Zimbra, проверка настроек не работает" in msgs[0]["message"]
+    drain(db)
+    # Повтор с другим lastrun — тот же WARN, без «обновления».
+    mail(
+        db,
+        "IDS WARN sr-pve2 CT101 HEARTBEAT findings=0 zimbra=0 ldap=fail lastrun=1m",
+        T0 + timedelta(hours=1),
+    )
+    assert pending(db) == []
+    mail(
+        db,
+        "IDS OK sr-pve2 CT101 HEARTBEAT findings=0 zimbra=0 lastrun=2m",
+        T0 + timedelta(hours=2),
+    )
+    assert state(db, KEY_MONITOR)["state"] == "OK"
+    assert state(db, KEY_INTRUSION) is None
+    assert [m["kind"] for m in pending(db)] == ["recovery"]
+
+
+def test_heartbeat_closes_only_problems_it_opened(db) -> None:
+    # intrusion и config, открытые heartbeat, закрывает heartbeat с нулями.
+    mail(db, "IDS WARN sr-pve2 CT101 HEARTBEAT findings=1 zimbra=2 lastrun=3m", T0)
+    assert state(db, KEY_INTRUSION)["opened_by"] == "HEARTBEAT"
+    assert state(db, KEY_CONFIG)["state"] == "WARN"
+    assert "конфигурации Zimbra (zimbra=2)" in pending(db)[1]["message"]
+    mail(
+        db,
+        "IDS WARN sr-pve2 CT101 HEARTBEAT findings=0 zimbra=2 lastrun=3m",
+        T0 + timedelta(hours=1),
+    )
+    assert state(db, KEY_INTRUSION)["state"] == "OK"
+    assert state(db, KEY_CONFIG)["state"] == "WARN"
+    mail(
+        db,
+        "IDS OK sr-pve2 CT101 HEARTBEAT findings=0 zimbra=0 lastrun=3m",
+        T0 + timedelta(hours=2),
+    )
+    assert state(db, KEY_CONFIG)["state"] == "OK"
+
+    # Открытые письмами INTRUSION / ZIMBRA_CONFIG heartbeat не закрывает.
+    t = T0 + timedelta(hours=3)
+    mail(db, "IDS WARN sr-pve2 CT101 INTRUSION n=1 types=FILE_CHANGED", t)
+    mail(db, "IDS WARN sr-pve2 CT101 ZIMBRA_CONFIG n=1 kinds=ADMIN", t)
+    assert state(db, KEY_INTRUSION)["opened_by"] == "INTRUSION"
+    mail(
+        db,
+        "IDS OK sr-pve2 CT101 HEARTBEAT findings=0 zimbra=0 lastrun=3m",
+        t + timedelta(hours=1),
+    )
+    assert state(db, KEY_INTRUSION)["state"] == "WARN"
+    assert state(db, KEY_CONFIG)["state"] == "WARN"
+    mail(db, "IDS OK sr-pve2 CT101 RESOLVED", t + timedelta(hours=2))
+    mail(db, "IDS OK sr-pve2 CT101 ZIMBRA_CONFIG_RESOLVED", t + timedelta(hours=2))
+    assert state(db, KEY_INTRUSION)["state"] == "OK"
+    assert state(db, KEY_CONFIG)["state"] == "OK"
+
+
+def test_intrusion_letter_takes_over_heartbeat_problem(db) -> None:
+    mail(db, "IDS WARN sr-pve2 CT101 HEARTBEAT findings=1 zimbra=0 lastrun=3m", T0)
+    mail(db, "IDS CRIT sr-pve2 CT101 INTRUSION n=1 types=WEB_RCE", T0 + timedelta(minutes=5))
+    assert state(db, KEY_INTRUSION)["opened_by"] == "INTRUSION"
+    mail(
+        db,
+        "IDS OK sr-pve2 CT101 HEARTBEAT findings=0 zimbra=0 lastrun=3m",
+        T0 + timedelta(hours=1),
+    )
+    assert state(db, KEY_INTRUSION)["state"] == "CRIT"
+
+
+def test_legacy_state_without_opened_by_column(tmp_path) -> None:
+    path = str(tmp_path / "old.db")
+    conn = sqlite3.connect(path)
+    conn.execute(
+        "CREATE TABLE ids_state (problem_key TEXT PRIMARY KEY, source TEXT NOT NULL, "
+        "node TEXT NOT NULL, ct TEXT NOT NULL, family TEXT NOT NULL, "
+        "state TEXT NOT NULL DEFAULT 'OK', since TIMESTAMP, last_event_at TIMESTAMP, "
+        "last_event TEXT, last_subject TEXT, last_fields TEXT, last_details TEXT, "
+        "last_notified_at TIMESTAMP, acknowledged INTEGER DEFAULT 0, ack_by TEXT, "
+        "ack_at TIMESTAMP)"
+    )
+    conn.execute(
+        "INSERT INTO ids_state (problem_key, source, node, ct, family, state, since, "
+        "last_event_at, last_event) VALUES (?, 'IDS', 'sr-pve2', '101', 'intrusion', "
+        "'WARN', ?, ?, 'HEARTBEAT')",
+        (KEY_INTRUSION, mod._ts(T0), mod._ts(T0)),
+    )
+    conn.commit()
+    conn.close()
+    mail(path, "IDS OK sr-pve2 CT101 HEARTBEAT findings=0 zimbra=0", T0 + timedelta(hours=1))
+    assert state(path, KEY_INTRUSION)["state"] == "OK"
 
 
 def test_escalation_warn_to_crit(db) -> None:

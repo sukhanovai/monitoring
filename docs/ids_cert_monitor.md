@@ -49,12 +49,32 @@ source `IDS`, level `CRIT`, node `sr-pve2`, ct `101`, event `INTRUSION`,
 | `DOWN`, `STALE` | `availability` | открыть (CRIT) |
 | `UP` | `availability` | закрыть |
 | `MONITOR_ERROR` | `monitor` | открыть (WARN) |
-| `HEARTBEAT` | — | сигнал жизни; OK закрывает `availability` и `monitor`; WARN при закрытых `intrusion`/`config` открывает `intrusion` в WARN |
+| `HEARTBEAT` | — | сигнал жизни, разбирается по полям — см. ниже |
 | `BASELINE`, `TEST` | — | только журнал |
 
 Коды `types`: `WEB_RCE`, `FAKE_KTHREAD`, `EXEC_FROM_TMP`, `DELETED_EXE`,
 `EXEC_IN_TMP`, `UID0`, `FW_OUT_DROP`, `WEB_EXPLOIT` (CRIT); `FILE_CHANGED`,
 `NEW_PORT` (WARN).
+
+### Разбор HEARTBEAT
+
+Любой `HEARTBEAT` закрывает `watchdog`, `HEARTBEAT` с `level=OK` — ещё и
+`availability`. Дальше поля разбираются независимо:
+
+| Условие | Действие |
+|---|---|
+| `ldap=fail` при `level=WARN` | открыть/держать `monitor` в WARN: «не читается LDAP Zimbra, проверка настроек не работает» (`intrusion` не трогается) |
+| нет `ldap=fail` | закрыть `monitor` |
+| `findings>0` при `level=WARN` | открыть `intrusion` в WARN, только если она закрыта |
+| `level=OK` или `findings=0` | закрыть `intrusion`, если её открыл heartbeat |
+| `zimbra>0` при `level=WARN` | открыть `config` в WARN, только если она закрыта |
+| `level=OK` или `zimbra=0` | закрыть `config`, если её открыл heartbeat |
+
+У проблемы хранится `opened_by` — событие, которое её открыло (`HEARTBEAT`,
+`INTRUSION`, `ZIMBRA_CONFIG`…). Письмо `INTRUSION`/`ZIMBRA_CONFIG` забирает
+открытую heartbeat проблему себе. Проблемы, открытые письмами `INTRUSION` и
+`ZIMBRA_CONFIG`, heartbeat не закрывает — только `RESOLVED` и
+`ZIMBRA_CONFIG_RESOLVED`.
 
 ### CERT
 
@@ -97,7 +117,7 @@ CERT-скрипт молчит, пока всё в порядке, и heartbeat 
 в 12 часов, с длительностью и последними деталями. **«✋ Подтвердить»**
 (Telegram, Android, веб, Matrix `!ids ack`) останавливает напоминания по
 проблеме, но не закрывает её: закрывает только событие от IDS (`RESOLVED`,
-`ZIMBRA_CONFIG_RESOLVED`, `UP`, OK-`HEARTBEAT`). Новая проблема или повышение
+`ZIMBRA_CONFIG_RESOLVED`, `UP`, `HEARTBEAT` — по правилам выше). Новая проблема или повышение
 уровня снимают подтверждение.
 
 Для `IDS` + `CRIT` + `INTRUSION` в оповещение добавляется строка
