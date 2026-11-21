@@ -26,6 +26,7 @@ from config.db_settings import (
     SSH_KEY_PATH,
     SSH_SERVERS,
     SSH_USERNAME,
+    USE_DB,
     WINDOWS_SERVER_CREDENTIALS,
     WINRM_CONFIGS,
     get_servers_config,
@@ -46,11 +47,9 @@ _server_checker = ServerChecker()
 def initialize_servers():
     """Инициализация списка серверов из конфигурации"""
     servers = []
-    servers_config = get_servers_config()
+    servers_config = get_servers_config() if USE_DB else SERVER_CONFIG
     if not any(servers_config.values()):
-        servers_config = SERVER_CONFIG
-        if not any(servers_config.values()):
-            debug_log("⚠️ Конфигурация серверов пуста")
+        debug_log("⚠️ Конфигурация серверов пуста")
 
     # Windows RDP серверы
     for ip, name in servers_config.get("windows_servers", {}).items():
