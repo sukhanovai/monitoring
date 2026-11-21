@@ -1,6 +1,6 @@
 # Совместимость мобильного API ComDone
 
-Server Monitoring System v9.0.1
+Server Monitoring System v9.0.2
 
 ## Зачем
 
