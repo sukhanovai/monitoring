@@ -26,6 +26,10 @@ except ImportError:
     check_server_availability = None
 
 
+def _load_monitored_servers():
+    return [server for server in initialize_servers() if server["ip"] != "192.168.20.2"]
+
+
 class AvailabilityMonitor:
     """Класс мониторинга доступности серверов"""
 
@@ -41,11 +45,7 @@ class AvailabilityMonitor:
             debug_log("❌ Модуль проверок недоступен", force=True)
             return False
 
-        self.servers = initialize_servers()
-        monitor_server_ip = "192.168.20.2"
-
-        # Исключаем сервер мониторинга
-        self.servers = [s for s in self.servers if s["ip"] != monitor_server_ip]
+        self.servers = _load_monitored_servers()
 
         # Инициализация статусов
         for server in self.servers:
@@ -99,14 +99,13 @@ class AvailabilityMonitor:
             self.server_status[ip]["alert_sent"] = True
 
     def get_current_status(self):
-        """Получить текущий статус всех серверов"""
+        """Проверить доступность серверов, активных на момент сбора."""
         results = {"failed": [], "ok": []}
-        if not self.servers:
-            if not self.initialize():
-                debug_log("❌ Нет данных о серверах для проверки", force=True)
-                return results
+        if not check_server_availability:
+            debug_log("❌ Модуль проверок недоступен", force=True)
+            return results
 
-        for server in self.servers:
+        for server in _load_monitored_servers():
             try:
                 is_up = self.check_server(server)
                 if is_up:

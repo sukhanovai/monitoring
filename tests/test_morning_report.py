@@ -365,3 +365,38 @@ def test_render_plain_all_ok_summary():
     text = mr.render_plain(report)
     assert "✅ Всё в норме" in text
     assert "Требует внимания" not in text
+
+
+def test_report_reads_current_server_pauses(monkeypatch):
+    from config import db_settings
+    from extensions import server_checks
+    from modules import availability
+
+    server = {"ip": "192.0.2.108", "name": "backup-node", "type": "ssh"}
+    active_servers = [server]
+    checked = []
+    monkeypatch.setattr(db_settings.config_manager, "get_all_servers", lambda: active_servers)
+    monkeypatch.setattr(
+        server_checks, "SERVER_CONFIG", {"linux_servers": {server["ip"]: server["name"]}}
+    )
+    monkeypatch.setattr(
+        availability, "check_server_availability", lambda server: checked.append(server) or False
+    )
+    monitor = availability.AvailabilityMonitor()
+    monkeypatch.setattr(availability, "availability_monitor", monitor)
+    report = MorningReport()
+
+    assert monitor.initialize()
+    assert report.collect_morning_data()
+    assert report.morning_data["status"]["failed"] == [server]
+
+    active_servers.clear()
+    checked.clear()
+    assert report.collect_morning_data()
+    assert report.morning_data["status"] == {"failed": [], "ok": []}
+    assert checked == []
+
+    active_servers.append(server)
+    assert report.collect_morning_data()
+    assert report.morning_data["status"]["failed"] == [server]
+    assert checked == [server]

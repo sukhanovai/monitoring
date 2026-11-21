@@ -16,6 +16,7 @@ import json
 import re
 import sqlite3
 from datetime import datetime
+from html import escape
 from urllib.parse import quote, unquote
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -815,7 +816,7 @@ def _get_server_by_ip(servers, ip):
     return None
 
 
-def show_servers_list(update, context):
+def show_servers_list(update, context, page=0):
     """Показать список серверов с действиями"""
     query = update.callback_query
     query.answer()
@@ -842,21 +843,27 @@ def show_servers_list(update, context):
         )
         return
 
-    message_lines = ["📋 *Список серверов*\n"]
-    for server in servers:
+    page_size = 10
+    page_count = (len(servers) + page_size - 1) // page_size
+    page = max(0, min(page, page_count - 1))
+    start = page * page_size
+    page_servers = servers[start : start + page_size]
+
+    message_lines = [
+        "📋 <b>Список серверов</b>",
+        f"Страница {page + 1} из {page_count} · всего {len(servers)}\n",
+    ]
+    keyboard = []
+    for server in page_servers:
         status_icon = "🟢" if server.get("enabled", True) else "⏸️"
         status_text = "мониторинг" if server.get("enabled", True) else "пауза"
+        name = escape(server["name"])
+        ip = escape(server["ip"])
+        server_type = escape(server["type"].upper())
         message_lines.append(
-            f"• {status_icon} {server['name']} (`{server['ip']}`) — {server['type'].upper()} — {status_text}"
+            f"• {status_icon} {name} (<code>{ip}</code>) — {server_type} — {status_text}"
         )
 
-    keyboard = [
-        [
-            InlineKeyboardButton("↩️ Назад", callback_data="settings_servers"),
-            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
-        ]
-    ]
-    for server in servers:
         toggle_text = "⏸️ Пауза" if server.get("enabled", True) else "▶️ Возобновить"
         keyboard.append(
             [
@@ -870,11 +877,29 @@ def show_servers_list(update, context):
             ]
         )
 
-    keyboard.append(
-        [InlineKeyboardButton("➕ Добавить сервер", callback_data="settings_add_server")]
+    navigation = []
+    if page > 0:
+        navigation.append(
+            InlineKeyboardButton("⬅️ Предыдущая", callback_data=f"settings_servers_page_{page - 1}")
+        )
+    if page + 1 < page_count:
+        navigation.append(
+            InlineKeyboardButton("Следующая ➡️", callback_data=f"settings_servers_page_{page + 1}")
+        )
+    if navigation:
+        keyboard.append(navigation)
+
+    keyboard.extend(
+        [
+            [InlineKeyboardButton("➕ Добавить сервер", callback_data="settings_add_server")],
+            [
+                InlineKeyboardButton("↩️ Назад", callback_data="settings_servers"),
+                InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+            ],
+        ]
     )
     query.edit_message_text(
-        "\n".join(message_lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard)
+        "\n".join(message_lines), parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 

@@ -1263,6 +1263,8 @@ def settings_callback_handler(update, context):
         # Обработчики для серверов
         elif data == "settings_servers_list":
             show_servers_list(update, context)
+        elif re.fullmatch(r"settings_servers_page_[0-9]+", data):
+            show_servers_list(update, context, page=int(data.rsplit("_", 1)[1]))
         elif data.startswith("settings_delete_server_"):
             ip = data.replace("settings_delete_server_", "")
             delete_server_confirmation(update, context, ip)
