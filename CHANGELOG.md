@@ -1,3 +1,15 @@
+## [9.0.2] - 2026-11-21
+
+### Fixed
+- RU: Утренний отчёт читает актуальный список активных серверов перед проверкой. Серверы на паузе исключаются из проверки и статистики, даже если приостановлены все серверы.
+- EN: The morning report reads the current list of active servers before checking availability. Paused servers are excluded from checks and totals, even when every server is paused.
+- RU: Список серверов в настройках Telegram разбит на страницы по 10 записей. Кнопки редактирования, паузы и возобновления доступны на каждой странице.
+- EN: The server list in Telegram settings shows 10 entries per page. Edit, pause and resume actions are available on every page.
+
+### Added
+- RU: Скрипт бэкапа Zimbra отправляет короткую сводку с размером, путём и типом копии в теме. Паттерн мониторинга может учитывать только успешные полные копии.
+- EN: The Zimbra backup script sends a short summary with the size, path and backup type in the subject. The monitoring pattern can match successful full backups only.
+
 ## [9.0.1] - 2026-11-01
 
 ### Fixed

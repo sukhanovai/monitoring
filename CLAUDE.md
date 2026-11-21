@@ -28,7 +28,7 @@
 ```sh
 python scripts/bump_version.py --check       # сверка (выход 1 при рассинхроне)
 python scripts/bump_version.py --print       # вывести текущую APP_VERSION
-python scripts/bump_version.py 9.0.1         # обновить везде до новой версии
+python scripts/bump_version.py X.Y.Z         # обновить везде до новой версии
 ```
 
 `--check` запускается pre-commit hook'ом автоматически на каждый коммит,
